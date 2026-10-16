@@ -107,21 +107,12 @@ pub async fn recent_pings(
     since: i64,
     limit: i64,
 ) -> anyhow::Result<Vec<PingRow>> {
-    let mut rows = c
-        .query(
-            "SELECT received_at, kind, source_ip FROM pings WHERE heartbeat_id = ?1 AND received_at >= ?2 ORDER BY received_at DESC, id DESC LIMIT ?3",
-            (id, since, limit),
-        )
-        .await?;
-    let mut out = Vec::new();
-    while let Some(r) = rows.next().await? {
-        out.push(PingRow {
+    crate::platform::db::query_all(c, "SELECT received_at, kind, source_ip FROM pings WHERE heartbeat_id = ?1 AND received_at >= ?2 ORDER BY received_at DESC, id DESC LIMIT ?3",
+            (id, since, limit), |r| Ok(PingRow {
             received_at: r.get(0)?,
             kind: r.get(1)?,
             source_ip: r.get(2)?,
-        });
-    }
-    Ok(out)
+        })).await
 }
 
 pub async fn insert_ping(

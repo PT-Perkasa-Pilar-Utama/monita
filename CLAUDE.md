@@ -22,7 +22,7 @@ This file restates rules tersely. The docs win on any conflict; fix this file wh
 | --- | --- |
 | Language | Rust 1.97.1, edition 2024 (`rust-toolchain.toml`) |
 | HTTP | axum 0.8, tokio 1.53 |
-| HTML | askama 0.16 templates in `templates/`, htmx 2.0.11 vendored |
+| HTML | askama 0.16 templates in `templates/`, plain forms, `static/app.js` for copy buttons only |
 | CSS | `static/app.css` (Lunear flavor), `static/icons.svg`, embedded fonts. All embedded by rust-embed. |
 | Database | turso 0.8.3, standard SQLite features only |
 | Outbound (later sprints) | reqwest 0.13 rustls, lettre 0.11 |

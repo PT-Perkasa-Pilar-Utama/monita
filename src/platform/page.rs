@@ -17,6 +17,26 @@ pub struct Shell {
     pub project: Option<ProjectNav>,
 }
 
+impl Shell {
+    /// A page outside any project, such as Users or Limits.
+    pub fn plain(email: &str, is_admin: bool, active: &'static str) -> Self {
+        Shell {
+            email: email.to_string(),
+            is_admin,
+            active,
+            project: None,
+        }
+    }
+
+    pub fn in_project(mut self, name: &str, slug: &str) -> Self {
+        self.project = Some(ProjectNav {
+            name: name.to_string(),
+            slug: slug.to_string(),
+        });
+        self
+    }
+}
+
 pub struct ProjectNav {
     pub name: String,
     pub slug: String,

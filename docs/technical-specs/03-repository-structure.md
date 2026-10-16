@@ -26,7 +26,7 @@ monita/
 │   ├── status/                mod.rs, routes.rs
 │   └── tickets/               mod.rs, store.rs, routes/{mod, api, public, admin}
 ├── templates/                 askama templates, one folder per module, plus layout/ and ui/
-├── static/                    app.css, htmx.min.js (2.0.11), icons.svg; embedded by rust-embed
+├── static/                    app.css, app.js (copy buttons), icons.svg, fonts; embedded by rust-embed
 ├── tests/                     Rust integration tests (temp-file DB, fake adapters)
 ├── e2e/                       Playwright on Bun: package.json, playwright.config.ts, specs/
 ├── deploy/                    monita.service (systemd), monita.env.example

@@ -26,10 +26,9 @@ Templates call the macros in `templates/ui/macros.html`. They never repeat the m
 | Caption | `.cap` | none | 11 px mono uppercase: IDs, times, counts |
 | Quiet link | `.link-quiet` | none | "Known issues →". Arrows live here, never inside buttons. |
 
-## 2.1 htmx states
+## 2.1 Form states
 
 | State | Style |
 | --- | --- |
-| Request in flight | htmx adds `.htmx-request` to the trigger: `.btn.htmx-request` dims and shows `cursor: progress`. |
-| Swapped fragment | No animation. The new content replaces the old at once. |
-| Validation failure | Server returns 422 with the form fragment, fields marked `.field--error`. |
+| Disabled button | `.btn[disabled]` dims and shows `cursor: progress`. |
+| Validation failure | Server returns 422 with the whole page, fields marked `.field--error`. |

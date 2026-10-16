@@ -16,7 +16,7 @@ Modular monolith in one process. The HTTP server and the background loops run in
 
 ```mermaid
 graph LR
-  Browser -->|HTML + htmx| HTTP[axum router]
+  Browser -->|HTML forms| HTTP[axum router]
   ProjectBackend[Project backend] -->|JSON + API key| HTTP
   Job[Project job] -->|/ping| HTTP
   HTTP --> accounts & projects & checks & incidents & status & tickets & notify
@@ -39,12 +39,12 @@ sequenceDiagram
   participant L as layers (trace, rate limit, session)
   participant H as handler
   participant D as monita.db
-  B->>R: POST /monitors (htmx)
+  B->>R: POST /monitors (form)
   R->>L: request
   L->>L: rate limit, load session, Origin check
   L->>H: CurrentUser + form
   H->>D: insert monitor
-  H-->>B: HTML partial (HX-Request) or full page
+  H-->>B: 303 to the monitor, or the form again with 422
 ```
 
 A check runs outside any request:

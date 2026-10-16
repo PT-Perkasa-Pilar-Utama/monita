@@ -1,4 +1,4 @@
-// Copy buttons: <button data-copy="element-id">. The only script Monita ships besides htmx.
+// Copy buttons: <button data-copy="element-id">. The only script Monita ships.
 document.addEventListener("click", async (event) => {
   const button = event.target.closest("[data-copy]");
   if (!button) return;

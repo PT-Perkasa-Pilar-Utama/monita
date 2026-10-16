@@ -127,32 +127,21 @@ pub struct PublicItem {
 
 pub async fn public_items(db: &Db, project_id: i64) -> anyhow::Result<Vec<PublicItem>> {
     use crate::incidents::SourceKind;
-    let mut out: Vec<PublicItem> = list_monitors(db, project_id)
+    Ok(store::public_items(&db.read().await?, project_id)
         .await?
         .into_iter()
-        .filter(|m| m.is_public)
-        .map(|m| PublicItem {
-            kind: SourceKind::Monitor,
-            id: m.id,
-            seen: m.last.is_some(),
-            name: m.name,
-            created_at: m.created_at,
+        .map(|(hb, id, name, created_at, seen)| PublicItem {
+            kind: if hb {
+                SourceKind::Heartbeat
+            } else {
+                SourceKind::Monitor
+            },
+            id,
+            seen,
+            name,
+            created_at,
         })
-        .collect();
-    out.extend(
-        heartbeat::list(db, project_id)
-            .await?
-            .into_iter()
-            .filter(|h| h.is_public)
-            .map(|h| PublicItem {
-                kind: SourceKind::Heartbeat,
-                id: h.id,
-                seen: h.last_ping_at.is_some(),
-                name: h.name,
-                created_at: h.created_at,
-            }),
-    );
-    Ok(out)
+        .collect())
 }
 
 /// AC-11.01: a random point inside the interval, so checks spread out. Never sooner than 5 s, so

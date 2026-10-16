@@ -149,14 +149,7 @@ fn row(r: &turso::Row) -> turso::Result<TicketRow> {
 const OPEN_OR_RECENT_DONE: &str = "(t.stage != 'done' OR t.id IN (SELECT id FROM tickets WHERE project_id = ?1 AND stage = 'done' ORDER BY updated_at DESC LIMIT 200))";
 
 pub async fn board(c: &Connection, project_id: i64) -> anyhow::Result<Vec<TicketRow>> {
-    let mut rows = c
-        .query(format!("SELECT {COLS} FROM tickets t JOIN ref_ids r ON r.id = t.ref_id WHERE t.project_id = ?1 AND {OPEN_OR_RECENT_DONE} ORDER BY t.updated_at DESC"), [project_id])
-        .await?;
-    let mut out = Vec::new();
-    while let Some(r) = rows.next().await? {
-        out.push(row(&r)?);
-    }
-    Ok(out)
+    crate::platform::db::query_all(c, format!("SELECT {COLS} FROM tickets t JOIN ref_ids r ON r.id = t.ref_id WHERE t.project_id = ?1 AND {OPEN_OR_RECENT_DONE} ORDER BY t.updated_at DESC"), [project_id], row).await
 }
 
 pub async fn find(
@@ -194,21 +187,14 @@ pub async fn public_board(c: &Connection, project_id: i64) -> anyhow::Result<Vec
 
 /// The reporter sees their own title, never the description.
 pub async fn by_ref(c: &Connection, ref_id: i64) -> anyhow::Result<Vec<MyTicket>> {
-    let mut rows = c
-        .query("SELECT number, title, stage, close_reason, created_at, updated_at FROM tickets WHERE ref_id = ?1 ORDER BY created_at DESC LIMIT 100", [ref_id])
-        .await?;
-    let mut out = Vec::new();
-    while let Some(r) = rows.next().await? {
-        out.push(MyTicket {
+    crate::platform::db::query_all(c, "SELECT number, title, stage, close_reason, created_at, updated_at FROM tickets WHERE ref_id = ?1 ORDER BY created_at DESC LIMIT 100", [ref_id], |r| Ok(MyTicket {
             number: r.get(0)?,
             title: r.get(1)?,
             stage: r.get(2)?,
             close_reason: r.get(3)?,
             created_at: r.get(4)?,
             updated_at: r.get(5)?,
-        });
-    }
-    Ok(out)
+        })).await
 }
 
 pub async fn set_stage(
@@ -261,14 +247,7 @@ pub async fn new_in_triage_after(
     project_id: i64,
     after_id: i64,
 ) -> anyhow::Result<Vec<(i64, String)>> {
-    let mut rows = c
-        .query("SELECT number, title FROM tickets WHERE project_id = ?1 AND stage = 'triage' AND id > ?2 ORDER BY number", (project_id, after_id))
-        .await?;
-    let mut out = Vec::new();
-    while let Some(r) = rows.next().await? {
-        out.push((r.get(0)?, r.get(1)?));
-    }
-    Ok(out)
+    crate::platform::db::query_all(c, "SELECT number, title FROM tickets WHERE project_id = ?1 AND stage = 'triage' AND id > ?2 ORDER BY number", (project_id, after_id), |r| Ok((r.get(0)?, r.get(1)?))).await
 }
 
 pub async fn max_id(c: &Connection) -> anyhow::Result<i64> {

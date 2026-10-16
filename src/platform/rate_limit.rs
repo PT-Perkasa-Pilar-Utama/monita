@@ -72,6 +72,8 @@ pub fn ip_key(ip: Option<std::net::IpAddr>) -> String {
 
 /// Paths limited per client IP (SEC-12): public pages, sign-in, public and ticket APIs.
 /// `/ping/` has its own limit; `/healthz`, assets and signed-in pages are not limited here.
+// ponytail: a hand-kept prefix list, which a new public route can miss; move to a layer on the
+// public sub-routers if the public surface grows past these prefixes.
 pub fn ip_limited(method: &axum::http::Method, path: &str) -> bool {
     path.starts_with("/status/")
         || path.starts_with("/api/v1/public/")
@@ -122,6 +124,8 @@ pub async fn per_ip(
         peer,
         state.config.trust_proxy,
     ));
+    // ponytail: one settings read per limited request; cache the value in AppState, refreshed by
+    // the scheduler tick, if public traffic makes this read show up.
     let limit = match state.db.read().await {
         Ok(c) => super::settings::get_or(&c, "rl_ip_per_min", 60).await,
         Err(e) => {

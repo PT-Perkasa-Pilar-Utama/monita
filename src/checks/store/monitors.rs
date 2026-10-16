@@ -199,6 +199,34 @@ pub async fn find_monitor(
     .pop())
 }
 
+/// The project's public monitors and heartbeats as (is heartbeat, id, name, created_at, seen),
+/// monitors first. `seen` is false until the first check or ping.
+pub async fn public_items(
+    c: &Connection,
+    project_id: i64,
+) -> anyhow::Result<Vec<(bool, i64, String, i64, bool)>> {
+    crate::platform::db::query_all(
+        c,
+        "SELECT 0, m.id, m.name, m.created_at, EXISTS (SELECT 1 FROM check_results WHERE monitor_id = m.id)
+         FROM monitors m WHERE m.project_id = ?1 AND m.is_public = 1
+         UNION ALL
+         SELECT 1, h.id, h.name, h.created_at, h.last_ping_at IS NOT NULL
+         FROM heartbeats h WHERE h.project_id = ?1 AND h.is_public = 1
+         ORDER BY 1, 3",
+        [project_id],
+        |r| {
+            Ok((
+                r.get::<i64>(0)? == 1,
+                r.get(1)?,
+                r.get(2)?,
+                r.get(3)?,
+                r.get::<i64>(4)? == 1,
+            ))
+        },
+    )
+    .await
+}
+
 /// Every monitor and heartbeat of a project as (is heartbeat, id, name), monitors first.
 pub async fn source_names(
     c: &Connection,

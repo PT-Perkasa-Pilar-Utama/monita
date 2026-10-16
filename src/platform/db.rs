@@ -63,6 +63,8 @@ impl Db {
     }
 
     /// A reading connection. It skips the `foreign_keys` pragma: only the writer needs it.
+    // ponytail: a new connection and one pragma per call, several per page; add a small reader
+    // pool if request latency or connection churn shows up under load.
     pub async fn read(&self) -> anyhow::Result<Connection> {
         let conn = self.database.connect()?;
         conn.execute("PRAGMA busy_timeout = 5000", ()).await?;

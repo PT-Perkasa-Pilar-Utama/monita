@@ -93,14 +93,10 @@ pub fn shell(
     active: &'static str,
     project: Option<&Project>,
 ) -> crate::platform::page::Shell {
-    crate::platform::page::Shell {
-        email: user.email.clone(),
-        is_admin: user.is_admin(),
-        active,
-        project: project.map(|p| crate::platform::page::ProjectNav {
-            name: p.name.clone(),
-            slug: p.slug.clone(),
-        }),
+    let shell = crate::platform::page::Shell::plain(&user.email, user.is_admin(), active);
+    match project {
+        Some(p) => shell.in_project(&p.name, &p.slug),
+        None => shell,
     }
 }
 
@@ -137,16 +133,7 @@ pub async fn name_slug(
     c: &turso::Connection,
     project_id: i64,
 ) -> anyhow::Result<Option<(String, String)>> {
-    let mut rows = c
-        .query(
-            "SELECT name, slug FROM projects WHERE id = ?1",
-            [project_id],
-        )
-        .await?;
-    Ok(match rows.next().await? {
-        Some(r) => Some((r.get(0)?, r.get(1)?)),
-        None => None,
-    })
+    store::name_slug(c, project_id).await
 }
 
 /// US-05: monitors, incidents and tickets stay with the project. The new owner is an active TL

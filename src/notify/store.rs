@@ -39,14 +39,7 @@ fn route_row(r: &turso::Row) -> turso::Result<Route> {
 }
 
 pub async fn routes(c: &Connection, project_id: i64) -> anyhow::Result<Vec<Route>> {
-    let mut rows = c
-        .query("SELECT severity, emails, webhook_url, use_webhook FROM alert_routes WHERE project_id = ?1 ORDER BY severity", [project_id])
-        .await?;
-    let mut out = Vec::new();
-    while let Some(r) = rows.next().await? {
-        out.push(route_row(&r)?);
-    }
-    Ok(out)
+    crate::platform::db::query_all(c, "SELECT severity, emails, webhook_url, use_webhook FROM alert_routes WHERE project_id = ?1 ORDER BY severity", [project_id], route_row).await
 }
 
 pub async fn route(

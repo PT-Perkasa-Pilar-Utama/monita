@@ -260,14 +260,7 @@ pub async fn list(c: &Connection, project_id: i64, open: bool) -> anyhow::Result
     } else {
         "i.resolved_at IS NOT NULL"
     };
-    let mut rows = c
-        .query(format!("SELECT {COLS} FROM incidents i WHERE i.project_id = ?1 AND {filter} ORDER BY i.started_at DESC LIMIT 200"), [project_id])
-        .await?;
-    let mut out = Vec::new();
-    while let Some(r) = rows.next().await? {
-        out.push(row(&r)?);
-    }
-    Ok(out)
+    crate::platform::db::query_all(c, format!("SELECT {COLS} FROM incidents i WHERE i.project_id = ?1 AND {filter} ORDER BY i.started_at DESC LIMIT 200"), [project_id], row).await
 }
 
 pub async fn find(c: &Connection, project_id: i64, id: i64) -> anyhow::Result<Option<IncidentRow>> {

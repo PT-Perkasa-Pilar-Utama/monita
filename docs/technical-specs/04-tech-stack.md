@@ -17,7 +17,7 @@ Every row was confirmed in the design grill on 2026-10-16.
 | Cookies | axum-extra 0.12 (`cookie` feature) | Session cookie handling. |
 | Forms and JSON | serde 1, serde_json 1 | Standard. |
 | Templates | askama 0.16 | Compile-time templates. A broken template fails the build. Rendered by a 5-line helper in `platform::render`. |
-| Static assets | rust-embed 8 | CSS, htmx and icons live inside the binary. |
+| Static assets | rust-embed 8 | CSS, the copy-button script, fonts and icons live inside the binary. |
 | HTTP client | reqwest 0.13, `rustls` | Probes and webhooks. No OpenSSL. |
 | Email | lettre 0.11, `tokio1-rustls` | SMTP. |
 | Password hash | argon2 0.6 | Default Argon2id parameters. |
@@ -32,7 +32,7 @@ Every row was confirmed in the design grill on 2026-10-16.
 | Component | Technology | Justification |
 | --- | --- | --- |
 | Rendering | Server-side HTML | No build step. |
-| Interactivity | htmx 2.0.11, vendored | Partial swaps. v4 is under npm `next` until 2027. |
+| Interactivity | Plain HTML forms and one small script for copy buttons | htmx was vendored and removed unused on 2026-10-17 (footprint). Add it back if a page needs partial swaps. |
 | Styling | Hand-written CSS with tokens | See [design system](../design-system/). Pico CSS is archived. |
 | Charts | Inline SVG from templates | Uptime bars only. |
 
@@ -81,5 +81,4 @@ Every row was confirmed in the design grill on 2026-10-16.
 
 - `Cargo.lock` is committed. `Cargo.toml` uses caret versions at the minor level shown above.
 - `rust-toolchain.toml` pins the compiler.
-- htmx is vendored as a file with its version in the first line.
 - Dependabot opens update PRs. CI must pass before merge.

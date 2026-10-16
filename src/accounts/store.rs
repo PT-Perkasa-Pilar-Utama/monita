@@ -77,17 +77,13 @@ pub async fn active_tl_email(c: &Connection, user_id: i64) -> anyhow::Result<Opt
 }
 
 pub async fn list_users(c: &Connection) -> anyhow::Result<Vec<UserRow>> {
-    let mut rows = c
-        .query(
-            format!("SELECT {USER_COLS} FROM users ORDER BY role DESC, email"),
-            (),
-        )
-        .await?;
-    let mut out = Vec::new();
-    while let Some(r) = rows.next().await? {
-        out.push(user_row(&r)?);
-    }
-    Ok(out)
+    crate::platform::db::query_all(
+        c,
+        format!("SELECT {USER_COLS} FROM users ORDER BY role DESC, email"),
+        (),
+        user_row,
+    )
+    .await
 }
 
 pub async fn disable_tl(c: &Connection, user_id: i64, at: i64) -> anyhow::Result<bool> {

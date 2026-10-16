@@ -52,12 +52,7 @@ async fn view(
         })
         .collect();
     Ok(LimitsPage {
-        shell: Shell {
-            email,
-            is_admin: true,
-            active: "limits",
-            project: None,
-        },
+        shell: Shell::plain(&email, true, "limits"),
         rows,
         error,
     })

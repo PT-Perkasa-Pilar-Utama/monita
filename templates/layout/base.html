@@ -3,12 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="htmx-config" content='{"includeIndicatorStyles":false}'>
 <title>{% block title %}Monita{% endblock %}</title>
 <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 <link rel="preload" href="/static/fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="{{ crate::platform::assets::url("app.css") }}">
-<script src="{{ crate::platform::assets::url("htmx.min.js") }}" defer></script>
 <script src="{{ crate::platform::assets::url("app.js") }}" defer></script>
 </head>
 <body>

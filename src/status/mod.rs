@@ -52,14 +52,7 @@ pub struct IncidentStatus {
     pub started_at: i64,
     pub resolved_at: Option<i64>,
     pub items: Vec<String>,
-    pub updates: Vec<Update>,
-}
-
-#[derive(Serialize)]
-pub struct Update {
-    pub label: String,
-    pub message: String,
-    pub at: i64,
+    pub updates: Vec<crate::incidents::history::PublicUpdate>,
 }
 
 fn round2(x: f64) -> f64 {
@@ -156,15 +149,7 @@ pub async fn load(db: &Db, slug: &str, days: usize) -> anyhow::Result<Option<Sta
         .into_iter()
         .map(|i| IncidentStatus {
             items: i.items.iter().map(name_of).collect(),
-            updates: i
-                .updates
-                .into_iter()
-                .map(|u| Update {
-                    label: u.label,
-                    message: u.message,
-                    at: u.at,
-                })
-                .collect(),
+            updates: i.updates,
             title: i.title,
             origin: i.origin,
             severity: i.severity,

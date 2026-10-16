@@ -23,7 +23,7 @@ Stories and acceptance criteria: [docs/business/](docs/business/).
 | --- | --- |
 | Language | Rust 1.97 |
 | HTTP | axum 0.8, tokio |
-| UI | Server-rendered askama templates, htmx 2, one CSS file ([design system](docs/design-system/)) |
+| UI | Server-rendered askama templates and plain forms, one CSS file ([design system](docs/design-system/)) |
 | Database | turso 0.8 (SQLite file format) |
 | Tests | `cargo test`, Playwright on Bun |
 
@@ -58,7 +58,7 @@ Configuration comes from `MONITA_*` environment variables: [docs/technical-specs
 src/            Rust crate: one folder per module (accounts, projects, checks, incidents,
                 notify, status, tickets) plus platform (config, db, migrations, rendering)
 templates/      askama templates: layout/, ui/ macros, one folder per module
-static/         app.css, icons, fonts, htmx; embedded in the binary
+static/         app.css, app.js, icons, fonts; embedded in the binary
 migrations/     numbered SQL files, applied at start
 seeds/          dev and QA data for /admin/reset-state (never in prod)
 tests/          Rust integration tests

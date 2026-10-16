@@ -1,4 +1,4 @@
-//! Embedded static files: CSS, htmx, icons, fonts.
+//! Embedded static files: CSS, one small script, icons, fonts.
 
 use axum::{
     extract::Path,

@@ -196,12 +196,7 @@ async fn users_view(
     invite: Option<(String, String)>,
 ) -> Result<UsersPage, PageError> {
     Ok(UsersPage {
-        shell: Shell {
-            email: admin.email.clone(),
-            is_admin: true,
-            active: "users",
-            project: None,
-        },
+        shell: Shell::plain(&admin.email, true, "users"),
         users: super::list_users(&state.db).await?,
         email,
         error,

@@ -54,6 +54,20 @@ pub async fn insert(c: &Connection, owner_id: i64, name: &str, slug: &str) -> an
     Ok(c.last_insert_rowid())
 }
 
+pub async fn name_slug(
+    c: &Connection,
+    project_id: i64,
+) -> anyhow::Result<Option<(String, String)>> {
+    Ok(crate::platform::db::query_all(
+        c,
+        "SELECT name, slug FROM projects WHERE id = ?1",
+        [project_id],
+        |r| Ok((r.get(0)?, r.get(1)?)),
+    )
+    .await?
+    .pop())
+}
+
 pub async fn find_by_slug(c: &Connection, slug: &str) -> anyhow::Result<Option<Project>> {
     Ok(many(
         c,
@@ -128,24 +142,15 @@ pub async fn insert_key(
 }
 
 pub async fn list_keys(c: &Connection, project_id: i64) -> anyhow::Result<Vec<ApiKeyRow>> {
-    let mut rows = c
-        .query(
-            "SELECT id, name, key_prefix, last_used_at, revoked_at, created_at FROM api_keys WHERE project_id = ?1 ORDER BY revoked_at IS NOT NULL, created_at DESC",
-            [project_id],
-        )
-        .await?;
-    let mut out = Vec::new();
-    while let Some(r) = rows.next().await? {
-        out.push(ApiKeyRow {
+    crate::platform::db::query_all(c, "SELECT id, name, key_prefix, last_used_at, revoked_at, created_at FROM api_keys WHERE project_id = ?1 ORDER BY revoked_at IS NOT NULL, created_at DESC",
+            [project_id], |r| Ok(ApiKeyRow {
             id: r.get(0)?,
             name: r.get(1)?,
             prefix: r.get(2)?,
             last_used_at: r.get(3)?,
             revoked_at: r.get(4)?,
             created_at: r.get(5)?,
-        });
-    }
-    Ok(out)
+        })).await
 }
 
 pub async fn revoke_key(
