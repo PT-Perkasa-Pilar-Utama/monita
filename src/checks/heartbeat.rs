@@ -184,8 +184,16 @@ pub async fn recent_pings(db: &Db, id: i64, limit: i64) -> anyhow::Result<Vec<Pi
     store::recent_pings(&db.read().await?, id, now() - 7 * 86_400, limit).await
 }
 
+/// Proof that `admit` passed. Only `admit` makes one and only `record` takes it, so no caller can
+/// store a ping that skipped the token and the limits.
+pub struct Admitted {
+    hb: Heartbeat,
+    kind: PingKind,
+    source_ip: Option<String>,
+}
+
 pub enum Admission {
-    Admitted(Heartbeat),
+    Admitted(Admitted),
     UnknownToken,
     /// Seconds until the next ping is accepted.
     Limited(i64),
@@ -203,19 +211,37 @@ pub struct Ping<'a> {
 #[derive(Default)]
 pub struct Cause {
     kept: Vec<u8>,
+    /// Bytes of a character split across chunks while still in the leading whitespace.
+    pending: Vec<u8>,
+    started: bool,
 }
 
 impl Cause {
     /// 1 KB and one more character, so the cut can land on a boundary.
     const KEEP: usize = 1024 + 3;
 
-    pub fn push(&mut self, mut chunk: &[u8]) {
-        if self.kept.is_empty() {
-            // ASCII whitespace and VT; `finish` trims any other Unicode space.
-            let start = chunk
-                .iter()
-                .position(|b| !b.is_ascii_whitespace() && *b != 0x0b);
-            chunk = &chunk[start.unwrap_or(chunk.len())..];
+    pub fn push(&mut self, chunk: &[u8]) {
+        let joined;
+        let mut chunk = chunk;
+        if !self.started {
+            // Leading Unicode whitespace is skipped before it can use up the budget.
+            joined = [std::mem::take(&mut self.pending).as_slice(), chunk].concat();
+            let valid = match std::str::from_utf8(&joined) {
+                Ok(s) => s,
+                Err(e) => std::str::from_utf8(&joined[..e.valid_up_to()]).unwrap_or_default(),
+            };
+            let skip = valid.len() - valid.trim_start().len();
+            let rest = &joined[skip..];
+            if skip == valid.len() && rest.len() < 4 && std::str::from_utf8(rest).is_err() {
+                // Only whitespace so far, then a character cut at the chunk's end: wait for it.
+                self.pending = rest.to_vec();
+                return;
+            }
+            if rest.is_empty() {
+                return;
+            }
+            self.started = true;
+            chunk = rest;
         }
         let room = Self::KEEP.saturating_sub(self.kept.len());
         self.kept.extend_from_slice(&chunk[..chunk.len().min(room)]);
@@ -261,7 +287,11 @@ pub async fn admit(db: &Db, limiter: &Limiter, p: &Ping<'_>) -> anyhow::Result<A
     if let Verdict::Deny(retry) = limiter.hit(&bucket, limit, 1, now()) {
         return Ok(Admission::Limited(retry));
     }
-    Ok(Admission::Admitted(hb))
+    Ok(Admission::Admitted(Admitted {
+        hb,
+        kind: p.kind,
+        source_ip: p.source_ip.map(|ip| ip.to_string()),
+    }))
 }
 
 /// AC-13.01, AC-14.01, AC-17.03, AC-18.01. An OK ping pushes the deadline out and closes an
@@ -270,12 +300,14 @@ pub async fn admit(db: &Db, limiter: &Limiter, p: &Ping<'_>) -> anyhow::Result<A
 pub async fn record(
     db: &Db,
     base_url: &str,
-    hb: &Heartbeat,
-    p: &Ping<'_>,
+    a: Admitted,
     cause: Option<String>,
 ) -> anyhow::Result<bool> {
-    let kind = p.kind;
-    let source_ip = p.source_ip.map(|ip| ip.to_string());
+    let Admitted {
+        hb,
+        kind,
+        source_ip,
+    } = a;
     let t = now();
     let signal = match kind {
         PingKind::Ok => Signal::Ping,
@@ -286,10 +318,11 @@ pub async fn record(
         },
     };
     db.write(async |c| {
-        // The heartbeat may have been deleted since the lookup; that is a 404, not a 500.
-        if !store::exists(c, hb.id).await? {
+        // Read again inside the write: the body may have taken seconds, so the heartbeat may have
+        // been renamed, re-ranked or deleted since `admit`. Deleted is a 404, not a 500.
+        let Some(hb) = store::find(c, hb.project_id, hb.id).await? else {
             return Ok(false);
-        }
+        };
         store::insert_ping(c, hb.id, kind, source_ip.as_deref(), cause.as_deref(), t).await?;
         if let Some(ev) = incidents::observe(c, &hb.source(), &signal, t).await? {
             notify::send(c, &ev, base_url).await?;
@@ -355,5 +388,8 @@ mod tests {
         assert_eq!(cause(&[b"  \n "]), None, "a blank body has no cause");
         let unicode = "\u{a0}\u{2003}\x0bError: y".as_bytes();
         assert_eq!(cause(&[unicode]).as_deref(), Some("Error: y"));
+        let wide = "\u{2003}".repeat(600) + "Error: db down";
+        let (head, tail) = wide.as_bytes().split_at(1000); // splits one em space across chunks
+        assert_eq!(cause(&[head, tail]).as_deref(), Some("Error: db down"));
     }
 }

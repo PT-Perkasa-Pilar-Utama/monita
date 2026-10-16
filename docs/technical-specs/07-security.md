@@ -38,7 +38,7 @@
 | SEC-16 | Secrets in config | SMTP credentials come from the environment file (mode 0600, owned by the service user). They are never logged. |
 | SEC-17 | Reset endpoint | Registered only when `MONITA_ENV` is `dev` or `test`. Enforced at route registration, not by authorization. In prod the path returns 404. |
 | SEC-18 | Data at rest | The DB file and backups have mode 0600 and belong to the `monita` user. |
-| SEC-19 | Request limits | Request bodies are capped at 128 KiB (413): a ticket of 10 000 four-byte characters, percent-encoded, is about 120 KB. The one exception, `/ping/{token}/fail`, stops reading at 128 KiB and cuts instead. Ticket description at most 10 000 chars. |
+| SEC-19 | Request limits | Request bodies are capped at 128 KiB (413): a ticket of 10 000 four-byte characters, percent-encoded, is about 120 KB. The one exception, `/ping/{token}/fail`, reads only after its token and limits pass, up to 16 MiB or 10 s, and keeps the first 1 KB. Ticket description at most 10 000 chars. |
 | SEC-21 | Status page privacy | Public pages and JSON never show an update's author, and show Monita's own detection entry as `Detected.` without its cause, which can name internal hosts. Incidents and their item lists are cut to public items. |
 | SEC-20 | Logs | No passwords, tokens, keys or ticket descriptions in logs. Tokens appear as their first 6 chars at most. Email bodies are not logged and are cleared from the outbox once delivered or failed. |
 

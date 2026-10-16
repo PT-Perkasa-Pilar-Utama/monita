@@ -236,7 +236,7 @@ async fn a_long_fail_body_still_opens_the_incident_with_its_first_kb() {
 }
 
 #[tokio::test]
-async fn a_long_fail_body_is_cut_not_refused() {
+async fn a_fail_body_under_the_cap_is_cut_to_1_kb() {
     let app = TestApp::spawn("test").await;
     let (tl, token) = setup(&app).await;
     let res = app
@@ -279,6 +279,19 @@ async fn an_unknown_token_is_answered_before_its_body_is_read() {
 }
 
 #[tokio::test]
+async fn an_unknown_token_with_a_whole_body_gets_a_clean_404() {
+    let app = TestApp::spawn("test").await;
+    let res = app
+        .http
+        .post(app.url("/ping/nosuchtoken/fail"))
+        .body("x".repeat(64 * 1024))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), 404);
+}
+
+#[tokio::test]
 async fn a_fail_body_past_128_kib_is_cut_and_heard() {
     let app = TestApp::spawn("test").await;
     let (tl, token) = setup(&app).await;
@@ -291,6 +304,14 @@ async fn a_fail_body_past_128_kib_is_cut_and_heard() {
         .unwrap();
     assert_eq!(res.status(), 200, "cut, never 413");
     assert_eq!(state_label(&app, &tl).await, "Down");
+    assert_eq!(
+        count(
+            &app,
+            "SELECT count(*) FROM pings WHERE length(cause) = 1024 AND cause LIKE 'disk full%'"
+        )
+        .await,
+        1
+    );
 }
 
 #[tokio::test]
@@ -371,4 +392,62 @@ async fn bad_period_is_refused() {
         )
         .await;
     assert_eq!(res.status(), 422);
+}
+
+async fn admitted(app: &TestApp, token: &str) -> heartbeat::Admitted {
+    let p = heartbeat::Ping {
+        token,
+        kind: heartbeat::PingKind::Fail,
+        source_ip: None,
+    };
+    match heartbeat::admit(&app.state.db, &app.state.limiter, &p)
+        .await
+        .unwrap()
+    {
+        heartbeat::Admission::Admitted(a) => a,
+        _ => panic!("not admitted"),
+    }
+}
+
+#[tokio::test]
+async fn a_ping_whose_heartbeat_goes_while_its_body_uploads_is_not_stored() {
+    let app = TestApp::spawn("test").await;
+    let (_, token) = setup(&app).await;
+    let a = admitted(&app, &token).await;
+    heartbeat::delete(&app.state.db, BASE_URL, 1, 1)
+        .await
+        .unwrap();
+    let stored = heartbeat::record(&app.state.db, BASE_URL, a, None)
+        .await
+        .unwrap();
+    assert!(!stored, "the route answers 404");
+    assert_eq!(count(&app, "SELECT count(*) FROM pings").await, 0);
+}
+
+#[tokio::test]
+async fn a_fail_uses_the_heartbeat_as_it_is_when_stored() {
+    let app = TestApp::spawn("test").await;
+    let (_, token) = setup(&app).await;
+    let a = admitted(&app, &token).await;
+    app.state
+        .db
+        .write(async |c| {
+            c.execute("UPDATE heartbeats SET severity = 'critical'", ())
+                .await?;
+            Ok(())
+        })
+        .await
+        .unwrap();
+    heartbeat::record(&app.state.db, BASE_URL, a, Some("disk full".into()))
+        .await
+        .unwrap();
+    assert_eq!(
+        count(
+            &app,
+            "SELECT count(*) FROM incidents WHERE severity = 'critical'"
+        )
+        .await,
+        1,
+        "the severity edited during the upload"
+    );
 }

@@ -20,7 +20,8 @@ monita/
 │   ├── accounts/              mod.rs (interface), auth.rs (cookie, extractors), routes.rs, store.rs
 │   ├── projects/              mod.rs, allowlist.rs, routes.rs, store.rs
 │   ├── checks/                mod.rs, probe.rs, heartbeat.rs, scheduler.rs, retention.rs,
-│   │                          routes.rs, heartbeat_routes.rs, store/{monitors, heartbeats, rollup}
+│   │                          routes.rs, heartbeat_routes.rs, ping_routes.rs,
+│   │                          store/{monitors, heartbeats, rollup}
 │   ├── incidents/             mod.rs, engine.rs (pure), history.rs, routes.rs, store/{mod, reads}
 │   ├── notify/                mod.rs (send, outbox delivery), mailer.rs, digest.rs, routes.rs, store.rs
 │   ├── status/                mod.rs, routes.rs

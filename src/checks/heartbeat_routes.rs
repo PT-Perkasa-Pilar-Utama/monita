@@ -1,4 +1,4 @@
-//! Heartbeat pages and the ping endpoints. Contract: docs/api-specs/04-checks.md.
+//! Heartbeat pages. The ping endpoints are in `ping_routes.rs`. Contract: api-specs 04.
 
 use askama::Template;
 use axum::{

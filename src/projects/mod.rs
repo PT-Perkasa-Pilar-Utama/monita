@@ -231,10 +231,7 @@ impl FromRequestParts<AppState> for ApiProject {
             .map_err(internal)?
             .ok_or_else(unauthorized)?;
         if let Some(list) = &project.ip_allowlist {
-            let peer = parts
-                .extensions
-                .get::<axum::extract::ConnectInfo<std::net::SocketAddr>>()
-                .map(|c| c.0);
+            let peer = crate::platform::peer_addr(&parts.extensions);
             let ip = crate::platform::client_ip(&parts.headers, peer, state.config.trust_proxy);
             if !ip.is_some_and(|ip| allowlist::contains(list, ip)) {
                 return Err(api_error(

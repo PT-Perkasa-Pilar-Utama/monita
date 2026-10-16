@@ -60,6 +60,13 @@ pub fn now() -> i64 {
         .unwrap_or(0)
 }
 
+/// The socket peer axum records for each connection.
+pub fn peer_addr(extensions: &axum::http::Extensions) -> Option<SocketAddr> {
+    extensions
+        .get::<axum::extract::ConnectInfo<SocketAddr>>()
+        .map(|c| c.0)
+}
+
 /// The caller's IP: the socket peer, or the right-most `X-Forwarded-For` entry behind a trusted
 /// proxy. That entry is the one our proxy appended; everything left of it is client-supplied.
 // ponytail: one trusted proxy; with a chain, skip that many entries from the right.

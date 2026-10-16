@@ -138,16 +138,6 @@ pub async fn insert_ping(
     Ok(())
 }
 
-pub async fn exists(c: &Connection, id: i64) -> anyhow::Result<bool> {
-    let n = crate::platform::db::query_i64(
-        c,
-        "SELECT EXISTS (SELECT 1 FROM heartbeats WHERE id = ?1)",
-        [id],
-    )
-    .await?;
-    Ok(n == Some(1))
-}
-
 pub async fn any_missed(c: &Connection, at: i64) -> anyhow::Result<bool> {
     let n = crate::platform::db::query_i64(
         c,
