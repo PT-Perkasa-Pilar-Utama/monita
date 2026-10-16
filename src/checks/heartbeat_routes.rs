@@ -308,15 +308,26 @@ async fn ping(
     kind: PingKind,
     headers: &HeaderMap,
     peer: Option<SocketAddr>,
-    cause: Option<String>,
+    body: Option<axum::body::Body>,
 ) -> Response {
     let ping = heartbeat::Ping {
         token,
         kind,
         source_ip: client_ip(headers, peer, state.config.trust_proxy),
-        cause,
     };
-    match heartbeat::accept_ping(&state.db, &state.limiter, &state.config.base_url, ping).await {
+    let cause = async || match body {
+        Some(body) => read_cause(body).await,
+        None => None,
+    };
+    match heartbeat::accept_ping(
+        &state.db,
+        &state.limiter,
+        &state.config.base_url,
+        ping,
+        cause,
+    )
+    .await
+    {
         Ok(PingOutcome::Accepted) => plain(StatusCode::OK, "OK"),
         Ok(PingOutcome::UnknownToken) => plain(StatusCode::NOT_FOUND, "not found"),
         Ok(PingOutcome::Limited(retry)) => (
@@ -332,24 +343,27 @@ async fn ping(
     }
 }
 
-/// The body, if any, is the job's own error text. Only its start is kept, so a long log is cut,
-/// never refused (api-specs 04 section 4.2). The rest is read and dropped, so the client gets
-/// its answer instead of a reset; past `DRAIN_MAX` Monita stops reading and answers anyway.
-async fn read_cause(mut body: axum::body::Body) -> String {
+/// Feeds the body to `heartbeat::Cause`, which keeps only its start. Reading stops at the router's
+/// 128 KiB, so no caller makes Monita read more; the answer goes out either way.
+async fn read_cause(mut body: axum::body::Body) -> Option<String> {
     use axum::body::HttpBody;
-    const KEEP: usize = 1024 + 3; // one more character than 1 KB, so the cut lands on a boundary
-    const DRAIN_MAX: usize = 16 * 1024 * 1024;
-    let (mut kept, mut seen) = (Vec::new(), 0usize);
-    while seen <= DRAIN_MAX {
-        let frame = std::future::poll_fn(|cx| std::pin::Pin::new(&mut body).poll_frame(cx)).await;
-        let Some(Ok(frame)) = frame else { break };
-        if let Ok(data) = frame.into_data() {
-            seen += data.len();
-            let room = KEEP.saturating_sub(kept.len());
-            kept.extend_from_slice(&data[..data.len().min(room)]);
+    let (mut cause, mut seen) = (heartbeat::Cause::default(), 0usize);
+    while seen < crate::app::MAX_BODY {
+        match std::future::poll_fn(|cx| std::pin::Pin::new(&mut body).poll_frame(cx)).await {
+            None => break,
+            Some(Err(e)) => {
+                tracing::warn!(error = %e, "a /fail body broke off; keeping what arrived");
+                break;
+            }
+            Some(Ok(frame)) => {
+                if let Ok(data) = frame.into_data() {
+                    seen += data.len();
+                    cause.push(&data);
+                }
+            }
         }
     }
-    heartbeat::first_kb(String::from_utf8_lossy(&kept).trim())
+    cause.finish()
 }
 
 fn peer(req: &Request) -> Option<SocketAddr> {
@@ -380,14 +394,13 @@ async fn ping_fail(
     req: Request,
 ) -> Response {
     let (headers, peer) = (req.headers().clone(), peer(&req));
-    let cause = read_cause(req.into_body()).await;
     ping(
         &state,
         &token,
         PingKind::Fail,
         &headers,
         peer,
-        (!cause.is_empty()).then_some(cause),
+        Some(req.into_body()),
     )
     .await
 }

@@ -15,7 +15,6 @@ pub struct Db {
 }
 
 struct Writer {
-    database: Database,
     conn: Connection,
     /// True from just before `PRAGMA foreign_keys = OFF` until `clean` turns the checks back on,
     /// so a `write_without_fk` dropped at any point still leaves foreign keys on for the next user.
@@ -26,7 +25,7 @@ impl Writer {
     /// Undoes what a dropped caller future left behind. A client that disconnects mid-request
     /// drops its handler, and with it a `write` at any await point, BEGIN included. The connection
     /// itself says whether a transaction is open, so no flag can miss one.
-    async fn clean(&mut self) {
+    async fn clean(&mut self, database: &Database) {
         let open = match self.conn.is_autocommit() {
             Ok(autocommit) => !autocommit,
             Err(e) => {
@@ -60,10 +59,11 @@ impl Writer {
                 stuck = true;
             }
         }
-        // A connection that cannot be put back is replaced: closing it ends its transaction, and
-        // a new one starts with foreign keys on. Writes then go on instead of failing forever.
+        // A connection that cannot be put back is replaced, and the new one starts with foreign keys
+        // on, so writes go on instead of failing forever. turso 0.8.3's `Connection` has no
+        // `close`; dropping it is the only way to release it.
         if stuck {
-            match connect(&self.database).await {
+            match connect(database).await {
                 Ok(conn) => {
                     tracing::warn!("replaced the writer connection after a failed cleanup");
                     self.conn = conn;
@@ -84,9 +84,8 @@ impl Db {
         let database = Builder::new_local(path).build().await?;
         let conn = connect(&database).await?;
         Ok(Self {
-            database: database.clone(),
+            database,
             writer: Arc::new(Mutex::new(Writer {
-                database: database.clone(),
                 conn,
                 fk_off: false,
             })),
@@ -127,7 +126,7 @@ impl Db {
         f: impl AsyncFnOnce(&Connection) -> anyhow::Result<T>,
     ) -> anyhow::Result<T> {
         let mut w = self.writer.lock().await;
-        w.clean().await;
+        w.clean(&self.database).await;
         anyhow::ensure!(
             fk_off || !w.fk_off,
             "foreign keys could not be turned back on; refusing to write without them"
@@ -142,7 +141,7 @@ impl Db {
             }
         }
         let result = Self::transaction(&mut w, f).await;
-        w.clean().await;
+        w.clean(&self.database).await;
         result
     }
 

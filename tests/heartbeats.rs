@@ -236,13 +236,13 @@ async fn a_long_fail_body_still_opens_the_incident_with_its_first_kb() {
 }
 
 #[tokio::test]
-async fn a_fail_body_past_128_kib_is_still_heard() {
+async fn a_long_fail_body_is_cut_not_refused() {
     let app = TestApp::spawn("test").await;
     let (tl, token) = setup(&app).await;
     let res = app
         .http
         .post(app.url(&format!("/ping/{token}/fail")))
-        .body(format!("disk full\n{}", "x".repeat(300 * 1024)))
+        .body(format!("disk full\n{}", "x".repeat(120 * 1024)))
         .send()
         .await
         .unwrap();
@@ -256,6 +256,19 @@ async fn a_fail_body_past_128_kib_is_still_heard() {
         .await,
         1
     );
+}
+
+#[tokio::test]
+async fn an_unknown_token_gets_404_whatever_its_body() {
+    let app = TestApp::spawn("test").await;
+    let res = app
+        .http
+        .post(app.url("/ping/nosuchtoken/fail"))
+        .body("x".repeat(64 * 1024))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), 404);
 }
 
 #[tokio::test]

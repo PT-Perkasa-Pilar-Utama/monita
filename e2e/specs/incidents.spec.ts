@@ -56,10 +56,10 @@ test("@US-20 TL reports an incident by hand and resolves it", async ({ page }) =
   const { slug } = await projectWithHeartbeat(page);
   await page.goto(`/projects/${slug}/incidents/new`);
   await page.getByLabel("Title").fill("Slow settlement reports");
-  await page.getByLabel("First update").fill("Reports take 20 minutes instead of 2.");
   await page.getByRole("button", { name: "Open incident" }).click();
   await expect(page.getByRole("alert")).toHaveText("Pick at least one monitor or heartbeat.");
   await page.getByLabel("nightly-settlement").check();
+  await page.getByLabel("First update").fill("Reports take 20 minutes instead of 2.");
   await page.getByRole("button", { name: "Open incident" }).click();
   await expect(page.getByRole("heading", { name: "Slow settlement reports" })).toBeVisible();
 

@@ -195,17 +195,38 @@ pub struct Ping<'a> {
     pub token: &'a str,
     pub kind: PingKind,
     pub source_ip: Option<std::net::IpAddr>,
-    pub cause: Option<String>,
 }
 
-/// The cause a `/fail` ping keeps: its first 1 024 bytes, cut on a character boundary. A longer
-/// body is cut, never refused, so the failure itself is always recorded (api-specs 04 section 4.2).
-pub fn first_kb(text: &str) -> String {
-    let mut end = text.len().min(1024);
-    while !text.is_char_boundary(end) {
-        end -= 1;
+/// The cause a `/fail` ping keeps: its first 1 024 bytes after leading whitespace, cut on a
+/// character boundary. A longer body is cut, never refused, so the failure itself is always
+/// recorded (api-specs 04 section 4.2). Fed chunk by chunk, so it never holds more than that.
+#[derive(Default)]
+pub struct Cause {
+    kept: Vec<u8>,
+}
+
+impl Cause {
+    /// 1 KB and one more character, so the cut can land on a boundary.
+    const KEEP: usize = 1024 + 3;
+
+    pub fn push(&mut self, mut chunk: &[u8]) {
+        if self.kept.is_empty() {
+            let start = chunk.iter().position(|b| !b.is_ascii_whitespace());
+            chunk = &chunk[start.unwrap_or(chunk.len())..];
+        }
+        let room = Self::KEEP.saturating_sub(self.kept.len());
+        self.kept.extend_from_slice(&chunk[..chunk.len().min(room)]);
     }
-    text[..end].to_string()
+
+    pub fn finish(self) -> Option<String> {
+        let text = String::from_utf8_lossy(&self.kept);
+        let text = text.trim_end();
+        let mut end = text.len().min(1024);
+        while !text.is_char_boundary(end) {
+            end -= 1;
+        }
+        (end > 0).then(|| text[..end].to_string())
+    }
 }
 
 /// Unknown-token pings allowed per minute from one IP before 429. A real job never misses;
@@ -215,11 +236,14 @@ const MISSES_PER_MIN: u32 = 60;
 /// AC-13.02: over `rl_ping_per_s` a ping is refused, and the ping already counted this second
 /// keeps the heartbeat alive. `/fail` has its own bucket, so a job that pings and then fails in
 /// one second is still heard.
+/// `cause` reads the job's error text; it runs only after the token and the limits pass, so an
+/// unknown or limited caller never gets a body read.
 pub async fn accept_ping(
     db: &Db,
     limiter: &Limiter,
     base_url: &str,
     p: Ping<'_>,
+    cause: impl AsyncFnOnce() -> Option<String>,
 ) -> anyhow::Result<PingOutcome> {
     let miss_key = format!("pingmiss:{}", rate_limit::ip_key(p.source_ip));
     if let Verdict::Deny(retry) = limiter.over(&miss_key, MISSES_PER_MIN, 60, now()) {
@@ -242,7 +266,7 @@ pub async fn accept_ping(
         return Ok(PingOutcome::Limited(retry));
     }
     let source_ip = p.source_ip.map(|ip| ip.to_string());
-    if record_ping(db, base_url, &hb, p.kind, source_ip, p.cause).await? {
+    if record_ping(db, base_url, &hb, p.kind, source_ip, cause().await).await? {
         Ok(PingOutcome::Accepted)
     } else {
         Ok(PingOutcome::UnknownToken)
@@ -309,16 +333,32 @@ pub async fn sweep_missed(
 
 #[cfg(test)]
 mod tests {
+    use super::Cause;
+
+    fn cause(chunks: &[&[u8]]) -> Option<String> {
+        let mut c = Cause::default();
+        for chunk in chunks {
+            c.push(chunk);
+        }
+        c.finish()
+    }
+
     #[test]
     fn a_cause_is_cut_to_1_kb_on_a_character_boundary() {
-        assert_eq!(super::first_kb("disk full"), "disk full");
-        let long = "x".repeat(1023) + "é";
-        let cut = super::first_kb(&long);
+        assert_eq!(cause(&[b"disk full"]).as_deref(), Some("disk full"));
+        let long = "x".repeat(1023) + "\u{e9}";
         assert_eq!(
-            cut.len(),
+            cause(&[long.as_bytes()]).unwrap().len(),
             1023,
-            "the two-byte é does not fit, so it goes whole"
+            "the two-byte character goes whole"
         );
-        assert_eq!(super::first_kb(&"y".repeat(5000)).len(), 1024);
+        assert_eq!(cause(&[&[b'y'; 5000]]).unwrap().len(), 1024);
+    }
+
+    #[test]
+    fn leading_whitespace_does_not_use_up_the_cause() {
+        let blank = vec![b'\n'; 1100];
+        assert_eq!(cause(&[&blank, b"Error: x"]).as_deref(), Some("Error: x"));
+        assert_eq!(cause(&[b"  \n "]), None, "a blank body has no cause");
     }
 }

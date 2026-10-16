@@ -202,3 +202,30 @@ async fn hidden_incidents_do_not_push_public_ones_off_the_page() {
         "the public incident is still listed"
     );
 }
+
+#[tokio::test]
+async fn monitors_list_before_heartbeats_whatever_their_names() {
+    let app = TestApp::spawn("test").await;
+    setup(&app).await;
+    let hb = monita::checks::heartbeat::HeartbeatInput {
+        name: "Aardvark nightly".into(),
+        is_public: true,
+        ..Default::default()
+    };
+    monita::checks::heartbeat::create(&app.state.db, 1, &hb)
+        .await
+        .unwrap();
+    let body: Value = app
+        .get("/api/v1/public/status/payments", None)
+        .await
+        .json()
+        .await
+        .unwrap();
+    let names: Vec<&str> = body["data"]["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|i| i["name"].as_str().unwrap())
+        .collect();
+    assert_eq!(names, ["Checkout", "Aardvark nightly"]);
+}

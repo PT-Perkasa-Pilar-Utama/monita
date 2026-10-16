@@ -56,7 +56,7 @@ async fn start(
     Ok((router(state.clone()), state, scheduler))
 }
 
-/// SEC-19: the largest request body any route reads.
+/// SEC-19: the largest request body any route reads. Forms get 413 past it; `/fail` stops there.
 pub const MAX_BODY: usize = 128 * 1024;
 
 pub fn router(state: AppState) -> Router {
@@ -126,13 +126,13 @@ pub async fn serve(config: Config) -> anyhow::Result<()> {
 
 /// Waits for the scheduler loop. True when it panicked; running work is drained first, so the
 /// caller can exit at once.
-pub async fn scheduler_died(
+async fn scheduler_died(
     scheduler: tokio::task::JoinHandle<()>,
     gate: &Arc<tokio::sync::RwLock<()>>,
 ) -> bool {
     match scheduler.await {
-        Err(e) if e.is_panic() => {
-            tracing::error!(error = %e, "the scheduler panicked; exiting so the service restarts");
+        Err(e) => {
+            tracing::error!(error = %e, "the scheduler stopped; exiting so the service restarts");
             let _held = drain(gate, std::time::Duration::from_secs(10)).await;
             true
         }
