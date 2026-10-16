@@ -44,7 +44,7 @@ tests/                integration, tests/common::TestApp    e2e/ specs, lib, glo
 | --- | --- | --- |
 | accounts | users, invites, sessions | `CurrentUser` and `AdminUser` extractors, `purge_expired` |
 | projects | projects, api_keys | `ApiProject` extractor, `find_for`, `can_manage` |
-| checks | monitors, heartbeats, check_results, pings, daily_summaries | `probe`, `accept_ping`, `scheduler::spawn` |
+| checks | monitors, heartbeats, check_results, pings, daily_summaries | `probe`, `heartbeat::admit` and `record`, `scheduler::spawn` |
 | incidents | incidents, incident_items, incident_sources, status_updates | `observe` (the only door for check results), `open_manual`, `post_update`, `states_for`, `source_deleted` |
 | notify | alert_routes, outbox | `send(Event)`: inserts outbox rows, never blocks; `create_routes`, `purge_delivered` |
 | status | none | public page and JSON |
@@ -141,8 +141,8 @@ A new e2e spec file must match a project in `e2e/lib/shards.ts`; `bun test lib` 
 Each line was argued in review and decided. Do not reopen one without a new fact.
 
 - The public status JSON has its own wire types in `status`; they are not shared with `incidents` (SEC-21).
-- A rejected manual-incident form never takes the writer. A successful one resolves its items twice: on a read connection to reject the form, then inside the write to skip a source deleted in between. Error order is the form's: title, severity, items, message.
-- `MONITA_LOG_FORMAT` is the only variable whose unset value follows `MONITA_ENV` (json in prod). Every other per-environment column in spec 11 is a recommended value, not a default. Every value is trimmed.
+- A rejected manual-incident form never takes the writer. A successful one resolves its items twice: on a read connection to reject the form, then inside the write to skip a source deleted in between. Error order is the form's: title, items, severity, message.
+- `MONITA_LOG` and `MONITA_LOG_FORMAT` are the only variables whose unset value follows `MONITA_ENV` (`info,monita=debug` in dev; json in prod). Every other per-environment column in spec 11 is a recommended value, not a default. Every value is trimmed.
 - `/ping/{token}/fail` is the one route that reads up to 128 KiB and cuts the cause to 1 KB instead of answering 413. It checks the token and the rate limits before it reads a byte.
 - A test file may run to 800 lines; the 400-line cap is for `src/`.
 

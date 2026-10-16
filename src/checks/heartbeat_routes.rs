@@ -1,12 +1,10 @@
 //! Heartbeat pages and the ping endpoints. Contract: docs/api-specs/04-checks.md.
 
-use std::net::SocketAddr;
-
 use askama::Template;
 use axum::{
     Form, Router,
-    extract::{ConnectInfo, Path, Request, State},
-    http::{HeaderMap, StatusCode, header},
+    extract::{Path, State},
+    http::StatusCode,
     response::{IntoResponse, Redirect, Response},
     routing::{get, post},
 };
@@ -15,16 +13,14 @@ use std::collections::HashMap;
 
 use super::{
     FieldErrors,
-    heartbeat::{
-        self, GRACES_S, Heartbeat, HeartbeatInput, PERIODS_S, PingKind, PingOutcome, PingRow,
-    },
+    heartbeat::{self, GRACES_S, Heartbeat, HeartbeatInput, PERIODS_S, PingRow},
 };
 use crate::{
     accounts::CurrentUser,
     app::AppState,
     incidents::{self, ItemState, SourceKind},
     platform::{
-        client_ip, now,
+        now,
         page::{PageError, Shell},
         render::render,
         time,
@@ -39,11 +35,6 @@ pub fn router() -> Router<AppState> {
         .route("/projects/{slug}/heartbeats/{id}", get(detail).post(update))
         .route("/projects/{slug}/heartbeats/{id}/edit", get(edit_form))
         .route("/projects/{slug}/heartbeats/{id}/delete", post(delete))
-        .route("/ping/{token}", get(ping_ok).head(ping_ok).post(ping_ok))
-        .route(
-            "/ping/{token}/fail",
-            get(ping_fail).head(ping_fail).post(ping_fail),
-        )
 }
 
 fn ping_url(state: &AppState, hb: &Heartbeat) -> String {
@@ -291,116 +282,4 @@ async fn detail(
         pings,
         incident,
     }))
-}
-
-fn plain(status: StatusCode, body: &'static str) -> Response {
-    (
-        status,
-        [(header::CONTENT_TYPE, "text/plain; charset=utf-8")],
-        body,
-    )
-        .into_response()
-}
-
-async fn ping(
-    state: &AppState,
-    token: &str,
-    kind: PingKind,
-    headers: &HeaderMap,
-    peer: Option<SocketAddr>,
-    body: Option<axum::body::Body>,
-) -> Response {
-    let ping = heartbeat::Ping {
-        token,
-        kind,
-        source_ip: client_ip(headers, peer, state.config.trust_proxy),
-    };
-    let cause = async || match body {
-        Some(body) => read_cause(body).await,
-        None => None,
-    };
-    match heartbeat::accept_ping(
-        &state.db,
-        &state.limiter,
-        &state.config.base_url,
-        ping,
-        cause,
-    )
-    .await
-    {
-        Ok(PingOutcome::Accepted) => plain(StatusCode::OK, "OK"),
-        Ok(PingOutcome::UnknownToken) => plain(StatusCode::NOT_FOUND, "not found"),
-        Ok(PingOutcome::Limited(retry)) => (
-            StatusCode::TOO_MANY_REQUESTS,
-            [(header::RETRY_AFTER, retry.to_string())],
-            "slow down",
-        )
-            .into_response(),
-        Err(e) => {
-            tracing::error!(error = %e, "ping failed");
-            plain(StatusCode::INTERNAL_SERVER_ERROR, "error")
-        }
-    }
-}
-
-/// Feeds the body to `heartbeat::Cause`, which keeps only its start. Reading stops at the router's
-/// 128 KiB, so no caller makes Monita read more; the answer goes out either way.
-async fn read_cause(mut body: axum::body::Body) -> Option<String> {
-    use axum::body::HttpBody;
-    let (mut cause, mut seen) = (heartbeat::Cause::default(), 0usize);
-    while seen < crate::app::MAX_BODY {
-        match std::future::poll_fn(|cx| std::pin::Pin::new(&mut body).poll_frame(cx)).await {
-            None => break,
-            Some(Err(e)) => {
-                tracing::warn!(error = %e, "a /fail body broke off; keeping what arrived");
-                break;
-            }
-            Some(Ok(frame)) => {
-                if let Ok(data) = frame.into_data() {
-                    seen += data.len();
-                    cause.push(&data);
-                }
-            }
-        }
-    }
-    cause.finish()
-}
-
-fn peer(req: &Request) -> Option<SocketAddr> {
-    req.extensions()
-        .get::<ConnectInfo<SocketAddr>>()
-        .map(|c| c.0)
-}
-
-async fn ping_ok(
-    State(state): State<AppState>,
-    Path(token): Path<String>,
-    req: Request,
-) -> Response {
-    ping(
-        &state,
-        &token,
-        PingKind::Ok,
-        req.headers(),
-        peer(&req),
-        None,
-    )
-    .await
-}
-
-async fn ping_fail(
-    State(state): State<AppState>,
-    Path(token): Path<String>,
-    req: Request,
-) -> Response {
-    let (headers, peer) = (req.headers().clone(), peer(&req));
-    ping(
-        &state,
-        &token,
-        PingKind::Fail,
-        &headers,
-        peer,
-        Some(req.into_body()),
-    )
-    .await
 }

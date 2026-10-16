@@ -352,13 +352,13 @@ pub async fn open_manual(db: &Db, n: &NewIncident, now: i64) -> Result<i64, Upda
     if n.title.trim().chars().count() > MAX_TITLE {
         return Err(UpdateError::TitleTooLong);
     }
-    if !matches!(n.severity.as_str(), "critical" | "warning") {
-        return Err(UpdateError::BadSeverity);
-    }
     // Settled in CLAUDE.md: items are checked on a read connection, so a rejected form never
     // takes the writer, then again inside the write, so a source deleted meanwhile is skipped.
-    if picked(&item_names_on(&db.read().await?, n.project_id).await?, n).is_empty() {
+    if picked(&item_names(db, n.project_id).await?, n).is_empty() {
         return Err(UpdateError::NoItems);
+    }
+    if !matches!(n.severity.as_str(), "critical" | "warning") {
+        return Err(UpdateError::BadSeverity);
     }
     check_message(&n.message)?;
     db.write(async |c| {

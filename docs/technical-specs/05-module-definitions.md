@@ -39,7 +39,8 @@ Each module owns its tables (see [06](06-data-model.md)). Other modules use only
 | Item | Contract |
 | --- | --- |
 | `probe(&Monitor, &Client) -> CheckResult` | One HTTP request with the monitor timeout. `ok` when the status matches `expected_status` and the body contains `keyword` (if set). Never returns an error: failures are a `CheckResult` with `ok = false` and an `error` string. Reads at most 1 MB of body. |
-| `accept_ping(db, limiter, base_url, Ping) -> PingOutcome` | Used by the `/ping` routes. Finds the heartbeat by token (`UnknownToken`), applies the per-heartbeat rate limit (`Limited(retry)`, with `/fail` in its own bucket), then records the ping: an OK ping pushes `deadline_at` forward. |
+| `admit(db, limiter, &Ping) -> Admission` | Used by the `/ping` routes first. Finds the heartbeat by token (`UnknownToken`), then applies the limits (`Limited(retry)`, with `/fail` in its own bucket). A `/fail` body is read only after `Admitted`. |
+| `record(db, base_url, &Heartbeat, &Ping, cause) -> bool` | Stores the ping: an OK ping pushes `deadline_at` forward, a fail ping opens an incident. False when the heartbeat was deleted after `admit`. |
 | scheduler loop | Internal. See [13](13-check-scheduler.md). |
 
 **Seam:** the outbound HTTP client is a `reqwest::Client` in `AppState`. Tests point monitors at a local axum test server, so no port is needed.

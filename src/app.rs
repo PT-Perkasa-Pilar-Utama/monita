@@ -68,6 +68,7 @@ pub fn router(state: AppState) -> Router {
         .merge(crate::tickets::routes::router())
         .merge(crate::checks::routes::router())
         .merge(crate::checks::heartbeat_routes::router())
+        .merge(crate::checks::ping_routes::router())
         .merge(crate::incidents::routes::router())
         .merge(crate::notify::routes::router())
         .merge(crate::status::routes::router())
@@ -99,7 +100,8 @@ pub async fn serve(config: Config) -> anyhow::Result<()> {
     let mailer = Mailer::from_config(&config)?;
     let (router, state, scheduler) = start(config, mailer).await?;
     // HTTP would keep serving without the loop, so systemd would never restart a dead scheduler.
-    // A panic drains running work, then ends the process, and `Restart=on-failure` restarts it.
+    // A panic or cancel drains running work, then ends the process; `Restart=on-failure`
+    // starts it again.
     // A panic in a delivery or daily-job task needs none of this: its drop guard frees the
     // running flag and the next tick starts it again.
     let gate = state.gate.clone();
@@ -124,8 +126,8 @@ pub async fn serve(config: Config) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Waits for the scheduler loop. True when it panicked; running work is drained first, so the
-/// caller can exit at once.
+/// Waits for the scheduler loop. True when it ended abnormally (a panic or a cancel); running
+/// work is drained first, so the caller can exit at once.
 async fn scheduler_died(
     scheduler: tokio::task::JoinHandle<()>,
     gate: &Arc<tokio::sync::RwLock<()>>,
@@ -201,6 +203,12 @@ mod tests {
         );
         let finished = tokio::spawn(async {});
         assert!(!scheduler_died(finished, &gate).await);
+        let cancelled = tokio::spawn(std::future::pending::<()>());
+        cancelled.abort();
+        assert!(
+            scheduler_died(cancelled, &gate).await,
+            "a cancel ends the loop too"
+        );
     }
 
     #[tokio::test]

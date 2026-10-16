@@ -48,7 +48,7 @@ JSON lists are capped, not paged. Each endpoint states its cap, for example the 
 | 403 | Credential valid, but not allowed (IP allowlist, Origin check) |
 | 404 | Unknown resource or token |
 | 409 | Conflict with current state |
-| 413 | Request body over 128 KiB |
+| 413 | Request body over 128 KiB, except `/ping/{token}/fail`, which cuts |
 | 422 | Valid JSON, but a business rule rejects it |
 | 429 | Rate limit or daily cap |
 | 503 | Monita unhealthy (`/healthz` only) |

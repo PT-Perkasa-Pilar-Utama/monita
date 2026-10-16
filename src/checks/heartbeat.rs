@@ -184,8 +184,8 @@ pub async fn recent_pings(db: &Db, id: i64, limit: i64) -> anyhow::Result<Vec<Pi
     store::recent_pings(&db.read().await?, id, now() - 7 * 86_400, limit).await
 }
 
-pub enum PingOutcome {
-    Accepted,
+pub enum Admission {
+    Admitted(Heartbeat),
     UnknownToken,
     /// Seconds until the next ping is accepted.
     Limited(i64),
@@ -211,7 +211,10 @@ impl Cause {
 
     pub fn push(&mut self, mut chunk: &[u8]) {
         if self.kept.is_empty() {
-            let start = chunk.iter().position(|b| !b.is_ascii_whitespace());
+            // ASCII whitespace and VT; `finish` trims any other Unicode space.
+            let start = chunk
+                .iter()
+                .position(|b| !b.is_ascii_whitespace() && *b != 0x0b);
             chunk = &chunk[start.unwrap_or(chunk.len())..];
         }
         let room = Self::KEEP.saturating_sub(self.kept.len());
@@ -220,7 +223,7 @@ impl Cause {
 
     pub fn finish(self) -> Option<String> {
         let text = String::from_utf8_lossy(&self.kept);
-        let text = text.trim_end();
+        let text = text.trim();
         let mut end = text.len().min(1024);
         while !text.is_char_boundary(end) {
             end -= 1;
@@ -233,27 +236,20 @@ impl Cause {
 /// a scanner does, and each miss costs a lookup.
 const MISSES_PER_MIN: u32 = 60;
 
-/// AC-13.02: over `rl_ping_per_s` a ping is refused, and the ping already counted this second
-/// keeps the heartbeat alive. `/fail` has its own bucket, so a job that pings and then fails in
-/// one second is still heard.
-/// `cause` reads the job's error text; it runs only after the token and the limits pass, so an
-/// unknown or limited caller never gets a body read.
-pub async fn accept_ping(
-    db: &Db,
-    limiter: &Limiter,
-    base_url: &str,
-    p: Ping<'_>,
-    cause: impl AsyncFnOnce() -> Option<String>,
-) -> anyhow::Result<PingOutcome> {
+/// The checks before a ping is read or stored: the token, then the limits. AC-13.02: over
+/// `rl_ping_per_s` a ping is refused, and the ping already counted this second keeps the
+/// heartbeat alive. `/fail` has its own bucket, so a job that pings and then fails in one second
+/// is still heard. A caller reads a `/fail` body only after `Admitted`.
+pub async fn admit(db: &Db, limiter: &Limiter, p: &Ping<'_>) -> anyhow::Result<Admission> {
     let miss_key = format!("pingmiss:{}", rate_limit::ip_key(p.source_ip));
     if let Verdict::Deny(retry) = limiter.over(&miss_key, MISSES_PER_MIN, 60, now()) {
-        return Ok(PingOutcome::Limited(retry));
+        return Ok(Admission::Limited(retry));
     }
     let (hb, limit) = {
         let conn = db.read().await?;
         let Some(hb) = store::find_by_token(&conn, p.token).await? else {
             limiter.hit(&miss_key, MISSES_PER_MIN, 60, now());
-            return Ok(PingOutcome::UnknownToken);
+            return Ok(Admission::UnknownToken);
         };
         (hb, settings::get_or(&conn, "rl_ping_per_s", 1).await)
     };
@@ -263,26 +259,23 @@ pub async fn accept_ping(
     };
     let limit = u32::try_from(limit.max(1)).unwrap_or(u32::MAX);
     if let Verdict::Deny(retry) = limiter.hit(&bucket, limit, 1, now()) {
-        return Ok(PingOutcome::Limited(retry));
+        return Ok(Admission::Limited(retry));
     }
-    let source_ip = p.source_ip.map(|ip| ip.to_string());
-    if record_ping(db, base_url, &hb, p.kind, source_ip, cause().await).await? {
-        Ok(PingOutcome::Accepted)
-    } else {
-        Ok(PingOutcome::UnknownToken)
-    }
+    Ok(Admission::Admitted(hb))
 }
 
 /// AC-13.01, AC-14.01, AC-17.03, AC-18.01. An OK ping pushes the deadline out and closes an
 /// open incident; a fail ping opens one at once and leaves the deadline.
-async fn record_ping(
+/// Returns false when the heartbeat was deleted after `admit`.
+pub async fn record(
     db: &Db,
     base_url: &str,
     hb: &Heartbeat,
-    kind: PingKind,
-    source_ip: Option<String>,
+    p: &Ping<'_>,
     cause: Option<String>,
 ) -> anyhow::Result<bool> {
+    let kind = p.kind;
+    let source_ip = p.source_ip.map(|ip| ip.to_string());
     let t = now();
     let signal = match kind {
         PingKind::Ok => Signal::Ping,
@@ -360,5 +353,7 @@ mod tests {
         let blank = vec![b'\n'; 1100];
         assert_eq!(cause(&[&blank, b"Error: x"]).as_deref(), Some("Error: x"));
         assert_eq!(cause(&[b"  \n "]), None, "a blank body has no cause");
+        let unicode = "\u{a0}\u{2003}\x0bError: y".as_bytes();
+        assert_eq!(cause(&[unicode]).as_deref(), Some("Error: y"));
     }
 }

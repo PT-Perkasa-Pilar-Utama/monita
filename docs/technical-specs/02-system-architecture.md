@@ -93,7 +93,7 @@ Not in v1: remote probes, hot standby, and shared databases. The check runner si
 | --- | --- | --- |
 | accounts | users, invites, sessions | `CurrentUser`, `AdminUser`, `is_active_tl`, `purge_expired` |
 | projects | projects, api_keys | `ApiProject`, `find_for`, `can_manage` |
-| checks | monitors, heartbeats, check_results, pings, daily_summaries | `probe`, `accept_ping`, `list_monitors`, `heartbeat::list` |
+| checks | monitors, heartbeats, check_results, pings, daily_summaries | `probe`, `heartbeat::admit`, `heartbeat::record`, `list_monitors`, `heartbeat::list` |
 | incidents | incidents, incident_items, incident_sources, status_updates | `observe`, `states_for`, `source_deleted` |
 | notify | alert_routes, outbox | `send`, `create_routes`, `purge_delivered` |
 | status | none | none |

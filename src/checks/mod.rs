@@ -3,6 +3,7 @@
 
 pub mod heartbeat;
 pub mod heartbeat_routes;
+pub mod ping_routes;
 mod probe;
 pub mod retention;
 pub mod routes;

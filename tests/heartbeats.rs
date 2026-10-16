@@ -259,16 +259,38 @@ async fn a_long_fail_body_is_cut_not_refused() {
 }
 
 #[tokio::test]
-async fn an_unknown_token_gets_404_whatever_its_body() {
+async fn an_unknown_token_is_answered_before_its_body_is_read() {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
     let app = TestApp::spawn("test").await;
+    let addr = app.base.trim_start_matches("http://").to_string();
+    let mut tcp = tokio::net::TcpStream::connect(addr).await.unwrap();
+    // A body announced but never sent: a server that read it first would wait for ever.
+    tcp.write_all(
+        b"POST /ping/nosuchtoken/fail HTTP/1.1\r\nHost: x\r\nContent-Length: 1000000\r\n\r\nfirst bytes",
+    )
+    .await
+    .unwrap();
+    let mut answer = [0u8; 12];
+    tokio::time::timeout(Duration::from_secs(2), tcp.read_exact(&mut answer))
+        .await
+        .expect("answered without the body")
+        .unwrap();
+    assert_eq!(&answer, b"HTTP/1.1 404");
+}
+
+#[tokio::test]
+async fn a_fail_body_past_128_kib_is_cut_and_heard() {
+    let app = TestApp::spawn("test").await;
+    let (tl, token) = setup(&app).await;
     let res = app
         .http
-        .post(app.url("/ping/nosuchtoken/fail"))
-        .body("x".repeat(64 * 1024))
+        .post(app.url(&format!("/ping/{token}/fail")))
+        .body(format!("disk full\n{}", "x".repeat(200 * 1024)))
         .send()
         .await
         .unwrap();
-    assert_eq!(res.status(), 404);
+    assert_eq!(res.status(), 200, "cut, never 413");
+    assert_eq!(state_label(&app, &tl).await, "Down");
 }
 
 #[tokio::test]

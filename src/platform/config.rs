@@ -29,7 +29,7 @@ pub struct Config {
     pub log_json: bool,
 }
 
-/// A two-valued variable: unset means `no` (the caller may pick another default); anything but `yes` or `no` stops the start, so a
+/// A two-valued variable: unset means `no`; anything but `yes` or `no` stops the start, so a
 /// typo such as `TRUE` cannot silently turn a feature off.
 fn flag(value: Option<String>, key: &str, yes: &str, no: &str) -> anyhow::Result<bool> {
     match value.as_deref() {

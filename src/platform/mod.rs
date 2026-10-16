@@ -38,8 +38,8 @@ pub fn api_error(
 
 /// An `http` or `https` URL with a host, as the HTTP client will accept it. Monitor URLs,
 /// webhook URLs and ticket page URLs all go through it. The raw text is stored, so it must be
-/// what the parser read, up to scheme and host case: no whitespace or control characters, which the parser drops silently,
-/// and the `http://` prefix written out, which it repairs.
+/// what the parser read, up to scheme and host case: no whitespace or control characters,
+/// which the parser drops silently, and the `http://` prefix written out, which it repairs.
 pub fn valid_http_url(raw: &str) -> bool {
     raw.len() <= 2000
         && ["http://", "https://"].iter().any(|p| {
