@@ -39,7 +39,7 @@ Each module owns its tables (see [06](06-data-model.md)). Other modules use only
 | Item | Contract |
 | --- | --- |
 | `probe(&Monitor, &Client) -> CheckResult` | One HTTP request with the monitor timeout. `ok` when the status matches `expected_status` and the body contains `keyword` (if set). Never returns an error: failures are a `CheckResult` with `ok = false` and an `error` string. Reads at most 1 MB of body. |
-| `admit(db, limiter, &Ping) -> Admission` | Used by the `/ping` routes first. Refuses an IP over its unknown-token budget, finds the heartbeat by token (`UnknownToken`), then applies the per-heartbeat limit (`Limited(retry)`, with `/fail` in its own bucket). Returns an `Admitted` value that only `record` takes; a `/fail` body is read only after it. |
+| `admit(db, limiter, &Ping) -> Admission` | Used by the `/ping` routes first. Refuses an IP over its unknown-token budget, finds the heartbeat by token (`UnknownToken`), then applies the per-heartbeat limit (`Limited(retry)`, with `/fail` in its own bucket). Returns an `Admitted` value that only `record` takes; a ping body is read only after it. |
 | `record(db, base_url, Admitted, cause) -> bool` | Stores the ping: an OK ping pushes `deadline_at` forward, a fail ping opens an incident. False when the heartbeat was deleted after `admit`. |
 | scheduler loop | Internal. See [13](13-check-scheduler.md). |
 

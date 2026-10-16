@@ -1,7 +1,7 @@
 //! checks module: monitors, heartbeats, pings, results, the scheduler loop.
 //! Spec: docs/technical-specs/05-module-definitions.md section 5.3 and 13-check-scheduler.md.
 
-pub mod cause;
+mod cause;
 pub mod heartbeat;
 pub mod heartbeat_routes;
 pub mod ping_routes;

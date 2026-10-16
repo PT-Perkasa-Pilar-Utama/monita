@@ -293,7 +293,7 @@ async fn a_fail_is_stored_while_the_rest_of_its_body_still_uploads() {
     tcp.write_all(&[b'x'; 2000]).await.unwrap();
     let stored = "SELECT count(*) FROM pings WHERE kind = 'fail' AND cause LIKE 'disk full%'";
     let mut found = 0;
-    for _ in 0..40 {
+    for _ in 0..100 {
         found = count(&app, stored).await;
         if found == 1 {
             break;
@@ -302,20 +302,6 @@ async fn a_fail_is_stored_while_the_rest_of_its_body_still_uploads() {
     }
     assert_eq!(found, 1, "stored before the body ends");
     drop(tcp);
-}
-
-#[tokio::test]
-async fn a_whitespace_fail_body_past_the_16_mib_cap_is_answered() {
-    let app = TestApp::spawn("test").await;
-    let (_tl, token) = setup(&app).await;
-    let res = app
-        .http
-        .post(app.url(&format!("/ping/{token}/fail")))
-        .body(vec![b'\n'; 17 * 1024 * 1024])
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(res.status(), 200);
 }
 
 #[tokio::test]

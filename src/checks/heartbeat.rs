@@ -214,7 +214,7 @@ const MISSES_PER_MIN: u32 = 60;
 /// The checks before a ping is read or stored: the token, then the limits. AC-13.02: over
 /// `rl_ping_per_s` a ping is refused, and the ping already counted this second keeps the
 /// heartbeat alive. `/fail` has its own bucket, so a job that pings and then fails in one second
-/// is still heard. A caller reads a `/fail` body only after `Admitted`.
+/// is still heard. A caller reads a ping body only after `Admitted`.
 pub async fn admit(db: &Db, limiter: &Limiter, p: &Ping<'_>) -> anyhow::Result<Admission> {
     let miss_key = format!("pingmiss:{}", rate_limit::ip_key(p.source_ip));
     if let Verdict::Deny(retry) = limiter.over(&miss_key, MISSES_PER_MIN, 60, now()) {

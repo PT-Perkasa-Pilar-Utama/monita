@@ -56,7 +56,7 @@ impl Cause {
         }
         let text = String::from_utf8_lossy(&self.kept);
         let text = text.trim();
-        let mut end = text.len().min(1024);
+        let mut end = text.len().min(Self::KEEP);
         while !text.is_char_boundary(end) {
             end -= 1;
         }
