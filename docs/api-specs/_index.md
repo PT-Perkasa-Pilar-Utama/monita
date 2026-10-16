@@ -35,7 +35,7 @@ Legend: `OK` implemented and tested, `WIP` in progress, `TODO` not started, `SCA
 | Incidents | [05](05-incidents.md) | OK |
 | Alert routes | [06](06-notify.md) | OK |
 | Status page | [07](07-status.md#72-html-routes) | OK |
-| Tickets kanban, public board, ticket form | [08](08-tickets.md#84-html-routes) | OK |
+| Tickets kanban, public board, ticket form | [08](08-tickets.md#85-html-routes) | OK |
 
 ## Files in This Directory
 

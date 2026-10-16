@@ -7,7 +7,7 @@
 | Webhook URLs | Out | POST JSON with `text`, 10 s timeout | Non-2xx or timeout | Same outbox retries. |
 | Peer Monita or Better Stack | Out | GET `MONITA_PING_URL` every 60 s, 10 s timeout | Down | Warning log only. The peer raises the alert from its side. |
 | Project backends | In | REST JSON with an API key. See [api-specs](../api-specs/). | Bad key, over the limit | 401, 403, 429 with `Retry-After`. |
-| Project jobs | In | `GET`, `HEAD` or `POST /ping/{token}` and `/ping/{token}/fail` | Over 1/s | 429. The ping still counts. |
+| Project jobs | In | `GET`, `HEAD` or `POST /ping/{token}` and `/ping/{token}/fail` | Over 1/s | 429. A refused ping is not stored; the ping accepted in that second keeps the heartbeat alive. |
 | Custom status pages | In | `GET /api/v1/public/status/{slug}`, CORS `*` | Over the limit | 429 |
 
 ## 10.1 Caching

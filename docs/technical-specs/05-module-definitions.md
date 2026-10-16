@@ -59,7 +59,7 @@ Each module owns its tables (see [06](06-data-model.md)). Other modules use only
 
 ## 5.5 notify
 
-**Responsibility:** alert routes, the outbox, delivery, the ticket digest. Serves US-15, US-16 and US-30.
+**Responsibility:** alert routes, the outbox, delivery, the ticket digest. Serves US-15, US-16 and US-30. A project whose owner is disabled gets no digest; its Triage tickets wait on the kanban for the new owner, and the digest watermark moves past them.
 
 | Item | Contract |
 | --- | --- |
