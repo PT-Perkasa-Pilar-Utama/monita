@@ -83,8 +83,11 @@ async fn ping(state: &AppState, token: &str, kind: PingKind, req: Request) -> Re
         }
         Err(e) => return failed(e),
     };
-    let record =
-        async |cause| heartbeat::record(&state.db, &state.config.base_url, admitted, cause).await;
+    let record = async |cause| {
+        // Reset-state and shutdown wait for a store in progress, never for an upload.
+        let _pass = state.gate.read().await;
+        heartbeat::record(&state.db, &state.config.base_url, admitted, cause).await
+    };
     match handle_body(body, kind, Budget::new(), record).await {
         Ok(true) => plain(StatusCode::OK, "OK"),
         Ok(false) => plain(StatusCode::NOT_FOUND, "not found"),
@@ -183,9 +186,12 @@ async fn ping_fail(
 }
 
 /// Runs the ping in its own task. hyper drops a handler when its client hangs up, and a ping
-/// already admitted must still be recorded. Runtime shutdown can still cut the task mid-write.
+/// already admitted must still be recorded. Shutdown's `drain` waits up to 10 s for a store in
+/// progress; a ping that reaches `record` after that is lost.
 // ponytail: hyper drops a request whose client closes before dispatch; a hyper-util serve loop
 // with half_close(true) may hear it.
+// ponytail: a late ping is lost at shutdown; a task tracker on `AppState` that shutdown awaits
+// would keep it.
 async fn detached(state: AppState, token: String, kind: PingKind, req: Request) -> Response {
     match tokio::spawn(async move { ping(&state, &token, kind, req).await }).await {
         Ok(res) => res,

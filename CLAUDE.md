@@ -145,6 +145,7 @@ Each line was argued in review and decided. Do not reopen one without a new fact
 - `MONITA_LOG` and `MONITA_LOG_FORMAT` are the only variables whose unset value follows `MONITA_ENV` (`info,monita=debug` in dev; json in prod). Every other per-environment column in spec 11 is a recommended value, not a default. Every value is trimmed.
 - The two ping routes never answer 413. They check the token and the rate limits before they read a byte. `/fail` stores the ping at 1 KB of text, the end of the body, 16 MiB, or 10 s. It then reads the rest. Both routes read up to 16 MiB within one 10 s limit from admission. A body that fits gets its answer through `curl -f`.
 - Each ping runs in its own task, so an admitted ping is recorded even if its client hangs up. hyper drops a request whose client closes before dispatch; that ping is not heard.
+- The panic arm of `detached` in `ping_routes` is untested. Forcing a panic inside a ping needs a test-only seam.
 - A ping refused at `admit` (unknown token, 429, or an `admit` error) is answered without reading its body. The client may then see a reset. Reading a refused body would defeat the limit.
 - `http-body` is a dev-dependency only: the ping-body unit tests need hand-made bodies. The body readers take a `Budget` (deadline and byte cap) as a parameter for the same tests.
 - Ping-body limits are tested by mechanism with small injected budgets. `BODY_MAX` and `BODY_TIMEOUT` are not asserted by value. That would restate a constant, and an over-cap request resets on Linux.

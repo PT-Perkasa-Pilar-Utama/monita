@@ -306,11 +306,9 @@ async fn a_fail_is_stored_while_the_rest_of_its_body_still_uploads() {
     drop(tcp);
 }
 
-#[tokio::test]
-async fn a_fail_whose_client_hangs_up_is_still_stored() {
+/// Sends `request` while the writer is held, hangs up, and returns the `pings` rows of `kind`.
+async fn stored_after_hang_up(app: &TestApp, request: String, kind: &str) -> i64 {
     use tokio::io::AsyncWriteExt;
-    let app = TestApp::spawn("test").await;
-    let (_tl, token) = setup(&app).await;
     // Hold the writer, so the client is gone while `record` waits for it.
     let db = app.state.db.clone();
     let held = tokio::spawn(async move {
@@ -323,24 +321,52 @@ async fn a_fail_whose_client_hangs_up_is_still_stored() {
     tokio::time::sleep(Duration::from_millis(50)).await;
     let addr = app.base.trim_start_matches("http://").to_string();
     let mut tcp = tokio::net::TcpStream::connect(addr).await.unwrap();
-    let req = format!(
-        "POST /ping/{token}/fail HTTP/1.1\r\nHost: x\r\nContent-Length: 9\r\n\r\ndisk full"
-    );
-    tcp.write_all(req.as_bytes()).await.unwrap();
+    tcp.write_all(request.as_bytes()).await.unwrap();
     // Gone after the handler starts. hyper never starts one for a client that closes at once.
     tokio::time::sleep(Duration::from_millis(100)).await;
     drop(tcp);
     held.await.unwrap().unwrap();
-    let stored = "SELECT count(*) FROM pings WHERE kind = 'fail' AND cause = 'disk full'";
+    let stored = format!("SELECT count(*) FROM pings WHERE kind = '{kind}'");
     let mut found = 0;
     for _ in 0..100 {
-        found = count(&app, stored).await;
+        found = count(app, &stored).await;
         if found == 1 {
             break;
         }
         tokio::time::sleep(Duration::from_millis(50)).await;
     }
-    assert_eq!(found, 1, "an admitted ping outlives its client");
+    found
+}
+
+#[tokio::test]
+async fn a_ping_whose_client_hangs_up_is_still_stored_on_both_routes() {
+    let app = TestApp::spawn("test").await;
+    let (_tl, token) = setup(&app).await;
+    let fail = format!(
+        "POST /ping/{token}/fail HTTP/1.1\r\nHost: x\r\nContent-Length: 9\r\n\r\ndisk full"
+    );
+    assert_eq!(stored_after_hang_up(&app, fail, "fail").await, 1, "/fail");
+    let ok = format!("GET /ping/{token} HTTP/1.1\r\nHost: x\r\n\r\n");
+    assert_eq!(stored_after_hang_up(&app, ok, "ok").await, 1, "/ping");
+}
+
+#[tokio::test]
+async fn reset_state_and_shutdown_wait_for_a_ping_being_stored() {
+    let app = TestApp::spawn("test").await;
+    let (_tl, token) = setup(&app).await;
+    let closed = app.state.gate.clone().write_owned().await;
+    let url = app.url(&format!("/ping/{token}"));
+    let http = app.http.clone();
+    let sent = tokio::spawn(async move { http.get(url).send().await.unwrap().status() });
+    tokio::time::sleep(Duration::from_millis(200)).await;
+    assert_eq!(
+        count(&app, "SELECT count(*) FROM pings").await,
+        0,
+        "held at the gate"
+    );
+    drop(closed);
+    assert_eq!(sent.await.unwrap(), 200);
+    assert_eq!(count(&app, "SELECT count(*) FROM pings").await, 1);
 }
 
 #[tokio::test]

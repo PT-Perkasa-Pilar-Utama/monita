@@ -23,7 +23,8 @@ struct Writer {
 
 impl Writer {
     /// Undoes what a dropped caller future left behind. A client that disconnects mid-request
-    /// drops its handler, and with it a `write` at any await point, BEGIN included. The connection
+    /// drops its handler, and with it a `write` at any await point, BEGIN included; except a
+    /// ping, which runs in its own task. The connection
     /// itself says whether a transaction is open, so no flag can miss one.
     async fn clean(&mut self, database: &Database) {
         let open = match self.conn.is_autocommit() {
