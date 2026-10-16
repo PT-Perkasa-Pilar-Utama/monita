@@ -60,11 +60,16 @@ pub fn now() -> i64 {
         .unwrap_or(0)
 }
 
-/// The socket peer axum records for each connection.
-pub fn peer_addr(extensions: &axum::http::Extensions) -> Option<SocketAddr> {
-    extensions
+/// The caller's IP for a request: `client_ip` of the socket peer axum records.
+pub fn caller_ip(
+    headers: &HeaderMap,
+    extensions: &axum::http::Extensions,
+    trust_proxy: bool,
+) -> Option<IpAddr> {
+    let peer = extensions
         .get::<axum::extract::ConnectInfo<SocketAddr>>()
-        .map(|c| c.0)
+        .map(|c| c.0);
+    client_ip(headers, peer, trust_proxy)
 }
 
 /// The caller's IP: the socket peer, or the right-most `X-Forwarded-For` entry behind a trusted

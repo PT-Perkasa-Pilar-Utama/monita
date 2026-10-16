@@ -6,7 +6,7 @@
 | --- | --- |
 | Base | `{MONITA_BASE_URL}/api/v1` for JSON. `/ping` and `/healthz` sit at the root. |
 | Content type | `application/json; charset=utf-8` for requests and responses |
-| Body limit | Request bodies are capped at 128 KiB (413) (SEC-19); `/ping/{token}/fail` reads up to 16 MiB or 10 s after its token passes and keeps 1 KB |
+| Body limit | Request bodies are capped at 128 KiB (413) (SEC-19). The ping routes never answer 413: `/ping/{token}` ignores its body; `/ping/{token}/fail` keeps 1 KB, then reads the rest up to 16 MiB or 10 s after its token passes |
 | Time | Unix seconds (integer, UTC) in every JSON field ending in `_at` |
 | IDs | Public tokens are strings. Internal numeric IDs never appear in the JSON API, except ticket `number`. |
 
@@ -48,7 +48,7 @@ JSON lists are capped, not paged. Each endpoint states its cap, for example the 
 | 403 | Credential valid, but not allowed (IP allowlist, Origin check) |
 | 404 | Unknown resource or token |
 | 409 | Conflict with current state |
-| 413 | Request body over 128 KiB, except `/ping/{token}/fail`, which keeps 1 KB and never answers 413 |
+| 413 | Request body over 128 KiB, except on the two ping routes (see Body limit) |
 | 422 | Valid JSON, but a business rule rejects it |
 | 429 | Rate limit or daily cap |
 | 503 | Monita unhealthy (`/healthz` only) |

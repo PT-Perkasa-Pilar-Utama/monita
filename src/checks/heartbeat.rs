@@ -187,7 +187,9 @@ pub async fn recent_pings(db: &Db, id: i64, limit: i64) -> anyhow::Result<Vec<Pi
 /// Proof that `admit` passed. Only `admit` makes one and only `record` takes it, so no caller can
 /// store a ping that skipped the token and the limits.
 pub struct Admitted {
-    hb: Heartbeat,
+    /// Ids only: `record` reads the heartbeat again, so nothing here can be stale.
+    project_id: i64,
+    id: i64,
     kind: PingKind,
     source_ip: Option<String>,
 }
@@ -232,7 +234,8 @@ impl Cause {
             };
             let skip = valid.len() - valid.trim_start().len();
             let rest = &joined[skip..];
-            if skip == valid.len() && rest.len() < 4 && std::str::from_utf8(rest).is_err() {
+            let cut_char = matches!(std::str::from_utf8(rest), Err(e) if e.error_len().is_none());
+            if skip == valid.len() && cut_char {
                 // Only whitespace so far, then a character cut at the chunk's end: wait for it.
                 self.pending = rest.to_vec();
                 return;
@@ -245,6 +248,11 @@ impl Cause {
         }
         let room = Self::KEEP.saturating_sub(self.kept.len());
         self.kept.extend_from_slice(&chunk[..chunk.len().min(room)]);
+    }
+
+    /// True once the cause has all it keeps; the rest of the body can be dropped unread.
+    pub fn is_full(&self) -> bool {
+        self.kept.len() >= Self::KEEP
     }
 
     pub fn finish(self) -> Option<String> {
@@ -288,7 +296,8 @@ pub async fn admit(db: &Db, limiter: &Limiter, p: &Ping<'_>) -> anyhow::Result<A
         return Ok(Admission::Limited(retry));
     }
     Ok(Admission::Admitted(Admitted {
-        hb,
+        project_id: hb.project_id,
+        id: hb.id,
         kind: p.kind,
         source_ip: p.source_ip.map(|ip| ip.to_string()),
     }))
@@ -304,7 +313,8 @@ pub async fn record(
     cause: Option<String>,
 ) -> anyhow::Result<bool> {
     let Admitted {
-        hb,
+        project_id,
+        id,
         kind,
         source_ip,
     } = a;
@@ -320,7 +330,7 @@ pub async fn record(
     db.write(async |c| {
         // Read again inside the write: the body may have taken seconds, so the heartbeat may have
         // been renamed, re-ranked or deleted since `admit`. Deleted is a 404, not a 500.
-        let Some(hb) = store::find(c, hb.project_id, hb.id).await? else {
+        let Some(hb) = store::find(c, project_id, id).await? else {
             return Ok(false);
         };
         store::insert_ping(c, hb.id, kind, source_ip.as_deref(), cause.as_deref(), t).await?;
@@ -391,5 +401,10 @@ mod tests {
         let wide = "\u{2003}".repeat(600) + "Error: db down";
         let (head, tail) = wide.as_bytes().split_at(1000); // splits one em space across chunks
         assert_eq!(cause(&[head, tail]).as_deref(), Some("Error: db down"));
+        assert_eq!(
+            cause(&[b"\n\xFFab"]).as_deref(),
+            Some("\u{fffd}ab"),
+            "an invalid byte is kept, not held as a cut character"
+        );
     }
 }

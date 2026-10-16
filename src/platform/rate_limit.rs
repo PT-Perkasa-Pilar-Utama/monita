@@ -115,10 +115,9 @@ pub async fn per_ip(
     if req.method() == axum::http::Method::OPTIONS || !ip_limited(req.method(), req.uri().path()) {
         return next.run(req).await;
     }
-    let peer = super::peer_addr(req.extensions());
-    let ip = ip_key(super::client_ip(
+    let ip = ip_key(super::caller_ip(
         req.headers(),
-        peer,
+        req.extensions(),
         state.config.trust_proxy,
     ));
     // ponytail: one settings read per limited request; cache the value in AppState, refreshed by

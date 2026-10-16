@@ -143,7 +143,8 @@ Each line was argued in review and decided. Do not reopen one without a new fact
 - The public status JSON has its own wire types in `status`; they are not shared with `incidents` (SEC-21).
 - A rejected manual-incident form never takes the writer. A successful one resolves its items twice: on a read connection to reject the form, then inside the write to skip a source deleted in between. Error order is the form's: title, items, severity, message.
 - `MONITA_LOG` and `MONITA_LOG_FORMAT` are the only variables whose unset value follows `MONITA_ENV` (`info,monita=debug` in dev; json in prod). Every other per-environment column in spec 11 is a recommended value, not a default. Every value is trimmed.
-- `/ping/{token}/fail` is the one route that never answers 413. It checks the token and the rate limits before it reads a byte, then reads up to 16 MiB or 10 s and keeps the first 1 KB, so `curl -f` sees its answer.
+- The two ping routes never answer 413. `/ping/{token}` never reads its body. `/ping/{token}/fail` checks the token and the rate limits before it reads a byte. It records the failure once it has the first 1 KB, then reads the rest up to 16 MiB or 10 s, so `curl -f` sees its answer.
+- `http-body` is a dev-dependency only: the stalled-upload unit test needs a hand-made body. The cause and drain readers take their limits as parameters for the same tests.
 - A test file may run to 800 lines; the 400-line cap is for `src/`.
 
 ## Context recovery checklist
@@ -154,7 +155,7 @@ Each line was argued in review and decided. Do not reopen one without a new fact
 - [ ] Severity: critical (email + webhook by default), warning (email only).
 - [ ] Monitor intervals: 30, 60, 180, 300 s. Default timeout 10 s, expected `2xx`.
 - [ ] Ref IDs: `POST /api/v1/ref-ids`, project from the API key, `single_use` flag. Caps: 5 per ref ID per day, 100 per project per day.
-- [ ] Rate limits: 60/min per IP (public, ticket form, login), 120/min per API key, 1/s per heartbeat (extra pings return 429 and are not stored; the ping accepted in that second keeps the heartbeat alive); `/fail` has its own 1/s bucket `pingfail:{id}`. Request bodies are capped at 128 KiB (413), except `/fail` (see Settled trade-offs).
+- [ ] Rate limits: 60/min per IP (public, ticket form, login), 120/min per API key, 1/s per heartbeat (extra pings return 429 and are not stored; the ping accepted in that second keeps the heartbeat alive); `/fail` has its own 1/s bucket `pingfail:{id}`. Request bodies are capped at 128 KiB (413), except the ping routes (see Settled trade-offs).
 - [ ] API key format `mk_` + 26 base32 chars; heartbeat tokens stored raw; everything else hashed.
 - [ ] Scheduler: one 1 s loop; claim by setting `next_check_at` before probing; 50 concurrent checks. Each tick holds one shared read guard on `AppState.gate`; reset-state takes the write guard.
 - [ ] `incidents::observe` and `notify::send` run inside the same `Db::write` as the check or ping that caused them. The outbox claims rows with a 120 s lease.

@@ -236,29 +236,6 @@ async fn a_long_fail_body_still_opens_the_incident_with_its_first_kb() {
 }
 
 #[tokio::test]
-async fn a_fail_body_under_the_cap_is_cut_to_1_kb() {
-    let app = TestApp::spawn("test").await;
-    let (tl, token) = setup(&app).await;
-    let res = app
-        .http
-        .post(app.url(&format!("/ping/{token}/fail")))
-        .body(format!("disk full\n{}", "x".repeat(120 * 1024)))
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(res.status(), 200, "cut, never refused");
-    assert_eq!(state_label(&app, &tl).await, "Down");
-    assert_eq!(
-        count(
-            &app,
-            "SELECT count(*) FROM pings WHERE length(cause) = 1024 AND cause LIKE 'disk full%'"
-        )
-        .await,
-        1
-    );
-}
-
-#[tokio::test]
 async fn an_unknown_token_is_answered_before_its_body_is_read() {
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
     let app = TestApp::spawn("test").await;
@@ -279,30 +256,18 @@ async fn an_unknown_token_is_answered_before_its_body_is_read() {
 }
 
 #[tokio::test]
-async fn an_unknown_token_with_a_whole_body_gets_a_clean_404() {
-    let app = TestApp::spawn("test").await;
-    let res = app
-        .http
-        .post(app.url("/ping/nosuchtoken/fail"))
-        .body("x".repeat(64 * 1024))
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(res.status(), 404);
-}
-
-#[tokio::test]
-async fn a_fail_body_past_128_kib_is_cut_and_heard() {
+async fn a_fail_body_of_megabytes_is_read_to_its_end_and_answered() {
     let app = TestApp::spawn("test").await;
     let (tl, token) = setup(&app).await;
     let res = app
         .http
         .post(app.url(&format!("/ping/{token}/fail")))
-        .body(format!("disk full\n{}", "x".repeat(200 * 1024)))
+        // Megabytes past the kept 1 KB: an unread rest can reach the client as a reset.
+        .body(format!("disk full\n{}", "x".repeat(4 * 1024 * 1024)))
         .send()
         .await
         .unwrap();
-    assert_eq!(res.status(), 200, "cut, never 413");
+    assert_eq!(res.status(), 200, "cut, never 413 or a reset");
     assert_eq!(state_label(&app, &tl).await, "Down");
     assert_eq!(
         count(

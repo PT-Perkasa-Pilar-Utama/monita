@@ -7,12 +7,14 @@ use monita::checks::{self, MonitorInput};
 
 async fn setup(app: &TestApp) -> String {
     let tl = app.tl("rina@x.co").await;
-    app.post_form(
-        "/projects",
-        &[("name", "Payments"), ("slug", "payments")],
-        Some(&tl),
-    )
-    .await;
+    let res = app
+        .post_form(
+            "/projects",
+            &[("name", "Payments"), ("slug", "payments")],
+            Some(&tl),
+        )
+        .await;
+    assert_eq!(res.status(), 303, "the project exists");
     let m = MonitorInput {
         name: "API".into(),
         url: "https://x.invalid/".into(),
@@ -31,9 +33,11 @@ async fn error_for(app: &TestApp, tl: &str, form: &[(&str, &str)]) -> String {
 }
 
 #[tokio::test]
-async fn items_come_before_severity_and_severity_before_the_message() {
+async fn title_then_items_then_severity_then_message() {
     let app = TestApp::spawn("test").await;
     let tl = setup(&app).await;
+    let no_title = error_for(&app, &tl, &[("severity", "bogus")]).await;
+    assert!(no_title.contains("Enter a title."));
     let no_items = error_for(&app, &tl, &[("title", "Slow"), ("severity", "bogus")]).await;
     assert!(no_items.contains("Pick at least one monitor or heartbeat."));
     let bad_severity = error_for(
