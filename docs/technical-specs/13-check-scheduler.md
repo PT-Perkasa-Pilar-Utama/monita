@@ -18,7 +18,7 @@ One loop drives every timed job in Monita: monitor checks, heartbeat deadlines, 
 | New heartbeat | `deadline_at = created_at + period_s + grace_s` | A job that never pings still alerts. |
 | Daily jobs | Run when the UTC hour has passed and `settings.last_<job>_day` is not today. A failed job waits 10 minutes, then runs again. A rerun is safe: the digest moves its ticket watermark in the same transaction that queues its emails, so a rerun after a failed day marker sends nothing new; a backup only overwrites that day's file; a prune failure is logged and does not fail the backup. | One loop, no cron crate |
 | Liveness | An `AtomicI64` holds the last tick time. `/healthz` reads it. | T5 |
-| Reset safety | Each tick holds one shared read guard on `AppState.gate` until its probes finish writing; reset-state takes the write guard. | No stale result lands after a reset. |
+| Reset safety | Each tick holds one shared read guard on `AppState.gate` until its probes finish writing. A ping holds one while it is stored. Reset-state takes the write guard. | No stale result lands after a reset. |
 
 ## 13.2 Tick
 
@@ -53,7 +53,7 @@ every 1 s:
 
 - Probes never hold a DB transaction open while waiting on the network.
 - One write transaction per check result. Turso runs one writer at a time, so writes are short.
-- On shutdown (SIGTERM) the HTTP server stops, then Monita takes the write side of `AppState.gate`. The loop stops claiming, because its next tick waits behind that guard. Running probes, a delivery pass, daily jobs and a ping being stored hold read guards, so Monita waits up to 10 s for them, then exits.
+- On shutdown (SIGTERM) the HTTP server stops, then Monita takes the write side of `AppState.gate`. The loop stops claiming, because its next tick waits behind that guard. Running probes, a delivery pass, daily jobs and a ping being stored hold read guards. Monita waits up to 10 s for them, then exits.
 
 ## 13.5 Contract it produces
 

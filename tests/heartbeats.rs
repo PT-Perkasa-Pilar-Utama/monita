@@ -306,8 +306,9 @@ async fn a_fail_is_stored_while_the_rest_of_its_body_still_uploads() {
     drop(tcp);
 }
 
-/// Sends `request` while the writer is held, hangs up, and returns the `pings` rows of `kind`.
-async fn stored_after_hang_up(app: &TestApp, request: String, kind: &str) -> i64 {
+/// Sends `request` while the writer is held, hangs up, and returns the `pings` rows that match
+/// `filter`.
+async fn stored_after_hang_up(app: &TestApp, request: String, filter: &str) -> i64 {
     use tokio::io::AsyncWriteExt;
     // Hold the writer, so the client is gone while `record` waits for it.
     let db = app.state.db.clone();
@@ -326,7 +327,7 @@ async fn stored_after_hang_up(app: &TestApp, request: String, kind: &str) -> i64
     tokio::time::sleep(Duration::from_millis(100)).await;
     drop(tcp);
     held.await.unwrap().unwrap();
-    let stored = format!("SELECT count(*) FROM pings WHERE kind = '{kind}'");
+    let stored = format!("SELECT count(*) FROM pings WHERE {filter}");
     let mut found = 0;
     for _ in 0..100 {
         found = count(app, &stored).await;
@@ -345,28 +346,62 @@ async fn a_ping_whose_client_hangs_up_is_still_stored_on_both_routes() {
     let fail = format!(
         "POST /ping/{token}/fail HTTP/1.1\r\nHost: x\r\nContent-Length: 9\r\n\r\ndisk full"
     );
-    assert_eq!(stored_after_hang_up(&app, fail, "fail").await, 1, "/fail");
+    assert_eq!(
+        stored_after_hang_up(&app, fail, "kind = 'fail' AND cause = 'disk full'").await,
+        1,
+        "/fail"
+    );
     let ok = format!("GET /ping/{token} HTTP/1.1\r\nHost: x\r\n\r\n");
-    assert_eq!(stored_after_hang_up(&app, ok, "ok").await, 1, "/ping");
+    assert_eq!(
+        stored_after_hang_up(&app, ok, "kind = 'ok'").await,
+        1,
+        "/ping"
+    );
 }
 
 #[tokio::test]
-async fn reset_state_and_shutdown_wait_for_a_ping_being_stored() {
+async fn shutdown_waits_for_a_ping_being_stored() {
     let app = TestApp::spawn("test").await;
     let (_tl, token) = setup(&app).await;
-    let closed = app.state.gate.clone().write_owned().await;
+    let db = app.state.db.clone();
+    let held = tokio::spawn(async move {
+        db.write(async |_| {
+            tokio::time::sleep(Duration::from_millis(600)).await;
+            Ok(())
+        })
+        .await
+    });
+    tokio::time::sleep(Duration::from_millis(50)).await;
     let url = app.url(&format!("/ping/{token}"));
     let http = app.http.clone();
     let sent = tokio::spawn(async move { http.get(url).send().await.unwrap().status() });
+    // The ping now waits on the writer inside `record`, holding its read guard.
     tokio::time::sleep(Duration::from_millis(200)).await;
-    assert_eq!(
-        count(&app, "SELECT count(*) FROM pings").await,
-        0,
-        "held at the gate"
-    );
-    drop(closed);
+    let early = monita::app::drain(&app.state.gate, Duration::from_millis(100)).await;
+    assert!(early.is_none(), "drain waits for the store");
+    held.await.unwrap().unwrap();
     assert_eq!(sent.await.unwrap(), 200);
-    assert_eq!(count(&app, "SELECT count(*) FROM pings").await, 1);
+    let late = monita::app::drain(&app.state.gate, Duration::from_secs(2)).await;
+    assert!(late.is_some());
+}
+
+#[tokio::test]
+async fn shutdown_does_not_wait_for_a_ping_body_upload() {
+    use tokio::io::AsyncWriteExt;
+    let app = TestApp::spawn("test").await;
+    let (_tl, token) = setup(&app).await;
+    let addr = app.base.trim_start_matches("http://").to_string();
+    let mut tcp = tokio::net::TcpStream::connect(addr).await.unwrap();
+    let head = format!(
+        "POST /ping/{token}/fail HTTP/1.1\r\nHost: x\r\nContent-Length: 100000\r\n\r\ndisk"
+    );
+    tcp.write_all(head.as_bytes()).await.unwrap();
+    // The cause read now waits for the rest of a stalled upload.
+    tokio::time::sleep(Duration::from_millis(200)).await;
+    let held = monita::app::drain(&app.state.gate, Duration::from_millis(500)).await;
+    assert!(held.is_some(), "an upload holds no guard");
+    drop(held);
+    drop(tcp);
 }
 
 #[tokio::test]

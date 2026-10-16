@@ -25,8 +25,8 @@ pub struct AppState {
     pub mailer: Mailer,
     pub http: crate::checks::Clients,
     pub limiter: Arc<crate::platform::rate_limit::Limiter>,
-    /// Background work holds a read guard; reset-state and shutdown take the write guard, so
-    /// neither races a check, a delivery or a daily job that is mid-write.
+    /// Background work and a ping being stored hold a read guard; reset-state and shutdown take
+    /// the write guard, so neither races a check, a delivery, a daily job or a ping mid-write.
     pub gate: Arc<tokio::sync::RwLock<()>>,
 }
 
@@ -142,8 +142,8 @@ async fn scheduler_died(
     }
 }
 
-/// Waits up to `limit` for every probe, delivery pass and daily job to finish, and returns the
-/// write guard that keeps new ones from starting.
+/// Waits up to `limit` for every probe, delivery pass, daily job and ping store to finish, and
+/// returns the write guard that keeps new ones from starting.
 pub async fn drain(
     gate: &Arc<tokio::sync::RwLock<()>>,
     limit: std::time::Duration,
