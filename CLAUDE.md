@@ -85,7 +85,7 @@ make check      # cargo fmt --check, clippy -D warnings, cargo test --lib, cargo
 make e2e        # when a page or API changed: debug build, Playwright, server stopped at the end
 ```
 
-`make release-check` adds the 5-minute LTO build. No CI exists yet: run `make release-check` and `cargo deny check` by hand before a release.
+`make release-check` adds the 5-minute LTO build. CI (`.github/workflows/ci.yml`) runs `make check`, cargo-deny, `make e2e`, and the musl release on main.
 
 ## Code discovery protocol
 
