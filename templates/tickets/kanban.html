@@ -1,0 +1,23 @@
+{% extends "layout/app.html" %}
+{% import "ui/macros.html" as ui %}
+{% block title %}Tickets · {{ project.name }} · Monita{% endblock %}
+{% block crumbs %}<span>{{ project.name }}</span><span class="subtle">/</span><strong>Tickets</strong>{% endblock %}
+{% block actions %}<a class="btn btn--ghost btn--sm" href="/status/{{ project.slug }}/tickets">Public board</a>{% endblock %}
+{% block content %}
+<div class="page-head"><div><span class="cap">{{ tickets.len() }} tickets · Triage stays private</span><h1>Tickets</h1></div></div>
+{% if tickets.is_empty() %}
+<section class="panel">{% call ui::empty("No tickets yet", "Project users report bugs with a ref ID from your system, through the API or the form at /status/" ~ project.slug ~ "/report.") %}{% endcall %}</section>
+{% else %}
+<div class="board">
+{% for (key, label) in self.columns() %}
+  {% let cards = self.column(key) %}
+  <div class="board__col">
+    <div class="board__head">{% call ui::st(self.ring(key)) %}{% endcall %}{{ label }}<span class="board__count">{{ cards.len() }}</span></div>
+    {% for t in cards %}
+    <a class="card" href="/projects/{{ project.slug }}/tickets/{{ t.number }}"><span class="cap">#{{ t.number }}{% if let Some(r) = t.close_reason %} · {{ self.reason(r) }}{% endif %}</span><span class="card__title">{{ t.title }}</span><div class="card__meta"><span class="cap">{% if t.public_title.is_some() %}public title set{% endif %}</span><span class="cap">{{ self.ago(t.updated_at) }}</span></div></a>
+    {% endfor %}
+  </div>
+{% endfor %}
+</div>
+{% endif %}
+{% endblock %}

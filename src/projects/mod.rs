@@ -82,6 +82,11 @@ pub async fn list_for(db: &Db, user: &User) -> anyhow::Result<Vec<Project>> {
     }
 }
 
+/// Every project, for jobs that run across projects (the digest).
+pub async fn all(db: &Db) -> anyhow::Result<Vec<Project>> {
+    store::list_all(&db.read().await?).await
+}
+
 pub fn can_manage(user: &User, project: &Project) -> bool {
     user.is_admin() || project.owner_id == user.id
 }

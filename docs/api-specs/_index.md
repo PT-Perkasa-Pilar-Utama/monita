@@ -17,8 +17,8 @@ Legend: `OK` implemented and tested, `WIP` in progress, `TODO` not started, `SCA
 | Operation | File | Status |
 | --- | --- | --- |
 | `POST /api/v1/ref-ids` | [08](08-tickets.md#81-post-apiv1ref-ids) | OK |
-| `POST /api/v1/tickets` | [08](08-tickets.md#82-post-apiv1tickets) | TODO |
-| `GET /api/v1/tickets/mine` | [08](08-tickets.md#83-get-apiv1ticketsmine) | TODO |
+| `POST /api/v1/tickets` | [08](08-tickets.md#82-post-apiv1tickets) | OK |
+| `GET /api/v1/tickets/mine` | [08](08-tickets.md#83-get-apiv1ticketsmine) | OK |
 | `GET /api/v1/public/status/{slug}` | [07](07-status.md#71-get-apiv1publicstatusslug) | OK |
 | `GET, HEAD, POST /ping/{token}` | [04](04-checks.md#41-get-head-post-pingtoken) | OK |
 | `GET, HEAD, POST /ping/{token}/fail` | [04](04-checks.md#42-get-head-post-pingtokenfail) | OK |
@@ -35,7 +35,7 @@ Legend: `OK` implemented and tested, `WIP` in progress, `TODO` not started, `SCA
 | Incidents | [05](05-incidents.md) | OK |
 | Alert routes | [06](06-notify.md) | OK |
 | Status page | [07](07-status.md#72-html-routes) | OK |
-| Tickets kanban, public board, ticket form | [08](08-tickets.md#84-html-routes) | TODO |
+| Tickets kanban, public board, ticket form | [08](08-tickets.md#84-html-routes) | OK |
 
 ## Files in This Directory
 

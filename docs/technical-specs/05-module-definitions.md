@@ -76,7 +76,7 @@ Each module owns its tables (see [06](06-data-model.md)). Other modules use only
 
 ## 5.7 tickets
 
-**Responsibility:** ref IDs, tickets, kanban, the public board, the reporter view. Serves US-23 to US-29. Calls `notify::send(Event::TicketCreated)` for the webhook. The digest reads tickets through `tickets::new_in_triage_since(project, t)`.
+**Responsibility:** ref IDs, tickets, kanban, the public board, the reporter view. Serves US-23 to US-29. Calls `notify::send_ticket` inside the submit transaction for the webhook. The digest reads tickets through `tickets::new_in_triage_after(project, ticket_id)`. Ticket numbers are `max + 1` per project inside the writer transaction. The public board filters Triage in SQL and again in the template (SEC-14, two layers on purpose).
 
 | Item | Contract |
 | --- | --- |

@@ -37,7 +37,7 @@ AC-14.01 completed in Sprint 2 with US-17.
 5. US-33: Back up every night (Super admin)
 6. US-34: Watch Monita from outside (Super admin)
 
-## Sprint 4: Tickets
+## Sprint 4: Tickets (done 2026-10-16)
 
 1. US-23: Get a ref ID (Project backend)
 2. US-24: Submit a ticket (Reporter)

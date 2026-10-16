@@ -1,9 +1,52 @@
-//! tickets module: ref IDs, tickets, kanban, public board.
-//! Spec: docs/technical-specs/05-module-definitions.md section 5.7.
+//! tickets module: ref IDs, tickets, kanban, public board, the reporter's view.
+//! Spec: docs/technical-specs/05-module-definitions.md section 5.7, api-specs 08.
 
 pub mod routes;
+mod store;
 
-use crate::platform::{db::Db, token};
+use crate::platform::{db::Db, now, settings, token};
+
+pub use store::{MyTicket, PublicTicket, TicketRow};
+
+pub const STAGES: [(&str, &str); 4] = [
+    ("triage", "Triage"),
+    ("backlog", "Backlog"),
+    ("in_progress", "In progress"),
+    ("done", "Done"),
+];
+pub const CLOSE_REASONS: [(&str, &str); 3] = [
+    ("fixed", "Fixed"),
+    ("wont_fix", "Won't fix"),
+    ("duplicate", "Duplicate"),
+];
+
+pub fn stage_label(s: &str) -> &'static str {
+    STAGES
+        .iter()
+        .find(|(k, _)| *k == s)
+        .map_or("Unknown", |(_, l)| l)
+}
+
+pub fn reason_label(s: &str) -> &'static str {
+    CLOSE_REASONS
+        .iter()
+        .find(|(k, _)| *k == s)
+        .map_or("", |(_, l)| l)
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum TicketError {
+    #[error("{0}")]
+    Invalid(&'static str),
+    #[error("This ref ID is unknown, revoked or already used.")]
+    RefIdInvalid,
+    #[error("The daily ticket limit is reached. Try again tomorrow.")]
+    DailyCap,
+    #[error("Pick a close reason.")]
+    NeedReason,
+    #[error(transparent)]
+    Other(#[from] anyhow::Error),
+}
 
 /// US-23: returns the raw ref ID once. Only its hash is stored.
 pub async fn issue_ref_id(
@@ -13,15 +56,217 @@ pub async fn issue_ref_id(
 ) -> anyhow::Result<(String, i64)> {
     let raw = format!("rf_{}", token::random_token());
     let hash = token::hash(&raw);
-    let created_at = db
-        .write(async |c| {
-            c.execute(
-                "INSERT INTO ref_ids (project_id, token_hash, single_use) VALUES (?1, ?2, ?3)",
-                (project_id, hash.as_str(), single_use),
-            )
-            .await?;
-            Ok(crate::platform::now())
-        })
+    let t = now();
+    db.write(async |c| store::insert_ref(c, project_id, &hash, single_use, t).await)
         .await?;
-    Ok((raw, created_at))
+    Ok((raw, t))
+}
+
+pub struct NewTicket {
+    pub title: String,
+    pub description: String,
+    pub page_url: Option<String>,
+}
+
+impl NewTicket {
+    pub fn validate(&self) -> Result<(), TicketError> {
+        let title = self.title.trim().chars().count();
+        if !(3..=120).contains(&title) {
+            return Err(TicketError::Invalid("The title needs 3 to 120 characters."));
+        }
+        let desc = self.description.trim().chars().count();
+        if !(1..=10_000).contains(&desc) {
+            return Err(TicketError::Invalid(
+                "The description needs 1 to 10 000 characters.",
+            ));
+        }
+        if let Some(u) = &self.page_url
+            && (u.len() > 2_000 || !(u.starts_with("http://") || u.starts_with("https://")))
+        {
+            return Err(TicketError::Invalid(
+                "The page URL must start with http:// or https://.",
+            ));
+        }
+        Ok(())
+    }
+}
+
+pub struct Created {
+    pub project_id: i64,
+    pub number: i64,
+    pub created_at: i64,
+}
+
+/// US-24. Order of checks: fields, then the ref ID (and, from a project's own form, that it
+/// belongs to that project), then the daily caps, so a revoked ID never learns the volume.
+/// One transaction: caps, numbering, insert, the single-use mark and the ticket webhook.
+pub async fn submit(
+    db: &Db,
+    base_url: &str,
+    only_project: Option<i64>,
+    ref_raw: &str,
+    t: &NewTicket,
+) -> Result<Created, TicketError> {
+    t.validate()?;
+    let hash = token::hash(ref_raw.trim());
+    let now = now();
+    let today = now - now.rem_euclid(86_400);
+    db.write(async |c| {
+        let Some(r) = store::find_ref(c, &hash).await? else {
+            return Ok(Err(TicketError::RefIdInvalid));
+        };
+        if r.revoked_at.is_some()
+            || (r.single_use && r.used_at.is_some())
+            || only_project.is_some_and(|p| p != r.project_id)
+        {
+            return Ok(Err(TicketError::RefIdInvalid));
+        }
+        let per_ref = settings::get(c, "tickets_per_ref_per_day").await?;
+        let per_project = settings::get(c, "tickets_per_project_per_day").await?;
+        if store::count_since_for_ref(c, r.id, today).await? >= per_ref
+            || store::count_since_for_project(c, r.project_id, today).await? >= per_project
+        {
+            return Ok(Err(TicketError::DailyCap));
+        }
+        let number = store::insert_ticket(c, r.project_id, r.id, t, now).await?;
+        if r.single_use {
+            store::use_ref(c, r.id, now).await?;
+        }
+        crate::notify::send_ticket(c, r.project_id, number, t.title.trim(), base_url).await?;
+        Ok(Ok(Created {
+            project_id: r.project_id,
+            number,
+            created_at: now,
+        }))
+    })
+    .await?
+}
+
+/// US-29: a reporter's tickets by ref ID, also after revocation or single use. No descriptions.
+pub async fn mine(
+    db: &Db,
+    ref_raw: &str,
+    only_project: Option<i64>,
+) -> Result<Vec<MyTicket>, TicketError> {
+    let conn = db.read().await?;
+    let Some(r) = store::find_ref(&conn, &token::hash(ref_raw.trim())).await? else {
+        return Err(TicketError::RefIdInvalid);
+    };
+    if only_project.is_some_and(|p| p != r.project_id) {
+        return Err(TicketError::RefIdInvalid);
+    }
+    Ok(store::by_ref(&conn, r.id).await?)
+}
+
+pub async fn board(db: &Db, project_id: i64) -> anyhow::Result<Vec<TicketRow>> {
+    store::board(&db.read().await?, project_id).await
+}
+
+/// US-28: tickets out of Triage, public fields only (SEC-14).
+pub async fn public_board(db: &Db, project_id: i64) -> anyhow::Result<Vec<PublicTicket>> {
+    store::public_board(&db.read().await?, project_id).await
+}
+
+pub async fn find(db: &Db, project_id: i64, number: i64) -> anyhow::Result<Option<TicketRow>> {
+    store::find(&db.read().await?, project_id, number).await
+}
+
+/// US-25. Done needs a close reason; leaving Done clears it.
+pub async fn move_stage(
+    db: &Db,
+    project_id: i64,
+    number: i64,
+    stage: &str,
+    reason: Option<&str>,
+) -> Result<bool, TicketError> {
+    if !STAGES.iter().any(|(k, _)| *k == stage) {
+        return Err(TicketError::Invalid("Pick a column."));
+    }
+    let reason = if stage == "done" {
+        match reason.filter(|r| CLOSE_REASONS.iter().any(|(k, _)| k == r)) {
+            Some(r) => Some(r),
+            None => return Err(TicketError::NeedReason),
+        }
+    } else {
+        None
+    };
+    let t = now();
+    Ok(db
+        .write(async |c| store::set_stage(c, project_id, number, stage, reason, t).await)
+        .await?)
+}
+
+/// US-26. An empty title clears it; the public board then shows the reporter's title.
+pub async fn set_public_title(
+    db: &Db,
+    project_id: i64,
+    number: i64,
+    title: &str,
+) -> Result<bool, TicketError> {
+    let title = title.trim();
+    if title.chars().count() > 120 {
+        return Err(TicketError::Invalid(
+            "The public title needs at most 120 characters.",
+        ));
+    }
+    let t = now();
+    let value = (!title.is_empty()).then_some(title);
+    Ok(db
+        .write(async |c| store::set_public_title(c, project_id, number, value, t).await)
+        .await?)
+}
+
+/// US-27. The tickets stay; only new submissions stop.
+pub async fn revoke_ref(db: &Db, project_id: i64, number: i64) -> anyhow::Result<bool> {
+    let t = now();
+    db.write(async |c| store::revoke_ref_of(c, project_id, number, t).await)
+        .await
+}
+
+/// US-30: tickets still in Triage with an id above `after_id`, for the digest. An id
+/// watermark, not a time, so a ticket written in the digest's own second is neither lost nor repeated.
+pub async fn new_in_triage_after(
+    c: &turso::Connection,
+    project_id: i64,
+    after_id: i64,
+) -> anyhow::Result<Vec<(i64, String)>> {
+    store::new_in_triage_after(c, project_id, after_id).await
+}
+
+pub async fn max_id(c: &turso::Connection) -> anyhow::Result<i64> {
+    store::max_id(c).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn t(title: &str, desc: &str, url: Option<&str>) -> NewTicket {
+        NewTicket {
+            title: title.into(),
+            description: desc.into(),
+            page_url: url.map(str::to_owned),
+        }
+    }
+
+    #[test]
+    fn validation_limits() {
+        assert!(
+            t("Checkout broken", "Nothing happens", None)
+                .validate()
+                .is_ok()
+        );
+        assert!(t("ab", "x", None).validate().is_err());
+        assert!(t("Fine title", " ", None).validate().is_err());
+        assert!(
+            t("Fine title", "x", Some("javascript:alert(1)"))
+                .validate()
+                .is_err()
+        );
+        assert!(
+            t("Fine title", "x", Some("https://shop.example/cart"))
+                .validate()
+                .is_ok()
+        );
+    }
 }

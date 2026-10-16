@@ -12,6 +12,7 @@
       <a href="/projects/{{ p.slug }}/monitors"{% if shell.active == "monitors" %} aria-current="page"{% endif %}>{% call ui::icon("monitor") %}{% endcall %}Monitors</a>
       <a href="/projects/{{ p.slug }}/heartbeats"{% if shell.active == "heartbeats" %} aria-current="page"{% endif %}>{% call ui::icon("heartbeat") %}{% endcall %}Heartbeats</a>
       <a href="/projects/{{ p.slug }}/incidents"{% if shell.active == "incidents" %} aria-current="page"{% endif %}>{% call ui::icon("incident") %}{% endcall %}Incidents</a>
+      <a href="/projects/{{ p.slug }}/tickets"{% if shell.active == "tickets" %} aria-current="page"{% endif %}>{% call ui::icon("ticket") %}{% endcall %}Tickets</a>
       <a href="/projects/{{ p.slug }}/alerts"{% if shell.active == "alerts" %} aria-current="page"{% endif %}>{% call ui::icon("bell") %}{% endcall %}Alerts</a>
       <a href="/projects/{{ p.slug }}/settings"{% if shell.active == "settings" %} aria-current="page"{% endif %}>{% call ui::icon("settings") %}{% endcall %}Settings</a>
       {% else %}

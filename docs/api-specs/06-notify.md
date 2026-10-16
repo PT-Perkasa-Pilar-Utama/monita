@@ -31,7 +31,7 @@ Fields: [../technical-specs/06-data-model.md section 6.3.6](../technical-specs/0
 | --- | --- | --- |
 | `incident.opened` | Incident opens | AC-16.01 |
 | `incident.resolved` | Incident closes. Adds `duration_s`. | AC-16.02 |
-| `ticket.created` | Ticket submitted. Warning route only. Adds `ticket_number` and `title`. | AC-30.03 |
+| `ticket.created` | Ticket submitted, when the warning route's webhook is on. Adds `ticket_number`, `title` and `ticket_url`; `text` reads `[TICKET] Payments #17: <title>`. | AC-30.03 |
 | `test` | Test button | |
 
 ## 6.3 Outgoing email
@@ -43,4 +43,4 @@ Fields: [../technical-specs/06-data-model.md section 6.3.6](../technical-specs/0
 | Digest | `[Monita] Payments: 3 new tickets` |
 | Invite | `You are invited to Monita` |
 
-Plain text body with the cause and the incident link (AC-16.01). The digest lists ticket number, title and link (AC-30.01), and is not sent when there are no new tickets (AC-30.02).
+Plain text body with the cause and the incident link (AC-16.01). The digest goes to the project owner. It lists number, title and link of tickets created after the previous digest (a ticket-id watermark in `settings`) and still in Triage (AC-30.01), never the description, and is not sent when there are none (AC-30.02). It runs once a day at `MONITA_DIGEST_UTC_HOUR`.

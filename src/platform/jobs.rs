@@ -66,5 +66,13 @@ async fn run_due(state: &AppState, t: i64) -> anyhow::Result<()> {
         super::backup::run(state, t).await?;
         done(state, &BACKUP, t).await?;
     }
+    let digest = Job {
+        name: "digest",
+        at_s: i64::from(state.config.digest_utc_hour) * 3_600,
+    };
+    if due(state, &digest, t).await? {
+        crate::notify::digest(&state.db, &state.config.base_url, t).await?;
+        done(state, &digest, t).await?;
+    }
     Ok(())
 }

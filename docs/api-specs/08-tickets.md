@@ -69,13 +69,17 @@ Output 200:
 
 The reporter sees their original title. The description is not returned.
 
-## 8.4 HTML routes
+## 8.4 CORS preflight
+
+`OPTIONS /api/v1/tickets` and `OPTIONS /api/v1/tickets/mine` answer 204 with `Access-Control-Allow-Origin: *`, `Allow-Methods: GET, POST, OPTIONS`, `Allow-Headers: content-type, x-ref-id` and `Max-Age: 86400`. Preflights do not count against the per-IP limit.
+
+## 8.5 HTML routes
 
 | Method | Path | Access | Input | Behavior | AC |
 | --- | --- | --- | --- | --- | --- |
 | GET | `/status/{slug}/report` | public | | Ticket form | AC-24.01 |
 | POST | `/status/{slug}/report` | public, 60/min per IP | `ref_id`, `title`, `description`, `page_url` | Same rules as 8.2. The ref ID must belong to this project. | AC-24.01, AC-24.03 to AC-24.05 |
-| GET | `/status/{slug}/mine` | public | form with `ref_id` (POST) | Same data as 8.3 | AC-29.01 |
+| GET, POST | `/status/{slug}/mine` | public | GET shows the form; POST takes `ref_id` | Same data as 8.3. The ref ID must belong to this project. | AC-29.01 |
 | GET | `/status/{slug}/tickets` | public | | Public board: stages Backlog, In progress, Done. Fields: number, public title or title, stage, created, updated. | AC-28.01, AC-28.02, AC-26.01 |
 | GET | `/projects/{slug}/tickets` | owner, super_admin | | Kanban: Triage, Backlog, In progress, Done | AC-25.01 |
 | GET | `/projects/{slug}/tickets/{number}` | owner, super_admin | | Full ticket, including description and ref ID prefix | |

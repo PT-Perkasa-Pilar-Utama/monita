@@ -72,7 +72,7 @@ pub async fn per_ip(
     req: axum::extract::Request,
     next: axum::middleware::Next,
 ) -> axum::response::Response {
-    if !ip_limited(req.method(), req.uri().path()) {
+    if req.method() == axum::http::Method::OPTIONS || !ip_limited(req.method(), req.uri().path()) {
         return next.run(req).await;
     }
     let peer = req

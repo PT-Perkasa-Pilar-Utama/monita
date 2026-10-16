@@ -1,0 +1,46 @@
+{% extends "layout/app.html" %}
+{% import "ui/macros.html" as ui %}
+{% block title %}#{{ ticket.number }} {{ ticket.title }} · Monita{% endblock %}
+{% block crumbs %}<span>{{ project.name }}</span><span class="subtle">/</span><a class="link-quiet" href="/projects/{{ project.slug }}/tickets">Tickets</a><span class="subtle">/</span><strong>#{{ ticket.number }}</strong>{% endblock %}
+{% block content %}
+<div class="page-head"><div><span class="cap">#{{ ticket.number }} · {{ crate::tickets::stage_label(ticket.stage) }}</span><h1>{{ ticket.title }}</h1></div></div>
+{% if !error.is_empty() %}{% call ui::notice("error", error) %}{% endcall %}{% endif %}
+<div class="cols">
+  <section class="panel">
+    <div class="panel__head"><h2>Report</h2><span class="cap">private</span></div>
+    <div class="panel__body stack">
+      <p>{{ ticket.description }}</p>
+      <dl class="kv">
+        {% if let Some(u) = ticket.page_url %}<dt>Page</dt><dd class="mono">{{ u }}</dd>{% endif %}
+        <dt>Reported</dt><dd>{{ self.utc(ticket.created_at) }}</dd>
+        <dt>Updated</dt><dd>{{ self.utc(ticket.updated_at) }}</dd>
+        <dt>Ref ID</dt><dd>{% if ticket.ref_revoked %}Revoked{% else %}Active{% endif %}</dd>
+      </dl>
+      {% if !ticket.ref_revoked %}
+      <form method="post" action="/projects/{{ project.slug }}/tickets/{{ ticket.number }}/revoke-ref"><button class="btn btn--danger btn--sm" type="submit">Revoke this reporter's ref ID</button></form>
+      {% endif %}
+    </div>
+  </section>
+  <section class="panel">
+    <div class="panel__head"><h2>Board</h2></div>
+    <div class="panel__body stack">
+      <form class="form" method="post" action="/projects/{{ project.slug }}/tickets/{{ ticket.number }}/stage">
+        <div class="field__row">
+          <div class="field"><label class="label" for="stage">Column</label>
+            <select class="select" id="stage" name="stage">{% for (k, l) in self.stages() %}<option value="{{ k }}"{% if *k == ticket.stage %} selected{% endif %}>{{ l }}</option>{% endfor %}</select>
+          </div>
+          <div class="field"><label class="label" for="close_reason">Close reason</label>
+            <select class="select" id="close_reason" name="close_reason"><option value="">Only for Done</option>{% for (k, l) in self.reasons() %}<option value="{{ k }}"{% if ticket.close_reason.as_deref() == Some(*k) %} selected{% endif %}>{{ l }}</option>{% endfor %}</select>
+          </div>
+        </div>
+        <p class="help">Outside Triage the ticket is public as: <strong>{{ self.public_shown() }}</strong></p>
+        <div class="form__actions"><button class="btn btn--primary" type="submit">Move ticket</button></div>
+      </form>
+      <form class="form" method="post" action="/projects/{{ project.slug }}/tickets/{{ ticket.number }}/public-title">
+        {% call ui::input("public_title", "public_title", "Public title", "text", ticket.public_title.as_deref().unwrap_or(""), "", "Rewrite the title if it holds personal data. Empty shows the reporter's title.") %}{% endcall %}
+        <div class="form__actions"><button class="btn" type="submit">Save public title</button></div>
+      </form>
+    </div>
+  </section>
+</div>
+{% endblock %}
