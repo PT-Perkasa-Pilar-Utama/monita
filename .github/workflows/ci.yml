@@ -85,7 +85,6 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 2
           persist-credentials: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
@@ -101,26 +100,13 @@ jobs:
           path: .e2e-pass
           key: ${{ steps.key.outputs.key }}
           lookup-only: true
-      - name: same inputs as the base?
-        id: base
-        if: github.event_name == 'pull_request'
-        env:
-          KEY: ${{ steps.key.outputs.key }}
-        run: |
-          git worktree add -q ../base HEAD^1
-          base="e2e-pass-$E2E_SHARD-$(cd ../base && bun e2e/lib/shard-key.ts "$E2E_SHARD" || echo none)"
-          if [ "$base" = "$KEY" ]; then echo "same=true" >> "$GITHUB_OUTPUT"; else echo "same=false" >> "$GITHUB_OUTPUT"; fi
       - name: run this shard?
         id: run
         env:
           HIT: ${{ steps.passed.outputs.cache-hit }}
-          SAME: ${{ steps.base.outputs.same }}
         run: |
           if [ "$HIT" = "true" ]; then
             echo "::notice::$E2E_SHARD passed before on these inputs; skipped."
-            echo "run=false" >> "$GITHUB_OUTPUT"
-          elif [ "$SAME" = "true" ]; then
-            echo "::notice::$E2E_SHARD reads nothing this pull request changed; skipped."
             echo "run=false" >> "$GITHUB_OUTPUT"
           else
             echo "run=true" >> "$GITHUB_OUTPUT"
@@ -164,14 +150,19 @@ jobs:
           path: .e2e-pass
           key: ${{ steps.key.outputs.key }}
 
-  # A branch rule can require this one name; the shards answer through it.
+  # A branch rule can require this one name; the shards answer through it. A skipped e2e passes
+  # only when nothing but docs changed and the check job passed; a failed check also skips e2e.
   e2e-result:
     name: browser end-to-end
     if: always()
     runs-on: ubuntu-latest
-    needs: e2e
+    needs: [e2e, check, changes]
     steps:
       - name: every shard passed
         env:
-          RESULT: ${{ needs.e2e.result }}
-        run: test "$RESULT" = "success" || test "$RESULT" = "skipped"
+          E2E: ${{ needs.e2e.result }}
+          CHECK: ${{ needs.check.result }}
+          CODE: ${{ needs.changes.outputs.code }}
+        run: |
+          test "$E2E" = "success" && exit 0
+          test "$E2E" = "skipped" && test "$CHECK" = "success" && test "$CODE" = "false"
