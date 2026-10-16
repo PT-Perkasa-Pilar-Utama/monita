@@ -261,7 +261,6 @@ pub async fn post_update(
         .await?)
 }
 
-/// US-20. A manual incident starts with an Investigating update.
 /// A manual incident as the TL fills it in (US-20).
 pub struct NewIncident {
     pub project_id: i64,
@@ -272,6 +271,7 @@ pub struct NewIncident {
     pub author: i64,
 }
 
+/// US-20. A manual incident starts with an Investigating update.
 pub async fn open_manual(db: &Db, n: &NewIncident, now: i64) -> Result<i64, UpdateError> {
     if n.title.trim().is_empty() {
         return Err(UpdateError::EmptyTitle);

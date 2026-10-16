@@ -78,7 +78,7 @@ pub async fn load(db: &Db, slug: &str, days: usize) -> anyhow::Result<Option<Sta
         return Ok(None);
     };
     let t = now();
-    let first_day = t - t.rem_euclid(86_400) - (days as i64 - 1) * 86_400;
+    let first_day = crate::platform::time::day_start(t) - (days as i64 - 1) * 86_400;
     let public = checks::public_items(db, project.id).await?;
     let states = incidents::states_for(db, project.id).await?;
     let intervals = history::intervals(db, project.id, first_day, t).await?;

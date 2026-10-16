@@ -16,11 +16,12 @@ use crate::{
     accounts::CurrentUser,
     app::AppState,
     platform::{
+        api_error,
         page::{PageError, Shell},
         render::render,
         time,
     },
-    projects::{self, ApiProject, Project, api_error},
+    projects::{self, ApiProject, Project},
 };
 
 pub fn router() -> Router<AppState> {

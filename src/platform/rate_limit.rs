@@ -50,20 +50,14 @@ pub fn ip_limited(method: &axum::http::Method, path: &str) -> bool {
 /// it carries `Access-Control-Allow-Origin: *`, so a browser caller can read the 429.
 pub fn too_many(path: &str, retry_after: i64) -> axum::response::Response {
     use axum::{
-        Json,
         http::{StatusCode, header},
         response::IntoResponse,
     };
     let retry = [(header::RETRY_AFTER, retry_after.to_string())];
     let message = format!("Too many requests. Retry in {retry_after} s.");
     if path.starts_with("/api/") {
-        (
-            StatusCode::TOO_MANY_REQUESTS,
-            retry,
-            [(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")],
-            Json(serde_json::json!({ "error": { "code": "rate_limited", "message": message } })),
-        )
-            .into_response()
+        let res = super::api_error(StatusCode::TOO_MANY_REQUESTS, "rate_limited", &message);
+        (retry, [(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")], res).into_response()
     } else {
         (StatusCode::TOO_MANY_REQUESTS, retry, message).into_response()
     }

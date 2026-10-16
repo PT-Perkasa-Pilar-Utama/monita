@@ -110,7 +110,7 @@ pub async fn submit(
     t.validate()?;
     let hash = token::hash(ref_raw.trim());
     let now = now();
-    let today = now - now.rem_euclid(86_400);
+    let today = crate::platform::time::day_start(now);
     db.write(async |c| {
         let Some(r) = store::find_ref(c, &hash).await? else {
             return Ok(Err(TicketError::RefIdInvalid));

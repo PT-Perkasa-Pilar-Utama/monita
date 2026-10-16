@@ -124,7 +124,6 @@ pub async fn insert_monitor(
     Ok(c.last_insert_rowid())
 }
 
-/// Returns false when the monitor is not in the project.
 pub async fn update_monitor(
     c: &Connection,
     project_id: i64,

@@ -161,7 +161,6 @@ async fn insert_update(
     Ok(())
 }
 
-/// Returns false when the incident is not in the project.
 pub async fn add_update(
     c: &Connection,
     project_id: i64,
@@ -283,7 +282,6 @@ pub async fn items(c: &Connection, incident_id: i64) -> anyhow::Result<Vec<ItemR
     Ok(out)
 }
 
-/// Newest first.
 pub async fn updates(c: &Connection, incident_id: i64) -> anyhow::Result<Vec<UpdateRow>> {
     let mut rows = c
         .query(

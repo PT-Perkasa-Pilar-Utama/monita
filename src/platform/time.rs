@@ -13,6 +13,11 @@ pub fn utc(ts: i64) -> String {
     )
 }
 
+/// Unix seconds of the UTC midnight that starts the day of `ts`.
+pub fn day_start(ts: i64) -> i64 {
+    ts - ts.rem_euclid(86_400)
+}
+
 /// `2026-10-16`, the UTC day a timestamp falls on.
 pub fn day(ts: i64) -> String {
     let (y, m, d) = civil_from_days(ts.div_euclid(86_400));

@@ -22,6 +22,20 @@ use std::net::{IpAddr, SocketAddr};
 
 use axum::http::HeaderMap;
 
+/// The JSON error envelope of api-specs 01: `{"error": {"code", "message"}}`.
+pub fn api_error(
+    status: axum::http::StatusCode,
+    code: &str,
+    message: &str,
+) -> axum::response::Response {
+    use axum::response::IntoResponse;
+    (
+        status,
+        axum::Json(serde_json::json!({ "error": { "code": code, "message": message } })),
+    )
+        .into_response()
+}
+
 /// Current time in Unix seconds, UTC.
 pub fn now() -> i64 {
     std::time::SystemTime::now()

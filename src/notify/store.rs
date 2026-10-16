@@ -38,7 +38,6 @@ fn route_row(r: &turso::Row) -> turso::Result<Route> {
     })
 }
 
-/// Critical first, then warning.
 pub async fn routes(c: &Connection, project_id: i64) -> anyhow::Result<Vec<Route>> {
     let mut rows = c
         .query("SELECT severity, emails, webhook_url, use_webhook FROM alert_routes WHERE project_id = ?1 ORDER BY severity", [project_id])

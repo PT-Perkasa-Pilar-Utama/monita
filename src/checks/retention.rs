@@ -17,7 +17,7 @@ const LAST_DAY: &str = "rollup_through";
 /// check results and pings older than 7 days, delivered outbox rows older than 30 days, and
 /// expired sessions and invites. Roll up first, so the sweep never deletes unsummarized rows.
 pub async fn run(db: &Db, now: i64) -> anyhow::Result<()> {
-    let today = now - now.rem_euclid(86_400);
+    let today = crate::platform::time::day_start(now);
     let yesterday = today - 86_400;
     let last = settings::get_raw(&db.read().await?, LAST_DAY)
         .await?

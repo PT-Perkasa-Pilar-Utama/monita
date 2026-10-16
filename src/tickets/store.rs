@@ -255,7 +255,6 @@ pub async fn revoke_ref_of(
     Ok(n > 0)
 }
 
-/// Tickets with an id above `after_id` that are still in Triage.
 pub async fn new_in_triage_after(
     c: &Connection,
     project_id: i64,

@@ -33,7 +33,6 @@ fn user_row(r: &turso::Row) -> turso::Result<UserRow> {
     })
 }
 
-/// Returns `None` when the email is taken.
 pub async fn insert_user(
     c: &Connection,
     email: &str,
@@ -91,7 +90,6 @@ pub async fn list_users(c: &Connection) -> anyhow::Result<Vec<UserRow>> {
     Ok(out)
 }
 
-/// Returns false when the user is not an active TL.
 pub async fn disable_tl(c: &Connection, user_id: i64, at: i64) -> anyhow::Result<bool> {
     let n = c
         .execute(

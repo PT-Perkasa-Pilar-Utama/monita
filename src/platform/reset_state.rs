@@ -9,7 +9,7 @@ use axum::{
 };
 use serde::Deserialize;
 
-use super::{config::Env, migrate};
+use super::{api_error, config::Env, migrate};
 use crate::app::AppState;
 
 #[derive(Deserialize)]
@@ -30,7 +30,7 @@ pub async fn handler(
         _ => false,
     };
     if state.config.env == Env::Prod || !token_ok {
-        return error(
+        return api_error(
             StatusCode::UNAUTHORIZED,
             "unauthorized",
             "Missing or wrong reset token.",
@@ -40,7 +40,7 @@ pub async fn handler(
         "dev" => include_str!("../../seeds/dev.sql"),
         "qa" => include_str!("../../seeds/qa.sql"),
         _ => {
-            return error(
+            return api_error(
                 StatusCode::BAD_REQUEST,
                 "invalid_request",
                 "seed must be dev or qa.",
@@ -65,19 +65,11 @@ pub async fn handler(
         Ok(()) => StatusCode::NO_CONTENT.into_response(),
         Err(e) => {
             tracing::error!(error = %e, "reset-state failed");
-            error(
+            api_error(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "internal",
                 "Reset failed. See the server log.",
             )
         }
     }
-}
-
-fn error(status: StatusCode, code: &str, message: &str) -> Response {
-    (
-        status,
-        Json(serde_json::json!({ "error": { "code": code, "message": message } })),
-    )
-        .into_response()
 }

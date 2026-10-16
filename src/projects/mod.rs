@@ -6,16 +6,15 @@ pub mod routes;
 mod store;
 
 use axum::{
-    Json,
     extract::FromRequestParts,
     http::{StatusCode, header, request::Parts},
-    response::{IntoResponse, Response},
+    response::Response,
 };
 
 use crate::{
     accounts::User,
     app::AppState,
-    platform::{db::Db, now, page::PageError, token},
+    platform::{api_error, db::Db, now, page::PageError, token},
 };
 
 pub use store::{ApiKeyRow, Project};
@@ -164,14 +163,6 @@ pub async fn set_allowlist(db: &Db, project_id: i64, raw: &str) -> Result<(), Pr
 
 /// The project behind `Authorization: Bearer mk_...`. Contract: api-specs 03 section 3.2.
 pub struct ApiProject(pub Project);
-
-pub fn api_error(status: StatusCode, code: &str, message: &str) -> Response {
-    (
-        status,
-        Json(serde_json::json!({ "error": { "code": code, "message": message } })),
-    )
-        .into_response()
-}
 
 impl FromRequestParts<AppState> for ApiProject {
     type Rejection = Response;

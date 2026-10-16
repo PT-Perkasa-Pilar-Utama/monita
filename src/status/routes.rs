@@ -13,8 +13,7 @@ use serde::Deserialize;
 use super::{Day, IncidentStatus, ItemStatus, Status};
 use crate::{
     app::AppState,
-    platform::{page::PageError, render::render, time},
-    projects::api_error,
+    platform::{api_error, page::PageError, render::render, time},
 };
 
 const DAYS: usize = 90;

@@ -47,7 +47,6 @@ impl Clients {
     }
 }
 
-/// What a probe needs from a monitor.
 pub struct Target<'a> {
     pub url: &'a str,
     pub timeout_ms: i64,

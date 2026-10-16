@@ -101,7 +101,8 @@ Monita runs as one systemd service on a Linux VM. These steps assume Ubuntu or D
 3. Create the first super admin, then start the service:
 
    ```sh
-   sudo -u monita env $(grep -v '^#' /etc/monita/monita.env | xargs) monita admin create --email you@company.co.id
+   set -a; . /etc/monita/monita.env; set +a
+   sudo -u monita -E monita admin create --email you@company.co.id
    install -m 0644 deploy/monita.service /etc/systemd/system/monita.service
    systemctl daemon-reload && systemctl enable --now monita
    curl -s http://127.0.0.1:8080/healthz
