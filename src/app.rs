@@ -49,7 +49,17 @@ pub async fn build_with(config: Config, mailer: Mailer) -> anyhow::Result<(Route
         limiter: Arc::default(),
         gate: Arc::default(),
     };
-    crate::checks::scheduler::spawn(state.clone());
+    let scheduler = crate::checks::scheduler::spawn(state.clone());
+    // HTTP would keep serving without the loop, so systemd would never restart a dead scheduler.
+    // A panic ends the process instead, and `Restart=on-failure` brings everything back.
+    tokio::spawn(async move {
+        if let Err(e) = scheduler.await
+            && e.is_panic()
+        {
+            tracing::error!(error = %e, "the scheduler panicked; exiting so the service restarts");
+            std::process::exit(1);
+        }
+    });
     Ok((router(state.clone()), state))
 }
 

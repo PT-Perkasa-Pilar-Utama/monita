@@ -238,6 +238,10 @@ pub enum UpdateError {
     EmptyTitle,
     #[error("Pick at least one monitor or heartbeat.")]
     NoItems,
+    #[error("The title needs at most 120 characters.")]
+    TitleTooLong,
+    #[error("The message needs at most 10 000 characters.")]
+    MessageTooLong,
     #[error("Pick critical or warning.")]
     BadSeverity,
     #[error("Monita resolves this incident when its check passes.")]
@@ -246,6 +250,21 @@ pub enum UpdateError {
     Closed,
     #[error(transparent)]
     Other(#[from] anyhow::Error),
+}
+
+const MAX_TITLE: usize = 120;
+const MAX_MESSAGE: usize = 10_000;
+
+/// Titles and messages reach the public status page, so they get the ticket limits.
+fn check_message(message: &str) -> Result<(), UpdateError> {
+    let n = message.trim().chars().count();
+    if n == 0 {
+        Err(UpdateError::EmptyMessage)
+    } else if n > MAX_MESSAGE {
+        Err(UpdateError::MessageTooLong)
+    } else {
+        Ok(())
+    }
 }
 
 /// The labels a TL may post. A closed incident takes follow-up notes as Resolved (AC-19.03); an
@@ -268,10 +287,8 @@ pub async fn post_update(
     author: i64,
     now: i64,
 ) -> Result<bool, UpdateError> {
+    check_message(message)?;
     let message = message.trim();
-    if message.is_empty() {
-        return Err(UpdateError::EmptyMessage);
-    }
     if !LABELS.contains(&label) {
         return Err(UpdateError::BadLabel);
     }
@@ -306,34 +323,15 @@ pub async fn post_update(
 /// Names of the project's monitors and heartbeats, for item lists and the manual form. Read
 /// through `checks`, so this module never reads its tables.
 pub async fn item_names(db: &Db, project_id: i64) -> anyhow::Result<Vec<(ItemRef, String)>> {
-    let mut out: Vec<(ItemRef, String)> = crate::checks::list_monitors(db, project_id)
+    item_names_on(&db.read().await?, project_id).await
+}
+
+async fn item_names_on(c: &Connection, project_id: i64) -> anyhow::Result<Vec<(ItemRef, String)>> {
+    Ok(crate::checks::source_names(c, project_id)
         .await?
         .into_iter()
-        .map(|m| {
-            (
-                ItemRef {
-                    kind: SourceKind::Monitor,
-                    id: m.id,
-                },
-                m.name,
-            )
-        })
-        .collect();
-    out.extend(
-        crate::checks::heartbeat::list(db, project_id)
-            .await?
-            .into_iter()
-            .map(|h| {
-                (
-                    ItemRef {
-                        kind: SourceKind::Heartbeat,
-                        id: h.id,
-                    },
-                    h.name,
-                )
-            }),
-    );
-    Ok(out)
+        .map(|(kind, id, name)| (ItemRef { kind, id }, name))
+        .collect())
 }
 
 /// A manual incident as the TL fills it in (US-20). `items` are the form's `kind:id` values.
@@ -351,23 +349,29 @@ pub async fn open_manual(db: &Db, n: &NewIncident, now: i64) -> Result<i64, Upda
     if n.title.trim().is_empty() {
         return Err(UpdateError::EmptyTitle);
     }
+    if n.title.trim().chars().count() > MAX_TITLE {
+        return Err(UpdateError::TitleTooLong);
+    }
     if !matches!(n.severity.as_str(), "critical" | "warning") {
         return Err(UpdateError::BadSeverity);
     }
-    let mut items: Vec<ItemRef> = Vec::new();
-    for (item, _) in item_names(db, n.project_id).await? {
-        let key = format!("{}:{}", item.kind.as_str(), item.id);
-        if n.items.contains(&key) {
-            items.push(item);
+    // The items are resolved inside the write, so a source deleted meanwhile is not attached.
+    // They are checked before the message, as the form lists them first.
+    db.write(async |c| {
+        let mut items: Vec<ItemRef> = Vec::new();
+        for (item, _) in item_names_on(c, n.project_id).await? {
+            let key = format!("{}:{}", item.kind.as_str(), item.id);
+            if n.items.contains(&key) {
+                items.push(item);
+            }
         }
-    }
-    if items.is_empty() {
-        return Err(UpdateError::NoItems);
-    }
-    if n.message.trim().is_empty() {
-        return Err(UpdateError::EmptyMessage);
-    }
-    Ok(db
-        .write(async |c| store::open_manual(c, n, &items, now).await)
-        .await?)
+        if items.is_empty() {
+            return Ok(Err(UpdateError::NoItems));
+        }
+        if let Err(e) = check_message(&n.message) {
+            return Ok(Err(e));
+        }
+        Ok(Ok(store::open_manual(c, n, &items, now).await?))
+    })
+    .await?
 }

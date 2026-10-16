@@ -80,8 +80,9 @@ pub fn ip_limited(method: &axum::http::Method, path: &str) -> bool {
             && (path == "/login" || path.starts_with("/invite/")))
 }
 
-/// 429 with `Retry-After`: the JSON envelope under `/api/`, plain text elsewhere. Under `/api/`
-/// it carries `Access-Control-Allow-Origin: *`, so a browser caller can read the 429.
+/// 429 with `Retry-After`: the JSON envelope under `/api/`, plain text elsewhere. The routes that
+/// browsers call (api-specs 01 section 1.8) also get `Access-Control-Allow-Origin: *`, so a page
+/// can read the 429; `/api/v1/ref-ids` is for backends and gets none.
 pub fn too_many(path: &str, retry_after: i64) -> axum::response::Response {
     use axum::{
         http::{StatusCode, header},
@@ -90,8 +91,14 @@ pub fn too_many(path: &str, retry_after: i64) -> axum::response::Response {
     let retry = [(header::RETRY_AFTER, retry_after.to_string())];
     let message = format!("Too many requests. Retry in {retry_after} s.");
     if path.starts_with("/api/") {
-        let res = super::api_error(StatusCode::TOO_MANY_REQUESTS, "rate_limited", &message);
-        (retry, [(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")], res).into_response()
+        let mut res = super::api_error(StatusCode::TOO_MANY_REQUESTS, "rate_limited", &message);
+        if path.starts_with("/api/v1/public/") || path.starts_with("/api/v1/tickets") {
+            res.headers_mut().insert(
+                header::ACCESS_CONTROL_ALLOW_ORIGIN,
+                axum::http::HeaderValue::from_static("*"),
+            );
+        }
+        (retry, res).into_response()
     } else {
         (StatusCode::TOO_MANY_REQUESTS, retry, message).into_response()
     }
@@ -158,6 +165,20 @@ mod tests {
         }
         l.hit("ip:new", 60, 60, 181);
         assert_eq!(l.windows.lock().unwrap().by_key.len(), 1);
+    }
+
+    #[test]
+    fn only_browser_routes_get_cors_on_a_429() {
+        let public = too_many("/api/v1/public/status/x", 5);
+        assert_eq!(public.headers()["access-control-allow-origin"], "*");
+        let backend = too_many("/api/v1/ref-ids", 5);
+        assert!(
+            backend
+                .headers()
+                .get("access-control-allow-origin")
+                .is_none()
+        );
+        assert_eq!(backend.headers()["retry-after"], "5");
     }
 
     #[test]

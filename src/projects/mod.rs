@@ -49,7 +49,7 @@ pub async fn create(
 ) -> Result<Project, ProjectError> {
     let name = name.trim();
     let slug = slug.trim().to_lowercase();
-    if name.is_empty() || name.len() > 80 {
+    if name.is_empty() || name.chars().count() > 80 {
         return Err(ProjectError::InvalidName);
     }
     if !valid_slug(&slug) {
@@ -176,7 +176,7 @@ pub async fn reassign(
 /// US-07: returns the raw key once. Only its hash is stored.
 pub async fn create_key(db: &Db, project_id: i64, name: &str) -> Result<String, ProjectError> {
     let name = name.trim();
-    if name.is_empty() || name.len() > 60 {
+    if name.is_empty() || name.chars().count() > 60 {
         return Err(ProjectError::InvalidName);
     }
     let raw = format!("mk_{}", token::random_token());

@@ -6,13 +6,28 @@ use serde_json::Value;
 #[tokio::test]
 async fn healthz_reports_ok_once_the_scheduler_ticks() {
     let app = TestApp::spawn("test").await;
+    app.state
+        .db
+        .write(async |c| {
+            c.execute(
+                "INSERT INTO outbox (channel, recipient, body, next_attempt_at) VALUES ('webhook', 'https://x.invalid/', '{}', unixepoch() + 3600)",
+                (),
+            )
+            .await?;
+            Ok(())
+        })
+        .await
+        .unwrap();
     tokio::time::sleep(std::time::Duration::from_millis(1100)).await;
     let res = app.http.get(app.url("/healthz")).send().await.unwrap();
     assert_eq!(res.status(), 200);
     let body: Value = res.json().await.unwrap();
     assert_eq!(body["status"], "ok");
     assert_eq!(body["db"], "ok");
-    assert_eq!(body["outbox_pending"], 0);
+    assert_eq!(
+        body["outbox_pending"], 0,
+        "a row waiting for its retry is not due"
+    );
 }
 
 #[tokio::test]

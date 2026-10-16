@@ -29,6 +29,17 @@ pub struct Config {
     pub log_json: bool,
 }
 
+/// A two-valued variable: unset means `no`; anything but `yes` or `no` stops the start, so a
+/// typo such as `TRUE` cannot silently turn a feature off.
+fn flag(value: Option<String>, key: &str, yes: &str, no: &str) -> anyhow::Result<bool> {
+    match value.as_deref() {
+        None => Ok(false),
+        Some(v) if v == yes => Ok(true),
+        Some(v) if v == no => Ok(false),
+        Some(v) => bail!("{key} must be {yes} or {no}, got {v:?}"),
+    }
+}
+
 impl Config {
     pub fn from_env() -> anyhow::Result<Self> {
         Self::from_lookup(|k| std::env::var(k).ok())
@@ -49,9 +60,16 @@ impl Config {
             .unwrap_or_else(|| "127.0.0.1:8080".into())
             .parse()
             .context("MONITA_BIND must be host:port")?;
-        let base_url = var("MONITA_BASE_URL")
+        let raw_base = var("MONITA_BASE_URL")
             .unwrap_or_else(|| format!("http://localhost:{}", SocketAddr::port(&bind)));
-        let base_url = base_url.trim_end_matches('/').to_string();
+        // Stored as the origin a browser sends in `Origin` (lower-case host, no path), because
+        // the CSRF check compares the two byte for byte.
+        let parsed = reqwest::Url::parse(&raw_base)
+            .ok()
+            .filter(|u| matches!(u.scheme(), "http" | "https") && u.host_str().is_some())
+            .filter(|u| u.path() == "/" && u.query().is_none() && u.fragment().is_none())
+            .context("MONITA_BASE_URL must be an origin such as https://monita.company.co.id")?;
+        let base_url = parsed.origin().ascii_serialization();
         if env == Env::Prod && !base_url.starts_with("https://") {
             bail!("MONITA_BASE_URL must start with https:// when MONITA_ENV=prod");
         }
@@ -81,11 +99,28 @@ impl Config {
             smtp_url: var("MONITA_SMTP_URL"),
             mail_from: var("MONITA_MAIL_FROM").unwrap_or_else(|| "monita@localhost".into()),
             ping_url: var("MONITA_PING_URL"),
-            trust_proxy: var("MONITA_TRUST_PROXY").as_deref() == Some("true"),
+            trust_proxy: flag(
+                var("MONITA_TRUST_PROXY"),
+                "MONITA_TRUST_PROXY",
+                "true",
+                "false",
+            )?,
             digest_utc_hour,
             reset_token,
-            log_filter: var("MONITA_LOG").unwrap_or_else(|| "info".into()),
-            log_json: var("MONITA_LOG_FORMAT").as_deref() == Some("json"),
+            log_filter: var("MONITA_LOG").unwrap_or_else(|| {
+                if env == Env::Dev {
+                    "info,monita=debug"
+                } else {
+                    "info"
+                }
+                .into()
+            }),
+            log_json: flag(
+                var("MONITA_LOG_FORMAT"),
+                "MONITA_LOG_FORMAT",
+                "json",
+                "text",
+            )?,
         })
     }
 }
@@ -115,6 +150,37 @@ mod tests {
         for hour in ["24", "4294967297"] {
             assert!(cfg(&[("MONITA_ENV", "dev"), ("MONITA_DIGEST_UTC_HOUR", hour)]).is_err());
         }
+    }
+
+    #[test]
+    fn two_valued_settings_refuse_anything_else() {
+        let dev = |k, v| cfg(&[("MONITA_ENV", "dev"), (k, v)]);
+        assert!(dev("MONITA_TRUST_PROXY", "true").unwrap().trust_proxy);
+        assert!(!dev("MONITA_TRUST_PROXY", "false").unwrap().trust_proxy);
+        assert!(dev("MONITA_TRUST_PROXY", "1").is_err());
+        assert!(dev("MONITA_LOG_FORMAT", "json").unwrap().log_json);
+        assert!(dev("MONITA_LOG_FORMAT", "JSON").is_err());
+    }
+
+    #[test]
+    fn the_base_url_is_kept_as_a_browser_origin() {
+        let c = cfg(&[
+            ("MONITA_ENV", "dev"),
+            ("MONITA_BASE_URL", "https://Monita.Example.co/"),
+        ])
+        .unwrap();
+        assert_eq!(c.base_url, "https://monita.example.co");
+        assert!(
+            cfg(&[
+                ("MONITA_ENV", "dev"),
+                ("MONITA_BASE_URL", "https://x.co/monita")
+            ])
+            .is_err()
+        );
+        assert_eq!(
+            cfg(&[("MONITA_ENV", "dev")]).unwrap().log_filter,
+            "info,monita=debug"
+        );
     }
 
     #[test]

@@ -16,21 +16,25 @@ pub struct Db {
 
 struct Writer {
     conn: Connection,
-    /// True between BEGIN and COMMIT/ROLLBACK. A caller future dropped mid-transaction (a client
-    /// that disconnects) leaves it set; the next user rolls the stale transaction back first.
-    in_tx: bool,
-    /// True while a `write_without_fk` runs; `clean` turns the checks back on after a drop.
+    /// True from just before `PRAGMA foreign_keys = OFF` until `clean` turns the checks back on,
+    /// so a `write_without_fk` dropped at any point still leaves foreign keys on for the next user.
     fk_off: bool,
 }
 
 impl Writer {
+    /// Undoes what a dropped caller future left behind. A client that disconnects mid-request
+    /// drops its handler, and with it a `write` at any await point, BEGIN included. The connection
+    /// itself says whether a transaction is open, so no flag can miss one.
     async fn clean(&mut self) {
-        if self.in_tx {
-            tracing::warn!("rolling back a transaction left open by a dropped write");
-            if let Err(e) = self.conn.execute("ROLLBACK", ()).await {
-                tracing::error!(error = %e, "rollback of an abandoned transaction failed");
+        match self.conn.is_autocommit() {
+            Ok(true) => {}
+            Ok(false) => {
+                tracing::warn!("rolling back a transaction left open by a dropped write");
+                if let Err(e) = self.conn.execute("ROLLBACK", ()).await {
+                    tracing::error!(error = %e, "rollback of an abandoned transaction failed");
+                }
             }
-            self.in_tx = false;
+            Err(e) => tracing::error!(error = %e, "could not read the writer's transaction state"),
         }
         if self.fk_off {
             if let Err(e) = self.conn.execute("PRAGMA foreign_keys = ON", ()).await {
@@ -53,7 +57,6 @@ impl Db {
             database,
             writer: Arc::new(Mutex::new(Writer {
                 conn,
-                in_tx: false,
                 fk_off: false,
             })),
         })
@@ -92,9 +95,14 @@ impl Db {
     ) -> anyhow::Result<T> {
         let mut w = self.writer.lock().await;
         w.clean().await;
+        // Each flag is set before its statement: a future dropped while the statement runs must
+        // still leave `clean` a flag to undo. A statement that fails clears its flag again.
         if fk_off {
-            w.conn.execute("PRAGMA foreign_keys = OFF", ()).await?;
             w.fk_off = true;
+            if let Err(e) = w.conn.execute("PRAGMA foreign_keys = OFF", ()).await {
+                w.fk_off = false;
+                return Err(e.into());
+            }
         }
         let result = Self::transaction(&mut w, f).await;
         w.clean().await;
@@ -106,13 +114,9 @@ impl Db {
         f: impl AsyncFnOnce(&Connection) -> anyhow::Result<T>,
     ) -> anyhow::Result<T> {
         w.conn.execute("BEGIN IMMEDIATE", ()).await?;
-        w.in_tx = true;
         let result = match f(&w.conn).await {
             Ok(v) => match w.conn.execute("COMMIT", ()).await {
-                Ok(_) => {
-                    w.in_tx = false;
-                    return Ok(v);
-                }
+                Ok(_) => return Ok(v),
                 Err(e) => Err(e.into()),
             },
             Err(e) => Err(e),
@@ -120,7 +124,6 @@ impl Db {
         if let Err(rb) = w.conn.execute("ROLLBACK", ()).await {
             tracing::error!(error = %rb, "rollback failed");
         }
-        w.in_tx = false;
         result
     }
 

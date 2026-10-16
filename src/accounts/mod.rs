@@ -77,7 +77,9 @@ pub fn normalize_email(raw: &str) -> Result<String, AccountError> {
     let email = raw.trim().to_lowercase();
     let valid = email.len() <= 254
         && !email.contains(char::is_whitespace)
-        && matches!(email.split_once('@'), Some((l, d)) if !l.is_empty() && d.contains('.') && !d.contains('@'));
+        && matches!(email.split_once('@'), Some((l, d)) if !l.is_empty() && d.contains('.') && !d.contains('@'))
+        // The mailer's own parser: an address it would refuse at send time is refused here.
+        && email.parse::<lettre::Address>().is_ok();
     if valid {
         Ok(email)
     } else {
@@ -85,11 +87,16 @@ pub fn normalize_email(raw: &str) -> Result<String, AccountError> {
     }
 }
 
+/// Each argon2 run takes about 19 MiB. Per-IP limits do not bound how many IPs sign in at once,
+/// so this does: at most 4 hashes run, the rest wait.
+static HASHING: tokio::sync::Semaphore = tokio::sync::Semaphore::const_new(4);
+
 async fn hash_password(password: &str) -> Result<String, AccountError> {
     if password.chars().count() < MIN_PASSWORD {
         return Err(AccountError::PasswordTooShort);
     }
     let pw = password.to_owned();
+    let _slot = HASHING.acquire().await.map_err(anyhow::Error::from)?;
     let hashed = tokio::task::spawn_blocking(move || {
         Argon2::default()
             .hash_password(pw.as_bytes())
@@ -101,15 +108,30 @@ async fn hash_password(password: &str) -> Result<String, AccountError> {
     Ok(hashed)
 }
 
+/// False for a wrong password. A stored hash that does not parse, or a hashing task that dies,
+/// also refuses the sign-in, but is logged: those are faults, not wrong passwords.
 async fn verify_password(password: &str, stored: &str) -> bool {
     let (pw, stored) = (password.to_owned(), stored.to_owned());
-    tokio::task::spawn_blocking(move || {
-        PasswordHash::new(&stored)
-            .map(|h| Argon2::default().verify_password(pw.as_bytes(), &h).is_ok())
-            .unwrap_or(false)
+    let Ok(_slot) = HASHING.acquire().await else {
+        tracing::error!("password check unavailable: the hashing limit is closed");
+        return false;
+    };
+    let checked = tokio::task::spawn_blocking(move || match PasswordHash::new(&stored) {
+        Ok(h) => Ok(Argon2::default().verify_password(pw.as_bytes(), &h).is_ok()),
+        Err(e) => Err(e.to_string()),
     })
-    .await
-    .unwrap_or(false)
+    .await;
+    match checked {
+        Ok(Ok(ok)) => ok,
+        Ok(Err(e)) => {
+            tracing::error!(error = %e, "a stored password hash does not parse");
+            false
+        }
+        Err(e) => {
+            tracing::error!(error = %e, "the password check task failed");
+            false
+        }
+    }
 }
 
 /// US-01: the first super admin, from the CLI.
@@ -308,6 +330,12 @@ mod tests {
         assert!(normalize_email("rina").is_err());
         assert!(normalize_email("@company.co.id").is_err());
         assert!(normalize_email("ri na@company.co.id").is_err());
+        for bad in ["oncall@company.co.id.", "a@b..c", "a,b@x.co", "a@-x.co"] {
+            assert!(
+                normalize_email(bad).is_err(),
+                "{bad}: the mailer would refuse it"
+            );
+        }
     }
 
     #[test]

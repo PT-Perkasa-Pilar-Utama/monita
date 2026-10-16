@@ -20,19 +20,27 @@ struct Health {
     version: &'static str,
 }
 
+/// `SELECT 1` proves the database answers; the count is the outbox rows due and not yet sent.
+async fn probe(state: &AppState, now: i64) -> anyhow::Result<i64> {
+    let conn = state.db.read().await?;
+    query_i64(&conn, "SELECT 1", ()).await?;
+    Ok(query_i64(
+        &conn,
+        "SELECT count(*) FROM outbox WHERE sent_at IS NULL AND failed_at IS NULL AND next_attempt_at <= ?1",
+        [now],
+    )
+    .await?
+    .unwrap_or(0))
+}
+
 pub async fn healthz(State(state): State<AppState>) -> impl IntoResponse {
-    let outbox_pending = match state.db.read().await {
-        Ok(conn) => query_i64(
-            &conn,
-            "SELECT count(*) FROM outbox WHERE sent_at IS NULL AND failed_at IS NULL",
-            (),
-        )
-        .await
-        .ok()
-        .flatten(),
-        Err(_) => None,
+    let (db_ok, outbox_pending) = match probe(&state, super::now()).await {
+        Ok(pending) => (true, Some(pending)),
+        Err(e) => {
+            tracing::error!(error = %e, "health check: database unavailable");
+            (false, None)
+        }
     };
-    let db_ok = outbox_pending.is_some();
     let lag = super::now() - state.last_tick.load(Ordering::Relaxed);
     let ok = db_ok && lag <= MAX_SCHEDULER_LAG_S;
     let body = Health {

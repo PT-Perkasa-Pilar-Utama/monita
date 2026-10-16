@@ -72,14 +72,11 @@ impl MonitorInput {
 
     pub fn validate(&self) -> FieldErrors {
         let mut e = FieldErrors::new();
-        if self.name.trim().is_empty() || self.name.len() > 80 {
+        if self.name.trim().is_empty() || self.name.chars().count() > 80 {
             e.insert("name", "Enter a name of up to 80 characters.");
         }
         let url = self.url.trim();
-        if !(url.starts_with("http://") || url.starts_with("https://"))
-            || url.len() > 2000
-            || url.contains(char::is_whitespace)
-        {
+        if !crate::platform::valid_http_url(url) || url.contains(char::is_whitespace) {
             e.insert("url", "The URL must start with http:// or https://.");
         }
         if !INTERVALS_S.contains(&self.interval_s) {
@@ -91,7 +88,11 @@ impl MonitorInput {
         if !valid_expected_status(&self.expected_status) {
             e.insert("expected_status", "Use 2xx, or codes such as 200,204.");
         }
-        if self.keyword.as_ref().is_some_and(|k| k.len() > 200) {
+        if self
+            .keyword
+            .as_ref()
+            .is_some_and(|k| k.chars().count() > 200)
+        {
             e.insert("keyword", "Use at most 200 characters.");
         }
         if !matches!(self.severity.as_str(), "critical" | "warning") {
@@ -154,9 +155,16 @@ pub async fn public_items(db: &Db, project_id: i64) -> anyhow::Result<Vec<Public
     Ok(out)
 }
 
+/// AC-11.01: a random point inside the interval, so checks spread out. Never sooner than 5 s, so
+/// the TL sees the new monitor as Waiting before its first result.
+fn first_check_offset(interval_s: i64) -> i64 {
+    const FLOOR_S: i64 = 5;
+    FLOOR_S + token::random_below((interval_s - FLOOR_S).max(1) as u64) as i64
+}
+
 /// AC-09.01, AC-11.01: the first check lands at a random point inside the interval.
 pub async fn create_monitor(db: &Db, project_id: i64, input: &MonitorInput) -> anyhow::Result<i64> {
-    let next = now() + token::random_below(input.interval_s as u64) as i64;
+    let next = now() + first_check_offset(input.interval_s);
     db.write(async |c| store::insert_monitor(c, project_id, input, next).await)
         .await
 }
@@ -168,7 +176,7 @@ pub async fn update_monitor(
     id: i64,
     input: &MonitorInput,
 ) -> anyhow::Result<bool> {
-    let next = now() + token::random_below(input.interval_s as u64) as i64;
+    let next = now() + first_check_offset(input.interval_s);
     db.write(async |c| store::update_monitor(c, project_id, id, input, next).await)
         .await
 }
@@ -221,6 +229,27 @@ pub async fn record_check(
     .await
 }
 
+/// The names of a project's monitors and heartbeats, on the caller's connection, so a writer can
+/// read them inside its own transaction.
+pub async fn source_names(
+    c: &turso::Connection,
+    project_id: i64,
+) -> anyhow::Result<Vec<(crate::incidents::SourceKind, i64, String)>> {
+    use crate::incidents::SourceKind;
+    Ok(store::source_names(c, project_id)
+        .await?
+        .into_iter()
+        .map(|(hb, id, name)| {
+            let kind = if hb {
+                SourceKind::Heartbeat
+            } else {
+                SourceKind::Monitor
+            };
+            (kind, id, name)
+        })
+        .collect())
+}
+
 pub async fn list_monitors(db: &Db, project_id: i64) -> anyhow::Result<Vec<Monitor>> {
     store::list_monitors(&db.read().await?, project_id).await
 }
@@ -250,6 +279,24 @@ pub async fn recent_checks(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_name_limit_counts_characters_not_bytes() {
+        let input = MonitorInput {
+            name: "é".repeat(80),
+            url: "https://x.co".into(),
+            ..MonitorInput::defaults()
+        };
+        assert!(!input.validate().contains_key("name"));
+    }
+
+    #[test]
+    fn the_first_check_lands_inside_the_interval_but_not_at_once() {
+        for _ in 0..200 {
+            let o = first_check_offset(30);
+            assert!((5..30).contains(&o), "{o}");
+        }
+    }
 
     #[test]
     fn expected_status_accepts_classes_and_lists() {

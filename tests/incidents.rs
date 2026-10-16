@@ -566,12 +566,37 @@ async fn a_manual_incident_marks_its_items_and_closes_on_resolved() {
             "/projects/payments/incidents",
             &[
                 ("title", "Slow checkout"),
+                ("severity", "warning"),
                 ("message", "Some users wait 20 s"),
             ],
             Some(&tl),
         )
         .await;
     assert_eq!(none.status(), 422);
+    assert!(
+        none.text()
+            .await
+            .unwrap()
+            .contains("Pick at least one monitor or heartbeat.")
+    );
+    let long = "x".repeat(10_001);
+    let too_long = app
+        .post_form(
+            "/projects/payments/incidents",
+            &[
+                ("title", "Slow checkout"),
+                ("items", "monitor:1"),
+                ("severity", "warning"),
+                ("message", long.as_str()),
+            ],
+            Some(&tl),
+        )
+        .await;
+    assert_eq!(
+        too_long.status(),
+        422,
+        "a message reaches the public page, so it is bounded"
+    );
     let res = app
         .post_form(
             "/projects/payments/incidents",

@@ -25,7 +25,7 @@ curl -fsS -m 10 https://monita.company.co.id/ping/k3j9w2x7q4m8p6r1t5v0y2z8ab
 | --- | --- |
 | Purpose | A project job reports its own failure. |
 | Access | Anyone with the token. |
-| Input | Path `token`. Optional body, up to 1 KB of text, stored as the cause. A body over 1 KB is 413. |
+| Input | Path `token`. Optional body: the first 1 KB of text is kept as the cause, cut on a character boundary. A longer body is cut, never refused, so the failure is always recorded. |
 | Behavior | Rate limit as 4.1, in its own bucket `pingfail:{id}`, so a fail right after a success ping is never refused. Insert `pings(kind=fail)`. `observe(Heartbeat, FailPing{cause})` opens an incident at once (AC-14.01). `deadline_at` does not move. |
 | Output | 200 `OK` |
 | Errors | Same as 4.1 |
@@ -36,7 +36,7 @@ curl -fsS -m 10 https://monita.company.co.id/ping/k3j9w2x7q4m8p6r1t5v0y2z8ab
 | --- | --- | --- | --- | --- | --- |
 | GET | `/projects/{slug}/monitors` | owner, super_admin | | List with current state and last check | |
 | GET | `/projects/{slug}/monitors/new` | owner, super_admin | | Form with defaults: 1m, 10 s, `2xx`, warning, hidden | AC-09.02 |
-| POST | `/projects/{slug}/monitors` | owner, super_admin | `name`, `url`, `interval_s`, `timeout_s` (stored as `timeout_ms`), `expected_status`, `keyword`, `skip_tls_verify`, `severity`, `is_public` | Validate. `next_check_at = now + rand(0..interval_s)`. | AC-09.01, AC-11.01 |
+| POST | `/projects/{slug}/monitors` | owner, super_admin | `name`, `url`, `interval_s`, `timeout_s` (stored as `timeout_ms`), `expected_status`, `keyword`, `skip_tls_verify`, `severity`, `is_public` | Validate. `next_check_at = now + 5 + rand(0..interval_s - 5)`. | AC-09.01, AC-11.01 |
 | GET | `/projects/{slug}/monitors/{id}` | owner, super_admin | `?before=<checked_at>.<id>`, the cursor the page links to | Detail and checks of the last 7 days: time, status, latency, error | AC-10.01 |
 | POST | `/projects/{slug}/monitors/{id}` | owner, super_admin | same as create | Update | |
 | POST | `/projects/{slug}/monitors/{id}/delete` | owner, super_admin | | Delete with results | |

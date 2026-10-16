@@ -9,7 +9,7 @@
   <div class="board__col">
     <div class="board__head">{% call ui::st(self.ring(key)) %}{% endcall %}{{ label }}<span class="board__count">{{ cards.len() }}</span></div>
     {% for t in cards %}
-    <div class="card"><span class="cap">#{{ t.number }}{% if let Some(r) = t.close_reason %} · {{ self.reason(r) }}{% endif %}</span><span class="card__title">{{ t.title }}</span><div class="card__meta"><span class="cap">opened {{ self.day(t.created_at) }}</span><span class="cap">updated {{ self.day(t.updated_at) }}</span></div></div>
+    <div class="card"><span class="cap">#{{ t.number }}</span><span class="card__title">{{ t.title }}</span><div class="card__meta"><span class="cap">opened {{ self.day(t.created_at) }}</span><span class="cap">updated {{ self.day(t.updated_at) }}</span></div></div>
     {% endfor %}
   </div>
 {% endfor %}

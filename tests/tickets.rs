@@ -285,6 +285,23 @@ async fn the_public_board_hides_triage_descriptions_and_reporters() {
     );
     assert!(!board.contains("4111"), "descriptions never appear");
     assert!(!board.contains(&rid), "reporters never appear");
+    app.post_form(
+        "/projects/payments/tickets/1/stage",
+        &[("stage", "done"), ("close_reason", "wont_fix")],
+        Some(&s.tl),
+    )
+    .await;
+    let board = app
+        .get("/status/payments/tickets", None)
+        .await
+        .text()
+        .await
+        .unwrap();
+    assert!(board.contains("A card is declined at checkout"));
+    assert!(
+        !board.contains("Won"),
+        "the close reason is the TL's, not public"
+    );
 }
 
 #[tokio::test]

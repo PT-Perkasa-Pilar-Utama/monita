@@ -111,7 +111,7 @@ impl Default for HeartbeatInput {
 impl HeartbeatInput {
     pub fn validate(&self) -> FieldErrors {
         let mut e = FieldErrors::new();
-        if self.name.trim().is_empty() || self.name.len() > 80 {
+        if self.name.trim().is_empty() || self.name.chars().count() > 80 {
             e.insert("name", "Enter a name of up to 80 characters.");
         }
         if !PERIODS_S.iter().any(|(v, _)| *v == self.period_s) {

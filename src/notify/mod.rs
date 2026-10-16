@@ -94,7 +94,7 @@ pub async fn save_route(
         }
     }
     let webhook = webhook_raw.trim();
-    if !webhook.is_empty() && !(webhook.starts_with("http://") || webhook.starts_with("https://")) {
+    if !webhook.is_empty() && !crate::platform::valid_http_url(webhook) {
         return Err(RouteError::BadWebhook);
     }
     let webhook = (!webhook.is_empty()).then_some(webhook);

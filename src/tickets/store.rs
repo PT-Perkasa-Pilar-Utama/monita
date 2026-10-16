@@ -25,11 +25,12 @@ pub struct TicketRow {
     pub ref_revoked: bool,
 }
 
+/// SEC-14 public fields only: number, title, stage, dates. The close reason is the TL's verdict
+/// and stays private.
 pub struct PublicTicket {
     pub number: i64,
     pub title: String,
     pub stage: String,
-    pub close_reason: Option<String>,
     pub created_at: i64,
     pub updated_at: i64,
 }
@@ -173,25 +174,22 @@ pub async fn find(
 }
 
 pub async fn public_board(c: &Connection, project_id: i64) -> anyhow::Result<Vec<PublicTicket>> {
-    let mut rows = c
-        .query(
-            format!("SELECT t.number, coalesce(t.public_title, t.title), t.stage, t.close_reason, t.created_at, t.updated_at FROM tickets t
-             WHERE t.project_id = ?1 AND t.stage != 'triage' AND {OPEN_OR_RECENT_DONE} ORDER BY t.updated_at DESC"),
-            [project_id],
-        )
-        .await?;
-    let mut out = Vec::new();
-    while let Some(r) = rows.next().await? {
-        out.push(PublicTicket {
-            number: r.get(0)?,
-            title: r.get(1)?,
-            stage: r.get(2)?,
-            close_reason: r.get(3)?,
-            created_at: r.get(4)?,
-            updated_at: r.get(5)?,
-        });
-    }
-    Ok(out)
+    crate::platform::db::query_all(
+        c,
+        format!("SELECT t.number, coalesce(t.public_title, t.title), t.stage, t.created_at, t.updated_at FROM tickets t
+         WHERE t.project_id = ?1 AND t.stage != 'triage' AND {OPEN_OR_RECENT_DONE} ORDER BY t.updated_at DESC"),
+        [project_id],
+        |r| {
+            Ok(PublicTicket {
+                number: r.get(0)?,
+                title: r.get(1)?,
+                stage: r.get(2)?,
+                created_at: r.get(3)?,
+                updated_at: r.get(4)?,
+            })
+        },
+    )
+    .await
 }
 
 /// The reporter sees their own title, never the description.

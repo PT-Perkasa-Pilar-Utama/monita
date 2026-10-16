@@ -332,6 +332,15 @@ async fn ping(
     }
 }
 
+/// At most 1 024 bytes, cut on a character boundary.
+fn first_kb(text: &str) -> String {
+    let mut end = text.len().min(1024);
+    while !text.is_char_boundary(end) {
+        end -= 1;
+    }
+    text[..end].to_string()
+}
+
 fn peer(req: &Request) -> Option<SocketAddr> {
     req.extensions()
         .get::<ConnectInfo<SocketAddr>>()
@@ -360,12 +369,13 @@ async fn ping_fail(
     req: Request,
 ) -> Response {
     let (headers, peer) = (req.headers().clone(), peer(&req));
-    // The body, if any, is the job's own error text, at most 1 KB (api-specs 04 section 4.2).
-    // A client that disconnects mid-body also lands here; it never reads the answer.
-    let Ok(body) = axum::body::to_bytes(req.into_body(), 1024).await else {
-        return plain(StatusCode::PAYLOAD_TOO_LARGE, "body over 1 KB");
+    // The body, if any, is the job's own error text. A long one is cut to its first 1 KB, not
+    // refused: refusing would drop the failure itself (api-specs 04 section 4.2). The router's
+    // 128 KiB cap still bounds the read; a client that disconnects mid-body never reads the 413.
+    let Ok(body) = axum::body::to_bytes(req.into_body(), usize::MAX).await else {
+        return plain(StatusCode::PAYLOAD_TOO_LARGE, "body too large");
     };
-    let cause = String::from_utf8_lossy(&body).trim().to_string();
+    let cause = first_kb(String::from_utf8_lossy(&body).trim());
     ping(
         &state,
         &token,

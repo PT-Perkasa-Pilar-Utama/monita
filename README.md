@@ -137,8 +137,10 @@ If one site loses power, the other sends "monita-a missed its heartbeat". A free
 ### Lost super admin password
 
 ```sh
+systemctl stop monita        # the running service locks the database file
 set -a; . /etc/monita/monita.env; set +a
 sudo -u monita -E monita admin reset-password --email you@company.co.id
+systemctl start monita
 ```
 
 The command reads the new password from stdin and signs the admin out everywhere. A TL gets a new invite from a super admin instead.

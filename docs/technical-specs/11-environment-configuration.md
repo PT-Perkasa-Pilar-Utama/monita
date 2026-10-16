@@ -16,7 +16,7 @@ Monita reads its configuration from environment variables at start. systemd load
 | `MONITA_TRUST_PROXY` | Read the client IP from `X-Forwarded-For` | `false` | `false` | `true` behind the reverse proxy |
 | `MONITA_DIGEST_UTC_HOUR` | Hour of the ticket digest | `1` | `1` | `1` (08:00 WIB) |
 | `MONITA_RESET_TOKEN` | Header token for reset-state in `dev` and `test` | optional; unset disables reset-state | random per run | absent |
-| `MONITA_LOG` | Log filter | `debug` | `info` | `info` |
+| `MONITA_LOG` | Log filter | `info,monita=debug` | `info` | `info` |
 | `MONITA_LOG_FORMAT` | `pretty` or `json` | `pretty` | `pretty` | `json` |
 
 Reset-state exists only where `MONITA_ENV` is `dev` or `test`. In prod, `MONITA_RESET_TOKEN` is absent and the route is never registered.

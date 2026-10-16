@@ -103,6 +103,8 @@ async fn rollup_summarizes_old_days_before_the_sweep_deletes_raw_rows() {
     app.state
         .db
         .write(async |c| {
+            // `last_rollup_day` holds a date, as the job runner writes it. Any date works: the backfill
+            // must read only `rollup_through`, and the old shared key made it parse this and stop.
             c.execute_batch(&format!(
                 "INSERT INTO monitors (id, project_id, name, url, next_check_at) VALUES (1, 1, 'API', 'https://x.invalid/', 9999999999);
                  INSERT INTO check_results (monitor_id, checked_at, ok, latency_ms) VALUES (1, {a}, 1, 100), (1, {b}, 0, 300), (1, {t}, 1, 50);

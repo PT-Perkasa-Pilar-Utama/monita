@@ -48,13 +48,13 @@ async fn main() -> anyhow::Result<()> {
     match cli.cmd {
         Cmd::Serve => monita::app::serve(config).await,
         Cmd::Migrate => {
-            let db = Db::open(&config.db_path).await?;
+            let db = open_offline(&config).await?;
             migrate::run(&db).await
         }
         Cmd::Admin {
             cmd: AdminCmd::Create { email },
         } => {
-            let db = Db::open(&config.db_path).await?;
+            let db = open_offline(&config).await?;
             migrate::run(&db).await?;
             let password = read_password(&email)?;
             let user = monita::accounts::create_super_admin(&db, &email, &password).await?;
@@ -64,7 +64,7 @@ async fn main() -> anyhow::Result<()> {
         Cmd::Admin {
             cmd: AdminCmd::ResetPassword { email },
         } => {
-            let db = Db::open(&config.db_path).await?;
+            let db = open_offline(&config).await?;
             migrate::run(&db).await?;
             let password = read_password(&email)?;
             monita::accounts::reset_super_admin_password(&db, &email, &password).await?;
@@ -72,6 +72,17 @@ async fn main() -> anyhow::Result<()> {
             Ok(())
         }
     }
+}
+
+/// The CLI commands need the database file to themselves: turso locks it while `serve` runs.
+async fn open_offline(config: &Config) -> anyhow::Result<Db> {
+    use anyhow::Context;
+    Db::open(&config.db_path).await.with_context(|| {
+        format!(
+            "could not open {}; if Monita is running, stop it first (systemctl stop monita)",
+            config.db_path.display()
+        )
+    })
 }
 
 // ponytail: the password echoes on a TTY; add termios no-echo if admins run this over a shared screen.

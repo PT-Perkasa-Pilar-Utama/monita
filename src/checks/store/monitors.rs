@@ -199,6 +199,21 @@ pub async fn find_monitor(
     .pop())
 }
 
+/// Every monitor and heartbeat of a project as (is heartbeat, id, name), monitors first.
+pub async fn source_names(
+    c: &Connection,
+    project_id: i64,
+) -> anyhow::Result<Vec<(bool, i64, String)>> {
+    crate::platform::db::query_all(
+        c,
+        "SELECT 0, id, name FROM monitors WHERE project_id = ?1
+         UNION ALL SELECT 1, id, name FROM heartbeats WHERE project_id = ?1 ORDER BY 1, 3",
+        [project_id],
+        |r| Ok((r.get::<i64>(0)? == 1, r.get(1)?, r.get(2)?)),
+    )
+    .await
+}
+
 /// A read-only probe, so an idle tick never waits for the writer.
 pub async fn any_due(c: &Connection, at: i64) -> anyhow::Result<bool> {
     let n = crate::platform::db::query_i64(

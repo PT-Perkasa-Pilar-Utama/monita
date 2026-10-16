@@ -200,9 +200,6 @@ impl BoardPage {
     fn columns(&self) -> [(&'static str, &'static str); 3] {
         [STAGES[1], STAGES[2], STAGES[3]]
     }
-    fn reason(&self, r: &str) -> &'static str {
-        crate::tickets::reason_label(r)
-    }
     fn day(&self, ts: &i64) -> String {
         time::day(*ts)
     }

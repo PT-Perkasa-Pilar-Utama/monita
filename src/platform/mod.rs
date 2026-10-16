@@ -36,6 +36,15 @@ pub fn api_error(
         .into_response()
 }
 
+/// An `http` or `https` URL with a host, as the HTTP client will accept it. Monitor URLs,
+/// webhook URLs and ticket page URLs all go through it.
+pub fn valid_http_url(raw: &str) -> bool {
+    raw.len() <= 2000
+        && reqwest::Url::parse(raw).is_ok_and(|u| {
+            matches!(u.scheme(), "http" | "https") && u.host_str().is_some_and(|h| !h.is_empty())
+        })
+}
+
 /// Current time in Unix seconds, UTC.
 pub fn now() -> i64 {
     std::time::SystemTime::now()
@@ -95,6 +104,21 @@ mod tests {
             Some("198.51.100.7".parse().unwrap()),
             "the proxy's own line wins"
         );
+    }
+
+    #[test]
+    fn a_url_needs_an_http_scheme_and_a_host() {
+        assert!(valid_http_url("https://shop.example/cart"));
+        assert!(valid_http_url("http://10.0.0.5:8080/health"));
+        for bad in [
+            "http://",
+            "https://:80",
+            "ftp://x.co",
+            "javascript:alert(1)",
+            "x.co",
+        ] {
+            assert!(!valid_http_url(bad), "{bad}");
+        }
     }
 
     #[test]

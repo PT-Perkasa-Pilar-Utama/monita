@@ -208,30 +208,27 @@ async fn a_fail_right_after_a_success_ping_is_still_heard() {
 }
 
 #[tokio::test]
-async fn a_fail_body_is_the_cause_up_to_1_kb_and_413_past_it() {
+async fn a_long_fail_body_still_opens_the_incident_with_its_first_kb() {
     let app = TestApp::spawn("test").await;
-    let (_, token) = setup(&app).await;
-    let url = app.url(&format!("/ping/{token}/fail"));
-    let big = app
+    let (tl, token) = setup(&app).await;
+    let log = format!("disk full on /var\n{}", "x".repeat(3000));
+    let res = app
         .http
-        .post(&url)
-        .body("x".repeat(1025))
+        .post(app.url(&format!("/ping/{token}/fail")))
+        .body(log)
         .send()
         .await
         .unwrap();
-    assert_eq!(big.status(), 413);
-    let ok = app
-        .http
-        .post(&url)
-        .body("disk full on /var")
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(ok.status(), 200);
+    assert_eq!(
+        res.status(),
+        200,
+        "the failure is never dropped for its size"
+    );
+    assert_eq!(state_label(&app, &tl).await, "Down");
     assert_eq!(
         count(
             &app,
-            "SELECT count(*) FROM pings WHERE kind = 'fail' AND cause = 'disk full on /var'"
+            "SELECT count(*) FROM pings WHERE kind = 'fail' AND length(cause) = 1024 AND cause LIKE 'disk full on /var%'"
         )
         .await,
         1

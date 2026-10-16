@@ -81,7 +81,7 @@ impl NewTicket {
             ));
         }
         if let Some(u) = &self.page_url
-            && (u.len() > 2_000 || !(u.starts_with("http://") || u.starts_with("https://")))
+            && !crate::platform::valid_http_url(u)
         {
             return Err(TicketError::Invalid(
                 "The page URL must start with http:// or https://.",

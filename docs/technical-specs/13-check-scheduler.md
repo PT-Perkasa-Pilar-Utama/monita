@@ -11,8 +11,8 @@ One loop drives every timed job in Monita: monitor checks, heartbeat deadlines, 
 | Claim | Set `next_check_at = now + interval_s` before the probe starts | A slow probe is never picked twice. |
 | Concurrency | `tokio::sync::Semaphore` with `settings.check_concurrency` permits (50), re-read every tick | Q10 |
 | Batch size | `LIMIT available_permits` | The loop never queues more than it can run. |
-| New monitor offset | `next_check_at = now + rand(0..interval_s)` | Q10. Spreads load. |
-| Interval edit | `next_check_at = now + rand(0..interval_s)` | Same spreading |
+| New monitor offset | `next_check_at = now + 5 + rand(0..interval_s - 5)` | Q10. Spreads load. |
+| Interval edit | `next_check_at = now + 5 + rand(0..interval_s - 5)` | Same spreading |
 | Heartbeat due | `deadline_at <= now`. The loop sends `HeartbeatMissed`, then sets `deadline_at = NULL`. | One miss signal per outage |
 | Ping | `deadline_at = now + period_s + grace_s` | Q7 |
 | New heartbeat | `deadline_at = created_at + period_s + grace_s` | A job that never pings still alerts. |
