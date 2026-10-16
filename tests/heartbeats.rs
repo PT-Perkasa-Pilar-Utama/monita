@@ -236,16 +236,26 @@ async fn a_long_fail_body_still_opens_the_incident_with_its_first_kb() {
 }
 
 #[tokio::test]
-async fn a_fail_body_past_128_kib_is_refused_before_any_lookup() {
+async fn a_fail_body_past_128_kib_is_still_heard() {
     let app = TestApp::spawn("test").await;
+    let (tl, token) = setup(&app).await;
     let res = app
         .http
-        .post(app.url("/ping/nosuchtoken/fail"))
-        .body("x".repeat(200 * 1024))
+        .post(app.url(&format!("/ping/{token}/fail")))
+        .body(format!("disk full\n{}", "x".repeat(300 * 1024)))
         .send()
         .await
         .unwrap();
-    assert_eq!(res.status(), 413, "the read is bounded");
+    assert_eq!(res.status(), 200, "cut, never refused");
+    assert_eq!(state_label(&app, &tl).await, "Down");
+    assert_eq!(
+        count(
+            &app,
+            "SELECT count(*) FROM pings WHERE length(cause) = 1024 AND cause LIKE 'disk full%'"
+        )
+        .await,
+        1
+    );
 }
 
 #[tokio::test]

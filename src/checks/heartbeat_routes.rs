@@ -332,6 +332,26 @@ async fn ping(
     }
 }
 
+/// The body, if any, is the job's own error text. Only its start is kept, so a long log is cut,
+/// never refused (api-specs 04 section 4.2). The rest is read and dropped, so the client gets
+/// its answer instead of a reset; past `DRAIN_MAX` Monita stops reading and answers anyway.
+async fn read_cause(mut body: axum::body::Body) -> String {
+    use axum::body::HttpBody;
+    const KEEP: usize = 1024 + 3; // one more character than 1 KB, so the cut lands on a boundary
+    const DRAIN_MAX: usize = 16 * 1024 * 1024;
+    let (mut kept, mut seen) = (Vec::new(), 0usize);
+    while seen <= DRAIN_MAX {
+        let frame = std::future::poll_fn(|cx| std::pin::Pin::new(&mut body).poll_frame(cx)).await;
+        let Some(Ok(frame)) = frame else { break };
+        if let Ok(data) = frame.into_data() {
+            seen += data.len();
+            let room = KEEP.saturating_sub(kept.len());
+            kept.extend_from_slice(&data[..data.len().min(room)]);
+        }
+    }
+    heartbeat::first_kb(String::from_utf8_lossy(&kept).trim())
+}
+
 fn peer(req: &Request) -> Option<SocketAddr> {
     req.extensions()
         .get::<ConnectInfo<SocketAddr>>()
@@ -360,13 +380,7 @@ async fn ping_fail(
     req: Request,
 ) -> Response {
     let (headers, peer) = (req.headers().clone(), peer(&req));
-    // The body, if any, is the job's own error text. `to_bytes` on a raw body ignores the router's
-    // `DefaultBodyLimit`, so the read is bounded here, at the same 128 KiB as every route (SEC-19).
-    // A client that disconnects mid-body also lands in the 413 branch; it never reads it.
-    let Ok(body) = axum::body::to_bytes(req.into_body(), crate::app::MAX_BODY).await else {
-        return plain(StatusCode::PAYLOAD_TOO_LARGE, "body over 128 KiB");
-    };
-    let cause = heartbeat::first_kb(String::from_utf8_lossy(&body).trim());
+    let cause = read_cause(req.into_body()).await;
     ping(
         &state,
         &token,

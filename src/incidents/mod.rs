@@ -355,12 +355,8 @@ pub async fn open_manual(db: &Db, n: &NewIncident, now: i64) -> Result<i64, Upda
     if !matches!(n.severity.as_str(), "critical" | "warning") {
         return Err(UpdateError::BadSeverity);
     }
-    // Items before the message, as the form lists them. Both are checked on a read connection,
-    // so a rejected form never takes the writer; the write resolves the items again, so a source
-    // deleted in between is not attached.
-    if picked(&item_names_on(&db.read().await?, n.project_id).await?, n).is_empty() {
-        return Err(UpdateError::NoItems);
-    }
+    // The checks that need no database run first, so most rejected forms never take the writer.
+    // The items are resolved inside the write, so a source deleted meanwhile is not attached.
     check_message(&n.message)?;
     db.write(async |c| {
         let items = picked(&item_names_on(c, n.project_id).await?, n);

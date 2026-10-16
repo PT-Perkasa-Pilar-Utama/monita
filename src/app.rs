@@ -104,11 +104,7 @@ pub async fn serve(config: Config) -> anyhow::Result<()> {
     // running flag and the next tick starts it again.
     let gate = state.gate.clone();
     tokio::spawn(async move {
-        if let Err(e) = scheduler.await
-            && e.is_panic()
-        {
-            tracing::error!(error = %e, "the scheduler panicked; exiting so the service restarts");
-            let _held = drain(&gate, std::time::Duration::from_secs(10)).await;
+        if scheduler_died(scheduler, &gate).await {
             std::process::exit(1);
         }
     });
@@ -126,6 +122,22 @@ pub async fn serve(config: Config) -> anyhow::Result<()> {
         tracing::warn!("background work still running after 10 s; exiting anyway");
     }
     Ok(())
+}
+
+/// Waits for the scheduler loop. True when it panicked; running work is drained first, so the
+/// caller can exit at once.
+pub async fn scheduler_died(
+    scheduler: tokio::task::JoinHandle<()>,
+    gate: &Arc<tokio::sync::RwLock<()>>,
+) -> bool {
+    match scheduler.await {
+        Err(e) if e.is_panic() => {
+            tracing::error!(error = %e, "the scheduler panicked; exiting so the service restarts");
+            let _held = drain(gate, std::time::Duration::from_secs(10)).await;
+            true
+        }
+        _ => false,
+    }
 }
 
 /// Waits up to `limit` for every probe, delivery pass and daily job to finish, and returns the
@@ -169,6 +181,27 @@ async fn shutdown_signal() {
 mod tests {
     use super::*;
     use std::time::Duration;
+
+    #[tokio::test]
+    async fn a_scheduler_panic_is_reported_after_running_work_drains() {
+        let gate: Arc<tokio::sync::RwLock<()>> = Arc::default();
+        let running = gate.clone().read_owned().await;
+        let done = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let flag = done.clone();
+        tokio::spawn(async move {
+            tokio::time::sleep(Duration::from_millis(100)).await;
+            flag.store(true, std::sync::atomic::Ordering::SeqCst);
+            drop(running);
+        });
+        let panicked = tokio::spawn(async { panic!("scheduler bug") });
+        assert!(scheduler_died(panicked, &gate).await);
+        assert!(
+            done.load(std::sync::atomic::Ordering::SeqCst),
+            "the running probe finished first"
+        );
+        let finished = tokio::spawn(async {});
+        assert!(!scheduler_died(finished, &gate).await);
+    }
 
     #[tokio::test]
     async fn drain_waits_for_running_work_but_not_forever() {

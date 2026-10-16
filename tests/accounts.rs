@@ -69,16 +69,25 @@ async fn super_admin_invites_a_tl_and_the_email_goes_out() {
         .await;
     assert_eq!(res.status(), 200);
     let path = invite_path(&res.text().await.unwrap());
-    // The scheduler delivers too, so wait for the mailer rather than count one pass.
+    // The scheduler delivers too, so wait until the row is marked sent rather than count one pass:
+    // the body is cleared in that same mark.
     monita::notify::deliver_due(&app.state).await.unwrap();
-    let mut emails = app.state.mailer.sent();
+    let sent_rows = async || {
+        monita::platform::db::query_i64(
+            &app.state.db.read().await.unwrap(),
+            "SELECT count(*) FROM outbox WHERE sent_at IS NOT NULL",
+            (),
+        )
+        .await
+        .unwrap()
+    };
     for _ in 0..20 {
-        if !emails.is_empty() {
+        if sent_rows().await == Some(1) {
             break;
         }
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-        emails = app.state.mailer.sent();
     }
+    let emails = app.state.mailer.sent();
     assert_eq!(emails.len(), 1);
     assert_eq!(emails[0].to, "rina@x.co");
     assert!(emails[0].body.contains(&format!("{BASE_URL}{path}")));

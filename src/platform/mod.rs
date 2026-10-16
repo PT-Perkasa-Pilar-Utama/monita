@@ -42,7 +42,10 @@ pub fn api_error(
 /// and the `http://` prefix written out, which it repairs.
 pub fn valid_http_url(raw: &str) -> bool {
     raw.len() <= 2000
-        && (raw.starts_with("http://") || raw.starts_with("https://"))
+        && ["http://", "https://"].iter().any(|p| {
+            raw.get(..p.len())
+                .is_some_and(|s| s.eq_ignore_ascii_case(p))
+        })
         && !raw.chars().any(|c| c.is_whitespace() || c.is_control())
         && reqwest::Url::parse(raw).is_ok_and(|u| {
             matches!(u.scheme(), "http" | "https") && u.host_str().is_some_and(|h| !h.is_empty())
@@ -114,6 +117,10 @@ mod tests {
     fn a_url_needs_an_http_scheme_and_a_host() {
         assert!(valid_http_url("https://shop.example/cart"));
         assert!(valid_http_url("http://10.0.0.5:8080/health"));
+        assert!(
+            valid_http_url("HTTPS://Shop.example/cart"),
+            "schemes are case-insensitive"
+        );
         for bad in [
             "http://",
             "https://:80",

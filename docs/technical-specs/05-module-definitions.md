@@ -102,11 +102,11 @@ Each module owns its tables (see [06](06-data-model.md)). Other modules use only
 
 | Condition | HTTP | `status` |
 | --- | --- | --- |
-| `SELECT 1` works and the scheduler ticked in the last 30 s | 200 | `ok` |
+| The outbox count answers and the scheduler ticked in the last 30 s | 200 | `ok` |
 | The DB query fails | 503 | `fail`, `db: "fail"` |
 | The scheduler has not ticked for 30 s | 503 | `fail` |
 
-The body never holds paths, versions of dependencies or secrets.
+`outbox_pending` counts outbox rows not yet sent or failed, retries included, so a mail outage shows as a growing number. The body never holds paths, versions of dependencies or secrets.
 
 ### 5.8.2 Reset state
 

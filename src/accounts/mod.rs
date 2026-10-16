@@ -73,16 +73,18 @@ pub enum AccountError {
     Other(#[from] anyhow::Error),
 }
 
-/// The form an email is stored and looked up in. Sign-in uses only this, so a stricter rule for
-/// new addresses never locks out an account that already exists.
-fn email_key(raw: &str) -> String {
-    raw.trim().to_lowercase()
+/// The form an email is stored and looked up in, or `None` for text no stored address can match
+/// (over 254 bytes, no `@`), so junk costs no lookup. Sign-in uses only this, not the stricter
+/// rule for new addresses, so no existing account is locked out.
+fn email_key(raw: &str) -> Option<String> {
+    let key = raw.trim().to_lowercase();
+    (key.len() <= 254 && key.contains('@')).then_some(key)
 }
 
 /// A new address: one the SMTP server will take. ASCII only, because lettre refuses non-ASCII
 /// addresses unless the server offers SMTPUTF8, and a name domain, not an `[ip]` literal.
 pub fn normalize_email(raw: &str) -> Result<String, AccountError> {
-    let email = email_key(raw);
+    let email = email_key(raw).ok_or(AccountError::InvalidEmail)?;
     let valid = email.len() <= 254
         && email.is_ascii()
         && !email.contains(char::is_whitespace)
@@ -173,7 +175,7 @@ pub async fn reset_super_admin_password(
     email: &str,
     password: &str,
 ) -> Result<(), AccountError> {
-    let email = email_key(email);
+    let email = email_key(email).ok_or(AccountError::NoSuchAdmin)?;
     let hash = hash_password(password).await?;
     db.write(
         async |c| match store::find_user_by_email(c, &email).await? {
@@ -189,7 +191,7 @@ pub async fn reset_super_admin_password(
 
 /// Signs in. Returns the raw session token for the cookie.
 pub async fn login(db: &Db, email: &str, password: &str) -> Result<String, AccountError> {
-    let email = email_key(email);
+    let email = email_key(email).ok_or(AccountError::BadCredentials)?;
     let user = store::find_user_by_email(&db.read().await?, &email).await?;
     // ponytail: an unknown email skips argon2, so its timing differs; verify a dummy hash if enumeration matters.
     let Some(user) = user.filter(|u| u.disabled_at.is_none()) else {
@@ -358,6 +360,37 @@ mod tests {
                 "{bad}: the mailer would refuse it"
             );
         }
+    }
+
+    #[tokio::test]
+    async fn a_dropped_check_keeps_its_hash_slot_until_the_hash_ends() {
+        let stored = hash_password("correct-horse-battery").await.unwrap();
+        // The first poll takes the slot and starts the hash; the 1 ms timeout then drops the
+        // future while the hash, far slower than 1 ms, still runs.
+        let dropped = tokio::time::timeout(
+            std::time::Duration::from_millis(1),
+            verify_password("wrong-password", &stored),
+        )
+        .await;
+        assert!(dropped.is_err());
+        assert!(
+            HASHING.available_permits() < 4,
+            "the running hash still holds its slot"
+        );
+        for _ in 0..200 {
+            if HASHING.available_permits() == 4 {
+                break;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        }
+        assert_eq!(HASHING.available_permits(), 4, "and frees it when done");
+    }
+
+    #[test]
+    fn a_lookup_key_is_lenient_but_junk_costs_nothing() {
+        assert_eq!(email_key(" Jörg@X.co ").as_deref(), Some("jörg@x.co"));
+        assert!(email_key(&"a".repeat(300)).is_none());
+        assert!(email_key("no-at-sign").is_none());
     }
 
     #[test]

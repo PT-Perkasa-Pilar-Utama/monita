@@ -32,8 +32,7 @@ pub struct Config {
 /// A two-valued variable: unset means `no`; anything but `yes` or `no` stops the start, so a
 /// typo such as `TRUE` cannot silently turn a feature off.
 fn flag(value: Option<String>, key: &str, yes: &str, no: &str) -> anyhow::Result<bool> {
-    // Trimmed: an env file line can carry a trailing space or CR.
-    match value.as_deref().map(str::trim) {
+    match value.as_deref() {
         None => Ok(false),
         Some(v) if v == yes => Ok(true),
         Some(v) if v == no => Ok(false),
@@ -48,7 +47,12 @@ impl Config {
 
     /// Reads every variable through `get`, so tests pass a map instead of the process env.
     pub fn from_lookup(get: impl Fn(&str) -> Option<String>) -> anyhow::Result<Self> {
-        let var = |k: &str| get(k).filter(|v| !v.trim().is_empty());
+        // Trimmed once for every variable: an env file line can carry a trailing space or CR.
+        let var = |k: &str| {
+            get(k)
+                .map(|v| v.trim().to_string())
+                .filter(|v| !v.is_empty())
+        };
         // No default: a prod host that loses this line must not come up in dev with reset-state.
         let env = match var("MONITA_ENV").as_deref() {
             None => bail!("MONITA_ENV is required: dev, test or prod"),
@@ -116,12 +120,11 @@ impl Config {
                 }
                 .into()
             }),
-            log_json: flag(
-                var("MONITA_LOG_FORMAT"),
-                "MONITA_LOG_FORMAT",
-                "json",
-                "pretty",
-            )?,
+            // Unset: json in prod for log shippers, pretty elsewhere (spec 11).
+            log_json: match var("MONITA_LOG_FORMAT") {
+                None => env == Env::Prod,
+                set => flag(set, "MONITA_LOG_FORMAT", "json", "pretty")?,
+            },
         })
     }
 }
@@ -169,6 +172,21 @@ mod tests {
             dev("MONITA_TRUST_PROXY", "true \r").unwrap().trust_proxy,
             "env-file whitespace"
         );
+        let path = dev("MONITA_DB_PATH", "/var/lib/monita/monita.db\r")
+            .unwrap()
+            .db_path;
+        assert_eq!(
+            path.to_str(),
+            Some("/var/lib/monita/monita.db"),
+            "every variable is trimmed"
+        );
+    }
+
+    #[test]
+    fn prod_logs_json_unless_told_otherwise() {
+        let prod = cfg(&[("MONITA_ENV", "prod"), ("MONITA_BASE_URL", "https://x.co")]).unwrap();
+        assert!(prod.log_json);
+        assert!(!cfg(&[("MONITA_ENV", "dev")]).unwrap().log_json);
     }
 
     #[test]

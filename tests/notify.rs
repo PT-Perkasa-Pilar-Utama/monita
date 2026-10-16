@@ -2,8 +2,17 @@
 
 mod common;
 
+use std::{
+    sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    },
+    time::Duration,
+};
+
 use axum::{
     Router,
+    extract::State,
     http::StatusCode,
     routing::{get, post},
 };
@@ -24,6 +33,30 @@ async fn queue_webhook(app: &TestApp, url: &str) {
         })
         .await
         .unwrap();
+}
+
+/// A webhook endpoint that answers after 300 ms and counts its calls, either as they arrive or as
+/// they finish.
+async fn counting_sink(count_on_arrival: bool) -> (std::net::SocketAddr, Arc<AtomicUsize>) {
+    let hits = Arc::new(AtomicUsize::new(0));
+    let sink = Router::new()
+        .route(
+            "/hook",
+            post(move |State(h): State<Arc<AtomicUsize>>| async move {
+                if count_on_arrival {
+                    h.fetch_add(1, Ordering::SeqCst);
+                }
+                tokio::time::sleep(Duration::from_millis(300)).await;
+                if !count_on_arrival {
+                    h.fetch_add(1, Ordering::SeqCst);
+                }
+            }),
+        )
+        .with_state(hits.clone());
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    tokio::spawn(async move { axum::serve(listener, sink).await.unwrap() });
+    (addr, hits)
 }
 
 async fn last_error(app: &TestApp) -> String {
@@ -72,35 +105,19 @@ async fn a_failed_webhook_never_stores_its_url() {
 
 #[tokio::test]
 async fn a_delivery_pass_sends_five_messages_at_once() {
-    let hits = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
-    let sink = Router::new()
-        .route(
-            "/hook",
-            post(
-                |axum::extract::State(h): axum::extract::State<
-                    std::sync::Arc<std::sync::atomic::AtomicUsize>,
-                >| async move {
-                    tokio::time::sleep(std::time::Duration::from_millis(300)).await;
-                    h.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-                },
-            ),
-        )
-        .with_state(hits.clone());
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let addr = listener.local_addr().unwrap();
-    tokio::spawn(async move { axum::serve(listener, sink).await.unwrap() });
+    let (addr, hits) = counting_sink(false).await;
     let app = TestApp::spawn("test").await;
     let started = std::time::Instant::now();
     for _ in 0..5 {
         queue_webhook(&app, &format!("http://{addr}/hook")).await;
     }
     monita::notify::deliver_due(&app.state).await.unwrap();
-    while hits.load(std::sync::atomic::Ordering::SeqCst) < 5 {
-        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+    while hits.load(Ordering::SeqCst) < 5 {
+        tokio::time::sleep(Duration::from_millis(20)).await;
     }
     // The sink answers after 300 ms: one at a time would take 1.5 s.
     assert!(
-        started.elapsed() < std::time::Duration::from_millis(1_000),
+        started.elapsed() < Duration::from_millis(1_000),
         "{:?}",
         started.elapsed()
     );
@@ -108,23 +125,7 @@ async fn a_delivery_pass_sends_five_messages_at_once() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn two_delivery_passes_never_send_one_message_twice() {
-    let hits = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
-    let sink = Router::new()
-        .route(
-            "/hook",
-            post(
-                |axum::extract::State(h): axum::extract::State<
-                    std::sync::Arc<std::sync::atomic::AtomicUsize>,
-                >| async move {
-                    h.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-                    tokio::time::sleep(std::time::Duration::from_millis(300)).await;
-                },
-            ),
-        )
-        .with_state(hits.clone());
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let addr = listener.local_addr().unwrap();
-    tokio::spawn(async move { axum::serve(listener, sink).await.unwrap() });
+    let (addr, hits) = counting_sink(true).await;
     let app = TestApp::spawn("test").await;
     queue_webhook(&app, &format!("http://{addr}/hook")).await;
     // The sink answers after 300 ms, so the second pass starts while the first is still sending.
@@ -132,9 +133,9 @@ async fn two_delivery_passes_never_send_one_message_twice() {
         let s = app.state.clone();
         async move { monita::notify::deliver_due(&s).await }
     });
-    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    tokio::time::sleep(Duration::from_millis(100)).await;
     monita::notify::deliver_due(&app.state).await.unwrap();
     first.await.unwrap().unwrap();
-    tokio::time::sleep(std::time::Duration::from_millis(1_500)).await;
-    assert_eq!(hits.load(std::sync::atomic::Ordering::SeqCst), 1);
+    tokio::time::sleep(Duration::from_millis(1_500)).await;
+    assert_eq!(hits.load(Ordering::SeqCst), 1);
 }

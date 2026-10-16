@@ -15,6 +15,7 @@ pub struct Db {
 }
 
 struct Writer {
+    database: Database,
     conn: Connection,
     /// True from just before `PRAGMA foreign_keys = OFF` until `clean` turns the checks back on,
     /// so a `write_without_fk` dropped at any point still leaves foreign keys on for the next user.
@@ -33,18 +34,42 @@ impl Writer {
                 true
             }
         };
+        let mut stuck = false;
         if open {
             tracing::warn!("rolling back a transaction left open by a dropped write");
             if let Err(e) = self.conn.execute("ROLLBACK", ()).await {
                 tracing::error!(error = %e, "rollback of an abandoned transaction failed");
+                stuck = true;
             }
         }
         // The pragma is a silent no-op inside a transaction, so `fk_off` clears only once the
-        // connection is out of one and the pragma ran; otherwise the next `clean` tries again.
-        if self.fk_off && self.conn.is_autocommit().unwrap_or(false) {
-            match self.conn.execute("PRAGMA foreign_keys = ON", ()).await {
-                Ok(_) => self.fk_off = false,
-                Err(e) => tracing::error!(error = %e, "could not turn foreign keys back on"),
+        // connection is out of one and the pragma ran.
+        if self.fk_off {
+            let restored = self.conn.is_autocommit().unwrap_or(false)
+                && self
+                    .conn
+                    .execute("PRAGMA foreign_keys = ON", ())
+                    .await
+                    .inspect_err(
+                        |e| tracing::error!(error = %e, "could not turn foreign keys back on"),
+                    )
+                    .is_ok();
+            if restored {
+                self.fk_off = false;
+            } else {
+                stuck = true;
+            }
+        }
+        // A connection that cannot be put back is replaced: closing it ends its transaction, and
+        // a new one starts with foreign keys on. Writes then go on instead of failing forever.
+        if stuck {
+            match connect(&self.database).await {
+                Ok(conn) => {
+                    tracing::warn!("replaced the writer connection after a failed cleanup");
+                    self.conn = conn;
+                    self.fk_off = false;
+                }
+                Err(e) => tracing::error!(error = %e, "could not replace the writer connection"),
             }
         }
     }
@@ -59,8 +84,9 @@ impl Db {
         let database = Builder::new_local(path).build().await?;
         let conn = connect(&database).await?;
         Ok(Self {
-            database,
+            database: database.clone(),
             writer: Arc::new(Mutex::new(Writer {
+                database: database.clone(),
                 conn,
                 fk_off: false,
             })),
