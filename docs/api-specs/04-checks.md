@@ -25,8 +25,8 @@ curl -fsS -m 10 https://monita.company.co.id/ping/k3j9w2x7q4m8p6r1t5v0y2z8ab
 | --- | --- |
 | Purpose | A project job reports its own failure. |
 | Access | Anyone with the token. |
-| Input | Path `token`. Optional body: the first 1 KB of text is kept as the cause, cut on a character boundary. Leading whitespace is skipped and not counted. A longer body is cut, never refused, so the failure is always recorded. The body is read only after the token and the limits pass. The ping is stored at 1 KB of text, the end of the body, 16 MiB, or 10 s. Monita then reads the rest and drops it. One 10 s limit from admission covers both reads and the store between them. One 16 MiB cap covers both reads. A body within both limits gets its answer through `curl -f`. A ping refused at `admit` is answered without reading its body (4.1). |
-| Behavior | Rate limit as 4.1, in its own bucket `pingfail:{id}`, so a fail right after a success ping is never refused. Insert `pings(kind=fail)`. `observe(Heartbeat, FailPing{cause})` opens an incident at once (AC-14.01). `deadline_at` does not move. |
+| Input | Path `token`. Optional body: the first 1 KB of text is kept as the cause, cut on a character boundary. Leading whitespace is skipped and does not count toward the 1 KB. It still counts toward the 16 MiB cap and the 10 s. A longer body is cut, never refused, so the failure is always recorded. The body is read only after the token and the limits pass. The ping is stored at 1 KB of text, the end of the body, 16 MiB, or 10 s. `received_at` is the store time. Monita then reads the rest and drops it. One 10 s limit from admission covers both reads and the store between them. One 16 MiB cap covers both reads. A body within both limits gets its answer through `curl -f`. A ping refused at `admit` is answered without reading its body (4.1). |
+| Behavior | Rate limit as 4.1, in its own bucket `pingfail:{id}`, so a fail right after a success ping is never refused. Insert `pings(kind=fail)`. `observe(Heartbeat, FailPing{cause})` opens an incident as soon as the ping is stored (AC-14.01). `deadline_at` does not move. |
 | Output | 200 `OK` |
 | Errors | Same as 4.1 |
 

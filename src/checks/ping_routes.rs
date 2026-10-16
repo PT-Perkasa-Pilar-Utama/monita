@@ -15,7 +15,7 @@ use crate::{app::AppState, platform::caller_ip};
 
 /// The time both reads of a ping body share, counted from admission: past it, Monita answers.
 const BODY_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
-/// The bytes of a ping body Monita reads at most. It reads to the end, so `curl -f` sees the
+/// The bytes of a ping body Monita reads at most. It reads up to this cap, so `curl -f` sees the
 /// answer instead of a reset; only the first 1 KB of a `/fail` body is kept.
 const BODY_MAX: usize = 16 * 1024 * 1024;
 
@@ -93,7 +93,8 @@ async fn ping(state: &AppState, token: &str, kind: PingKind, req: Request) -> Re
 }
 
 /// For `/fail`, reads the first 1 KB of the body as the cause. Calls `record`, then reads the
-/// rest of the body without keeping it, so a slow or large upload never delays the incident.
+/// rest of the body without keeping it, so a large upload never delays the incident and a slow
+/// one delays it by the deadline at most.
 async fn handle_body<T>(
     mut body: Body,
     kind: PingKind,
@@ -247,7 +248,11 @@ mod tests {
     #[tokio::test]
     async fn a_stalled_body_keeps_what_arrived_at_the_deadline() {
         let mut body = Body::new(Stalls(false));
-        let cause = read_cause(&mut body, &mut budget(50, usize::MAX)).await;
+        let mut b = budget(50, usize::MAX);
+        let read = read_cause(&mut body, &mut b);
+        let cause = tokio::time::timeout(Duration::from_secs(1), read)
+            .await
+            .expect("the read stops at the deadline");
         assert_eq!(cause.as_deref(), Some("Error: half"));
     }
 
@@ -290,12 +295,12 @@ mod tests {
         let frames = Arc::new(AtomicUsize::new(0));
         let body = Body::new(Long(frames.clone(), "xxxx"));
         let record = async |cause: Option<String>| (cause, frames.load(Ordering::SeqCst));
-        let stored = handle_body(body, PingKind::Ok, budget(60_000, usize::MAX), record).await;
+        let stored = handle_body(body, PingKind::Ok, budget(60_000, 10), record).await;
         assert_eq!(stored, (None, 0), "stored before a byte is read");
         assert_eq!(
             frames.load(Ordering::SeqCst),
-            10_001,
-            "every frame, then the end"
+            3,
+            "drained until 4 + 4 + 4 bytes reach 10"
         );
     }
 }

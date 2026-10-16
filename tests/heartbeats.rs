@@ -293,6 +293,8 @@ async fn a_fail_is_stored_while_the_rest_of_its_body_still_uploads() {
     tcp.write_all(&[b'x'; 2000]).await.unwrap();
     let stored = "SELECT count(*) FROM pings WHERE kind = 'fail' AND cause LIKE 'disk full%'";
     let mut found = 0;
+    // The body never ends and its deadline is 10 s, so any wait under that proves the store came
+    // first. 5 s leaves room for a slow runner.
     for _ in 0..100 {
         found = count(&app, stored).await;
         if found == 1 {
