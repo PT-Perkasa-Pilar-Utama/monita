@@ -231,8 +231,11 @@ impl FromRequestParts<AppState> for ApiProject {
             .map_err(internal)?
             .ok_or_else(unauthorized)?;
         if let Some(list) = &project.ip_allowlist {
-            let (headers, extensions) = (&parts.headers, &parts.extensions);
-            let ip = crate::platform::caller_ip(headers, extensions, state.config.trust_proxy);
+            let ip = crate::platform::caller_ip(
+                &parts.headers,
+                &parts.extensions,
+                state.config.trust_proxy,
+            );
             if !ip.is_some_and(|ip| allowlist::contains(list, ip)) {
                 return Err(api_error(
                     StatusCode::FORBIDDEN,

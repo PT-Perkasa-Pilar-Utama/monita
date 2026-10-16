@@ -143,8 +143,9 @@ Each line was argued in review and decided. Do not reopen one without a new fact
 - The public status JSON has its own wire types in `status`; they are not shared with `incidents` (SEC-21).
 - A rejected manual-incident form never takes the writer. A successful one resolves its items twice: on a read connection to reject the form, then inside the write to skip a source deleted in between. Error order is the form's: title, items, severity, message.
 - `MONITA_LOG` and `MONITA_LOG_FORMAT` are the only variables whose unset value follows `MONITA_ENV` (`info,monita=debug` in dev; json in prod). Every other per-environment column in spec 11 is a recommended value, not a default. Every value is trimmed.
-- The two ping routes never answer 413. `/ping/{token}` never reads its body. `/ping/{token}/fail` checks the token and the rate limits before it reads a byte. It records the failure once it has the first 1 KB, then reads the rest up to 16 MiB or 10 s, so `curl -f` sees its answer.
-- `http-body` is a dev-dependency only: the stalled-upload unit test needs a hand-made body. The cause and drain readers take their limits as parameters for the same tests.
+- The two ping routes never answer 413. They check the token and the rate limits before they read a byte. `/fail` stores the ping at its first 1 KB, then reads the rest. Both routes read up to 16 MiB within one 10 s limit, so `curl -f` sees the answer.
+- A refused ping (404, 429, 500) is answered without reading its body. The client may then see a reset. Reading a refused body would defeat the limit.
+- `http-body` is a dev-dependency only: the stalled-upload unit test needs a hand-made body. The cause and drain readers take their deadline and byte cap as parameters for the same tests.
 - A test file may run to 800 lines; the 400-line cap is for `src/`.
 
 ## Context recovery checklist

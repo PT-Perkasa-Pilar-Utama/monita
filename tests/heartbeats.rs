@@ -280,6 +280,45 @@ async fn a_fail_body_of_megabytes_is_read_to_its_end_and_answered() {
 }
 
 #[tokio::test]
+async fn a_fail_is_stored_while_the_rest_of_its_body_still_uploads() {
+    use tokio::io::AsyncWriteExt;
+    let app = TestApp::spawn("test").await;
+    let (_tl, token) = setup(&app).await;
+    let addr = app.base.trim_start_matches("http://").to_string();
+    let mut tcp = tokio::net::TcpStream::connect(addr).await.unwrap();
+    let head = format!(
+        "POST /ping/{token}/fail HTTP/1.1\r\nHost: x\r\nContent-Length: 4000000\r\n\r\ndisk full\n"
+    );
+    tcp.write_all(head.as_bytes()).await.unwrap();
+    tcp.write_all(&[b'x'; 2000]).await.unwrap();
+    let stored = "SELECT count(*) FROM pings WHERE kind = 'fail' AND cause LIKE 'disk full%'";
+    let mut found = 0;
+    for _ in 0..40 {
+        found = count(&app, stored).await;
+        if found == 1 {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    assert_eq!(found, 1, "stored before the body ends");
+    drop(tcp);
+}
+
+#[tokio::test]
+async fn an_ok_ping_with_megabytes_of_body_is_answered_200() {
+    let app = TestApp::spawn("test").await;
+    let (_tl, token) = setup(&app).await;
+    let res = app
+        .http
+        .post(app.url(&format!("/ping/{token}")))
+        .body("x".repeat(4 * 1024 * 1024))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), 200, "never 413");
+}
+
+#[tokio::test]
 async fn guessing_tokens_from_one_ip_gets_429() {
     let app = TestApp::spawn("test").await;
     // 121 misses span at most two minute windows, so one window sees more than 60.

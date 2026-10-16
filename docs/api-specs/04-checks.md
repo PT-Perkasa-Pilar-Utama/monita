@@ -8,7 +8,7 @@ Rules: [../technical-specs/13-check-scheduler.md](../technical-specs/13-check-sc
 | --- | --- |
 | Purpose | A project job reports a successful run. |
 | Access | Anyone with the token. |
-| Input | Path `token`. Any body is ignored, never read, so this route never answers 413. |
+| Input | Path `token`. Any body is read and dropped, up to 16 MiB or 10 s, so `curl -f` sees the answer. This route never answers 413. A refused ping is answered without reading its body. |
 | Behavior | 1. Find the heartbeat by token. 2. Rate limit: 1 per second per heartbeat, in the bucket `ping:{id}`. Over the limit: 429. A refused ping is not stored; the ping accepted in that second keeps the heartbeat alive (AC-13.02). 3. Insert `pings(kind=ok)`. 4. Set `last_ping_at = now`, `deadline_at = now + period_s + grace_s`. 5. `incidents::observe(Heartbeat, Ping)`, which closes an open incident (AC-18.01). |
 | Output | 200 `text/plain` `OK`. HEAD has no body. (AC-13.01) |
 | Errors | 404 `not_found` (plain text `not found`) for an unknown token. 429 with `Retry-After: 1` when over the limit. More than 60 unknown-token pings per minute from one IP (IPv6: one /64) get 429 before any lookup. |
@@ -25,7 +25,7 @@ curl -fsS -m 10 https://monita.company.co.id/ping/k3j9w2x7q4m8p6r1t5v0y2z8ab
 | --- | --- |
 | Purpose | A project job reports its own failure. |
 | Access | Anyone with the token. |
-| Input | Path `token`. Optional body: the first 1 KB of text is kept as the cause, cut on a character boundary. A longer body is cut, never refused, so the failure is always recorded. The body is read only after the token and the limits pass. Monita stores the ping and opens the incident as soon as it has the first 1 KB, the end of the body, or 10 s. It then reads the rest without keeping it, up to 16 MiB or 10 s more, and answers, so `curl -f` sees the answer. |
+| Input | Path `token`. Optional body: the first 1 KB of text is kept as the cause, cut on a character boundary. A longer body is cut, never refused, so the failure is always recorded. The body is read only after the token and the limits pass. The ping is stored at the first 1 KB, at the end of the body, or after 10 s. Monita then reads the rest and drops it, so `curl -f` sees the answer. One 10 s limit and one 16 MiB cap cover both reads. A refused ping is answered without reading its body. |
 | Behavior | Rate limit as 4.1, in its own bucket `pingfail:{id}`, so a fail right after a success ping is never refused. Insert `pings(kind=fail)`. `observe(Heartbeat, FailPing{cause})` opens an incident at once (AC-14.01). `deadline_at` does not move. |
 | Output | 200 `OK` |
 | Errors | Same as 4.1 |

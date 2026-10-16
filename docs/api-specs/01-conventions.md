@@ -6,7 +6,7 @@
 | --- | --- |
 | Base | `{MONITA_BASE_URL}/api/v1` for JSON. `/ping` and `/healthz` sit at the root. |
 | Content type | `application/json; charset=utf-8` for requests and responses |
-| Body limit | Request bodies are capped at 128 KiB (413) (SEC-19). The ping routes never answer 413: `/ping/{token}` ignores its body; `/ping/{token}/fail` keeps 1 KB, then reads the rest up to 16 MiB or 10 s after its token passes |
+| Body limit | Request bodies are capped at 128 KiB (413) (SEC-19). The ping routes never answer 413. They read an admitted body up to 16 MiB or 10 s and keep at most 1 KB |
 | Time | Unix seconds (integer, UTC) in every JSON field ending in `_at` |
 | IDs | Public tokens are strings. Internal numeric IDs never appear in the JSON API, except ticket `number`. |
 

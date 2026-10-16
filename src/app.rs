@@ -56,7 +56,7 @@ async fn start(
     Ok((router(state.clone()), state, scheduler))
 }
 
-/// SEC-19: forms get 413 past this. `/fail` has its own bound in `ping_routes`.
+/// SEC-19: forms get 413 past this. The ping routes have their own bound in `ping_routes`.
 pub const MAX_BODY: usize = 128 * 1024;
 
 pub fn router(state: AppState) -> Router {
