@@ -134,7 +134,7 @@ impl Page {
         time::utc(*ts)
     }
     fn label(&self, l: &str) -> &'static str {
-        crate::incidents::routes::label_title(l)
+        crate::incidents::label_title(l)
     }
 }
 

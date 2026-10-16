@@ -17,7 +17,7 @@ monita/
 │   ├── app.rs                 AppState, router assembly, background loop start
 │   ├── platform/              config, db, migrate, render, page, assets, headers, health,
 │   │                          rate_limit, limits, settings, jobs, backup, time, token, reset_state
-│   ├── accounts/              mod.rs (interface), routes.rs, store.rs
+│   ├── accounts/              mod.rs (interface), auth.rs (cookie, extractors), routes.rs, store.rs
 │   ├── projects/              mod.rs, allowlist.rs, routes.rs, store.rs
 │   ├── checks/                mod.rs, probe.rs, heartbeat.rs, scheduler.rs, retention.rs,
 │   │                          routes.rs, heartbeat_routes.rs, store/{monitors, heartbeats, rollup}

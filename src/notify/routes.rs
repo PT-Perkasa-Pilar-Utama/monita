@@ -53,7 +53,7 @@ async fn view(
     project: Project,
 ) -> Result<AlertsPage, PageError> {
     Ok(AlertsPage {
-        shell: projects::routes::shell(user, "alerts", Some(&project)),
+        shell: projects::shell(user, "alerts", Some(&project)),
         routes: super::routes(&state.db, project.id).await?,
         project,
         focus: String::new(),

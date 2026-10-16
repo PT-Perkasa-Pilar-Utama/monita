@@ -36,18 +36,6 @@ pub fn router() -> Router<AppState> {
         .route("/projects/{slug}/monitors/{id}/delete", post(delete))
 }
 
-/// The incident state wins (2 failed checks open one); before the first check a monitor is waiting.
-pub fn state_of(
-    last: &Option<CheckRow>,
-    incident: Option<ItemState>,
-) -> (&'static str, &'static str) {
-    match (incident, last) {
-        (Some(s), _) => super::state_label(s),
-        (None, None) => ("unknown", "Waiting"),
-        (None, Some(_)) => ("up", "Up"),
-    }
-}
-
 fn interval_label(s: i64) -> &'static str {
     match s {
         30 => "30s",
@@ -79,8 +67,8 @@ struct ListPage {
 
 impl ListPage {
     fn state(&self, m: &Monitor) -> (&'static str, &'static str) {
-        state_of(
-            &m.last,
+        super::item_state(
+            m.last.is_some(),
             self.states.get(&(SourceKind::Monitor, m.id)).copied(),
         )
     }
@@ -110,7 +98,7 @@ async fn list(
     let monitors = super::list_monitors(&state.db, project.id).await?;
     let states = incidents::states_for(&state.db, project.id).await?;
     Ok(render(&ListPage {
-        shell: projects::routes::shell(&user, "monitors", Some(&project)),
+        shell: projects::shell(&user, "monitors", Some(&project)),
         project,
         monitors,
         states,
@@ -199,7 +187,7 @@ async fn new_form(
 ) -> Result<Response, PageError> {
     let project = projects::find_for(&state.db, &user, &slug).await?;
     Ok(render(&FormPage {
-        shell: projects::routes::shell(&user, "monitors", Some(&project)),
+        shell: projects::shell(&user, "monitors", Some(&project)),
         project,
         id: None,
         input: MonitorInput::defaults(),
@@ -218,7 +206,7 @@ async fn create(
     let errors = input.validate();
     if !errors.is_empty() {
         let page = FormPage {
-            shell: projects::routes::shell(&user, "monitors", Some(&project)),
+            shell: projects::shell(&user, "monitors", Some(&project)),
             project,
             id: None,
             input,
@@ -240,7 +228,7 @@ async fn edit_form(
         .await?
         .ok_or(PageError::NotFound)?;
     Ok(render(&FormPage {
-        shell: projects::routes::shell(&user, "monitors", Some(&project)),
+        shell: projects::shell(&user, "monitors", Some(&project)),
         project,
         id: Some(id),
         input: monitor.input(),
@@ -259,7 +247,7 @@ async fn update(
     let errors = input.validate();
     if !errors.is_empty() {
         let page = FormPage {
-            shell: projects::routes::shell(&user, "monitors", Some(&project)),
+            shell: projects::shell(&user, "monitors", Some(&project)),
             project,
             id: Some(id),
             input,
@@ -296,7 +284,7 @@ struct DetailPage {
 
 impl DetailPage {
     fn state(&self) -> (&'static str, &'static str) {
-        state_of(&self.monitor.last, self.incident)
+        super::item_state(self.monitor.last.is_some(), self.incident)
     }
     fn every(&self) -> &'static str {
         interval_label(self.monitor.interval_s)
@@ -344,7 +332,7 @@ async fn detail(
         .get(&(SourceKind::Monitor, id))
         .copied();
     Ok(render(&DetailPage {
-        shell: projects::routes::shell(&user, "monitors", Some(&project)),
+        shell: projects::shell(&user, "monitors", Some(&project)),
         project,
         monitor,
         checks,

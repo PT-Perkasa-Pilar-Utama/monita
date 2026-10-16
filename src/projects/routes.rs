@@ -16,7 +16,7 @@ use crate::{
     app::AppState,
     platform::{
         now,
-        page::{PageError, ProjectNav, Shell},
+        page::{PageError, Shell},
         render::render,
         time,
     },
@@ -32,18 +32,6 @@ pub fn router() -> Router<AppState> {
         .route("/projects/{slug}/keys", post(create_key))
         .route("/projects/{slug}/keys/{id}/revoke", post(revoke_key))
         .route("/projects/{slug}/allowlist", post(allowlist))
-}
-
-pub fn shell(user: &User, active: &'static str, project: Option<&Project>) -> Shell {
-    Shell {
-        email: user.email.clone(),
-        is_admin: user.is_admin(),
-        active,
-        project: project.map(|p| ProjectNav {
-            name: p.name.clone(),
-            slug: p.slug.clone(),
-        }),
-    }
 }
 
 #[derive(Template)]
@@ -64,7 +52,7 @@ async fn home_view(
     error: String,
 ) -> Result<Home, PageError> {
     Ok(Home {
-        shell: shell(user, "projects", None),
+        shell: super::shell(user, "projects", None),
         projects: super::list_for(&state.db, user).await?,
         name,
         slug,
@@ -144,15 +132,12 @@ async fn settings_view(
 ) -> Result<Settings, PageError> {
     let keys = super::list_keys(&state.db, project.id).await?;
     let owners = if user.is_admin() {
-        let mut all = crate::accounts::list_users(&state.db).await?;
-        all.retain(|u| u.id == user.id || (u.role == "tl" && u.disabled_at.is_none()));
-        all.sort_by_key(|u| u.id != user.id);
-        all
+        super::eligible_owners(&state.db, user).await?
     } else {
         Vec::new()
     };
     Ok(Settings {
-        shell: shell(user, "settings", Some(&project)),
+        shell: super::shell(user, "settings", Some(&project)),
         allowlist: project
             .ip_allowlist
             .clone()

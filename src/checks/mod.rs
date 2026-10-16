@@ -18,12 +18,18 @@ pub use store::{CheckRow, Monitor};
 
 pub const INTERVALS_S: [i64; 4] = [30, 60, 180, 300];
 
-/// Pill kind and word for an item with an open incident.
-pub fn state_label(s: crate::incidents::ItemState) -> (&'static str, &'static str) {
-    match s {
-        crate::incidents::ItemState::Down => ("down", "Down"),
-        crate::incidents::ItemState::Issue => ("issue", "Issue"),
-        crate::incidents::ItemState::Up => ("up", "Up"),
+/// Pill kind and word for a monitor or heartbeat. The incident state wins (two failed checks or a
+/// missed ping open one); with none open, an item never checked or pinged is waiting.
+pub fn item_state(
+    seen: bool,
+    incident: Option<crate::incidents::ItemState>,
+) -> (&'static str, &'static str) {
+    match incident {
+        Some(crate::incidents::ItemState::Down) => ("down", "Down"),
+        Some(crate::incidents::ItemState::Issue) => ("issue", "Issue"),
+        Some(crate::incidents::ItemState::Up) => ("up", "Up"),
+        None if !seen => ("unknown", "Waiting"),
+        None => ("up", "Up"),
     }
 }
 

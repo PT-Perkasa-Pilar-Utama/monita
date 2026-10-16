@@ -87,6 +87,34 @@ pub async fn all(db: &Db) -> anyhow::Result<Vec<Project>> {
     store::list_all(&db.read().await?).await
 }
 
+/// The page frame for a signed-in user: who they are, the active nav item, the project in view.
+pub fn shell(
+    user: &User,
+    active: &'static str,
+    project: Option<&Project>,
+) -> crate::platform::page::Shell {
+    crate::platform::page::Shell {
+        email: user.email.clone(),
+        is_admin: user.is_admin(),
+        active,
+        project: project.map(|p| crate::platform::page::ProjectNav {
+            name: p.name.clone(),
+            slug: p.slug.clone(),
+        }),
+    }
+}
+
+/// Who `reassign` accepts, for the owner list: the acting super admin first, then active TLs.
+pub async fn eligible_owners(
+    db: &Db,
+    acting: &User,
+) -> anyhow::Result<Vec<crate::accounts::UserRow>> {
+    let mut all = crate::accounts::list_users(db).await?;
+    all.retain(|u| u.id == acting.id || (u.role == "tl" && u.disabled_at.is_none()));
+    all.sort_by_key(|u| u.id != acting.id);
+    Ok(all)
+}
+
 pub fn can_manage(user: &User, project: &Project) -> bool {
     user.is_admin() || project.owner_id == user.id
 }

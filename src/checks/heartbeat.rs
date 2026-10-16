@@ -62,13 +62,8 @@ pub struct Heartbeat {
 }
 
 impl Heartbeat {
-    /// The incident state wins; with no open incident, a heartbeat that never pinged is waiting.
     pub fn state(&self, incident: Option<incidents::ItemState>) -> (&'static str, &'static str) {
-        match incident {
-            Some(s) => super::state_label(s),
-            None if self.last_ping_at.is_none() => ("unknown", "Waiting"),
-            None => ("up", "Up"),
-        }
+        super::item_state(self.last_ping_at.is_some(), incident)
     }
 
     pub fn source(&self) -> Source {

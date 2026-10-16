@@ -215,6 +215,17 @@ pub async fn find(
     Ok(Some((incident, items, updates)))
 }
 
+/// The word a status update label shows on the TL pages and the status page.
+pub fn label_title(label: &str) -> &'static str {
+    match label {
+        "investigating" => "Investigating",
+        "identified" => "Identified",
+        "monitoring" => "Monitoring",
+        "resolved" => "Resolved",
+        _ => "Update",
+    }
+}
+
 pub const LABELS: [&str; 4] = ["investigating", "identified", "monitoring", "resolved"];
 
 #[derive(Debug, thiserror::Error)]
@@ -227,6 +238,8 @@ pub enum UpdateError {
     EmptyTitle,
     #[error("Pick at least one monitor or heartbeat.")]
     NoItems,
+    #[error("Pick critical or warning.")]
+    BadSeverity,
     #[error("Monita resolves this incident when its check passes.")]
     AutoResolves,
     #[error("A closed incident takes only Resolved updates.")]
@@ -337,6 +350,9 @@ pub struct NewIncident {
 pub async fn open_manual(db: &Db, n: &NewIncident, now: i64) -> Result<i64, UpdateError> {
     if n.title.trim().is_empty() {
         return Err(UpdateError::EmptyTitle);
+    }
+    if !matches!(n.severity.as_str(), "critical" | "warning") {
+        return Err(UpdateError::BadSeverity);
     }
     let mut items: Vec<ItemRef> = Vec::new();
     for (item, _) in item_names(db, n.project_id).await? {

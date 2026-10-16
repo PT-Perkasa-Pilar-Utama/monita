@@ -28,6 +28,8 @@ Each module owns its tables (see [06](06-data-model.md)). Other modules use only
 | `ApiProject` extractor | Reads `Authorization: Bearer mk_...`, hashes it, finds a live key, checks the allowlist against the client IP. 401 for a missing or bad key, 403 for an IP outside the list. Updates `last_used_at` at most once per minute. |
 | `find_for(db, user, slug) -> Project` | The project a user may manage, or 404 so other projects' names do not leak. |
 | `can_manage(user, project) -> bool` | True for the owner and for every super admin. |
+| `shell(user, active, project)` | The page frame every signed-in page renders. |
+| `eligible_owners(db, acting)` | The owner list `reassign` accepts: the acting super admin first, then active TLs. |
 | `reassign(db, project_id, new_owner, acting)` | US-05. The new owner is an active TL or the acting super admin; anyone else is 404. |
 
 ## 5.3 checks

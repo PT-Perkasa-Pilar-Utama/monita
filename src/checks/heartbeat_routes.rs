@@ -83,7 +83,7 @@ async fn list(
     let heartbeats = heartbeat::list(&state.db, project.id).await?;
     let states = incidents::states_for(&state.db, project.id).await?;
     Ok(render(&ListPage {
-        shell: projects::routes::shell(&user, "heartbeats", Some(&project)),
+        shell: projects::shell(&user, "heartbeats", Some(&project)),
         project,
         heartbeats,
         states,
@@ -150,7 +150,7 @@ fn form_page(
     errors: FieldErrors,
 ) -> FormPage {
     FormPage {
-        shell: projects::routes::shell(user, "heartbeats", Some(&project)),
+        shell: projects::shell(user, "heartbeats", Some(&project)),
         project,
         id,
         input,
@@ -284,7 +284,7 @@ async fn detail(
         .get(&(SourceKind::Heartbeat, id))
         .copied();
     Ok(render(&DetailPage {
-        shell: projects::routes::shell(&user, "heartbeats", Some(&project)),
+        shell: projects::shell(&user, "heartbeats", Some(&project)),
         ping_url: ping_url(&state, &hb),
         project,
         hb,

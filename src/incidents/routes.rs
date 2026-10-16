@@ -31,16 +31,6 @@ pub fn router() -> Router<AppState> {
         .route("/projects/{slug}/incidents/{id}/updates", post(post_update))
 }
 
-pub fn label_title(label: &str) -> &'static str {
-    match label {
-        "investigating" => "Investigating",
-        "identified" => "Identified",
-        "monitoring" => "Monitoring",
-        "resolved" => "Resolved",
-        _ => "Update",
-    }
-}
-
 #[derive(Template)]
 #[template(path = "incidents/list.html")]
 struct ListPage {
@@ -67,7 +57,7 @@ impl ListPage {
         time::utc(i.started_at)
     }
     fn label(&self, i: &IncidentRow) -> &'static str {
-        label_title(i.last_label.as_deref().unwrap_or(""))
+        super::label_title(i.last_label.as_deref().unwrap_or(""))
     }
 }
 
@@ -91,7 +81,7 @@ async fn list(
         Vec::new()
     };
     Ok(render(&ListPage {
-        shell: projects::routes::shell(&user, "incidents", Some(&project)),
+        shell: projects::shell(&user, "incidents", Some(&project)),
         project,
         open,
         resolved,
@@ -129,7 +119,7 @@ impl DetailPage {
         time::utc(*ts)[11..16].to_string()
     }
     fn title(&self, label: &str) -> &'static str {
-        label_title(label)
+        super::label_title(label)
     }
     fn labels(&self) -> &'static [&'static str] {
         super::allowed_labels(&self.incident.origin, self.incident.resolved_at.is_some())
@@ -170,7 +160,7 @@ async fn detail_page(
     }
     .to_string();
     Ok(DetailPage {
-        shell: projects::routes::shell(user, "incidents", Some(&project)),
+        shell: projects::shell(user, "incidents", Some(&project)),
         project,
         incident,
         items,
@@ -257,7 +247,7 @@ async fn new_page(
         })
         .collect();
     Ok(NewPage {
-        shell: projects::routes::shell(user, "incidents", Some(&project)),
+        shell: projects::shell(user, "incidents", Some(&project)),
         project,
         choices,
         title: String::new(),
@@ -296,16 +286,11 @@ async fn create(
         .filter(|(k, _)| k == "items")
         .map(|(_, v)| v.clone())
         .collect();
-    let severity = if field("severity") == "critical" {
-        "critical"
-    } else {
-        "warning"
-    };
     let incident = super::NewIncident {
         project_id: project.id,
         title: field("title"),
         items: picked.clone(),
-        severity: severity.into(),
+        severity: field("severity"),
         message: field("message"),
         author: user.id,
     };
@@ -316,7 +301,7 @@ async fn create(
             let mut page = new_page(&state, &user, project, &picked).await?;
             page.title = field("title");
             page.message = field("message");
-            page.severity = severity.into();
+            page.severity = incident.severity;
             page.error = e.to_string();
             Ok((StatusCode::UNPROCESSABLE_ENTITY, render(&page)).into_response())
         }
