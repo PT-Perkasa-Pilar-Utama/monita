@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg">
+  <symbol id="i-monitor" viewBox="0 0 16 16"><path d="M1.5 8.5h3l1.5-4 3 7 1.5-3h4"/></symbol>
+  <symbol id="i-heartbeat" viewBox="0 0 16 16"><circle cx="8" cy="8" r="1.5"/><path d="M5 5a4.2 4.2 0 0 0 0 6M11 5a4.2 4.2 0 0 1 0 6M3 3a7 7 0 0 0 0 10M13 3a7 7 0 0 1 0 10"/></symbol>
+  <symbol id="i-incident" viewBox="0 0 16 16"><path d="M8 2 1.5 13.5h13Z"/><path d="M8 6.5v3M8 11.5v.01"/></symbol>
+  <symbol id="i-ticket" viewBox="0 0 16 16"><path d="M2 4.5h12v2a1.5 1.5 0 0 0 0 3v2H2v-2a1.5 1.5 0 0 0 0-3Z"/><path d="M10 4.5v7" stroke-dasharray="1.5 1.5"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 16 16"><path d="M2 4h7M12 4h2M2 12h2M7 12h7"/><circle cx="10.5" cy="4" r="1.5"/><circle cx="5.5" cy="12" r="1.5"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 16 16"><path d="M4 11V7a4 4 0 0 1 8 0v4l1 1.5H3Z"/><path d="M6.5 14h3"/></symbol>
+  <symbol id="i-key" viewBox="0 0 16 16"><circle cx="5" cy="11" r="2.5"/><path d="m6.8 9.2 6.2-6.2M11 5l1.5 1.5"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.5"/><path d="M1.5 8h13M8 1.5c2 2.2 2 10.8 0 13M8 1.5c-2 2.2-2 10.8 0 13"/></symbol>
+  <symbol id="i-users" viewBox="0 0 16 16"><circle cx="6" cy="5.5" r="2.5"/><path d="M1.5 14a4.5 4.5 0 0 1 9 0M11 3.2a2.5 2.5 0 0 1 0 4.6M12.5 9.6A4.5 4.5 0 0 1 14.5 14"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 16 16"><path d="M8 3v10M3 8h10"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 16 16"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5"/><path d="M10.5 3.5v-1h-8v8h1"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 16 16"><path d="m5 6.5 3 3 3-3"/></symbol>
+</svg>
