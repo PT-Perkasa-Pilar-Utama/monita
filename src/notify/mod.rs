@@ -26,7 +26,11 @@ pub use store::Route;
 const RETRY_DELAYS_S: [i64; 3] = [60, 300, 900];
 const BATCH: i64 = 20;
 const WEBHOOK_TIMEOUT: Duration = Duration::from_secs(10);
-/// How long a claimed row stays invisible to other passes. Longer than any send can take.
+/// The cap on one send of either channel.
+const SEND_TIMEOUT: Duration = Duration::from_secs(20);
+/// Sends in flight at once. A full batch takes at most 20 rows × 20 s ÷ 5 = 80 s, inside the lease.
+const PARALLEL: usize = 5;
+/// How long a claimed row stays invisible to other passes. Longer than a full batch can take.
 const LEASE_S: i64 = 120;
 
 /// Queues one email. Call it inside `Db::write` with the change that caused it.
@@ -293,7 +297,7 @@ impl Mailer {
             return Ok(Mailer::Log);
         };
         let transport = AsyncSmtpTransport::<Tokio1Executor>::from_url(url)?
-            .timeout(Some(Duration::from_secs(20)))
+            .timeout(Some(SEND_TIMEOUT))
             .build();
         Ok(Mailer::Smtp {
             transport,
@@ -366,16 +370,40 @@ async fn post_webhook(state: &AppState, url: &str, body: &str) -> anyhow::Result
     Ok(())
 }
 
-/// Delivers due rows of both channels. Returns how many were sent.
+/// Delivers due rows of both channels, `PARALLEL` at a time. Returns how many were sent.
 pub async fn deliver_due(state: &AppState) -> anyhow::Result<usize> {
     let t = now();
+    if !store::any_due(&state.db.read().await?, t).await? {
+        return Ok(0);
+    }
     let due = state
         .db
         .write(async |c| store::claim_due(c, t, BATCH, t + LEASE_S).await)
         .await?;
+    let mut queue = due.into_iter();
+    let mut running = tokio::task::JoinSet::new();
     let mut sent = 0;
-    for row in due {
-        let result = match row.channel.as_str() {
+    loop {
+        while running.len() < PARALLEL
+            && let Some(row) = queue.next()
+        {
+            let state = state.clone();
+            running.spawn(async move { deliver_one(&state, row).await });
+        }
+        let Some(done) = running.join_next().await else {
+            break;
+        };
+        if done?? {
+            sent += 1;
+        }
+    }
+    Ok(sent)
+}
+
+/// Sends one row and records the outcome at once. Returns whether it was sent.
+async fn deliver_one(state: &AppState, row: store::OutboxRow) -> anyhow::Result<bool> {
+    let send = async {
+        match row.channel.as_str() {
             "email" => {
                 state
                     .mailer
@@ -387,26 +415,26 @@ pub async fn deliver_due(state: &AppState) -> anyhow::Result<usize> {
                     .await
             }
             _ => post_webhook(state, &row.recipient, &row.body).await,
-        };
-        let outcome = match &result {
-            Ok(()) => store::Outcome::Sent,
-            Err(e) => match RETRY_DELAYS_S.get(row.attempts as usize) {
-                Some(delay) => store::Outcome::Retry(now() + delay, e.to_string()),
-                None => {
-                    tracing::error!(outbox_id = row.id, channel = %row.channel, error = %e, "delivery failed after retries");
-                    store::Outcome::Failed(e.to_string())
-                }
-            },
-        };
-        state
-            .db
-            .write(async |c| store::mark(c, row.id, &outcome, now()).await)
-            .await?;
-        if result.is_ok() {
-            sent += 1;
         }
-    }
-    Ok(sent)
+    };
+    let result = tokio::time::timeout(SEND_TIMEOUT, send)
+        .await
+        .unwrap_or_else(|_| Err(anyhow::anyhow!("send timed out after 20 s")));
+    let outcome = match &result {
+        Ok(()) => store::Outcome::Sent,
+        Err(e) => match RETRY_DELAYS_S.get(row.attempts as usize) {
+            Some(delay) => store::Outcome::Retry(now() + delay, e.to_string()),
+            None => {
+                tracing::error!(outbox_id = row.id, channel = %row.channel, error = %e, "delivery failed after retries");
+                store::Outcome::Failed(e.to_string())
+            }
+        },
+    };
+    state
+        .db
+        .write(async |c| store::mark(c, row.id, &outcome, now()).await)
+        .await?;
+    Ok(result.is_ok())
 }
 
 #[cfg(test)]

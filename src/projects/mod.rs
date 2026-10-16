@@ -120,10 +120,6 @@ pub async fn name_slug(
     })
 }
 
-pub async fn owner_of(db: &Db, project_id: i64) -> anyhow::Result<Option<i64>> {
-    store::owner_of(&db.read().await?, project_id).await
-}
-
 /// US-05: monitors, incidents and tickets stay with the project.
 pub async fn reassign(db: &Db, project_id: i64, new_owner: i64) -> anyhow::Result<()> {
     db.write(async |c| store::set_owner(c, project_id, new_owner, now()).await)
@@ -197,7 +193,6 @@ impl FromRequestParts<AppState> for ApiProject {
             .await
             .map_err(internal)?
             .ok_or_else(unauthorized)?;
-        drop(conn);
         if let Some(list) = &project.ip_allowlist {
             let peer = parts
                 .extensions
@@ -213,12 +208,8 @@ impl FromRequestParts<AppState> for ApiProject {
             }
         }
         // SEC-12: per-key limit, read from settings on each call.
-        let limit = match state.db.read().await {
-            Ok(c) => crate::platform::settings::get(&c, "rl_key_per_min")
-                .await
-                .unwrap_or(120),
-            Err(_) => 120,
-        };
+        let limit = crate::platform::settings::get_or(&conn, "rl_key_per_min", 120).await;
+        drop(conn);
         if let crate::platform::rate_limit::Verdict::Deny(retry) = state.limiter.hit(
             &format!("key:{key_id}"),
             u32::try_from(limit.max(1)).unwrap_or(u32::MAX),
@@ -231,11 +222,13 @@ impl FromRequestParts<AppState> for ApiProject {
             ));
         }
         let t = now();
-        if last_used.is_none_or(|at| t - at >= 60) {
-            let _ = state
+        if last_used.is_none_or(|at| t - at >= 60)
+            && let Err(e) = state
                 .db
                 .write(async |c| store::touch_key(c, key_id, t).await)
-                .await;
+                .await
+        {
+            tracing::warn!(key_id, error = %e, "could not record the key's last use");
         }
         Ok(ApiProject(project))
     }

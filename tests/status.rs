@@ -154,3 +154,37 @@ async fn an_unknown_slug_is_404() {
     let body: Value = res.json().await.unwrap();
     assert_eq!(body["error"]["code"], "not_found");
 }
+
+#[tokio::test]
+async fn hidden_incidents_do_not_push_public_ones_off_the_page() {
+    let app = TestApp::spawn("test").await;
+    setup(&app).await;
+    let t = now();
+    app.state
+        .db
+        .write(async |c| {
+            for i in 0..200 {
+                c.execute(
+                    "INSERT INTO incidents (project_id, origin, title, severity, started_at) VALUES (1, 'manual', 'Hidden', 'warning', ?1)",
+                    [t - i],
+                )
+                .await?;
+                let id = c.last_insert_rowid();
+                c.execute("INSERT INTO incident_items VALUES (?1, 'monitor', 2)", [id])
+                    .await?;
+            }
+            Ok(())
+        })
+        .await
+        .unwrap();
+    let html = app
+        .get("/status/payments", None)
+        .await
+        .text()
+        .await
+        .unwrap();
+    assert!(
+        html.contains("A DNS change rolled back."),
+        "the public incident is still listed"
+    );
+}

@@ -53,7 +53,6 @@ pub struct Heartbeat {
     pub is_public: bool,
     pub last_ping_at: Option<i64>,
     pub deadline_at: Option<i64>,
-    pub last_kind: Option<String>,
     pub created_at: i64,
 }
 
@@ -218,6 +217,9 @@ pub async fn record_ping(
 
 /// Heartbeats past their deadline, each reported once: its deadline is cleared until the next ping.
 pub async fn sweep_missed(db: &Db, base_url: &str, at: i64) -> anyhow::Result<usize> {
+    if !store::any_missed(&db.read().await?, at).await? {
+        return Ok(0);
+    }
     db.write(async |c| {
         let missed = store::take_missed(c, at).await?;
         for hb in &missed {

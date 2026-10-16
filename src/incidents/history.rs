@@ -24,10 +24,11 @@ pub fn per_day(intervals: &[(i64, i64)], first_day: i64, days: usize) -> Vec<i64
         .collect()
 }
 
-/// Automatic-incident intervals per item since `since`, open ones ending at `now`.
+/// Automatic-incident intervals per item since `since`, open ones ending at `now`. `None` reads
+/// every project.
 pub async fn intervals(
     db: &Db,
-    project_id: i64,
+    project_id: Option<i64>,
     since: i64,
     now: i64,
 ) -> anyhow::Result<HashMap<(SourceKind, i64), Vec<(i64, i64)>>> {
@@ -39,21 +40,6 @@ pub async fn intervals(
             .push((start, end.unwrap_or(now)));
     }
     Ok(out)
-}
-
-/// One source's automatic-incident intervals since `since`, open ones ending at `now`.
-pub async fn source_intervals(
-    db: &Db,
-    kind: SourceKind,
-    id: i64,
-    since: i64,
-    now: i64,
-) -> anyhow::Result<Vec<(i64, i64)>> {
-    let rows = store::source_intervals(&db.read().await?, kind, id, since).await?;
-    Ok(rows
-        .into_iter()
-        .map(|(s, e)| (s, e.unwrap_or(now)))
-        .collect())
 }
 
 pub struct PublicUpdate {
@@ -82,40 +68,40 @@ pub async fn public(
     since: i64,
 ) -> anyhow::Result<Vec<PublicIncident>> {
     let conn = db.read().await?;
-    let mut out = Vec::new();
-    for row in store::since(&conn, project_id, since).await? {
-        let items: Vec<ItemRef> = store::items(&conn, row.id)
-            .await?
-            .into_iter()
-            .filter(|i| public.contains(i))
-            .collect();
-        if items.is_empty() {
-            continue;
-        }
-        let updates = store::updates(&conn, row.id)
-            .await?
-            .into_iter()
-            .map(|u| PublicUpdate {
-                message: if u.author_email.is_none() && u.label == "investigating" {
-                    "Detected.".into()
-                } else {
-                    u.message
-                },
-                label: u.label,
-                at: u.created_at,
-            })
-            .collect();
-        out.push(PublicIncident {
+    let rows = store::since_touching(&conn, project_id, since, public).await?;
+    let ids: Vec<i64> = rows.iter().map(|r| r.id).collect();
+    let mut items = store::items_of(&conn, &ids).await?;
+    let mut updates = store::updates_of(&conn, &ids).await?;
+    Ok(rows
+        .into_iter()
+        .map(|row| PublicIncident {
+            items: items
+                .remove(&row.id)
+                .unwrap_or_default()
+                .into_iter()
+                .filter(|i| public.contains(i))
+                .collect(),
+            updates: updates
+                .remove(&row.id)
+                .unwrap_or_default()
+                .into_iter()
+                .map(|u| PublicUpdate {
+                    message: if u.author_email.is_none() && u.label == "investigating" {
+                        "Detected.".into()
+                    } else {
+                        u.message
+                    },
+                    label: u.label,
+                    at: u.created_at,
+                })
+                .collect(),
             title: row.title,
             origin: row.origin,
             severity: row.severity,
             started_at: row.started_at,
             resolved_at: row.resolved_at,
-            items,
-            updates,
-        });
-    }
-    Ok(out)
+        })
+        .collect())
 }
 
 #[cfg(test)]

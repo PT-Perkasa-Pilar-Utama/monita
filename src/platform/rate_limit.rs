@@ -79,10 +79,11 @@ pub async fn per_ip(
     let ip = super::client_ip(req.headers(), peer, state.config.trust_proxy)
         .map_or_else(|| "unknown".to_string(), |ip| ip.to_string());
     let limit = match state.db.read().await {
-        Ok(c) => super::settings::get(&c, "rl_ip_per_min")
-            .await
-            .unwrap_or(60),
-        Err(_) => 60,
+        Ok(c) => super::settings::get_or(&c, "rl_ip_per_min", 60).await,
+        Err(e) => {
+            tracing::warn!(error = %e, "no read connection; using the default IP limit");
+            60
+        }
     };
     if let Verdict::Deny(retry) = state.limiter.hit(
         &format!("ip:{ip}"),

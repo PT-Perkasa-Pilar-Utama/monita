@@ -736,3 +736,41 @@ async fn two_delivery_passes_never_send_one_message_twice() {
     tokio::time::sleep(Duration::from_millis(1_500)).await;
     assert_eq!(got.lock().unwrap().len(), 1);
 }
+
+#[tokio::test]
+async fn a_delivery_pass_sends_five_messages_at_once() {
+    let app = TestApp::spawn("test").await;
+    let (hook, got, _) = webhook_sink().await;
+    let started = std::time::Instant::now();
+    app.state
+        .db
+        .write(async |c| {
+            for _ in 0..5 {
+                c.execute(
+                    "INSERT INTO outbox (channel, recipient, body, next_attempt_at) VALUES ('webhook', ?1, '{}', 0)",
+                    [hook.as_str()],
+                )
+                .await?;
+            }
+            Ok(())
+        })
+        .await
+        .unwrap();
+    monita::notify::deliver_due(&app.state).await.unwrap();
+    while count(
+        &app,
+        "SELECT count(*) FROM outbox WHERE sent_at IS NOT NULL",
+    )
+    .await
+        < 5
+    {
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    // The sink answers after 300 ms: one at a time would take 1.5 s.
+    assert!(
+        started.elapsed() < Duration::from_millis(1_000),
+        "{:?}",
+        started.elapsed()
+    );
+    assert_eq!(got.lock().unwrap().len(), 5);
+}

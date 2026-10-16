@@ -51,6 +51,7 @@ pub fn spawn(state: AppState) -> JoinHandle<()> {
         let mut last_peer_ping = 0i64;
         let slots = Arc::new(Semaphore::new(0));
         let mut cap = 0usize;
+        let mut ticks = 0u64;
         let mut tick = tokio::time::interval(Duration::from_secs(1));
         tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
         loop {
@@ -70,7 +71,11 @@ pub fn spawn(state: AppState) -> JoinHandle<()> {
                 tracing::error!(error = %e, "scheduler: heartbeat sweep failed");
             }
             crate::notify::spawn_delivery(&state, &delivering);
-            crate::platform::jobs::spawn_daily(&state, &daily);
+            // Daily jobs have minute precision at best; tick 0 checks them at start.
+            if ticks.is_multiple_of(60) {
+                crate::platform::jobs::spawn_daily(&state, &daily);
+            }
+            ticks += 1;
             if state.config.ping_url.is_some() && now() - last_peer_ping >= PEER_PING_EVERY_S {
                 last_peer_ping = now();
                 spawn_peer_ping(&state);
@@ -82,10 +87,11 @@ pub fn spawn(state: AppState) -> JoinHandle<()> {
 /// Grows or shrinks the slot pool to `check_concurrency`. Returns the new cap.
 async fn resize(state: &AppState, slots: &Semaphore, cap: usize) -> usize {
     let wanted = match state.db.read().await {
-        Ok(conn) => settings::get(&conn, "check_concurrency")
-            .await
-            .unwrap_or(50),
-        Err(_) => return cap,
+        Ok(conn) => settings::get_or(&conn, "check_concurrency", 50).await,
+        Err(e) => {
+            tracing::warn!(error = %e, "no read connection; check_concurrency unchanged");
+            return cap;
+        }
     }
     .clamp(1, 500) as usize;
     reshape(slots, cap, wanted)
@@ -114,6 +120,9 @@ async fn run_due_monitors(
         return Ok(());
     }
     let t = now();
+    if !store::any_due(&state.db.read().await?, t).await? {
+        return Ok(());
+    }
     let due = state
         .db
         .write(async |c| store::claim_due(c, t, free).await)

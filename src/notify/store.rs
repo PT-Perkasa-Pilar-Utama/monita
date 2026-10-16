@@ -99,6 +99,16 @@ pub async fn queue(
     Ok(())
 }
 
+pub async fn any_due(c: &Connection, at: i64) -> anyhow::Result<bool> {
+    let n = crate::platform::db::query_i64(
+        c,
+        "SELECT EXISTS (SELECT 1 FROM outbox WHERE sent_at IS NULL AND failed_at IS NULL AND next_attempt_at <= ?1)",
+        [at],
+    )
+    .await?;
+    Ok(n == Some(1))
+}
+
 /// Claims due rows by pushing `next_attempt_at` to `lease_until`, so two delivery passes never
 /// send one row twice. A crash mid-send leaves the lease to expire and the row is retried.
 pub async fn claim_due(

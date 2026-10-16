@@ -202,6 +202,17 @@ pub async fn find_monitor(
     .pop())
 }
 
+/// A read-only probe, so an idle tick never waits for the writer.
+pub async fn any_due(c: &Connection, at: i64) -> anyhow::Result<bool> {
+    let n = crate::platform::db::query_i64(
+        c,
+        "SELECT EXISTS (SELECT 1 FROM monitors WHERE next_check_at <= ?1)",
+        [at],
+    )
+    .await?;
+    Ok(n == Some(1))
+}
+
 /// Claims up to `limit` due monitors by moving their `next_check_at` one interval ahead.
 pub async fn claim_due(c: &Connection, at: i64, limit: i64) -> anyhow::Result<Vec<Monitor>> {
     let due = many(

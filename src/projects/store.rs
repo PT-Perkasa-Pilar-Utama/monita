@@ -93,15 +93,6 @@ pub async fn list_owned(c: &Connection, owner_id: i64) -> anyhow::Result<Vec<Pro
     .await
 }
 
-pub async fn owner_of(c: &Connection, project_id: i64) -> anyhow::Result<Option<i64>> {
-    crate::platform::db::query_i64(
-        c,
-        "SELECT owner_id FROM projects WHERE id = ?1",
-        [project_id],
-    )
-    .await
-}
-
 pub async fn set_owner(
     c: &Connection,
     project_id: i64,

@@ -40,6 +40,7 @@ pub async fn run(db: &Db, now: i64) -> anyhow::Result<()> {
 }
 
 async fn rollup_day(db: &Db, day: i64, now: i64) -> anyhow::Result<()> {
+    let spans_of = incidents::history::intervals(db, None, day, now).await?;
     let conn = db.read().await?;
     let mut rows = Vec::new();
     for (kind, id) in store::all_sources(&conn).await? {
@@ -47,8 +48,8 @@ async fn rollup_day(db: &Db, day: i64, now: i64) -> anyhow::Result<()> {
             SourceKind::Monitor => store::check_counts(&conn, id, day).await?,
             SourceKind::Heartbeat => store::ping_counts(&conn, id, day).await?,
         };
-        let spans = incidents::history::source_intervals(db, kind, id, day, now).await?;
-        let down = incidents::history::per_day(&spans, day, 1)[0];
+        let spans = spans_of.get(&(kind, id)).map(Vec::as_slice).unwrap_or(&[]);
+        let down = incidents::history::per_day(spans, day, 1)[0];
         rows.push((kind, id, total, ok, down, latency));
     }
     drop(conn);

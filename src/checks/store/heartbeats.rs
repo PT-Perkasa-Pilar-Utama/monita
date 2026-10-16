@@ -4,8 +4,7 @@ use turso::Connection;
 
 use crate::checks::heartbeat::{Heartbeat, HeartbeatInput, PingKind, PingRow};
 
-const COLS: &str = "h.id, h.project_id, h.name, h.token, h.period_s, h.grace_s, h.severity, h.is_public, h.last_ping_at, h.deadline_at,
-    (SELECT kind FROM pings WHERE heartbeat_id = h.id ORDER BY received_at DESC, id DESC LIMIT 1), h.created_at";
+const COLS: &str = "h.id, h.project_id, h.name, h.token, h.period_s, h.grace_s, h.severity, h.is_public, h.last_ping_at, h.deadline_at, h.created_at";
 
 fn row(r: &turso::Row) -> turso::Result<Heartbeat> {
     Ok(Heartbeat {
@@ -19,8 +18,7 @@ fn row(r: &turso::Row) -> turso::Result<Heartbeat> {
         is_public: r.get::<i64>(7)? == 1,
         last_ping_at: r.get(8)?,
         deadline_at: r.get(9)?,
-        last_kind: r.get(10)?,
-        created_at: r.get(11)?,
+        created_at: r.get(10)?,
     })
 }
 
@@ -152,6 +150,16 @@ pub async fn insert_ping(
         c.execute("UPDATE heartbeats SET last_ping_at = ?1, deadline_at = ?1 + period_s + grace_s WHERE id = ?2", (at, id)).await?;
     }
     Ok(())
+}
+
+pub async fn any_missed(c: &Connection, at: i64) -> anyhow::Result<bool> {
+    let n = crate::platform::db::query_i64(
+        c,
+        "SELECT EXISTS (SELECT 1 FROM heartbeats WHERE deadline_at <= ?1)",
+        [at],
+    )
+    .await?;
+    Ok(n == Some(1))
 }
 
 /// Returns the heartbeats past their deadline and clears those deadlines.

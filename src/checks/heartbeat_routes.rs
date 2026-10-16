@@ -320,8 +320,11 @@ async fn ping(
     // AC-13.02: a ping over the limit gets 429. The ping already counted this second keeps the heartbeat alive.
     // `/fail` has its own bucket, so a job that pings and then fails in one second is still heard.
     let limit = match state.db.read().await {
-        Ok(c) => settings::get(&c, "rl_ping_per_s").await.unwrap_or(1),
-        Err(_) => 1,
+        Ok(c) => settings::get_or(&c, "rl_ping_per_s", 1).await,
+        Err(e) => {
+            tracing::warn!(error = %e, "no read connection; using the default ping limit");
+            1
+        }
     };
     if let Verdict::Deny(retry) = state.limiter.hit(
         &match kind {

@@ -36,6 +36,14 @@ pub async fn get(conn: &Connection, key: &str) -> anyhow::Result<i64> {
     Ok(raw.parse()?)
 }
 
+/// `get`, or `default` when the read fails. The failure is logged, never swallowed.
+pub async fn get_or(conn: &Connection, key: &str, default: i64) -> i64 {
+    get(conn, key).await.unwrap_or_else(|e| {
+        tracing::warn!(key, error = %e, "setting unreadable; using the default");
+        default
+    })
+}
+
 pub async fn all(conn: &Connection) -> anyhow::Result<Vec<(String, i64)>> {
     let mut out = Vec::new();
     for (key, _) in KEYS {

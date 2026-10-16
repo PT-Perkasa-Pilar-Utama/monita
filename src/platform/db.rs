@@ -118,8 +118,10 @@ impl Db {
             anyhow::Ok(())
         }
         .await;
-        if result.is_err() {
-            let _ = conn.execute("ROLLBACK", ()).await;
+        if result.is_err()
+            && let Err(e) = conn.execute("ROLLBACK", ()).await
+        {
+            tracing::warn!(error = %e, "rollback after a failed table drop failed");
         }
         conn.execute("PRAGMA foreign_keys = ON", ()).await?;
         result

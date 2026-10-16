@@ -172,16 +172,6 @@ pub enum ItemState {
     Issue,
 }
 
-impl ItemState {
-    pub fn as_str(self) -> &'static str {
-        match self {
-            ItemState::Up => "up",
-            ItemState::Down => "down",
-            ItemState::Issue => "issue",
-        }
-    }
-}
-
 /// Down while an automatic incident is open, Issue while a manual one names the item, else Up.
 pub async fn states_for(
     db: &Db,
