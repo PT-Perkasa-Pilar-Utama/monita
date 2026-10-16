@@ -1,0 +1,22 @@
+[Unit]
+Description=Monita uptime and incident service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=monita
+Group=monita
+EnvironmentFile=/etc/monita/monita.env
+ExecStart=/usr/local/bin/monita serve
+Restart=on-failure
+RestartSec=2
+StateDirectory=monita
+UMask=0077
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/monita /var/backups/monita
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

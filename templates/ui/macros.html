@@ -1,0 +1,24 @@
+{# Design system macros. Spec: docs/design-system/02-components.md. #}
+
+{% macro icon(name) %}<svg class="icon" aria-hidden="true"><use href="/static/icons.svg#i-{{ name }}"/></svg>{% endmacro %}
+
+{% macro st(kind) %}<span class="st st--{{ kind }}"></span>{% endmacro %}
+
+{% macro state(kind, label) %}<span class="state{% if kind == "down" %} state--down{% endif %}"><span class="st st--{{ kind }}"></span>{{ label }}</span>{% endmacro %}
+
+{% macro chip(kind, label) %}<span class="chip chip--{{ kind }}">{{ label }}</span>{% endmacro %}
+
+{% macro notice(kind, text) %}<div class="notice notice--{{ kind }}" role="{% if kind == "error" %}alert{% else %}status{% endif %}">{{ text }}</div>{% endmacro %}
+
+{% macro secret(id, value) %}<div class="secret"><code id="{{ id }}">{{ value }}</code><button class="btn btn--sm" type="button" data-copy="{{ id }}">Copy</button></div>{% endmacro %}
+
+{% macro empty(title, text) %}<div class="empty"><h3>{{ title }}</h3><p>{{ text }}</p>{% endmacro %}
+{% macro empty_end() %}</div>{% endmacro %}
+
+{% macro input(id, name, label, kind, value, error, help) %}
+<div class="field{% if !error.is_empty() %} field--error{% endif %}">
+  <label class="label" for="{{ id }}">{{ label }}</label>
+  <input class="input" id="{{ id }}" name="{{ name }}" type="{{ kind }}" value="{{ value }}"{% if !error.is_empty() %} aria-invalid="true" aria-describedby="{{ id }}-error"{% endif %}>
+  {% if !error.is_empty() %}<span class="error" id="{{ id }}-error">{{ error }}</span>{% else if !help.is_empty() %}<span class="help">{{ help }}</span>{% endif %}
+</div>
+{% endmacro %}

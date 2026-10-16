@@ -1,0 +1,18 @@
+{% extends "layout/base.html" %}
+{% block body %}
+<div class="app">
+  <aside class="sidebar">
+    <a class="brand" href="/">{% include "ui/mark.html" %}<span>monita</span></a>
+    {% block switcher %}{% endblock %}
+    <nav class="nav" aria-label="Main">{% block nav %}{% endblock %}</nav>
+    <div class="sidebar__foot">{% block user %}{% endblock %}</div>
+  </aside>
+  <div class="main">
+    <header class="toolbar">
+      <div class="crumbs">{% block crumbs %}{% endblock %}</div>
+      <div class="toolbar__end">{% block actions %}{% endblock %}</div>
+    </header>
+    <div class="content">{% block content %}{% endblock %}</div>
+  </div>
+</div>
+{% endblock %}

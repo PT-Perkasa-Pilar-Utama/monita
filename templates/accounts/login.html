@@ -1,0 +1,14 @@
+{% extends "layout/bare.html" %}
+{% import "ui/macros.html" as ui %}
+{% block title %}Sign in · Monita{% endblock %}
+{% block content %}
+<section class="panel">
+  <div class="panel__head"><h1 class="h-panel">Sign in</h1></div>
+  <form class="panel__body form" method="post" action="/login">
+    {% if let Some(error) = error %}{% call ui::notice("error", error) %}{% endcall %}{% endif %}
+    {% call ui::input("email", "email", "Email", "email", email, "", "") %}{% endcall %}
+    {% call ui::input("password", "password", "Password", "password", "", "", "") %}{% endcall %}
+    <div class="form__actions"><button class="btn btn--primary" type="submit">Sign in</button></div>
+  </form>
+</section>
+{% endblock %}

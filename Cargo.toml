@@ -1,0 +1,38 @@
+[package]
+name = "monita"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.97"
+description = "Self-hosted uptime, incident and status service"
+license = "MIT"
+publish = false
+
+[dependencies]
+anyhow = "1.0"
+askama = "0.16"
+axum = "0.8"
+clap = { version = "4.6", features = ["derive"] }
+rust-embed = { version = "8.13", features = ["mime-guess"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "2.0"
+tokio = { version = "1.53", features = ["macros", "rt-multi-thread", "net", "signal", "sync", "time"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+turso = "=0.8.3"
+
+[dev-dependencies]
+reqwest = { version = "0.13", default-features = false, features = ["json"] }
+tempfile = "3.27"
+
+# Local builds on an 8 GiB laptop: line tables for backtraces, no debug info for dependencies.
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+debug = false
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true

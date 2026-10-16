@@ -1,0 +1,7 @@
+#!/bin/sh
+# Enabled by `make setup` (git config core.hooksPath .githooks).
+set -e
+if git diff --cached --name-only | grep -qE '(\.rs|Cargo\.(toml|lock))$'; then
+  cargo fmt --check
+  CARGO_BUILD_JOBS=${CARGO_BUILD_JOBS:-4} nice -n 10 cargo clippy --all-targets --quiet -- -D warnings
+fi
