@@ -156,6 +156,20 @@ async fn an_unknown_slug_is_404() {
 }
 
 #[tokio::test]
+async fn a_bad_days_value_gets_the_error_envelope() {
+    let app = TestApp::spawn("test").await;
+    setup(&app).await;
+    for days in ["abc", "0", "91"] {
+        let res = app
+            .get(&format!("/api/v1/public/status/payments?days={days}"), None)
+            .await;
+        assert_eq!(res.status(), 400, "days={days}");
+        let body: Value = res.json().await.unwrap();
+        assert_eq!(body["error"]["code"], "invalid_request");
+    }
+}
+
+#[tokio::test]
 async fn hidden_incidents_do_not_push_public_ones_off_the_page() {
     let app = TestApp::spawn("test").await;
     setup(&app).await;

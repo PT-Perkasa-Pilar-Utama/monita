@@ -74,6 +74,8 @@ pub enum AccountError {
     BadCredentials,
     #[error("This link is invalid, expired or already used.")]
     InviteInvalid,
+    #[error("No super admin has this email.")]
+    NoSuchAdmin,
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 }
@@ -134,6 +136,26 @@ pub async fn create_super_admin(
         email,
         role: Role::SuperAdmin,
     })
+}
+
+/// The CLI recovery path for a super admin who lost the password. Signs them out everywhere.
+pub async fn reset_super_admin_password(
+    db: &Db,
+    email: &str,
+    password: &str,
+) -> Result<(), AccountError> {
+    let email = normalize_email(email)?;
+    let hash = hash_password(password).await?;
+    db.write(
+        async |c| match store::find_user_by_email(c, &email).await? {
+            Some(u) if u.role == "super_admin" => {
+                store::set_password(c, u.id, &hash, now()).await?;
+                Ok(Ok(()))
+            }
+            _ => Ok(Err(AccountError::NoSuchAdmin)),
+        },
+    )
+    .await?
 }
 
 /// Signs in. Returns the raw session token for the cookie.
@@ -258,14 +280,6 @@ pub async fn list_users(db: &Db) -> anyhow::Result<Vec<UserRow>> {
 
 pub async fn is_active_tl(c: &turso::Connection, user_id: i64) -> anyhow::Result<bool> {
     Ok(store::active_tl_email(c, user_id).await?.is_some())
-}
-
-pub async fn list_tls(db: &Db) -> anyhow::Result<Vec<UserRow>> {
-    Ok(list_users(db)
-        .await?
-        .into_iter()
-        .filter(|u| u.role == "tl" && u.disabled_at.is_none())
-        .collect())
 }
 
 /// Retention (US-32): runs inside the caller's write.

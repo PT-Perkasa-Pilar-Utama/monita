@@ -34,7 +34,7 @@ fn public_cache(mut res: Response) -> Response {
 
 #[derive(Deserialize)]
 struct DaysQuery {
-    days: Option<usize>,
+    days: Option<String>,
 }
 
 async fn json(
@@ -42,7 +42,17 @@ async fn json(
     Path(slug): Path<String>,
     Query(q): Query<DaysQuery>,
 ) -> Response {
-    let days = q.days.unwrap_or(DAYS).clamp(1, DAYS);
+    let days = match q.days.as_deref().map(str::parse::<usize>) {
+        None => DAYS,
+        Some(Ok(d)) if (1..=DAYS).contains(&d) => d,
+        Some(_) => {
+            return api_error(
+                StatusCode::BAD_REQUEST,
+                "invalid_request",
+                "days must be a whole number from 1 to 90.",
+            );
+        }
+    };
     let mut res = match super::load(&state.db, &slug, days).await {
         Ok(Some(status)) => {
             public_cache(Json(serde_json::json!({ "data": status })).into_response())

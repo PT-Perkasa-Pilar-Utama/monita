@@ -153,14 +153,16 @@ impl FormPage {
     }
 }
 
-#[derive(Deserialize)]
+/// Strings, not numbers: a blank or bad number must reach `validate` and re-render the form,
+/// not fail inside the extractor with a plain-text 422.
+#[derive(Deserialize, Default)]
+#[serde(default)]
 struct MonitorForm {
     name: String,
     url: String,
-    interval_s: i64,
-    timeout_s: i64,
+    interval_s: String,
+    timeout_s: String,
     expected_status: String,
-    #[serde(default)]
     keyword: String,
     skip_tls_verify: Option<String>,
     severity: String,
@@ -173,8 +175,14 @@ impl From<MonitorForm> for MonitorInput {
         MonitorInput {
             name: f.name.trim().to_string(),
             url: f.url.trim().to_string(),
-            interval_s: f.interval_s,
-            timeout_ms: f.timeout_s.saturating_mul(1000),
+            // 0 fails validation with the field's own message.
+            interval_s: f.interval_s.trim().parse().unwrap_or(0),
+            timeout_ms: f
+                .timeout_s
+                .trim()
+                .parse::<i64>()
+                .unwrap_or(0)
+                .saturating_mul(1000),
             expected_status: f.expected_status.trim().to_string(),
             keyword: (!keyword.is_empty()).then(|| keyword.to_string()),
             skip_tls_verify: f.skip_tls_verify.is_some(),
@@ -308,7 +316,8 @@ impl DetailPage {
 
 #[derive(Deserialize)]
 struct Paging {
-    before: Option<i64>,
+    /// A cursor the page itself links to; a hand-edited bad value shows the first page.
+    before: Option<String>,
 }
 
 async fn detail(
@@ -321,7 +330,8 @@ async fn detail(
     let monitor = super::find_monitor(&state.db, project.id, id)
         .await?
         .ok_or(PageError::NotFound)?;
-    let checks = super::recent_checks(&state.db, id, paging.before, PAGE).await?;
+    let before = paging.before.and_then(|b| b.parse().ok());
+    let checks = super::recent_checks(&state.db, id, before, PAGE).await?;
     let older = (checks.len() as i64 == PAGE)
         .then(|| checks.last().map(|c| c.checked_at))
         .flatten();

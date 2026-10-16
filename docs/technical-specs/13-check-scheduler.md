@@ -53,7 +53,7 @@ every 1 s:
 
 - Probes never hold a DB transaction open while waiting on the network.
 - One write transaction per check result. Turso runs one writer at a time, so writes are short.
-- On shutdown (SIGTERM) the loop stops claiming, waits up to 10 s for running probes, then exits.
+- On shutdown (SIGTERM) the HTTP server stops, then Monita takes the write side of `AppState.gate`. The loop stops claiming, because its next tick waits behind that guard. Running probes, a delivery pass and daily jobs hold read guards, so Monita waits up to 10 s for them, then exits.
 
 ## 13.5 Contract it produces
 

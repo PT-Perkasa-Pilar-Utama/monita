@@ -261,6 +261,8 @@ pub async fn run(conn: &turso::Connection) -> anyhow::Result<()> {
 | --- | --- |
 | `monita serve` | Runs pending migrations, then starts. |
 | `monita migrate` | Runs pending migrations and exits. |
+| `monita admin create --email` | Creates a super admin. Reads the password from stdin. |
+| `monita admin reset-password --email` | Sets a new password for an existing super admin and signs them out. A TL resets through a new invite. |
 | `POST /admin/reset-state {"seed":"dev"}` | Dev and test only. Wipes, migrates, loads `seeds/dev.sql` or `seeds/qa.sql`. |
 
 Forbidden: running a `.sql` file by an absolute path outside the runner, and creating tables in application code.

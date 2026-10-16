@@ -169,6 +169,27 @@ async fn a_project_goes_only_to_an_active_tl() {
 }
 
 #[tokio::test]
+async fn the_owner_list_offers_the_admin_and_marks_the_current_owner() {
+    let app = TestApp::spawn("test").await;
+    let admin = app.super_admin("admin@x.co").await;
+    let rina = app.tl("rina@x.co").await;
+    project(&app, &rina, "Payments", "payments").await;
+    let html = app
+        .get("/projects/payments/settings", Some(&admin))
+        .await
+        .text()
+        .await
+        .unwrap();
+    let admin_at = html
+        .find(">admin@x.co</option>")
+        .expect("the admin is offered");
+    let rina_at = html
+        .find(" selected>rina@x.co</option>")
+        .expect("the owner is selected");
+    assert!(admin_at < rina_at, "the admin comes first");
+}
+
+#[tokio::test]
 async fn a_tl_cannot_reassign() {
     let app = TestApp::spawn("test").await;
     let rina = app.tl("rina@x.co").await;

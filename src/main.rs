@@ -32,6 +32,11 @@ enum AdminCmd {
         #[arg(long)]
         email: String,
     },
+    /// Set a new password for an existing super admin. Reads it from stdin.
+    ResetPassword {
+        #[arg(long)]
+        email: String,
+    },
 }
 
 #[tokio::main]
@@ -51,20 +56,30 @@ async fn main() -> anyhow::Result<()> {
         } => {
             let db = Db::open(&config.db_path).await?;
             migrate::run(&db).await?;
-            // ponytail: the password echoes on a TTY; add termios no-echo if admins run this over a shared screen.
-            eprint!("Password for {email}: ");
-            let mut password = String::new();
-            std::io::stdin().read_line(&mut password)?;
-            let user = monita::accounts::create_super_admin(
-                &db,
-                &email,
-                password.trim_end_matches(['\r', '\n']),
-            )
-            .await?;
+            let password = read_password(&email)?;
+            let user = monita::accounts::create_super_admin(&db, &email, &password).await?;
             println!("created super admin {}", user.email);
             Ok(())
         }
+        Cmd::Admin {
+            cmd: AdminCmd::ResetPassword { email },
+        } => {
+            let db = Db::open(&config.db_path).await?;
+            migrate::run(&db).await?;
+            let password = read_password(&email)?;
+            monita::accounts::reset_super_admin_password(&db, &email, &password).await?;
+            println!("new password set for {email}; their sessions are signed out");
+            Ok(())
+        }
     }
+}
+
+// ponytail: the password echoes on a TTY; add termios no-echo if admins run this over a shared screen.
+fn read_password(email: &str) -> anyhow::Result<String> {
+    eprint!("Password for {email}: ");
+    let mut password = String::new();
+    std::io::stdin().read_line(&mut password)?;
+    Ok(password.trim_end_matches(['\r', '\n']).to_string())
 }
 
 fn init_tracing(config: &Config) {

@@ -25,8 +25,8 @@ pub struct AppState {
     pub mailer: Mailer,
     pub http: crate::checks::Clients,
     pub limiter: Arc<crate::platform::rate_limit::Limiter>,
-    /// Background work holds a read guard; reset-state takes the write guard, so a reset never
-    /// races a check that is mid-write.
+    /// Background work holds a read guard; reset-state and shutdown take the write guard, so
+    /// neither races a check, a delivery or a daily job that is mid-write.
     pub gate: Arc<tokio::sync::RwLock<()>>,
 }
 
@@ -88,7 +88,7 @@ pub fn router(state: AppState) -> Router {
 
 pub async fn serve(config: Config) -> anyhow::Result<()> {
     let bind = config.bind;
-    let (router, _state) = build(config).await?;
+    let (router, state) = build(config).await?;
     let listener = TcpListener::bind(bind).await?;
     tracing::info!(%bind, "monita listening");
     axum::serve(
@@ -97,7 +97,25 @@ pub async fn serve(config: Config) -> anyhow::Result<()> {
     )
     .with_graceful_shutdown(shutdown_signal())
     .await?;
+    // Spec 13.4: the held write guard also stops the scheduler, whose next tick waits behind it.
+    if drain(&state.gate, std::time::Duration::from_secs(10))
+        .await
+        .is_none()
+    {
+        tracing::warn!("background work still running after 10 s; exiting anyway");
+    }
     Ok(())
+}
+
+/// Waits up to `limit` for every probe, delivery pass and daily job to finish, and returns the
+/// write guard that keeps new ones from starting.
+pub async fn drain(
+    gate: &Arc<tokio::sync::RwLock<()>>,
+    limit: std::time::Duration,
+) -> Option<tokio::sync::OwnedRwLockWriteGuard<()>> {
+    tokio::time::timeout(limit, gate.clone().write_owned())
+        .await
+        .ok()
 }
 
 async fn shutdown_signal() {
@@ -115,4 +133,25 @@ async fn shutdown_signal() {
     let term = std::future::pending::<()>();
     tokio::select! { _ = ctrl_c => {}, _ = term => {} }
     tracing::info!("shutting down");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::Duration;
+
+    #[tokio::test]
+    async fn drain_waits_for_running_work_but_not_forever() {
+        let gate: Arc<tokio::sync::RwLock<()>> = Arc::default();
+        let running = gate.clone().read_owned().await;
+        tokio::spawn(async move {
+            tokio::time::sleep(Duration::from_millis(100)).await;
+            drop(running);
+        });
+        assert!(drain(&gate, Duration::from_secs(2)).await.is_some());
+
+        let gate: Arc<tokio::sync::RwLock<()>> = Arc::default();
+        let _stuck = gate.clone().read_owned().await;
+        assert!(drain(&gate, Duration::from_millis(50)).await.is_none());
+    }
 }

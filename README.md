@@ -134,6 +134,15 @@ Monita cannot alert about its own outage. Run a second Monita at another site an
 
 If one site loses power, the other sends "monita-a missed its heartbeat". A free Better Stack heartbeat works the same way in place of Monita B. `GET /healthz` returns 503 when the database fails or the scheduler stops ticking, for a load balancer or an uptime check.
 
+### Lost super admin password
+
+```sh
+set -a; . /etc/monita/monita.env; set +a
+sudo -u monita -E monita admin reset-password --email you@company.co.id
+```
+
+The command reads the new password from stdin and signs the admin out everywhere. A TL gets a new invite from a super admin instead.
+
 ### Upgrade
 
 Install the new binary over the old one and run `systemctl restart monita`. Migrations run at start. Take a backup first: `systemctl stop monita && cp /var/lib/monita/monita.db /var/backups/monita/pre-upgrade.db`.

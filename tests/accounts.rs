@@ -310,3 +310,30 @@ async fn invite_posts_are_limited_per_ip_and_a_bad_token_is_refused_before_hashi
     let res = app.post_form("/invite/not-a-token", &form, None).await;
     assert_eq!(res.status(), 429);
 }
+
+#[tokio::test]
+async fn the_cli_resets_a_super_admin_password_and_signs_them_out() {
+    let app = TestApp::spawn("test").await;
+    let old_session = app.super_admin("admin@x.co").await;
+    app.tl("rina@x.co").await;
+    let new_password = "a-brand-new-password";
+    accounts::reset_super_admin_password(&app.state.db, "Admin@X.co", new_password)
+        .await
+        .unwrap();
+    assert_eq!(app.get("/", Some(&old_session)).await.status(), 303);
+    for (password, status) in [(PASSWORD, 422), (new_password, 303)] {
+        let res = app
+            .post_form(
+                "/login",
+                &[("email", "admin@x.co"), ("password", password)],
+                None,
+            )
+            .await;
+        assert_eq!(res.status(), status, "password {password}");
+    }
+    let tl = accounts::reset_super_admin_password(&app.state.db, "rina@x.co", new_password).await;
+    assert!(
+        matches!(tl, Err(AccountError::NoSuchAdmin)),
+        "a TL resets through an invite"
+    );
+}

@@ -404,6 +404,29 @@ async fn limits_page_is_for_super_admins_and_rejects_bad_values() {
 }
 
 #[tokio::test]
+async fn a_blank_number_re_renders_the_form_with_its_error() {
+    let app = TestApp::spawn("test").await;
+    let tl = tl_project(&app).await;
+    let res = app
+        .post_form(
+            "/projects/payments/monitors",
+            &[
+                ("name", "API"),
+                ("url", "https://x.invalid/"),
+                ("interval_s", "60"),
+                ("timeout_s", ""),
+                ("expected_status", "2xx"),
+                ("severity", "warning"),
+            ],
+            Some(&tl),
+        )
+        .await;
+    assert_eq!(res.status(), 422);
+    let html = res.text().await.unwrap();
+    assert!(html.contains("Use 1 to 30 seconds.") && html.contains("value=\"API\""));
+}
+
+#[tokio::test]
 async fn another_project_cannot_open_a_monitor_by_id() {
     let app = TestApp::spawn("test").await;
     tl_project(&app).await;

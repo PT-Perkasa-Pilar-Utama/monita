@@ -169,6 +169,16 @@ pub async fn use_invite(
         (at, invite_id),
     )
     .await?;
+    set_password(c, user_id, password_hash, at).await
+}
+
+/// Also signs the user out everywhere.
+pub async fn set_password(
+    c: &Connection,
+    user_id: i64,
+    password_hash: &str,
+    at: i64,
+) -> anyhow::Result<()> {
     c.execute(
         "UPDATE users SET password_hash = ?1, updated_at = ?2 WHERE id = ?3",
         (password_hash, at, user_id),

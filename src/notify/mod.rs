@@ -260,6 +260,7 @@ pub fn spawn_delivery(state: &AppState, running: &Arc<AtomicBool>) {
     let state = state.clone();
     tokio::spawn(async move {
         let _reset = reset;
+        let _pass = state.gate.read().await;
         if let Err(e) = deliver_due(&state).await {
             tracing::error!(error = %e, "outbox delivery failed");
         }

@@ -15,7 +15,7 @@
       <form class="form" method="post" action="/projects/{{ project.slug }}/owner">
         <div class="field"><label class="label" for="owner_id">Reassign to</label>
           <select class="select" id="owner_id" name="owner_id">
-            {% for u in tls %}<option value="{{ u.id }}"{% if u.id == project.owner_id %} selected{% endif %}>{{ u.email }}</option>{% endfor %}
+            {% for u in owners %}<option value="{{ u.id }}"{% if u.id == project.owner_id %} selected{% endif %}>{{ u.email }}</option>{% endfor %}
           </select>
           <span class="help">Monitors, incidents and tickets stay with the project.</span>
         </div>

@@ -119,11 +119,13 @@ impl FormPage {
     }
 }
 
-#[derive(Deserialize)]
+/// Strings, not numbers, as in `routes::MonitorForm`.
+#[derive(Deserialize, Default)]
+#[serde(default)]
 struct HeartbeatForm {
     name: String,
-    period_s: i64,
-    grace_s: i64,
+    period_s: String,
+    grace_s: String,
     severity: String,
     is_public: Option<String>,
 }
@@ -132,8 +134,8 @@ impl From<HeartbeatForm> for HeartbeatInput {
     fn from(f: HeartbeatForm) -> Self {
         HeartbeatInput {
             name: f.name.trim().to_string(),
-            period_s: f.period_s,
-            grace_s: f.grace_s,
+            period_s: f.period_s.trim().parse().unwrap_or(0),
+            grace_s: f.grace_s.trim().parse().unwrap_or(-1),
             severity: f.severity,
             is_public: f.is_public.is_some(),
         }

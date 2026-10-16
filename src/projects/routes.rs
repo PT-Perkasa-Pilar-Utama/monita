@@ -117,7 +117,8 @@ struct Settings {
     shell: Shell,
     project: Project,
     keys: Vec<ApiKeyRow>,
-    tls: Vec<UserRow>,
+    /// Who `reassign` accepts: the acting super admin first, then every active TL.
+    owners: Vec<UserRow>,
     new_key: Option<String>,
     key_name: String,
     key_error: String,
@@ -142,8 +143,11 @@ async fn settings_view(
     project: Project,
 ) -> Result<Settings, PageError> {
     let keys = super::list_keys(&state.db, project.id).await?;
-    let tls = if user.is_admin() {
-        crate::accounts::list_tls(&state.db).await?
+    let owners = if user.is_admin() {
+        let mut all = crate::accounts::list_users(&state.db).await?;
+        all.retain(|u| u.id == user.id || (u.role == "tl" && u.disabled_at.is_none()));
+        all.sort_by_key(|u| u.id != user.id);
+        all
     } else {
         Vec::new()
     };
@@ -156,7 +160,7 @@ async fn settings_view(
             .replace(',', "\n"),
         project,
         keys,
-        tls,
+        owners,
         new_key: None,
         key_name: String::new(),
         key_error: String::new(),
@@ -174,9 +178,10 @@ async fn settings(
     Ok(render(&settings_view(&state, &user, p).await?))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Default)]
+#[serde(default)]
 struct OwnerForm {
-    owner_id: i64,
+    owner_id: String,
 }
 
 async fn reassign(
@@ -186,7 +191,9 @@ async fn reassign(
     Form(f): Form<OwnerForm>,
 ) -> Result<Response, PageError> {
     let p = super::find_for(&state.db, &admin, &slug).await?;
-    super::reassign(&state.db, p.id, f.owner_id, &admin).await?;
+    // No user has id 0, so a blank or bad value is the same 404 as an unknown one.
+    let owner_id = f.owner_id.trim().parse().unwrap_or(0);
+    super::reassign(&state.db, p.id, owner_id, &admin).await?;
     Ok(Redirect::to(&format!("/projects/{slug}/settings")).into_response())
 }
 
