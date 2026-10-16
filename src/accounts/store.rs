@@ -64,9 +64,12 @@ pub async fn find_user_by_email(c: &Connection, email: &str) -> anyhow::Result<O
     })
 }
 
-pub async fn email_of(c: &Connection, user_id: i64) -> anyhow::Result<Option<String>> {
+pub async fn active_tl_email(c: &Connection, user_id: i64) -> anyhow::Result<Option<String>> {
     let mut rows = c
-        .query("SELECT email FROM users WHERE id = ?1", [user_id])
+        .query(
+            "SELECT email FROM users WHERE id = ?1 AND role = 'tl' AND disabled_at IS NULL",
+            [user_id],
+        )
         .await?;
     Ok(match rows.next().await? {
         Some(r) => Some(r.get(0)?),
@@ -88,15 +91,22 @@ pub async fn list_users(c: &Connection) -> anyhow::Result<Vec<UserRow>> {
     Ok(out)
 }
 
-pub async fn disable_user(c: &Connection, user_id: i64, at: i64) -> anyhow::Result<()> {
-    c.execute(
-        "UPDATE users SET disabled_at = ?1, updated_at = ?1 WHERE id = ?2",
-        (at, user_id),
-    )
-    .await?;
+/// Returns false when the user is not an active TL.
+pub async fn disable_tl(c: &Connection, user_id: i64, at: i64) -> anyhow::Result<bool> {
+    let n = c
+        .execute(
+            "UPDATE users SET disabled_at = ?1, updated_at = ?1 WHERE id = ?2 AND role = 'tl' AND disabled_at IS NULL",
+            (at, user_id),
+        )
+        .await?;
+    if n == 0 {
+        return Ok(false);
+    }
     c.execute("DELETE FROM sessions WHERE user_id = ?1", [user_id])
         .await?;
-    Ok(())
+    c.execute("DELETE FROM invites WHERE user_id = ?1", [user_id])
+        .await?;
+    Ok(true)
 }
 
 /// Deletes the user's older invites and sessions, then stores the new invite.
@@ -121,7 +131,8 @@ pub async fn replace_invite(
 pub async fn find_invite(c: &Connection, token_hash: &str) -> anyhow::Result<Option<Invite>> {
     let mut rows = c
         .query(
-            "SELECT id, user_id, expires_at, used_at FROM invites WHERE token_hash = ?1",
+            "SELECT i.id, i.user_id, i.expires_at, i.used_at FROM invites i JOIN users u ON u.id = i.user_id
+             WHERE i.token_hash = ?1 AND u.disabled_at IS NULL",
             [token_hash],
         )
         .await?;
@@ -149,7 +160,7 @@ pub async fn use_invite(
     )
     .await?;
     c.execute(
-        "UPDATE users SET password_hash = ?1, disabled_at = NULL, updated_at = ?2 WHERE id = ?3",
+        "UPDATE users SET password_hash = ?1, updated_at = ?2 WHERE id = ?3",
         (password_hash, at, user_id),
     )
     .await?;

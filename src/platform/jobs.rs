@@ -1,5 +1,6 @@
 //! Once-a-day jobs, run from the scheduler tick (spec 13 section 13.2). Each job records the UTC
-//! day it last finished in `settings`, so a restart neither skips nor repeats a day.
+//! day it last finished in `settings`, so a restart neither skips nor repeats a day. A failed job
+//! records its attempt and waits `RETRY_S` before the next one; the other jobs still run.
 
 use std::sync::{
     Arc,
@@ -9,70 +10,144 @@ use std::sync::{
 use super::{now, settings, time};
 use crate::app::AppState;
 
+const RETRY_S: i64 = 600;
+
+#[derive(Clone, Copy)]
+enum Kind {
+    Rollup,
+    Backup,
+    Digest,
+}
+
 struct Job {
     name: &'static str,
     /// Seconds after UTC midnight when the job becomes due.
     at_s: i64,
+    kind: Kind,
 }
 
-const ROLLUP: Job = Job {
-    name: "rollup",
-    at_s: 10 * 60,
-};
-const BACKUP: Job = Job {
-    name: "backup",
-    at_s: 3_600,
-};
+/// Due once `at_s` has passed today, the job has not finished today, and its last failure is
+/// at least `RETRY_S` old.
+fn is_due(at_s: i64, t: i64, last_day: Option<&str>, last_attempt: Option<i64>) -> bool {
+    t.rem_euclid(86_400) >= at_s
+        && last_day != Some(time::day(t).as_str())
+        && last_attempt.is_none_or(|a| t - a >= RETRY_S)
+}
 
 async fn due(state: &AppState, job: &Job, t: i64) -> anyhow::Result<bool> {
-    if t.rem_euclid(86_400) < job.at_s {
-        return Ok(false);
-    }
-    let last =
-        settings::get_raw(&state.db.read().await?, &format!("last_{}_day", job.name)).await?;
-    Ok(last.as_deref() != Some(time::day(t).as_str()))
+    let conn = state.db.read().await?;
+    let last_day = settings::get_raw(&conn, &format!("last_{}_day", job.name)).await?;
+    let last_attempt = settings::get_raw(&conn, &format!("last_{}_attempt_at", job.name))
+        .await?
+        .and_then(|v| v.parse().ok());
+    Ok(is_due(job.at_s, t, last_day.as_deref(), last_attempt))
 }
 
-async fn done(state: &AppState, job: &Job, t: i64) -> anyhow::Result<()> {
-    let (key, day) = (format!("last_{}_day", job.name), time::day(t));
+async fn record(state: &AppState, key: String, value: String) -> anyhow::Result<()> {
     state
         .db
-        .write(async |c| settings::set_raw(c, &key, &day).await)
+        .write(async |c| settings::set_raw(c, &key, &value).await)
         .await
 }
 
-/// Starts one pass over the daily jobs unless one is already running.
-pub fn spawn_daily(state: &AppState, running: &Arc<AtomicBool>) {
-    if running.swap(true, Ordering::AcqRel) {
-        return;
+async fn run_one(state: &AppState, job: &Job, t: i64) -> anyhow::Result<()> {
+    if !due(state, job, t).await? {
+        return Ok(());
     }
-    let (state, running) = (state.clone(), running.clone());
-    tokio::spawn(async move {
-        let t = now();
-        if let Err(e) = run_due(&state, t).await {
-            tracing::error!(error = %e, "daily jobs failed");
+    match job.kind {
+        Kind::Rollup => crate::checks::retention::run(&state.db, t).await?,
+        Kind::Backup => {
+            super::backup::run(state, t).await?;
         }
-        running.store(false, Ordering::Release);
+        Kind::Digest => {
+            crate::notify::digest(&state.db, &state.config.base_url, t).await?;
+        }
+    }
+    record(state, format!("last_{}_day", job.name), time::day(t)).await
+}
+
+/// Clears the running flag when dropped, so a pass that panics does not block every later one.
+pub struct Reset(Arc<AtomicBool>);
+
+impl Drop for Reset {
+    fn drop(&mut self) {
+        self.0.store(false, Ordering::Release);
+    }
+}
+
+/// Sets the flag and returns its guard, or `None` when a pass is already running.
+pub fn try_start(running: &Arc<AtomicBool>) -> Option<Reset> {
+    (!running.swap(true, Ordering::AcqRel)).then(|| Reset(running.clone()))
+}
+
+pub fn spawn_daily(state: &AppState, running: &Arc<AtomicBool>) {
+    let Some(reset) = try_start(running) else {
+        return;
+    };
+    let state = state.clone();
+    tokio::spawn(async move {
+        let _reset = reset;
+        run_due(&state, now()).await;
     });
 }
 
-async fn run_due(state: &AppState, t: i64) -> anyhow::Result<()> {
+/// Runs every job that is due at `t`. A failed job is logged and does not stop the others.
+pub async fn run_due(state: &AppState, t: i64) {
     let _pass = state.gate.read().await;
-    if due(state, &ROLLUP, t).await? {
-        crate::checks::retention::run(&state.db, t).await?;
-        done(state, &ROLLUP, t).await?;
+    let jobs = [
+        Job {
+            name: "rollup",
+            at_s: 10 * 60,
+            kind: Kind::Rollup,
+        },
+        Job {
+            name: "backup",
+            at_s: 3_600,
+            kind: Kind::Backup,
+        },
+        Job {
+            name: "digest",
+            at_s: i64::from(state.config.digest_utc_hour) * 3_600,
+            kind: Kind::Digest,
+        },
+    ];
+    for job in &jobs {
+        if let Err(e) = run_one(state, job, t).await {
+            tracing::error!(job = job.name, error = %e, "daily job failed");
+            let key = format!("last_{}_attempt_at", job.name);
+            if let Err(e) = record(state, key, t.to_string()).await {
+                tracing::error!(job = job.name, error = %e, "could not record the failed attempt");
+            }
+        }
     }
-    if due(state, &BACKUP, t).await? {
-        super::backup::run(state, t).await?;
-        done(state, &BACKUP, t).await?;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_failed_job_waits_ten_minutes_and_a_finished_one_waits_a_day() {
+        let day = 1_792_108_800; // 2026-10-16 00:00 UTC
+        let t = day + 3_600;
+        assert!(!is_due(3_600, t - 1, None, None), "not before its hour");
+        assert!(is_due(3_600, t, None, None));
+        assert!(!is_due(3_600, t, Some("2026-10-16"), None), "done today");
+        assert!(is_due(3_600, t, Some("2026-10-15"), None));
+        assert!(!is_due(3_600, t + 599, None, Some(t)), "retry too soon");
+        assert!(is_due(3_600, t + 600, None, Some(t)));
     }
-    let digest = Job {
-        name: "digest",
-        at_s: i64::from(state.config.digest_utc_hour) * 3_600,
-    };
-    if due(state, &digest, t).await? {
-        crate::notify::digest(&state.db, &state.config.base_url, t).await?;
-        done(state, &digest, t).await?;
+
+    #[tokio::test]
+    async fn the_running_flag_clears_when_a_pass_panics() {
+        let running = Arc::new(AtomicBool::new(false));
+        let reset = try_start(&running).unwrap();
+        assert!(try_start(&running).is_none(), "one pass at a time");
+        let pass = tokio::spawn(async move {
+            let _reset = reset;
+            panic!("job bug");
+        });
+        assert!(pass.await.is_err());
+        assert!(!running.load(Ordering::Acquire));
     }
-    Ok(())
 }

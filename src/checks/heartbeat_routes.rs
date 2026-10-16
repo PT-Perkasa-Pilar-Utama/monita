@@ -318,15 +318,20 @@ async fn ping(
         return plain(StatusCode::NOT_FOUND, "not found");
     };
     // AC-13.02: a ping over the limit gets 429. The ping already counted this second keeps the heartbeat alive.
+    // `/fail` has its own bucket, so a job that pings and then fails in one second is still heard.
     let limit = match state.db.read().await {
         Ok(c) => settings::get(&c, "rl_ping_per_s").await.unwrap_or(1),
         Err(_) => 1,
     };
-    if let Verdict::Deny(retry) =
-        state
-            .limiter
-            .hit(&format!("ping:{}", hb.id), limit.max(1) as u32, 1, now())
-    {
+    if let Verdict::Deny(retry) = state.limiter.hit(
+        &match kind {
+            PingKind::Ok => format!("ping:{}", hb.id),
+            PingKind::Fail => format!("pingfail:{}", hb.id),
+        },
+        u32::try_from(limit.max(1)).unwrap_or(u32::MAX),
+        1,
+        now(),
+    ) {
         return (
             StatusCode::TOO_MANY_REQUESTS,
             [(header::RETRY_AFTER, retry.to_string())],

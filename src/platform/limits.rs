@@ -82,14 +82,17 @@ async fn save(
         match form
             .get(*key)
             .and_then(|v| v.trim().parse::<i64>().ok())
-            .filter(|v| *v > 0)
+            .filter(|v| (1..=settings::max_for(key)).contains(v))
         {
             Some(v) => parsed.push((*key, v)),
             None => {
                 let page = view(
                     &state,
                     admin.email,
-                    format!("{label}: enter a whole number above 0."),
+                    format!(
+                        "{label}: enter a whole number from 1 to {}.",
+                        settings::max_for(key)
+                    ),
                     Some(&form),
                 )
                 .await?;

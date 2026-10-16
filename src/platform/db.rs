@@ -11,21 +11,39 @@ use turso::{Builder, Connection, Database};
 #[derive(Clone)]
 pub struct Db {
     database: Database,
-    writer: Arc<Mutex<Connection>>,
+    writer: Arc<Mutex<Writer>>,
+}
+
+struct Writer {
+    conn: Connection,
+    /// True between BEGIN and COMMIT/ROLLBACK. A caller future dropped mid-transaction (a client
+    /// that disconnects) leaves it set; the next user rolls the stale transaction back first.
+    in_tx: bool,
+}
+
+impl Writer {
+    async fn clean(&mut self) {
+        if self.in_tx {
+            tracing::warn!("rolling back a transaction left open by a dropped write");
+            if let Err(e) = self.conn.execute("ROLLBACK", ()).await {
+                tracing::error!(error = %e, "rollback of an abandoned transaction failed");
+            }
+            self.in_tx = false;
+        }
+    }
 }
 
 impl Db {
     pub async fn open(path: &Path) -> anyhow::Result<Self> {
         let path = path.to_str().context("database path must be UTF-8")?;
         let database = Builder::new_local(path).build().await?;
-        let writer = connect(&database).await?;
+        let conn = connect(&database).await?;
         Ok(Self {
             database,
-            writer: Arc::new(Mutex::new(writer)),
+            writer: Arc::new(Mutex::new(Writer { conn, in_tx: false })),
         })
     }
 
-    /// A fresh connection for reads.
     pub async fn read(&self) -> anyhow::Result<Connection> {
         connect(&self.database).await
     }
@@ -35,20 +53,25 @@ impl Db {
         &self,
         f: impl AsyncFnOnce(&Connection) -> anyhow::Result<T>,
     ) -> anyhow::Result<T> {
-        let conn = self.writer.lock().await;
-        conn.execute("BEGIN IMMEDIATE", ()).await?;
-        match f(&conn).await {
-            Ok(v) => {
-                conn.execute("COMMIT", ()).await?;
-                Ok(v)
-            }
-            Err(e) => {
-                if let Err(rb) = conn.execute("ROLLBACK", ()).await {
-                    tracing::error!(error = %rb, "rollback failed");
+        let mut w = self.writer.lock().await;
+        w.clean().await;
+        w.in_tx = true;
+        w.conn.execute("BEGIN IMMEDIATE", ()).await?;
+        let result = match f(&w.conn).await {
+            Ok(v) => match w.conn.execute("COMMIT", ()).await {
+                Ok(_) => {
+                    w.in_tx = false;
+                    return Ok(v);
                 }
-                Err(e)
-            }
+                Err(e) => Err(e.into()),
+            },
+            Err(e) => Err(e),
+        };
+        if let Err(rb) = w.conn.execute("ROLLBACK", ()).await {
+            tracing::error!(error = %rb, "rollback failed");
         }
+        w.in_tx = false;
+        result
     }
 
     /// Writes a consistent copy of the database to `path` (US-33). `VACUUM INTO` cannot run in a
@@ -58,15 +81,20 @@ impl Db {
             .to_str()
             .context("backup path must be UTF-8")?
             .replace('\'', "''");
-        let conn = self.writer.lock().await;
-        conn.execute(&format!("VACUUM INTO '{target}'"), ()).await?;
+        let mut w = self.writer.lock().await;
+        w.clean().await;
+        w.conn
+            .execute(&format!("VACUUM INTO '{target}'"), ())
+            .await?;
         Ok(())
     }
 
     /// Drops every table. Only reset-state calls this. Foreign keys must be off outside a
     /// transaction, so this does not use `write`.
     pub async fn drop_all_tables(&self) -> anyhow::Result<()> {
-        let conn = self.writer.lock().await;
+        let mut w = self.writer.lock().await;
+        w.clean().await;
+        let conn = &w.conn;
         let mut names = Vec::new();
         {
             let mut rows = conn
@@ -134,5 +162,54 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(n, Some(6));
+    }
+
+    #[tokio::test]
+    async fn a_write_dropped_mid_transaction_is_rolled_back_before_the_next() {
+        let dir = tempfile::tempdir().unwrap();
+        let db = Db::open(&dir.path().join("t.db")).await.unwrap();
+        crate::platform::migrate::run(&db).await.unwrap();
+        let abandoned = tokio::time::timeout(
+            std::time::Duration::from_millis(100),
+            db.write(async |c| {
+                c.execute(
+                    "INSERT INTO settings (key, value) VALUES ('ghost', '1')",
+                    (),
+                )
+                .await?;
+                tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                Ok(())
+            }),
+        )
+        .await;
+        assert!(abandoned.is_err(), "the write was dropped by the timeout");
+        db.write(async |c| {
+            c.execute("INSERT INTO settings (key, value) VALUES ('next', '1')", ())
+                .await?;
+            Ok(())
+        })
+        .await
+        .expect("the next write works");
+        let conn = db.read().await.unwrap();
+        assert_eq!(
+            query_i64(
+                &conn,
+                "SELECT count(*) FROM settings WHERE key = 'ghost'",
+                ()
+            )
+            .await
+            .unwrap(),
+            Some(0)
+        );
+        assert_eq!(
+            query_i64(
+                &conn,
+                "SELECT count(*) FROM settings WHERE key = 'next'",
+                ()
+            )
+            .await
+            .unwrap(),
+            Some(1)
+        );
     }
 }

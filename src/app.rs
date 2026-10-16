@@ -1,7 +1,9 @@
 use std::sync::{Arc, atomic::AtomicI64};
 
 use axum::{
-    Router, middleware,
+    Router,
+    extract::DefaultBodyLimit,
+    middleware,
     routing::{get, post},
 };
 use tokio::net::TcpListener;
@@ -73,16 +75,18 @@ pub fn router(state: AppState) -> Router {
         r = r.route("/admin/reset-state", post(reset_state::handler));
     }
 
-    r.layer(middleware::from_fn_with_state(
-        state.clone(),
-        crate::platform::rate_limit::per_ip,
-    ))
-    .layer(middleware::from_fn_with_state(
-        state.clone(),
-        headers::origin_check,
-    ))
-    .layer(middleware::from_fn(headers::security_headers))
-    .with_state(state)
+    // 128 KiB: the largest valid form is a ticket of 10 000 four-byte characters, percent-encoded.
+    r.layer(DefaultBodyLimit::max(128 * 1024))
+        .layer(middleware::from_fn_with_state(
+            state.clone(),
+            crate::platform::rate_limit::per_ip,
+        ))
+        .layer(middleware::from_fn_with_state(
+            state.clone(),
+            headers::origin_check,
+        ))
+        .layer(middleware::from_fn(headers::security_headers))
+        .with_state(state)
 }
 
 pub async fn serve(config: Config) -> anyhow::Result<()> {

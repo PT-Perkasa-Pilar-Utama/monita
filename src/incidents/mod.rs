@@ -123,13 +123,14 @@ pub async fn observe(
         }
         Some(Effect::Resolve) => match open_id {
             Some(id) => {
-                let started = store::resolve_auto(c, id, now).await?;
+                // The opened alert went to the incident's severity; the source's may have changed since.
+                let (started, severity) = store::resolve_auto(c, id, now).await?;
                 opened = None;
                 Some(Event::Resolved {
                     incident_id: id,
                     project_id: source.project_id,
                     source_name: source.name.clone(),
-                    severity: source.severity.clone(),
+                    severity,
                     duration_s: now - started,
                 })
             }

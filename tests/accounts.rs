@@ -74,6 +74,14 @@ async fn super_admin_invites_a_tl_and_the_email_goes_out() {
     let emails = app.state.mailer.sent();
     assert_eq!(emails[0].to, "rina@x.co");
     assert!(emails[0].body.contains(&format!("{BASE_URL}{path}")));
+    let kept = monita::platform::db::query_i64(
+        &app.state.db.read().await.unwrap(),
+        "SELECT count(*) FROM outbox WHERE body != ''",
+        (),
+    )
+    .await
+    .unwrap();
+    assert_eq!(kept, Some(0), "the invite link does not stay in the outbox");
 }
 
 #[tokio::test]
@@ -220,4 +228,85 @@ async fn disabled_tl_is_signed_out_and_cannot_sign_in() {
         )
         .await;
     assert_eq!(res.status(), 422);
+}
+
+async fn user_id(app: &TestApp, email: &str) -> i64 {
+    accounts::list_users(&app.state.db)
+        .await
+        .unwrap()
+        .into_iter()
+        .find(|u| u.email == email)
+        .unwrap()
+        .id
+}
+
+#[tokio::test]
+async fn disabling_a_tl_kills_their_pending_invite() {
+    let app = TestApp::spawn("test").await;
+    let admin = app.super_admin("admin@x.co").await;
+    let link = accounts::invite_tl(&app.state.db, BASE_URL, "rina@x.co")
+        .await
+        .unwrap();
+    let path = link.strip_prefix(BASE_URL).unwrap();
+    let id = user_id(&app, "rina@x.co").await;
+    app.post_form(&format!("/admin/users/{id}/disable"), &[], Some(&admin))
+        .await;
+    assert_eq!(app.get(path, None).await.status(), 410);
+    let res = app
+        .post_form(
+            path,
+            &[("password", PASSWORD), ("password_confirm", PASSWORD)],
+            None,
+        )
+        .await;
+    assert_eq!(res.status(), 410);
+    let user = accounts::list_users(&app.state.db)
+        .await
+        .unwrap()
+        .into_iter()
+        .find(|u| u.id == id)
+        .unwrap();
+    assert!(user.disabled_at.is_some() && user.password_hash.is_none());
+}
+
+#[tokio::test]
+async fn reinvite_and_disable_refuse_anyone_but_an_active_tl() {
+    let app = TestApp::spawn("test").await;
+    let admin = app.super_admin("admin@x.co").await;
+    app.tl("rina@x.co").await;
+    let admin_id = user_id(&app, "admin@x.co").await;
+    let tl_id = user_id(&app, "rina@x.co").await;
+    for action in ["invite", "disable"] {
+        let res = app
+            .post_form(
+                &format!("/admin/users/{admin_id}/{action}"),
+                &[],
+                Some(&admin),
+            )
+            .await;
+        assert_eq!(res.status(), 404, "{action} on a super admin");
+    }
+    app.post_form(&format!("/admin/users/{tl_id}/disable"), &[], Some(&admin))
+        .await;
+    let res = app
+        .post_form(&format!("/admin/users/{tl_id}/invite"), &[], Some(&admin))
+        .await;
+    assert_eq!(res.status(), 404, "a disabled TL gets no new invite");
+}
+
+#[tokio::test]
+async fn invite_posts_are_limited_per_ip_and_a_bad_token_is_refused_before_hashing() {
+    let app = TestApp::spawn("test").await;
+    app.state
+        .db
+        .write(async |c| monita::platform::settings::set(c, "rl_ip_per_min", 2).await)
+        .await
+        .unwrap();
+    let form = [("password", PASSWORD), ("password_confirm", PASSWORD)];
+    for _ in 0..2 {
+        let res = app.post_form("/invite/not-a-token", &form, None).await;
+        assert_eq!(res.status(), 410);
+    }
+    let res = app.post_form("/invite/not-a-token", &form, None).await;
+    assert_eq!(res.status(), 429);
 }

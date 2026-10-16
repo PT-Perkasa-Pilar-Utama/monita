@@ -32,7 +32,10 @@ pub async fn check_counts(
             (id, day, day + 86_400),
         )
         .await?;
-    let r = rows.next().await?.expect("aggregate returns one row");
+    let r = rows
+        .next()
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("aggregate returned no row"))?;
     Ok((r.get(0)?, r.get(1)?, r.get(2)?))
 }
 
@@ -48,7 +51,10 @@ pub async fn ping_counts(
             (id, day, day + 86_400),
         )
         .await?;
-    let r = rows.next().await?.expect("aggregate returns one row");
+    let r = rows
+        .next()
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("aggregate returned no row"))?;
     Ok((r.get(0)?, r.get(1)?, None))
 }
 

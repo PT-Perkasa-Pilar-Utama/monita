@@ -9,7 +9,7 @@ Rules: [../technical-specs/13-check-scheduler.md](../technical-specs/13-check-sc
 | Purpose | A project job reports a successful run. |
 | Access | Anyone with the token. |
 | Input | Path `token`. Any body is ignored. |
-| Behavior | 1. Find the heartbeat by token. 2. Rate limit: 1 per second per heartbeat. Over the limit still counts as a ping (AC-13.02). 3. Insert `pings(kind=ok)`. 4. Set `last_ping_at = now`, `deadline_at = now + period_s + grace_s`. 5. `incidents::observe(Heartbeat, Ping)`, which closes an open incident (AC-18.01). |
+| Behavior | 1. Find the heartbeat by token. 2. Rate limit: 1 per second per heartbeat, in the bucket `ping:{id}`. Over the limit still counts as a ping (AC-13.02). 3. Insert `pings(kind=ok)`. 4. Set `last_ping_at = now`, `deadline_at = now + period_s + grace_s`. 5. `incidents::observe(Heartbeat, Ping)`, which closes an open incident (AC-18.01). |
 | Output | 200 `text/plain` `OK`. HEAD has no body. (AC-13.01) |
 | Errors | 404 `not_found` (plain text `not found`) for an unknown token. 429 with `Retry-After: 1` when over the limit. |
 
@@ -26,7 +26,7 @@ curl -fsS -m 10 https://monita.company.co.id/ping/k3j9w2x7q4m8p6r1t5v0y2z8ab
 | Purpose | A project job reports its own failure. |
 | Access | Anyone with the token. |
 | Input | Path `token`. Optional body, up to 1 KB of text, stored as the cause. |
-| Behavior | Insert `pings(kind=fail)`. `observe(Heartbeat, FailPing{cause})` opens an incident at once (AC-14.01). `deadline_at` does not move. |
+| Behavior | Rate limit as 4.1, in its own bucket `pingfail:{id}`, so a fail right after a success ping is never refused. Insert `pings(kind=fail)`. `observe(Heartbeat, FailPing{cause})` opens an incident at once (AC-14.01). `deadline_at` does not move. |
 | Output | 200 `OK` |
 | Errors | Same as 4.1 |
 

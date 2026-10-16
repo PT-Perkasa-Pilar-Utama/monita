@@ -8,11 +8,14 @@ use crate::platform::now;
 /// Body bytes read when a keyword must be found (SEC-15).
 const MAX_BODY: usize = 1024 * 1024;
 
-/// Two clients: one verifies TLS, one does not, for monitors with self-signed internal certs.
+/// One client per (TLS check, redirect policy). Skipping TLS serves self-signed internal certs.
+/// A monitor that expects a 3xx sees the redirect itself instead of where it leads.
 #[derive(Clone)]
 pub struct Clients {
     strict: reqwest::Client,
     insecure: reqwest::Client,
+    strict_no_follow: reqwest::Client,
+    insecure_no_follow: reqwest::Client,
 }
 
 impl Clients {
@@ -22,18 +25,24 @@ impl Clients {
     }
 
     pub fn new() -> anyhow::Result<Self> {
-        let base = || {
+        let base = |follow: bool| {
             reqwest::Client::builder()
                 .user_agent(concat!(
                     "Monita/",
                     env!("CARGO_PKG_VERSION"),
                     " (uptime check)"
                 ))
-                .redirect(reqwest::redirect::Policy::limited(5))
+                .redirect(if follow {
+                    reqwest::redirect::Policy::limited(5)
+                } else {
+                    reqwest::redirect::Policy::none()
+                })
         };
         Ok(Self {
-            strict: base().build()?,
-            insecure: base().danger_accept_invalid_certs(true).build()?,
+            strict: base(true).build()?,
+            insecure: base(true).danger_accept_invalid_certs(true).build()?,
+            strict_no_follow: base(false).build()?,
+            insecure_no_follow: base(false).danger_accept_invalid_certs(true).build()?,
         })
     }
 }
@@ -59,10 +68,15 @@ pub fn status_matches(expected: &str, code: u16) -> bool {
 }
 
 pub async fn probe(t: &Target<'_>, clients: &Clients) -> CheckResult {
-    let client = if t.skip_tls_verify {
-        &clients.insecure
-    } else {
-        &clients.strict
+    let follow = !t
+        .expected_status
+        .split(',')
+        .any(|p| p.trim().starts_with('3'));
+    let client = match (t.skip_tls_verify, follow) {
+        (false, true) => &clients.strict,
+        (true, true) => &clients.insecure,
+        (false, false) => &clients.strict_no_follow,
+        (true, false) => &clients.insecure_no_follow,
     };
     let checked_at = now();
     let start = Instant::now();

@@ -42,10 +42,12 @@ pub fn ip_limited(method: &axum::http::Method, path: &str) -> bool {
     path.starts_with("/status/")
         || path.starts_with("/api/v1/public/")
         || path.starts_with("/api/v1/tickets")
-        || (path == "/login" && method == axum::http::Method::POST)
+        || (method == axum::http::Method::POST
+            && (path == "/login" || path.starts_with("/invite/")))
 }
 
-/// 429 with `Retry-After`: the JSON envelope under `/api/`, plain text elsewhere.
+/// 429 with `Retry-After`: the JSON envelope under `/api/`, plain text elsewhere. Under `/api/`
+/// it carries `Access-Control-Allow-Origin: *`, so a browser caller can read the 429.
 pub fn too_many(path: &str, retry_after: i64) -> axum::response::Response {
     use axum::{
         Json,
@@ -58,6 +60,7 @@ pub fn too_many(path: &str, retry_after: i64) -> axum::response::Response {
         (
             StatusCode::TOO_MANY_REQUESTS,
             retry,
+            [(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")],
             Json(serde_json::json!({ "error": { "code": "rate_limited", "message": message } })),
         )
             .into_response()
@@ -87,11 +90,12 @@ pub async fn per_ip(
             .unwrap_or(60),
         Err(_) => 60,
     };
-    if let Verdict::Deny(retry) =
-        state
-            .limiter
-            .hit(&format!("ip:{ip}"), limit.max(1) as u32, 60, super::now())
-    {
+    if let Verdict::Deny(retry) = state.limiter.hit(
+        &format!("ip:{ip}"),
+        u32::try_from(limit.max(1)).unwrap_or(u32::MAX),
+        60,
+        super::now(),
+    ) {
         return too_many(req.uri().path(), retry);
     }
     next.run(req).await

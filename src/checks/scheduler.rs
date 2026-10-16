@@ -88,12 +88,18 @@ async fn resize(state: &AppState, slots: &Semaphore, cap: usize) -> usize {
         Err(_) => return cap,
     }
     .clamp(1, 500) as usize;
+    reshape(slots, cap, wanted)
+}
+
+/// `forget_permits` removes only free permits, so a shrink while probes hold slots finishes over
+/// later ticks. Returns the number of permits that now exist.
+fn reshape(slots: &Semaphore, cap: usize, wanted: usize) -> usize {
     if wanted > cap {
         slots.add_permits(wanted - cap);
-    } else if wanted < cap {
-        slots.forget_permits(cap - wanted);
+        wanted
+    } else {
+        cap - slots.forget_permits(cap - wanted)
     }
-    wanted
 }
 
 /// Claims as many due monitors as there are free slots, and probes each in its own task.
@@ -130,4 +136,22 @@ async fn run_due_monitors(
         });
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_shrink_while_slots_are_held_finishes_once_they_are_free() {
+        let slots = Semaphore::new(5);
+        let held: Vec<_> = (0..4).map(|_| slots.try_acquire().unwrap()).collect();
+        let cap = reshape(&slots, 5, 2);
+        assert_eq!(cap, 4, "only the one free permit could go");
+        drop(held);
+        let cap = reshape(&slots, cap, 2);
+        assert_eq!((cap, slots.available_permits()), (2, 2));
+        assert_eq!(reshape(&slots, cap, 3), 3);
+        assert_eq!(slots.available_permits(), 3);
+    }
 }

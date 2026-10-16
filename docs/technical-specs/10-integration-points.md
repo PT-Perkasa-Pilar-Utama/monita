@@ -2,7 +2,7 @@
 
 | System | Direction | Contract | Failure mode | Fallback |
 | --- | --- | --- | --- | --- |
-| Monitored URLs | Out | HTTP(S) GET, monitor timeout, max 5 redirects, 1 MB body | Timeout, DNS, TLS, status mismatch | Recorded as a failed check. Feeds the incident engine. |
+| Monitored URLs | Out | HTTP(S) GET, monitor timeout, max 5 redirects (none when the expected status names a 3xx), 1 MB body | Timeout, DNS, TLS, status mismatch | Recorded as a failed check. Feeds the incident engine. |
 | SMTP relay | Out | SMTP with STARTTLS or TLS, `MONITA_SMTP_URL` | Slow or down | Outbox retries at 1, 5, 15 min. Then `failed_at` and an error log. Checks never wait on SMTP. |
 | Webhook URLs | Out | POST JSON with `text`, 10 s timeout | Non-2xx or timeout | Same outbox retries. |
 | Peer Monita or Better Stack | Out | GET `MONITA_PING_URL` every 60 s, 10 s timeout | Down | Warning log only. The peer raises the alert from its side. |

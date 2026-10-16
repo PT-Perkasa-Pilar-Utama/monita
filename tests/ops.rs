@@ -44,6 +44,11 @@ async fn public_pages_are_limited_per_ip_and_health_is_not() {
     assert!(limited.headers().contains_key("retry-after"));
     let api = app.get("/api/v1/public/status/nope", None).await;
     assert_eq!(api.status(), 429);
+    assert_eq!(
+        api.headers()["access-control-allow-origin"],
+        "*",
+        "a browser caller can read the 429"
+    );
     let body: Value = api.json().await.unwrap();
     assert_eq!(body["error"]["code"], "rate_limited");
     assert_eq!(
@@ -97,7 +102,7 @@ async fn rollup_summarizes_old_days_before_the_sweep_deletes_raw_rows() {
                  INSERT INTO incidents (id, project_id, origin, title, severity, started_at, resolved_at) VALUES (1, 1, 'auto', 'API is down', 'warning', {a}, {c});
                  INSERT INTO incident_items VALUES (1, 'monitor', 1);
                  INSERT INTO sessions (user_id, token_hash, expires_at) VALUES (1, 'gone', 5);
-                 INSERT INTO settings (key, value) VALUES ('last_rollup_day', '{since}') ON CONFLICT (key) DO UPDATE SET value = excluded.value;",
+                 INSERT INTO settings (key, value) VALUES ('rollup_through', '{since}'), ('last_rollup_day', '2026-10-16') ON CONFLICT (key) DO UPDATE SET value = excluded.value;",
                 a = old_day + 3_600,
                 b = old_day + 7_200,
                 c = old_day + 3_600 + 900,
@@ -206,6 +211,47 @@ async fn nightly_backup_is_a_readable_copy_and_old_ones_are_pruned() {
             .await
             .unwrap()
             .is_some()
+    );
+}
+
+async fn setting(app: &TestApp, key: &str) -> Option<String> {
+    settings::get_raw(&app.state.db.read().await.unwrap(), key)
+        .await
+        .unwrap()
+}
+
+#[tokio::test]
+async fn a_failed_backup_does_not_stop_the_digest_and_waits_before_retrying() {
+    let dir = tempfile::tempdir().unwrap();
+    let not_a_dir = dir.path().join("file");
+    std::fs::write(&not_a_dir, b"x").unwrap();
+    let app = TestApp::spawn_with(
+        "test",
+        &[("MONITA_BACKUP_DIR", not_a_dir.to_str().unwrap())],
+    )
+    .await;
+    // Tomorrow 23:00 UTC: every job is due, and the real scheduler is still on today.
+    let t = now() - now().rem_euclid(86_400) + 86_400 + 23 * 3_600;
+    let day = monita::platform::time::day(t);
+    monita::platform::jobs::run_due(&app.state, t).await;
+    assert_eq!(
+        setting(&app, "last_digest_day").await.as_deref(),
+        Some(day.as_str())
+    );
+    assert_ne!(
+        setting(&app, "last_backup_day").await.as_deref(),
+        Some(day.as_str())
+    );
+    assert_eq!(
+        setting(&app, "last_backup_attempt_at").await,
+        Some(t.to_string())
+    );
+
+    monita::platform::jobs::run_due(&app.state, t + 60).await;
+    assert_eq!(
+        setting(&app, "last_backup_attempt_at").await,
+        Some(t.to_string()),
+        "the next tick does not retry yet"
     );
 }
 

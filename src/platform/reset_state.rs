@@ -22,9 +22,11 @@ pub async fn handler(
     headers: HeaderMap,
     Json(req): Json<ResetRequest>,
 ) -> Response {
-    // ponytail: dev accepts the reset token too, until sessions exist (US-03); then dev needs a super admin session.
-    let token_ok = match (&state.config.reset_token, headers.get("x-reset-token")) {
-        (Some(expected), Some(got)) => got.as_bytes() == expected.as_bytes(),
+    let token_ok = match (
+        &state.config.reset_token,
+        headers.get("x-reset-token").and_then(|v| v.to_str().ok()),
+    ) {
+        (Some(expected), Some(got)) => super::token::hash(got) == super::token::hash(expected),
         _ => false,
     };
     if state.config.env == Env::Prod || !token_ok {

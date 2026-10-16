@@ -112,12 +112,20 @@ pub async fn open_auto(
     Ok(id)
 }
 
-/// Closes an automatic incident. Returns its start time.
-pub async fn resolve_auto(c: &Connection, id: i64, now: i64) -> anyhow::Result<i64> {
-    let started =
-        crate::platform::db::query_i64(c, "SELECT started_at FROM incidents WHERE id = ?1", [id])
-            .await?
-            .unwrap_or(now);
+/// Closes an automatic incident. Returns its start time and the severity it opened with.
+pub async fn resolve_auto(c: &Connection, id: i64, now: i64) -> anyhow::Result<(i64, String)> {
+    let (started, severity) = {
+        let mut rows = c
+            .query(
+                "SELECT started_at, severity FROM incidents WHERE id = ?1",
+                [id],
+            )
+            .await?;
+        match rows.next().await? {
+            Some(r) => (r.get::<i64>(0)?, r.get::<String>(1)?),
+            None => anyhow::bail!("incident {id} is gone"),
+        }
+    };
     resolve_with(
         c,
         id,
@@ -125,7 +133,7 @@ pub async fn resolve_auto(c: &Connection, id: i64, now: i64) -> anyhow::Result<i
         now,
     )
     .await?;
-    Ok(started)
+    Ok((started, severity))
 }
 
 pub async fn resolve_with(c: &Connection, id: i64, message: &str, now: i64) -> anyhow::Result<()> {
@@ -194,7 +202,7 @@ pub async fn open_manual(c: &Connection, n: &super::NewIncident, now: i64) -> an
     let id = c.last_insert_rowid();
     for item in &n.items {
         c.execute(
-            "INSERT INTO incident_items (incident_id, source_kind, source_id) VALUES (?1, ?2, ?3)",
+            "INSERT OR IGNORE INTO incident_items (incident_id, source_kind, source_id) VALUES (?1, ?2, ?3)",
             (id, item.kind.as_str(), item.id),
         )
         .await?;

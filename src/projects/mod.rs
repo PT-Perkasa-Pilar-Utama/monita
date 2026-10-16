@@ -228,11 +228,12 @@ impl FromRequestParts<AppState> for ApiProject {
                 .unwrap_or(120),
             Err(_) => 120,
         };
-        if let crate::platform::rate_limit::Verdict::Deny(retry) =
-            state
-                .limiter
-                .hit(&format!("key:{key_id}"), limit.max(1) as u32, 60, now())
-        {
+        if let crate::platform::rate_limit::Verdict::Deny(retry) = state.limiter.hit(
+            &format!("key:{key_id}"),
+            u32::try_from(limit.max(1)).unwrap_or(u32::MAX),
+            60,
+            now(),
+        ) {
             return Err(crate::platform::rate_limit::too_many(
                 parts.uri.path(),
                 retry,

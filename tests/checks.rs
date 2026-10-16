@@ -25,6 +25,10 @@ async fn target() -> (String, Arc<AtomicUsize>) {
     let app = Router::new()
         .route("/ok", get(|| async { "all good" }))
         .route(
+            "/moved",
+            get(|| async { (StatusCode::MOVED_PERMANENTLY, [("location", "/ok")]) }),
+        )
+        .route(
             "/fail",
             get(|| async { (StatusCode::SERVICE_UNAVAILABLE, "down") }),
         )
@@ -137,6 +141,26 @@ async fn probe_judges_status_keyword_and_timeout() {
     let refused = run("http://127.0.0.1:9/".into(), None, 2000).await;
     assert!(!refused.ok);
     assert!(refused.error.unwrap().starts_with("Connection failed"));
+}
+
+#[tokio::test]
+async fn a_monitor_that_expects_a_redirect_sees_it_and_others_follow_it() {
+    let (base, _) = target().await;
+    let clients = Clients::new().unwrap();
+    let url = format!("{base}/moved");
+    let check = |expected_status| checks::Target {
+        url: &url,
+        timeout_ms: 2000,
+        expected_status,
+        keyword: None,
+        skip_tls_verify: false,
+    };
+    let seen = probe(&check("301"), &clients).await;
+    assert!(seen.ok, "{:?}", seen.error);
+    assert_eq!(seen.status_code, Some(301));
+    let followed = probe(&check("2xx"), &clients).await;
+    assert!(followed.ok);
+    assert_eq!(followed.status_code, Some(200));
 }
 
 #[tokio::test]
@@ -363,6 +387,20 @@ async fn limits_page_is_for_super_admins_and_rejects_bad_values() {
         )
         .await;
     assert_eq!(bad.status(), 422);
+    let mut huge: Vec<(&str, &str)> = monita::platform::settings::KEYS
+        .iter()
+        .map(|(k, _)| (*k, "50"))
+        .collect();
+    huge.retain(|(k, _)| *k != "rl_ip_per_min");
+    huge.push(("rl_ip_per_min", "4294967296"));
+    let res = app.post_form("/admin/settings", &huge, Some(&admin)).await;
+    assert_eq!(res.status(), 422, "a value that would wrap a u32");
+    let set = app
+        .state
+        .db
+        .write(async |c| monita::platform::settings::set(c, "check_concurrency", 501).await)
+        .await;
+    assert!(set.is_err(), "check_concurrency stops at 500");
 }
 
 #[tokio::test]

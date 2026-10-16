@@ -138,14 +138,15 @@ pub async fn claim_due(
     Ok(out)
 }
 
+/// A finished row loses its body: an invite email carries a live sign-up link (SEC-20).
 pub async fn mark(c: &Connection, id: i64, outcome: &Outcome, at: i64) -> anyhow::Result<()> {
     match outcome {
-        Outcome::Sent => c.execute("UPDATE outbox SET sent_at = ?1, attempts = attempts + 1 WHERE id = ?2", (at, id)).await?,
+        Outcome::Sent => c.execute("UPDATE outbox SET sent_at = ?1, attempts = attempts + 1, body = '' WHERE id = ?2", (at, id)).await?,
         Outcome::Retry(next, err) => {
             c.execute("UPDATE outbox SET attempts = attempts + 1, next_attempt_at = ?1, last_error = ?2 WHERE id = ?3", (*next, err.as_str(), id))
                 .await?
         }
-        Outcome::Failed(err) => c.execute("UPDATE outbox SET attempts = attempts + 1, failed_at = ?1, last_error = ?2 WHERE id = ?3", (at, err.as_str(), id)).await?,
+        Outcome::Failed(err) => c.execute("UPDATE outbox SET attempts = attempts + 1, failed_at = ?1, last_error = ?2, body = '' WHERE id = ?3", (at, err.as_str(), id)).await?,
     };
     Ok(())
 }

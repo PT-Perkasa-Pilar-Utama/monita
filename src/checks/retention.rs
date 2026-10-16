@@ -10,7 +10,8 @@ use super::store::rollup as store;
 const RAW_KEEP_S: i64 = 7 * 86_400;
 const OUTBOX_KEEP_S: i64 = 30 * 86_400;
 const BACKFILL_DAYS: i64 = 90;
-const LAST_DAY: &str = "last_rollup_day";
+/// Unix start of the last summarized day. Not `last_rollup_day`: the job runner owns that key.
+const LAST_DAY: &str = "rollup_through";
 
 /// Summarizes every day from the last rollup to yesterday (90 days at most), then deletes raw
 /// check results and pings older than 7 days, delivered outbox rows older than 30 days, and

@@ -189,6 +189,25 @@ async fn a_fail_ping_marks_the_heartbeat_down_at_once() {
 }
 
 #[tokio::test]
+async fn a_fail_right_after_a_success_ping_is_still_heard() {
+    let app = TestApp::spawn("test").await;
+    let (tl, token) = setup(&app).await;
+    let ok = ping(&app, reqwest::Method::GET, &format!("/ping/{token}")).await;
+    assert_eq!(ok.status(), 200);
+    let fail = ping(&app, reqwest::Method::POST, &format!("/ping/{token}/fail")).await;
+    assert_eq!(fail.status(), 200);
+    assert_eq!(state_label(&app, &tl).await, "Down");
+    assert_eq!(
+        count(
+            &app,
+            "SELECT count(*) FROM incidents WHERE resolved_at IS NULL"
+        )
+        .await,
+        1
+    );
+}
+
+#[tokio::test]
 async fn a_missed_deadline_is_reported_once_and_the_next_ping_clears_it() {
     let app = TestApp::spawn("test").await;
     let (tl, token) = setup(&app).await;

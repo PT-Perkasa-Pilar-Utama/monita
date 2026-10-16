@@ -14,6 +14,15 @@ pub const KEYS: &[(&str, &str)] = &[
     ("tickets_per_project_per_day", "Tickets per project per day"),
 ];
 
+/// The largest value a limit accepts. A value above `u32::MAX` would wrap in the limiter.
+pub fn max_for(key: &str) -> i64 {
+    if key == "check_concurrency" {
+        500
+    } else {
+        1_000_000
+    }
+}
+
 pub async fn get(conn: &Connection, key: &str) -> anyhow::Result<i64> {
     let raw = {
         let mut rows = conn
@@ -37,7 +46,11 @@ pub async fn all(conn: &Connection) -> anyhow::Result<Vec<(String, i64)>> {
 
 pub async fn set(conn: &Connection, key: &str, value: i64) -> anyhow::Result<()> {
     anyhow::ensure!(KEYS.iter().any(|(k, _)| *k == key), "unknown setting {key}");
-    anyhow::ensure!(value > 0, "{key} must be positive");
+    anyhow::ensure!(
+        (1..=max_for(key)).contains(&value),
+        "{key} must be between 1 and {}",
+        max_for(key)
+    );
     conn.execute(
         "UPDATE settings SET value = ?1 WHERE key = ?2",
         (value.to_string(), key),

@@ -157,6 +157,41 @@ async fn monitor(app: &TestApp, url: &str, severity: &str) {
 }
 
 #[tokio::test]
+async fn the_resolved_alert_goes_where_the_opened_one_went() {
+    let app = TestApp::spawn("test").await;
+    let tl = setup(&app).await;
+    for (severity, email) in [("warning", "warn@x.co"), ("critical", "crit@x.co")] {
+        let res = app
+            .post_form(
+                &format!("/projects/payments/alerts/{severity}"),
+                &[("emails", email), ("webhook_url", "")],
+                Some(&tl),
+            )
+            .await;
+        assert_eq!(res.status(), 303);
+    }
+    let (url, up) = switchable().await;
+    monitor(&app, &url, "warning").await;
+    up.store(false, Ordering::SeqCst);
+    check_once(&app).await;
+    check_once(&app).await;
+    app.state
+        .db
+        .write(async |c| {
+            c.execute("UPDATE monitors SET severity = 'critical'", ())
+                .await?;
+            Ok(())
+        })
+        .await
+        .unwrap();
+    up.store(true, Ordering::SeqCst);
+    check_once(&app).await;
+    monita::notify::deliver_due(&app.state).await.unwrap();
+    let to: Vec<String> = alerts(&app).into_iter().map(|m| m.to).collect();
+    assert_eq!(to, ["warn@x.co", "warn@x.co"]);
+}
+
+#[tokio::test]
 async fn alerts_page_has_both_severities_with_the_default_routing() {
     // AC-15.01, AC-15.02
     let app = TestApp::spawn("test").await;
@@ -530,6 +565,7 @@ async fn a_manual_incident_marks_its_items_and_closes_on_resolved() {
             &[
                 ("title", "Slow checkout"),
                 ("items", "monitor:1"),
+                ("items", "monitor:1"),
                 ("severity", "critical"),
                 ("message", "Some users wait 20 s"),
             ],
@@ -538,6 +574,11 @@ async fn a_manual_incident_marks_its_items_and_closes_on_resolved() {
         .await;
     assert_eq!(res.status(), 303);
     assert_eq!(location(&res), "/projects/payments/incidents/1");
+    assert_eq!(
+        count(&app, "SELECT count(*) FROM incident_items").await,
+        1,
+        "a repeated item is stored once"
+    );
     let list = app
         .get("/projects/payments/monitors", Some(&tl))
         .await

@@ -7,10 +7,7 @@ pub mod routes;
 mod store;
 
 use std::{
-    sync::{
-        Arc, Mutex,
-        atomic::{AtomicBool, Ordering},
-    },
+    sync::{Arc, Mutex, atomic::AtomicBool},
     time::Duration,
 };
 
@@ -327,7 +324,7 @@ impl Mailer {
                 Ok(())
             }
             Mailer::Log => {
-                tracing::info!(to = %email.to, subject = %email.subject, body = %email.body, "email (no SMTP configured)");
+                tracing::info!(to = %email.to, subject = %email.subject, "email (no SMTP configured)");
                 Ok(())
             }
             Mailer::Memory(m) => {
@@ -338,18 +335,16 @@ impl Mailer {
     }
 }
 
-/// Starts one delivery pass unless one is already running.
 pub fn spawn_delivery(state: &AppState, running: &Arc<AtomicBool>) {
-    if running.swap(true, Ordering::AcqRel) {
+    let Some(reset) = crate::platform::jobs::try_start(running) else {
         return;
-    }
+    };
     let state = state.clone();
-    let running = running.clone();
     tokio::spawn(async move {
+        let _reset = reset;
         if let Err(e) = deliver_due(&state).await {
             tracing::error!(error = %e, "outbox delivery failed");
         }
-        running.store(false, Ordering::Release);
     });
 }
 

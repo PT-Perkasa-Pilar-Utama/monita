@@ -197,7 +197,7 @@ pub async fn reinvite(db: &Db, base_url: &str, user_id: i64) -> Result<String, P
     let hash = token::hash(&raw);
     let found = db
         .write(async |c| {
-            let Some(email) = store::email_of(c, user_id).await? else {
+            let Some(email) = store::active_tl_email(c, user_id).await? else {
                 return Ok(false);
             };
             store::replace_invite(c, user_id, &hash, now() + INVITE_TTL_S).await?;
@@ -230,8 +230,12 @@ pub async fn accept_invite(
     raw_token: &str,
     password: &str,
 ) -> Result<String, AccountError> {
+    if !invite_is_usable(db, raw_token).await? {
+        return Err(AccountError::InviteInvalid);
+    }
     let hash = hash_password(password).await?;
     let token_hash = token::hash(raw_token);
+    // The write re-checks the invite: it may be used or revoked while argon2 runs.
     let user_id = db
         .write(async |c| {
             let Some(invite) = store::find_invite(c, &token_hash).await? else {
@@ -260,9 +264,16 @@ pub async fn list_tls(db: &Db) -> anyhow::Result<Vec<UserRow>> {
         .collect())
 }
 
-pub async fn disable(db: &Db, user_id: i64) -> anyhow::Result<()> {
-    db.write(async |c| store::disable_user(c, user_id, now()).await)
-        .await
+/// Disabling is final: the user's invites go too, and only an active TL can be disabled.
+pub async fn disable(db: &Db, user_id: i64) -> Result<(), PageError> {
+    if db
+        .write(async |c| store::disable_tl(c, user_id, now()).await)
+        .await?
+    {
+        Ok(())
+    } else {
+        Err(PageError::NotFound)
+    }
 }
 
 pub fn session_cookie(raw: &str, secure: bool) -> String {

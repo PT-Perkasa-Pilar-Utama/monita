@@ -27,6 +27,15 @@ async fn reset_state_needs_the_token_and_reseeds() {
         .await
         .unwrap();
     assert_eq!(no_token.status(), 401);
+    let wrong = app
+        .http
+        .post(&url)
+        .header("x-reset-token", "test-reset-tokem")
+        .json(&serde_json::json!({"seed": "qa"}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(wrong.status(), 401);
     let ok = app
         .http
         .post(&url)
@@ -93,4 +102,22 @@ async fn pages_carry_security_headers_and_assets_load() {
         .await
         .unwrap();
     assert_eq!(missing.status(), 404);
+}
+
+#[tokio::test]
+async fn a_body_over_128_kib_is_refused() {
+    let app = TestApp::spawn("test").await;
+    let login = |padding: usize| {
+        app.http
+            .post(app.url("/login"))
+            .header("origin", common::BASE_URL)
+            .form(&[
+                ("email", "a@x.co".to_string()),
+                ("password", "x".repeat(padding)),
+            ])
+            .send()
+    };
+    // A ticket of 10 000 emoji, percent-encoded, is about 120 KB and must still fit.
+    assert_eq!(login(120_000).await.unwrap().status(), 422);
+    assert_eq!(login(200_000).await.unwrap().status(), 413);
 }

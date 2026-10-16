@@ -59,7 +59,7 @@ Each module owns its tables (see [06](06-data-model.md)). Other modules use only
 | Item | Contract |
 | --- | --- |
 | `send(Event)` | Looks up routes for the project and severity, inserts one outbox row per recipient, and returns. It never blocks on SMTP or HTTP. |
-| outbox loop | Internal. Claims due rows in a write transaction (a 120 s lease on `next_attempt_at`), so two passes never send one row twice. Retries at 1 min, 5 min and 15 min, then marks the row failed and logs it. Delivery is at least once: a crash mid-send retries after the lease. |
+| outbox loop | Internal. Claims due rows in a write transaction (a 120 s lease on `next_attempt_at`), so two passes never send one row twice. Retries at 1 min, 5 min and 15 min, then marks the row failed and logs it. Delivery is at least once: a crash mid-send retries after the lease. Bodies are cleared after delivery or final failure, so an invite link never stays in the database. Without SMTP the log shows recipient and subject only. |
 
 **Ports:** `Mailer` is an enum: `Smtp` (lettre, OS trust store), `Log` (no `MONITA_SMTP_URL`), `Memory` (tests). Webhooks go through the strict reqwest client; tests point them at a local server, so no webhook port exists.
 

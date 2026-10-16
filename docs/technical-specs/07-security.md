@@ -27,11 +27,11 @@
 | SEC-05 | Content Security Policy | `default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; frame-ancestors 'none'`. Plus `X-Content-Type-Options: nosniff` and `Referrer-Policy: same-origin`. |
 | SEC-06 | Password storage | Argon2id with the crate defaults. Minimum length 12. |
 | SEC-07 | API key storage | Keys are `mk_` + 26 base32 chars (128 random bits). Only the hash is stored. Shown once. |
-| SEC-08 | IP allowlist | Optional per project. Checked after key lookup. The client IP comes from the socket, or from `X-Forwarded-For` only when `MONITA_TRUST_PROXY=true`. |
+| SEC-08 | IP allowlist | Optional per project. Checked after key lookup. The client IP comes from the socket, or from the right-most `X-Forwarded-For` entry only when `MONITA_TRUST_PROXY=true`. The proxy appends that entry; the entries left of it are client-supplied. |
 | SEC-09 | Token entropy | Session, invite, API key, ref ID and heartbeat tokens: 128 bits from the OS (`getrandom`). |
 | SEC-10 | Constant-time compare | Token lookups go through the hash index, so no secret is compared byte by byte in code. |
 | SEC-11 | Invite expiry | 72 h, single use. |
-| SEC-12 | Rate limits | Fixed window, in memory: 60/min per IP on public pages, the ticket form and `/login`; 120/min per API key; 1/s per heartbeat. Over the limit returns 429 with `Retry-After`. |
+| SEC-12 | Rate limits | Fixed window, in memory: 60/min per IP on public pages, the ticket form, `POST /login` and `POST /invite/*`; 120/min per API key; 1/s per heartbeat. Over the limit returns 429 with `Retry-After`. |
 | SEC-13 | Ticket caps | 5 per ref ID per day, 100 per project per day. |
 | SEC-14 | Ticket privacy | Triage is never public. Public views show only the title (or the public title), stage and dates. The description and the reporter are never public. |
 | SEC-15 | Outbound targets | Monitors and webhooks may target internal addresses. Only the owner of a project or a super admin can set them. Probe bodies are capped at 1 MB. Redirects are followed up to 5 times. |
@@ -40,7 +40,7 @@
 | SEC-18 | Data at rest | The DB file and backups have mode 0600 and belong to the `monita` user. |
 | SEC-19 | Request limits | Body limit 64 KB on forms and JSON. Ticket description at most 10 000 chars. |
 | SEC-21 | Status page privacy | Public pages and JSON never show an update's author, and show Monita's own detection entry as `Detected.` without its cause, which can name internal hosts. Incidents and their item lists are cut to public items. |
-| SEC-20 | Logs | No passwords, tokens, keys or ticket descriptions in logs. Tokens appear as their first 6 chars at most. |
+| SEC-20 | Logs | No passwords, tokens, keys or ticket descriptions in logs. Tokens appear as their first 6 chars at most. Email bodies are not logged and are cleared from the outbox once delivered or failed. |
 
 ## 7.3 Operational endpoints
 

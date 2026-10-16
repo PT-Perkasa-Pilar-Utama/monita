@@ -267,12 +267,9 @@ async fn users_reinvite(
 
 async fn users_disable(
     State(state): State<AppState>,
-    AdminUser(admin): AdminUser,
+    _: AdminUser,
     Path(id): Path<i64>,
 ) -> Result<Response, PageError> {
-    if id == admin.id {
-        return Err(PageError::Forbidden);
-    }
     super::disable(&state.db, id).await?;
     Ok(Redirect::to("/admin/users").into_response())
 }

@@ -30,10 +30,10 @@
             <td>{% if u.disabled_at.is_some() %}{% call ui::state("unknown", "Disabled") %}{% endcall %}{% else if u.password_hash.is_none() %}{% call ui::state("issue", "Invited") %}{% endcall %}{% else %}{% call ui::state("up", "Active") %}{% endcall %}{% endif %}</td>
             <td class="hide-sm mono">{{ self.joined(u) }}</td>
             <td class="t-right">
-              {% if u.role == "tl" %}
+              {% if u.role == "tl" && u.disabled_at.is_none() %}
               <div class="row row--end">
                 <form method="post" action="/admin/users/{{ u.id }}/invite"><button class="btn btn--sm" type="submit">New invite</button></form>
-                {% if u.disabled_at.is_none() %}<form method="post" action="/admin/users/{{ u.id }}/disable"><button class="btn btn--sm btn--danger" type="submit">Disable</button></form>{% endif %}
+                <form method="post" action="/admin/users/{{ u.id }}/disable"><button class="btn btn--sm btn--danger" type="submit">Disable</button></form>
               </div>
               {% endif %}
             </td>

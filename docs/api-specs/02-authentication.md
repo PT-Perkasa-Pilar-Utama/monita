@@ -19,8 +19,8 @@ Session strategy: [../technical-specs/07-security.md](../technical-specs/07-secu
 | POST | `/login` | public, 60/min per IP | `email`, `password` | Verify, create session, set cookie, 303 to `/`. Wrong pair: 422 with one generic message. | |
 | POST | `/logout` | session | | Delete session, clear cookie, 303 to `/login` | |
 | GET | `/invite/{token}` | public | | Password form if the invite is unused and unexpired. Otherwise an error page with 410. | AC-03.01, AC-03.03, AC-02.02 |
-| POST | `/invite/{token}` | public | `password`, `password_confirm` | Hash, mark used, delete older sessions, create session, 303 to `/` | AC-03.02, AC-04.01 |
+| POST | `/invite/{token}` | public, 60/min per IP | `password`, `password_confirm` | Check the invite first: unknown, used, expired or disabled user is 410 before any hashing. Then hash, mark used, delete older sessions, create session, 303 to `/` | AC-03.02, AC-04.01 |
 | GET | `/admin/users` | super_admin | | List TLs with status | |
 | POST | `/admin/users` | super_admin | `email` | Create TL, send invite | AC-02.01 |
-| POST | `/admin/users/{id}/invite` | super_admin | | New invite. Older invites and the user's sessions are deleted. | AC-04.01, AC-04.02 |
-| POST | `/admin/users/{id}/disable` | super_admin | | Set `disabled_at`, delete sessions | |
+| POST | `/admin/users/{id}/invite` | super_admin | | New invite for an active TL; any other target is 404. Older invites and the user's sessions are deleted. | AC-04.01, AC-04.02 |
+| POST | `/admin/users/{id}/disable` | super_admin | | Active TL only; any other target is 404. Set `disabled_at`, delete sessions and invites. Disabling is final in v1. | |

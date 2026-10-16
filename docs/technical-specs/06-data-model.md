@@ -159,7 +159,7 @@ Both keep 7 days. See [13 section 13.6](13-check-scheduler.md).
 | downtime_s | INTEGER | From incidents that overlap the day |
 | avg_latency_ms | INTEGER NULL | Monitors only |
 
-Uptime % for a day = `1 - downtime_s / 86400`. The status page computes the same figure live from incidents; this table keeps the history after raw rows are swept (US-32). Daily-job bookkeeping (`last_rollup_day`, `last_backup_day`) lives in `settings` outside the limits page.
+Uptime % for a day = `1 - downtime_s / 86400`. The status page computes the same figure live from incidents; this table keeps the history after raw rows are swept (US-32). Daily-job bookkeeping lives in `settings` outside the limits page: `last_<job>_day` (UTC date of the last success), `last_<job>_attempt_at` (Unix time of the last failure) and `rollup_through` (Unix start of the last summarized day).
 
 ### 6.3.11 incidents, incident_items, incident_sources, status_updates
 
@@ -198,7 +198,7 @@ UI label for `stage`: "Column".
 
 | table | columns |
 | --- | --- |
-| settings | key TEXT PK, value TEXT. Keys: `check_concurrency` (50), `rl_ip_per_min` (60), `rl_key_per_min` (120), `rl_ping_per_s` (1), `tickets_per_ref_per_day` (5), `tickets_per_project_per_day` (100) |
+| settings | key TEXT PK, value TEXT. Keys: `check_concurrency` (50), `rl_ip_per_min` (60), `rl_key_per_min` (120), `rl_ping_per_s` (1), `tickets_per_ref_per_day` (5), `tickets_per_project_per_day` (100). Every value is 1 to 1 000 000; `check_concurrency` is 1 to 500. |
 | schema_migrations | version INTEGER PK, applied_at |
 
 ## 6.4 State machines
