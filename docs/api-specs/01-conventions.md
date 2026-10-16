@@ -64,7 +64,7 @@ JSON lists are capped, not paged. Each endpoint states its cap, for example the 
 | `ref_id_invalid` | 422 | Unknown, revoked or used-up ref ID |
 | `rate_limited` | 429 | Over a rate limit (SEC-12) |
 | `daily_cap_reached` | 429 | Over a ticket cap (SEC-13) |
-| `internal` | 500 | Unexpected failure. Logged with a request ID. |
+| `internal` | 500 | Unexpected failure. The cause is logged; the body says only "Unexpected failure." |
 
 ## 1.6 Rate-limit headers
 
@@ -72,7 +72,7 @@ Every 429 carries `Retry-After: <seconds>`. Limits are in [../technical-specs/07
 
 ## 1.7 Request ID
 
-Every response carries `X-Request-Id`. Logs use the same ID.
+v1 sends no request ID. A 500 is matched to its log line by time and path.
 
 ## 1.8 CORS
 
@@ -90,4 +90,4 @@ Every response carries `X-Request-Id`. Logs use the same ID.
 
 ## 1.10 HTML routes
 
-HTML routes return a full page, or a fragment when the request carries `HX-Request: true`. Form posts use `application/x-www-form-urlencoded`. A validation failure re-renders the form with status 422. A success on a form post redirects with 303, or sends `HX-Redirect` for htmx.
+HTML routes return a full page, or a fragment when the request carries `HX-Request: true`. Form posts use `application/x-www-form-urlencoded`. A validation failure re-renders the form with status 422. A success on a form post redirects with 303, or sends `HX-Redirect` for htmx. Exception: a post that reveals a one-time secret (a new API key, an invite link) renders it with 200, because the secret must not travel in a URL; a reload creates another key or invite, never a duplicate of the same one.

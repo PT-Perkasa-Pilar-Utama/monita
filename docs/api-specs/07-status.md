@@ -36,7 +36,7 @@ Output 200:
         "items": ["API health"],
         "updates": [
           { "label": "identified", "message": "Database failover in progress.", "at": 1792137900 },
-          { "label": "investigating", "message": "Detected: HTTP 503", "at": 1792137600 }
+          { "label": "investigating", "message": "Detected.", "at": 1792137600 }
         ]
       }
     ]

@@ -108,7 +108,7 @@ Monita runs as one systemd service on a Linux VM. These steps assume Ubuntu or D
    curl -s http://127.0.0.1:8080/healthz
    ```
 
-4. Put the company reverse proxy in front for HTTPS, and set `MONITA_TRUST_PROXY=true` so rate limits see the real client IP.
+4. Put the company reverse proxy in front for HTTPS, and set `MONITA_TRUST_PROXY=true` so rate limits see the real client IP. Keep `MONITA_BIND=127.0.0.1:8080`: if other hosts can reach the port, they can forge `X-Forwarded-For`.
 
 ### Backups and restore
 

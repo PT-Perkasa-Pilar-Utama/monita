@@ -128,7 +128,7 @@ A new e2e spec file must match a project in `e2e/lib/shards.ts`; `bun test lib` 
 | Violation | Why |
 | --- | --- |
 | `/admin/reset-state` reachable when `MONITA_ENV=prod` | SEC-17: the route must not be registered |
-| Raw API keys, session tokens, invite tokens or ref IDs stored or logged | Only SHA-256 hashes are stored (SEC-07, SEC-20) |
+| Raw API keys, session tokens, invite tokens or ref IDs stored or logged | Only SHA-256 hashes are stored (SEC-07, SEC-20). One exception: an outbox body holds an invite link until delivery or final failure, then it is cleared (spec 05 section 5.5). |
 | Ticket description or reporter shown on a public page | SEC-14 |
 | An update's author, or Monita's cause text, on a status page | SEC-21 |
 | A Triage ticket on the public board | Decision Q11 |

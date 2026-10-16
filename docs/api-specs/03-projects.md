@@ -17,6 +17,8 @@ Fields: [../technical-specs/06-data-model.md sections 6.3.4 and 6.3.5](../techni
 
 ## 3.2 API key rule for every JSON call
 
+Keys belong to the project, not the owner. Disabling a TL leaves their projects and keys running; a super admin reassigns the projects.
+
 | Condition | Result |
 | --- | --- |
 | No header or unknown key | 401 `unauthorized` |

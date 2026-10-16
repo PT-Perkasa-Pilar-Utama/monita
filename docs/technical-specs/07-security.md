@@ -31,7 +31,7 @@
 | SEC-09 | Token entropy | Session, invite, API key, ref ID and heartbeat tokens: 128 bits from the OS (`getrandom`). |
 | SEC-10 | Constant-time compare | Token lookups go through the hash index, so no secret is compared byte by byte in code. |
 | SEC-11 | Invite expiry | 72 h, single use. |
-| SEC-12 | Rate limits | Fixed window, in memory: 60/min per IP on public pages, the ticket form, `POST /login` and `POST /invite/*`; 120/min per API key; 1/s per heartbeat. Over the limit returns 429 with `Retry-After`. |
+| SEC-12 | Rate limits | Fixed window, in memory: 60/min per IP on public pages, the ticket form, `POST /login` and `POST /invite/*` (an IPv6 caller is limited per /64); 120/min per API key; 1/s per heartbeat. Over the limit returns 429 with `Retry-After`. |
 | SEC-13 | Ticket caps | 5 per ref ID per day, 100 per project per day. |
 | SEC-14 | Ticket privacy | Triage is never public. Public views show only the title (or the public title), stage and dates. The description and the reporter are never public. |
 | SEC-15 | Outbound targets | Monitors and webhooks may target internal addresses. Only the owner of a project or a super admin can set them. Probe bodies are capped at 1 MB. Redirects are followed up to 5 times. |

@@ -36,8 +36,8 @@ curl -fsS -m 10 https://monita.company.co.id/ping/k3j9w2x7q4m8p6r1t5v0y2z8ab
 | --- | --- | --- | --- | --- | --- |
 | GET | `/projects/{slug}/monitors` | owner, super_admin | | List with current state and last check | |
 | GET | `/projects/{slug}/monitors/new` | owner, super_admin | | Form with defaults: 1m, 10 s, `2xx`, warning, hidden | AC-09.02 |
-| POST | `/projects/{slug}/monitors` | owner, super_admin | `name`, `url`, `interval_s`, `timeout_ms`, `expected_status`, `keyword`, `skip_tls_verify`, `severity`, `is_public` | Validate. `next_check_at = now + rand(0..interval_s)`. | AC-09.01, AC-11.01 |
-| GET | `/projects/{slug}/monitors/{id}` | owner, super_admin | `?cursor` | Detail and checks of the last 7 days: time, status, latency, error | AC-10.01 |
+| POST | `/projects/{slug}/monitors` | owner, super_admin | `name`, `url`, `interval_s`, `timeout_s` (stored as `timeout_ms`), `expected_status`, `keyword`, `skip_tls_verify`, `severity`, `is_public` | Validate. `next_check_at = now + rand(0..interval_s)`. | AC-09.01, AC-11.01 |
+| GET | `/projects/{slug}/monitors/{id}` | owner, super_admin | `?before=<checked_at>.<id>`, the cursor the page links to | Detail and checks of the last 7 days: time, status, latency, error | AC-10.01 |
 | POST | `/projects/{slug}/monitors/{id}` | owner, super_admin | same as create | Update | |
 | POST | `/projects/{slug}/monitors/{id}/delete` | owner, super_admin | | Delete with results | |
 | GET | `/projects/{slug}/heartbeats` | owner, super_admin | | List with state, last ping, ping URL | |
@@ -48,4 +48,4 @@ curl -fsS -m 10 https://monita.company.co.id/ping/k3j9w2x7q4m8p6r1t5v0y2z8ab
 | GET | `/admin/settings` | super_admin | | Limits and the check cap | AC-11.03, AC-31.03 |
 | POST | `/admin/settings` | super_admin | each `settings` key | Validate positive integers. Save. | AC-11.03, AC-31.03 |
 
-Validation: `interval_s` in {30, 60, 180, 300}. `timeout_ms` 1000 to 30000. `expected_status` matches `^(\dxx|\d{3})(,\d{3})*$`. `url` is `http` or `https`.
+Validation: `interval_s` in {30, 60, 180, 300}. `timeout_s` 1 to 30. `expected_status` is a comma list of classes (`2xx`) or codes (`200`); spaces around commas are allowed, and `2xx,301` mixes both. `url` is `http` or `https`. A blank or non-numeric number re-renders the form with the field's error.

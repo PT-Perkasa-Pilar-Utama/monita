@@ -100,4 +100,4 @@ Not in v1: remote probes, hot standby, and shared databases. The check runner si
 | tickets | ref_ids, tickets | none |
 | platform | settings, schema_migrations | `settings`, rate limit layer, `render` |
 
-Rule: a module reads and writes only its own tables. It calls another module through that module's `pub` functions in `mod.rs`. It never imports another module's `store` or `engine` files.
+Rule: a module writes only its own tables and reads only its own, except a read-only `JOIN users` for an email or name. It calls another module through that module's `pub` functions in `mod.rs`. It never imports another module's `store` or `engine` files.

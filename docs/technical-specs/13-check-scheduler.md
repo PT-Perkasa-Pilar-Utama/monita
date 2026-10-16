@@ -16,7 +16,7 @@ One loop drives every timed job in Monita: monitor checks, heartbeat deadlines, 
 | Heartbeat due | `deadline_at <= now`. The loop sends `HeartbeatMissed`, then sets `deadline_at = NULL`. | One miss signal per outage |
 | Ping | `deadline_at = now + period_s + grace_s` | Q7 |
 | New heartbeat | `deadline_at = created_at + period_s + grace_s` | A job that never pings still alerts. |
-| Daily jobs | Run when the UTC hour has passed and `settings.last_<job>_day` is not today | One loop, no cron crate |
+| Daily jobs | Run when the UTC hour has passed and `settings.last_<job>_day` is not today. A failed job waits 10 minutes, then runs again. A rerun is safe: the digest moves its ticket watermark in the same transaction that queues its emails, so a rerun after a failed day marker sends nothing new; a backup only overwrites that day's file; a prune failure is logged and does not fail the backup. | One loop, no cron crate |
 | Liveness | An `AtomicI64` holds the last tick time. `/healthz` reads it. | T5 |
 | Reset safety | Each tick holds one shared read guard on `AppState.gate` until its probes finish writing; reset-state takes the write guard. | No stale result lands after a reset. |
 
@@ -59,7 +59,7 @@ every 1 s:
 
 ```text
 src/checks/scheduler.rs   pub fn spawn(state: AppState) -> JoinHandle<()>
-src/checks/retention.rs   pub async fn rollup_and_sweep(conn, day) -> Result<()>
+src/checks/retention.rs   pub async fn run(db: &Db, now: i64) -> anyhow::Result<()>
 ```
 
 ## 13.6 What this does NOT do

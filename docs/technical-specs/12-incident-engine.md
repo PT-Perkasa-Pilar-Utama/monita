@@ -15,14 +15,14 @@ The incident engine turns check signals into incidents and events. It applies to
 | TL labels | An open automatic incident takes Investigating, Identified, Monitoring. A closed incident takes only Resolved, as a note. | A public timeline never says Resolved while the item is down. |
 | One open auto incident per source | `incident_sources.open_incident_id` | No duplicate incidents for one outage |
 | System timeline entries | On open: label Investigating, message "Detected: <cause>". On close: label Resolved, message "Recovered after <duration>". Author NULL. | The timeline has a start and an end without TL action. |
-| Pure core | `engine::step(state, signal) -> (state, Vec<Effect>)` with no I/O | Unit tests cover every rule without a database. |
+| Pure core | `engine::step(state, signal) -> (state, Option<Effect>)` with no I/O | Unit tests cover every rule without a database. |
 | Atomicity | `observe` reads state, applies effects and writes in one transaction | A crash cannot leave an open incident with no event. |
 | Alerts | `observe` returns `Event::Opened` or `Event::Resolved`. The caller passes it to `notify::send` in the same transaction. | Outbox rows exist exactly when the incident row does. |
 
 ## 12.2 Interface
 
 ```rust
-pub enum Source { Monitor(i64), Heartbeat(i64) }
+pub struct Source { kind: SourceKind, id: i64, project_id: i64, name: String, severity: String }
 
 pub enum Signal {
     CheckOk,
@@ -33,8 +33,8 @@ pub enum Signal {
 }
 
 pub enum Event {
-    Opened { incident_id: i64, project_id: i64, source: Source, severity: Severity, cause: String },
-    Resolved { incident_id: i64, project_id: i64, source: Source, severity: Severity, duration_s: i64 },
+    Opened { incident_id: i64, project_id: i64, source_name: String, title: String, severity: String, cause: String },
+    Resolved { incident_id: i64, project_id: i64, source_name: String, severity: String, duration_s: i64, deleted: bool },
 }
 
 /// Applies one signal. Returns the event to send, if any.
