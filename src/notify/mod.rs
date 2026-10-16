@@ -351,3 +351,30 @@ pub async fn deliver_due(state: &AppState) -> anyhow::Result<usize> {
     }
     Ok(sent)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The SMTP pool needs a Tokio runtime, as in `monita serve`.
+    #[tokio::test]
+    async fn production_smtp_settings_parse() {
+        let config = Config::from_lookup(|k| match k {
+            "MONITA_ENV" => Some("prod".into()),
+            "MONITA_BASE_URL" => Some("https://monita.company.co.id".into()),
+            "MONITA_SMTP_URL" => Some("smtps://user:password@smtp.company.co.id:465".into()),
+            "MONITA_MAIL_FROM" => Some("Monita <monita@company.co.id>".into()),
+            _ => None,
+        })
+        .unwrap();
+        assert!(matches!(
+            Mailer::from_config(&config).unwrap(),
+            Mailer::Smtp { .. }
+        ));
+        let no_smtp = Config::from_lookup(|_| None).unwrap();
+        assert!(matches!(
+            Mailer::from_config(&no_smtp).unwrap(),
+            Mailer::Log
+        ));
+    }
+}

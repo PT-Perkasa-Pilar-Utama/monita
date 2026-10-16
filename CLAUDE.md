@@ -45,7 +45,7 @@ tests/                integration, tests/common::TestApp    e2e/ specs, lib, glo
 | accounts | users, invites, sessions | `CurrentUser` extractor, `require_role` |
 | projects | projects, api_keys | `ApiProject` extractor, `owner_of`, `can_manage` |
 | checks | monitors, heartbeats, check_results, pings, daily_summaries | `probe`, `record_ping`, `scheduler::spawn` |
-| incidents | incidents, incident_items, incident_sources, status_updates | `observe` (the only door for check results), `open_manual`, `post_update`, `current_state` |
+| incidents | incidents, incident_items, incident_sources, status_updates | `observe` (the only door for check results), `open_manual`, `post_update`, `states_for`, `source_deleted` |
 | notify | alert_routes, outbox | `send(Event)`: inserts outbox rows, never blocks |
 | status | none | public page and JSON |
 | tickets | ref_ids, tickets | `issue_ref_id`, `submit` |

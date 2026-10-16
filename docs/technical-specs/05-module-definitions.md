@@ -46,9 +46,9 @@ Each module owns its tables (see [06](06-data-model.md)). Other modules use only
 | Item | Contract |
 | --- | --- |
 | `observe(source, signal) -> Option<Event>` | The only door for check results. Applies the 2-fail rule, opens and closes automatic incidents, writes the system status updates, and returns the event for `notify`. Idempotent for a repeated signal. See [12](12-incident-engine.md). |
-| `open_manual(project, items, message, author)` | Creates a manual incident with the first update, label Investigating. |
+| `open_manual(db, &NewIncident, now)` | Creates a manual incident (title, items, severity, first message, author) with the first update, label Investigating. Errors: empty title, no items, empty message. |
 | `post_update(incident, label, message, author)` | Message is required. Resolved on a manual incident closes it. |
-| `current_state(source) -> ItemState` | `Up`, `Down`, `Issue` (open manual incident) or `Unknown`. Used by `status`. |
+| `states_for(db, project_id) -> HashMap<(SourceKind, id), ItemState>` | `Down` while an automatic incident is open, `Issue` while a manual one names the item. Items with no entry are up, or waiting before their first check. Used by checks pages and `status`. |
 
 **Why deep:** checks and the UI know nothing about streaks or the open and close rules. `engine.rs` holds them as pure functions.
 

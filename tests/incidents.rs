@@ -649,27 +649,16 @@ async fn reset_state_waits_for_running_checks_so_no_stale_result_lands() {
         .expect("reset hung")
         .unwrap();
     assert_eq!(res.status(), 204);
-    // A monitor created right after the reset reuses id 1. A probe from before the reset must not write to it.
-    let tl = app.tl("budi@x.co").await;
-    app.post_form("/projects", &[("name", "New"), ("slug", "new")], Some(&tl))
-        .await;
-    checks::create_monitor(
-        &app.state.db,
-        1,
-        &MonitorInput {
-            name: "fresh".into(),
-            url: "https://x.invalid/".into(),
-            interval_s: 300,
-            ..MonitorInput::defaults()
-        },
-    )
-    .await
-    .unwrap();
+    // A monitor created right after the reset reuses id 1 (the QA seed's TL is user 2).
+    // A probe from before the reset must not write to it.
     app.state
         .db
         .write(async |c| {
-            c.execute("UPDATE monitors SET next_check_at = 9999999999", ())
-                .await?;
+            c.execute_batch(
+                "INSERT INTO projects (id, owner_id, name, slug) VALUES (1, 2, 'New', 'new');
+                 INSERT INTO monitors (id, project_id, name, url, next_check_at) VALUES (1, 1, 'fresh', 'https://x.invalid/', 9999999999);",
+            )
+            .await?;
             Ok(())
         })
         .await
