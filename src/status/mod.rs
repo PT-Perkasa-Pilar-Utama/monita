@@ -52,7 +52,16 @@ pub struct IncidentStatus {
     pub started_at: i64,
     pub resolved_at: Option<i64>,
     pub items: Vec<String>,
-    pub updates: Vec<crate::incidents::history::PublicUpdate>,
+    pub updates: Vec<Update>,
+}
+
+/// The public wire shape of an update. It is its own type on purpose: a field added to the
+/// incident side cannot reach the public JSON without an edit here (SEC-21: never the author).
+#[derive(Serialize)]
+pub struct Update {
+    pub label: String,
+    pub message: String,
+    pub at: i64,
 }
 
 fn round2(x: f64) -> f64 {
@@ -149,7 +158,15 @@ pub async fn load(db: &Db, slug: &str, days: usize) -> anyhow::Result<Option<Sta
         .into_iter()
         .map(|i| IncidentStatus {
             items: i.items.iter().map(name_of).collect(),
-            updates: i.updates,
+            updates: i
+                .updates
+                .into_iter()
+                .map(|u| Update {
+                    label: u.label,
+                    message: u.message,
+                    at: u.at,
+                })
+                .collect(),
             title: i.title,
             origin: i.origin,
             severity: i.severity,

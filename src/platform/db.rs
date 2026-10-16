@@ -26,21 +26,26 @@ impl Writer {
     /// drops its handler, and with it a `write` at any await point, BEGIN included. The connection
     /// itself says whether a transaction is open, so no flag can miss one.
     async fn clean(&mut self) {
-        match self.conn.is_autocommit() {
-            Ok(true) => {}
-            Ok(false) => {
-                tracing::warn!("rolling back a transaction left open by a dropped write");
-                if let Err(e) = self.conn.execute("ROLLBACK", ()).await {
-                    tracing::error!(error = %e, "rollback of an abandoned transaction failed");
-                }
+        let open = match self.conn.is_autocommit() {
+            Ok(autocommit) => !autocommit,
+            Err(e) => {
+                tracing::error!(error = %e, "could not read the writer's transaction state");
+                true
             }
-            Err(e) => tracing::error!(error = %e, "could not read the writer's transaction state"),
+        };
+        if open {
+            tracing::warn!("rolling back a transaction left open by a dropped write");
+            if let Err(e) = self.conn.execute("ROLLBACK", ()).await {
+                tracing::error!(error = %e, "rollback of an abandoned transaction failed");
+            }
         }
-        if self.fk_off {
-            if let Err(e) = self.conn.execute("PRAGMA foreign_keys = ON", ()).await {
-                tracing::error!(error = %e, "could not turn foreign keys back on");
+        // The pragma is a silent no-op inside a transaction, so `fk_off` clears only once the
+        // connection is out of one and the pragma ran; otherwise the next `clean` tries again.
+        if self.fk_off && self.conn.is_autocommit().unwrap_or(false) {
+            match self.conn.execute("PRAGMA foreign_keys = ON", ()).await {
+                Ok(_) => self.fk_off = false,
+                Err(e) => tracing::error!(error = %e, "could not turn foreign keys back on"),
             }
-            self.fk_off = false;
         }
     }
 }
@@ -97,6 +102,10 @@ impl Db {
     ) -> anyhow::Result<T> {
         let mut w = self.writer.lock().await;
         w.clean().await;
+        anyhow::ensure!(
+            fk_off || !w.fk_off,
+            "foreign keys could not be turned back on; refusing to write without them"
+        );
         // Each flag is set before its statement: a future dropped while the statement runs must
         // still leave `clean` a flag to undo. A statement that fails clears its flag again.
         if fk_off {
@@ -207,6 +216,43 @@ pub async fn query_i64(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn foreign_keys_are_back_on_after_a_dropped_write_without_them() {
+        let dir = tempfile::tempdir().unwrap();
+        let db = Db::open(&dir.path().join("t.db")).await.unwrap();
+        crate::platform::migrate::run(&db).await.unwrap();
+        let abandoned = tokio::time::timeout(
+            std::time::Duration::from_millis(100),
+            db.write_without_fk(async |_| {
+                tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                Ok(())
+            }),
+        )
+        .await;
+        assert!(abandoned.is_err(), "the write was dropped by the timeout");
+        db.write(async |c| {
+            c.execute("INSERT INTO settings (key, value) VALUES ('ok', '1')", ())
+                .await?;
+            Ok(())
+        })
+        .await
+        .expect("an ordinary write works");
+        let orphan = db
+            .write(async |c| {
+                c.execute(
+                    "INSERT INTO check_results (monitor_id, checked_at, ok) VALUES (999, 1, 1)",
+                    (),
+                )
+                .await?;
+                Ok(())
+            })
+            .await;
+        assert!(
+            orphan.is_err(),
+            "a row for a missing monitor is refused again"
+        );
+    }
 
     #[tokio::test]
     async fn open_creates_the_missing_data_folder() {

@@ -198,6 +198,16 @@ pub struct Ping<'a> {
     pub cause: Option<String>,
 }
 
+/// The cause a `/fail` ping keeps: its first 1 024 bytes, cut on a character boundary. A longer
+/// body is cut, never refused, so the failure itself is always recorded (api-specs 04 section 4.2).
+pub fn first_kb(text: &str) -> String {
+    let mut end = text.len().min(1024);
+    while !text.is_char_boundary(end) {
+        end -= 1;
+    }
+    text[..end].to_string()
+}
+
 /// Unknown-token pings allowed per minute from one IP before 429. A real job never misses;
 /// a scanner does, and each miss costs a lookup.
 const MISSES_PER_MIN: u32 = 60;
@@ -295,4 +305,20 @@ pub async fn sweep_missed(
         Ok(missed.len())
     })
     .await
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn a_cause_is_cut_to_1_kb_on_a_character_boundary() {
+        assert_eq!(super::first_kb("disk full"), "disk full");
+        let long = "x".repeat(1023) + "é";
+        let cut = super::first_kb(&long);
+        assert_eq!(
+            cut.len(),
+            1023,
+            "the two-byte é does not fit, so it goes whole"
+        );
+        assert_eq!(super::first_kb(&"y".repeat(5000)).len(), 1024);
+    }
 }

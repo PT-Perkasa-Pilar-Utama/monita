@@ -37,9 +37,13 @@ pub fn api_error(
 }
 
 /// An `http` or `https` URL with a host, as the HTTP client will accept it. Monitor URLs,
-/// webhook URLs and ticket page URLs all go through it.
+/// webhook URLs and ticket page URLs all go through it. The raw text is stored, so it must be
+/// what the parser read: no whitespace or control characters, which the parser drops silently,
+/// and the `http://` prefix written out, which it repairs.
 pub fn valid_http_url(raw: &str) -> bool {
     raw.len() <= 2000
+        && (raw.starts_with("http://") || raw.starts_with("https://"))
+        && !raw.chars().any(|c| c.is_whitespace() || c.is_control())
         && reqwest::Url::parse(raw).is_ok_and(|u| {
             matches!(u.scheme(), "http" | "https") && u.host_str().is_some_and(|h| !h.is_empty())
         })
@@ -116,6 +120,10 @@ mod tests {
             "ftp://x.co",
             "javascript:alert(1)",
             "x.co",
+            "http:x.co",
+            "https://x.co/a\tb",
+            "https://x.co/\n",
+            " https://x.co",
         ] {
             assert!(!valid_http_url(bad), "{bad}");
         }

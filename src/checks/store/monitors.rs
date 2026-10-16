@@ -199,45 +199,51 @@ pub async fn find_monitor(
     .pop())
 }
 
-/// The project's public monitors and heartbeats as (is heartbeat, id, name, created_at, seen),
-/// monitors first. `seen` is false until the first check or ping.
+/// Reads the `'monitor'` or `'heartbeat'` literal in column `i`.
+fn kind_at(r: &turso::Row, i: usize) -> turso::Result<crate::incidents::SourceKind> {
+    let raw = r.get::<String>(i)?;
+    crate::incidents::SourceKind::parse(&raw)
+        .ok_or_else(|| turso::Error::ConversionFailure(format!("unknown source kind {raw}")))
+}
+
+/// The project's public monitors and heartbeats, monitors first.
 pub async fn public_items(
     c: &Connection,
     project_id: i64,
-) -> anyhow::Result<Vec<(bool, i64, String, i64, bool)>> {
+) -> anyhow::Result<Vec<crate::checks::PublicItem>> {
     crate::platform::db::query_all(
         c,
-        "SELECT 0, m.id, m.name, m.created_at, EXISTS (SELECT 1 FROM check_results WHERE monitor_id = m.id)
+        "SELECT 'monitor', m.id, m.name, m.created_at, EXISTS (SELECT 1 FROM check_results WHERE monitor_id = m.id)
          FROM monitors m WHERE m.project_id = ?1 AND m.is_public = 1
          UNION ALL
-         SELECT 1, h.id, h.name, h.created_at, h.last_ping_at IS NOT NULL
+         SELECT 'heartbeat', h.id, h.name, h.created_at, h.last_ping_at IS NOT NULL
          FROM heartbeats h WHERE h.project_id = ?1 AND h.is_public = 1
-         ORDER BY 1, 3",
+         ORDER BY 1 DESC, 3",
         [project_id],
         |r| {
-            Ok((
-                r.get::<i64>(0)? == 1,
-                r.get(1)?,
-                r.get(2)?,
-                r.get(3)?,
-                r.get::<i64>(4)? == 1,
-            ))
+            Ok(crate::checks::PublicItem {
+                kind: kind_at(r, 0)?,
+                id: r.get(1)?,
+                name: r.get(2)?,
+                created_at: r.get(3)?,
+                seen: r.get::<i64>(4)? == 1,
+            })
         },
     )
     .await
 }
 
-/// Every monitor and heartbeat of a project as (is heartbeat, id, name), monitors first.
+/// Every monitor and heartbeat of a project as (kind, id, name), monitors first.
 pub async fn source_names(
     c: &Connection,
     project_id: i64,
-) -> anyhow::Result<Vec<(bool, i64, String)>> {
+) -> anyhow::Result<Vec<(crate::incidents::SourceKind, i64, String)>> {
     crate::platform::db::query_all(
         c,
-        "SELECT 0, id, name FROM monitors WHERE project_id = ?1
-         UNION ALL SELECT 1, id, name FROM heartbeats WHERE project_id = ?1 ORDER BY 1, 3",
+        "SELECT 'monitor', id, name FROM monitors WHERE project_id = ?1
+         UNION ALL SELECT 'heartbeat', id, name FROM heartbeats WHERE project_id = ?1 ORDER BY 1 DESC, 3",
         [project_id],
-        |r| Ok((r.get::<i64>(0)? == 1, r.get(1)?, r.get(2)?)),
+        |r| Ok((kind_at(r, 0)?, r.get(1)?, r.get(2)?)),
     )
     .await
 }

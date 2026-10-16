@@ -92,6 +92,16 @@ pub async fn queue(
     Ok(())
 }
 
+pub async fn pending_count(c: &Connection) -> anyhow::Result<i64> {
+    Ok(crate::platform::db::query_i64(
+        c,
+        "SELECT count(*) FROM outbox WHERE sent_at IS NULL AND failed_at IS NULL",
+        (),
+    )
+    .await?
+    .unwrap_or(0))
+}
+
 pub async fn any_due(c: &Connection, at: i64) -> anyhow::Result<bool> {
     let n = crate::platform::db::query_i64(
         c,

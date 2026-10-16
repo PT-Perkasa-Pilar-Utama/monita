@@ -30,7 +30,7 @@ This file restates rules tersely. The docs win on any conflict; fix this file wh
 
 ```text
 src/lib.rs            module tree        src/main.rs   CLI: serve, migrate
-src/app.rs            AppState, router, build(), serve()
+src/app.rs            AppState, router, build_with(), serve()
 src/platform/         config, db, migrate, render, assets, headers, health, reset_state
 src/<module>/         mod.rs (interface) routes.rs store.rs + logic files
 templates/layout/     base, app (sidebar), public, bare     templates/ui/ macros.html, mark.html

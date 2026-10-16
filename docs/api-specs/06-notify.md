@@ -7,7 +7,7 @@ Fields: [../technical-specs/06-data-model.md section 6.3.6](../technical-specs/0
 | Method | Path | Access | Input | Behavior | AC |
 | --- | --- | --- | --- | --- | --- |
 | GET | `/projects/{slug}/alerts` | owner, super_admin | | One block per severity: emails, webhook URL, use webhook | AC-15.01, AC-15.02 |
-| POST | `/projects/{slug}/alerts/{severity}` | owner, super_admin | `emails` (one per line), `webhook_url`, `use_webhook` | Validate each email and the URL. Save. | AC-15.01 |
+| POST | `/projects/{slug}/alerts/{severity}` | owner, super_admin | `emails` (one per line), `webhook_url`, `use_webhook` | Validate each email (ASCII, a name domain, one the SMTP client accepts) and the URL (`http://` or `https://` with a host, no spaces). Save. | AC-15.01 |
 | POST | `/projects/{slug}/alerts/{severity}/test` | owner, super_admin | | Queue one test email and webhook | |
 
 ## 6.2 Outgoing webhook

@@ -73,12 +73,20 @@ pub enum AccountError {
     Other(#[from] anyhow::Error),
 }
 
+/// The form an email is stored and looked up in. Sign-in uses only this, so a stricter rule for
+/// new addresses never locks out an account that already exists.
+fn email_key(raw: &str) -> String {
+    raw.trim().to_lowercase()
+}
+
+/// A new address: one the SMTP server will take. ASCII only, because lettre refuses non-ASCII
+/// addresses unless the server offers SMTPUTF8, and a name domain, not an `[ip]` literal.
 pub fn normalize_email(raw: &str) -> Result<String, AccountError> {
-    let email = raw.trim().to_lowercase();
+    let email = email_key(raw);
     let valid = email.len() <= 254
+        && email.is_ascii()
         && !email.contains(char::is_whitespace)
-        && matches!(email.split_once('@'), Some((l, d)) if !l.is_empty() && d.contains('.') && !d.contains('@'))
-        // The mailer's own parser: an address it would refuse at send time is refused here.
+        && matches!(email.split_once('@'), Some((l, d)) if !l.is_empty() && d.contains('.') && !d.contains('@') && !d.starts_with('['))
         && email.parse::<lettre::Address>().is_ok();
     if valid {
         Ok(email)
@@ -88,7 +96,8 @@ pub fn normalize_email(raw: &str) -> Result<String, AccountError> {
 }
 
 /// Each argon2 run takes about 19 MiB. Per-IP limits do not bound how many IPs sign in at once,
-/// so this does: at most 4 hashes run, the rest wait.
+/// so this does: at most 4 hashes run, the rest wait. A waiter whose client leaves is dropped
+/// from the queue with its request, so the queue holds only live sign-ins.
 static HASHING: tokio::sync::Semaphore = tokio::sync::Semaphore::const_new(4);
 
 async fn hash_password(password: &str) -> Result<String, AccountError> {
@@ -96,8 +105,10 @@ async fn hash_password(password: &str) -> Result<String, AccountError> {
         return Err(AccountError::PasswordTooShort);
     }
     let pw = password.to_owned();
-    let _slot = HASHING.acquire().await.map_err(anyhow::Error::from)?;
+    let slot = HASHING.acquire().await.map_err(anyhow::Error::from)?;
     let hashed = tokio::task::spawn_blocking(move || {
+        // The permit lives in the blocking task: a dropped request cannot free it mid-hash.
+        let _slot = slot;
         Argon2::default()
             .hash_password(pw.as_bytes())
             .map(|h| h.to_string())
@@ -112,13 +123,16 @@ async fn hash_password(password: &str) -> Result<String, AccountError> {
 /// also refuses the sign-in, but is logged: those are faults, not wrong passwords.
 async fn verify_password(password: &str, stored: &str) -> bool {
     let (pw, stored) = (password.to_owned(), stored.to_owned());
-    let Ok(_slot) = HASHING.acquire().await else {
+    let Ok(slot) = HASHING.acquire().await else {
         tracing::error!("password check unavailable: the hashing limit is closed");
         return false;
     };
-    let checked = tokio::task::spawn_blocking(move || match PasswordHash::new(&stored) {
-        Ok(h) => Ok(Argon2::default().verify_password(pw.as_bytes(), &h).is_ok()),
-        Err(e) => Err(e.to_string()),
+    let checked = tokio::task::spawn_blocking(move || {
+        let _slot = slot;
+        match PasswordHash::new(&stored) {
+            Ok(h) => Ok(Argon2::default().verify_password(pw.as_bytes(), &h).is_ok()),
+            Err(e) => Err(e.to_string()),
+        }
     })
     .await;
     match checked {
@@ -159,7 +173,7 @@ pub async fn reset_super_admin_password(
     email: &str,
     password: &str,
 ) -> Result<(), AccountError> {
-    let email = normalize_email(email)?;
+    let email = email_key(email);
     let hash = hash_password(password).await?;
     db.write(
         async |c| match store::find_user_by_email(c, &email).await? {
@@ -175,7 +189,7 @@ pub async fn reset_super_admin_password(
 
 /// Signs in. Returns the raw session token for the cookie.
 pub async fn login(db: &Db, email: &str, password: &str) -> Result<String, AccountError> {
-    let email = normalize_email(email).map_err(|_| AccountError::BadCredentials)?;
+    let email = email_key(email);
     let user = store::find_user_by_email(&db.read().await?, &email).await?;
     // ponytail: an unknown email skips argon2, so its timing differs; verify a dummy hash if enumeration matters.
     let Some(user) = user.filter(|u| u.disabled_at.is_none()) else {
@@ -330,7 +344,15 @@ mod tests {
         assert!(normalize_email("rina").is_err());
         assert!(normalize_email("@company.co.id").is_err());
         assert!(normalize_email("ri na@company.co.id").is_err());
-        for bad in ["oncall@company.co.id.", "a@b..c", "a,b@x.co", "a@-x.co"] {
+        for bad in [
+            "oncall@company.co.id.",
+            "a@b..c",
+            "a,b@x.co",
+            "a@-x.co",
+            "jörg@company.co.id",
+            "rina@münchen.de",
+            "a@[1.2.3.4]",
+        ] {
             assert!(
                 normalize_email(bad).is_err(),
                 "{bad}: the mailer would refuse it"

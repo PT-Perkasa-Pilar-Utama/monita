@@ -8,7 +8,7 @@ Policy: [../technical-specs/05-module-definitions.md section 5.8](../technical-s
 | --- | --- |
 | Purpose | Tell a peer Monita, a load balancer or an operator whether Monita works. |
 | Access | public, no rate limit |
-| Behavior | Run `SELECT 1`. Read the scheduler's last tick. Count outbox rows that are due and unsent. |
+| Behavior | Count the outbox rows not yet sent or failed, retries included; the query also proves the database answers. Read the scheduler's last tick. |
 | Errors | None beyond the 503 below |
 
 | Condition | Status | Body |

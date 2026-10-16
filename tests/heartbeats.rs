@@ -236,6 +236,19 @@ async fn a_long_fail_body_still_opens_the_incident_with_its_first_kb() {
 }
 
 #[tokio::test]
+async fn a_fail_body_past_128_kib_is_refused_before_any_lookup() {
+    let app = TestApp::spawn("test").await;
+    let res = app
+        .http
+        .post(app.url("/ping/nosuchtoken/fail"))
+        .body("x".repeat(200 * 1024))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), 413, "the read is bounded");
+}
+
+#[tokio::test]
 async fn guessing_tokens_from_one_ip_gets_429() {
     let app = TestApp::spawn("test").await;
     // 121 misses span at most two minute windows, so one window sees more than 60.

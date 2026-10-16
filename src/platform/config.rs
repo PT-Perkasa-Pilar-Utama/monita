@@ -32,7 +32,8 @@ pub struct Config {
 /// A two-valued variable: unset means `no`; anything but `yes` or `no` stops the start, so a
 /// typo such as `TRUE` cannot silently turn a feature off.
 fn flag(value: Option<String>, key: &str, yes: &str, no: &str) -> anyhow::Result<bool> {
-    match value.as_deref() {
+    // Trimmed: an env file line can carry a trailing space or CR.
+    match value.as_deref().map(str::trim) {
         None => Ok(false),
         Some(v) if v == yes => Ok(true),
         Some(v) if v == no => Ok(false),
@@ -119,7 +120,7 @@ impl Config {
                 var("MONITA_LOG_FORMAT"),
                 "MONITA_LOG_FORMAT",
                 "json",
-                "text",
+                "pretty",
             )?,
         })
     }
@@ -160,6 +161,14 @@ mod tests {
         assert!(dev("MONITA_TRUST_PROXY", "1").is_err());
         assert!(dev("MONITA_LOG_FORMAT", "json").unwrap().log_json);
         assert!(dev("MONITA_LOG_FORMAT", "JSON").is_err());
+        assert!(
+            !dev("MONITA_LOG_FORMAT", "pretty").unwrap().log_json,
+            "the documented default"
+        );
+        assert!(
+            dev("MONITA_TRUST_PROXY", "true \r").unwrap().trust_proxy,
+            "env-file whitespace"
+        );
     }
 
     #[test]

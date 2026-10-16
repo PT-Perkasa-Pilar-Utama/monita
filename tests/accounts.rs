@@ -69,9 +69,17 @@ async fn super_admin_invites_a_tl_and_the_email_goes_out() {
         .await;
     assert_eq!(res.status(), 200);
     let path = invite_path(&res.text().await.unwrap());
-    let sent = monita::notify::deliver_due(&app.state).await.unwrap();
-    assert_eq!(sent, 1);
-    let emails = app.state.mailer.sent();
+    // The scheduler delivers too, so wait for the mailer rather than count one pass.
+    monita::notify::deliver_due(&app.state).await.unwrap();
+    let mut emails = app.state.mailer.sent();
+    for _ in 0..20 {
+        if !emails.is_empty() {
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        emails = app.state.mailer.sent();
+    }
+    assert_eq!(emails.len(), 1);
     assert_eq!(emails[0].to, "rina@x.co");
     assert!(emails[0].body.contains(&format!("{BASE_URL}{path}")));
     let kept = monita::platform::db::query_i64(
@@ -339,4 +347,54 @@ async fn the_cli_resets_a_super_admin_password_and_signs_them_out() {
         matches!(tl, Err(AccountError::NoSuchAdmin)),
         "a TL resets through an invite"
     );
+}
+
+#[tokio::test]
+async fn an_existing_address_signs_in_even_if_new_ones_would_be_refused() {
+    let app = TestApp::spawn("test").await;
+    accounts::create_super_admin(&app.state.db, "jorg@x.co", PASSWORD)
+        .await
+        .unwrap();
+    app.state
+        .db
+        .write(async |c| {
+            c.execute("UPDATE users SET email = 'jörg@x.co'", ())
+                .await?;
+            Ok(())
+        })
+        .await
+        .unwrap();
+    let res = app
+        .post_form(
+            "/login",
+            &[("email", " Jörg@X.co"), ("password", PASSWORD)],
+            None,
+        )
+        .await;
+    assert_eq!(res.status(), 303);
+}
+
+#[tokio::test]
+async fn a_corrupt_stored_hash_refuses_the_sign_in_without_a_crash() {
+    let app = TestApp::spawn("test").await;
+    accounts::create_super_admin(&app.state.db, "a@x.co", PASSWORD)
+        .await
+        .unwrap();
+    app.state
+        .db
+        .write(async |c| {
+            c.execute("UPDATE users SET password_hash = 'not-a-phc-string'", ())
+                .await?;
+            Ok(())
+        })
+        .await
+        .unwrap();
+    let res = app
+        .post_form(
+            "/login",
+            &[("email", "a@x.co"), ("password", PASSWORD)],
+            None,
+        )
+        .await;
+    assert_eq!(res.status(), 422);
 }

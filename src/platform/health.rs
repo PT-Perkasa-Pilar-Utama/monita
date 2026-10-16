@@ -5,7 +5,6 @@ use std::sync::atomic::Ordering;
 use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
 use serde::Serialize;
 
-use super::db::query_i64;
 use crate::app::AppState;
 
 /// The scheduler ticks every second. Longer than this means the loop is stuck.
@@ -20,21 +19,14 @@ struct Health {
     version: &'static str,
 }
 
-/// `SELECT 1` proves the database answers; the count is the outbox rows due and not yet sent.
-async fn probe(state: &AppState, now: i64) -> anyhow::Result<i64> {
-    let conn = state.db.read().await?;
-    query_i64(&conn, "SELECT 1", ()).await?;
-    Ok(query_i64(
-        &conn,
-        "SELECT count(*) FROM outbox WHERE sent_at IS NULL AND failed_at IS NULL AND next_attempt_at <= ?1",
-        [now],
-    )
-    .await?
-    .unwrap_or(0))
+/// One query proves the database answers and reads the outbox backlog: rows not yet sent or
+/// failed, retries included, so SMTP being down shows as a growing number.
+async fn probe(state: &AppState) -> anyhow::Result<i64> {
+    crate::notify::pending_count(&state.db.read().await?).await
 }
 
 pub async fn healthz(State(state): State<AppState>) -> impl IntoResponse {
-    let (db_ok, outbox_pending) = match probe(&state, super::now()).await {
+    let (db_ok, outbox_pending) = match probe(&state).await {
         Ok(pending) => (true, Some(pending)),
         Err(e) => {
             tracing::error!(error = %e, "health check: database unavailable");

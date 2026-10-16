@@ -76,7 +76,7 @@ impl MonitorInput {
             e.insert("name", "Enter a name of up to 80 characters.");
         }
         let url = self.url.trim();
-        if !crate::platform::valid_http_url(url) || url.contains(char::is_whitespace) {
+        if !crate::platform::valid_http_url(url) {
             e.insert("url", "The URL must start with http:// or https://.");
         }
         if !INTERVALS_S.contains(&self.interval_s) {
@@ -126,22 +126,7 @@ pub struct PublicItem {
 }
 
 pub async fn public_items(db: &Db, project_id: i64) -> anyhow::Result<Vec<PublicItem>> {
-    use crate::incidents::SourceKind;
-    Ok(store::public_items(&db.read().await?, project_id)
-        .await?
-        .into_iter()
-        .map(|(hb, id, name, created_at, seen)| PublicItem {
-            kind: if hb {
-                SourceKind::Heartbeat
-            } else {
-                SourceKind::Monitor
-            },
-            id,
-            seen,
-            name,
-            created_at,
-        })
-        .collect())
+    store::public_items(&db.read().await?, project_id).await
 }
 
 /// AC-11.01: a random point inside the interval, so checks spread out. Never sooner than 5 s, so
@@ -224,19 +209,7 @@ pub async fn source_names(
     c: &turso::Connection,
     project_id: i64,
 ) -> anyhow::Result<Vec<(crate::incidents::SourceKind, i64, String)>> {
-    use crate::incidents::SourceKind;
-    Ok(store::source_names(c, project_id)
-        .await?
-        .into_iter()
-        .map(|(hb, id, name)| {
-            let kind = if hb {
-                SourceKind::Heartbeat
-            } else {
-                SourceKind::Monitor
-            };
-            (kind, id, name)
-        })
-        .collect())
+    store::source_names(c, project_id).await
 }
 
 pub async fn list_monitors(db: &Db, project_id: i64) -> anyhow::Result<Vec<Monitor>> {

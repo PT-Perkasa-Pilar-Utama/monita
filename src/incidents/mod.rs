@@ -355,23 +355,31 @@ pub async fn open_manual(db: &Db, n: &NewIncident, now: i64) -> Result<i64, Upda
     if !matches!(n.severity.as_str(), "critical" | "warning") {
         return Err(UpdateError::BadSeverity);
     }
-    // The items are resolved inside the write, so a source deleted meanwhile is not attached.
-    // They are checked before the message, as the form lists them first.
+    // Items before the message, as the form lists them. Both are checked on a read connection,
+    // so a rejected form never takes the writer; the write resolves the items again, so a source
+    // deleted in between is not attached.
+    if picked(&item_names_on(&db.read().await?, n.project_id).await?, n).is_empty() {
+        return Err(UpdateError::NoItems);
+    }
+    check_message(&n.message)?;
     db.write(async |c| {
-        let mut items: Vec<ItemRef> = Vec::new();
-        for (item, _) in item_names_on(c, n.project_id).await? {
-            let key = format!("{}:{}", item.kind.as_str(), item.id);
-            if n.items.contains(&key) {
-                items.push(item);
-            }
-        }
+        let items = picked(&item_names_on(c, n.project_id).await?, n);
         if items.is_empty() {
             return Ok(Err(UpdateError::NoItems));
-        }
-        if let Err(e) = check_message(&n.message) {
-            return Ok(Err(e));
         }
         Ok(Ok(store::open_manual(c, n, &items, now).await?))
     })
     .await?
+}
+
+/// The project's items that the form named, once each.
+fn picked(names: &[(ItemRef, String)], n: &NewIncident) -> Vec<ItemRef> {
+    names
+        .iter()
+        .filter(|(item, _)| {
+            n.items
+                .contains(&format!("{}:{}", item.kind.as_str(), item.id))
+        })
+        .map(|(item, _)| item.clone())
+        .collect()
 }

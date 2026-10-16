@@ -289,7 +289,6 @@ strong { color: var(--fg); font-weight: 590; }
 .btn--ghost:hover { background: var(--f4); color: var(--fg); }
 .btn--sm { height: 26px; padding: 0 10px; font-size: var(--t-12); }
 .btn--lg { height: 44px; padding: 0 20px; font-size: var(--t-15); }
-.btn[disabled] { opacity: 0.55; cursor: progress; }
 
 /* ---------- Forms ---------- */
 .form { display: flex; flex-direction: column; gap: var(--s4); max-width: 560px; }

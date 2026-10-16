@@ -597,6 +597,25 @@ async fn a_manual_incident_marks_its_items_and_closes_on_resolved() {
         422,
         "a message reaches the public page, so it is bounded"
     );
+    let long_title = "t".repeat(121);
+    let res = app
+        .post_form(
+            "/projects/payments/incidents",
+            &[
+                ("title", long_title.as_str()),
+                ("items", "monitor:1"),
+                ("severity", "warning"),
+                ("message", "m"),
+            ],
+            Some(&tl),
+        )
+        .await;
+    assert!(
+        res.text()
+            .await
+            .unwrap()
+            .contains("The title needs at most 120 characters.")
+    );
     let res = app
         .post_form(
             "/projects/payments/incidents",
@@ -764,29 +783,4 @@ async fn reset_state_waits_for_running_checks_so_no_stale_result_lands() {
         0,
         "a stale result landed after the reset"
     );
-}
-
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn two_delivery_passes_never_send_one_message_twice() {
-    let app = TestApp::spawn("test").await;
-    let tl = setup(&app).await;
-    let (hook, got, _) = webhook_sink().await;
-    app.post_form(
-        "/projects/payments/alerts/warning",
-        &[("webhook_url", &hook), ("use_webhook", "on")],
-        Some(&tl),
-    )
-    .await;
-    app.post_form("/projects/payments/alerts/warning/test", &[], Some(&tl))
-        .await;
-    // The sink answers after 300 ms, so the second pass starts while the first is still sending.
-    let first = tokio::spawn({
-        let s = app.state.clone();
-        async move { monita::notify::deliver_due(&s).await }
-    });
-    tokio::time::sleep(Duration::from_millis(100)).await;
-    monita::notify::deliver_due(&app.state).await.unwrap();
-    first.await.unwrap().unwrap();
-    tokio::time::sleep(Duration::from_millis(1_500)).await;
-    assert_eq!(got.lock().unwrap().len(), 1);
 }

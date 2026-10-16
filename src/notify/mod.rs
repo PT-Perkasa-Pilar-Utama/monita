@@ -255,6 +255,11 @@ pub async fn send_test(
     .await
 }
 
+/// Outbox rows not yet sent or failed, retries included. `/healthz` shows it.
+pub async fn pending_count(c: &Connection) -> anyhow::Result<i64> {
+    store::pending_count(c).await
+}
+
 /// Read-only: is any outbox row due at `at`? The scheduler asks before it spawns a delivery pass.
 pub async fn any_due(c: &Connection, at: i64) -> anyhow::Result<bool> {
     store::any_due(c, at).await

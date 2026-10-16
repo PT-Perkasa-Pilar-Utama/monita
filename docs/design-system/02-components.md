@@ -30,5 +30,4 @@ Templates call the macros in `templates/ui/macros.html`. They never repeat the m
 
 | State | Style |
 | --- | --- |
-| Disabled button | `.btn[disabled]` dims and shows `cursor: progress`. |
 | Validation failure | Server returns 422 with the whole page, fields marked `.field--error`. |

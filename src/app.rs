@@ -30,14 +30,17 @@ pub struct AppState {
     pub gate: Arc<tokio::sync::RwLock<()>>,
 }
 
-/// Opens the database, migrates it and starts the background loops.
-pub async fn build(config: Config) -> anyhow::Result<(Router, AppState)> {
-    let mailer = Mailer::from_config(&config)?;
-    build_with(config, mailer).await
+/// Opens the database, migrates it and starts the background loops, with a chosen mail
+/// adapter. Tests pass `Mailer::memory()`.
+pub async fn build_with(config: Config, mailer: Mailer) -> anyhow::Result<(Router, AppState)> {
+    let (router, state, _scheduler) = start(config, mailer).await?;
+    Ok((router, state))
 }
 
-/// `build` with a chosen mail adapter. Tests pass `Mailer::memory()`.
-pub async fn build_with(config: Config, mailer: Mailer) -> anyhow::Result<(Router, AppState)> {
+async fn start(
+    config: Config,
+    mailer: Mailer,
+) -> anyhow::Result<(Router, AppState, tokio::task::JoinHandle<()>)> {
     let db = Db::open(&config.db_path).await?;
     migrate::run(&db).await?;
     let state = AppState {
@@ -50,18 +53,11 @@ pub async fn build_with(config: Config, mailer: Mailer) -> anyhow::Result<(Route
         gate: Arc::default(),
     };
     let scheduler = crate::checks::scheduler::spawn(state.clone());
-    // HTTP would keep serving without the loop, so systemd would never restart a dead scheduler.
-    // A panic ends the process instead, and `Restart=on-failure` brings everything back.
-    tokio::spawn(async move {
-        if let Err(e) = scheduler.await
-            && e.is_panic()
-        {
-            tracing::error!(error = %e, "the scheduler panicked; exiting so the service restarts");
-            std::process::exit(1);
-        }
-    });
-    Ok((router(state.clone()), state))
+    Ok((router(state.clone()), state, scheduler))
 }
+
+/// SEC-19: the largest request body any route reads.
+pub const MAX_BODY: usize = 128 * 1024;
 
 pub fn router(state: AppState) -> Router {
     let mut r = Router::new()
@@ -83,7 +79,7 @@ pub fn router(state: AppState) -> Router {
     }
 
     // 128 KiB: the largest valid form is a ticket of 10 000 four-byte characters, percent-encoded.
-    r.layer(DefaultBodyLimit::max(128 * 1024))
+    r.layer(DefaultBodyLimit::max(MAX_BODY))
         .layer(middleware::from_fn_with_state(
             state.clone(),
             crate::platform::rate_limit::per_ip,
@@ -100,7 +96,22 @@ pub async fn serve(config: Config) -> anyhow::Result<()> {
     let bind = config.bind;
     // Bind first: a second instance on a taken port must fail before its loops touch the DB.
     let listener = TcpListener::bind(bind).await?;
-    let (router, state) = build(config).await?;
+    let mailer = Mailer::from_config(&config)?;
+    let (router, state, scheduler) = start(config, mailer).await?;
+    // HTTP would keep serving without the loop, so systemd would never restart a dead scheduler.
+    // A panic drains running work, then ends the process, and `Restart=on-failure` restarts it.
+    // A panic in a delivery or daily-job task needs none of this: its drop guard frees the
+    // running flag and the next tick starts it again.
+    let gate = state.gate.clone();
+    tokio::spawn(async move {
+        if let Err(e) = scheduler.await
+            && e.is_panic()
+        {
+            tracing::error!(error = %e, "the scheduler panicked; exiting so the service restarts");
+            let _held = drain(&gate, std::time::Duration::from_secs(10)).await;
+            std::process::exit(1);
+        }
+    });
     tracing::info!(%bind, "monita listening");
     axum::serve(
         listener,

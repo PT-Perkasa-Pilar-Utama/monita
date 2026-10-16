@@ -25,8 +25,8 @@ async fn healthz_reports_ok_once_the_scheduler_ticks() {
     assert_eq!(body["status"], "ok");
     assert_eq!(body["db"], "ok");
     assert_eq!(
-        body["outbox_pending"], 0,
-        "a row waiting for its retry is not due"
+        body["outbox_pending"], 1,
+        "a row waiting for its retry is still pending"
     );
 }
 

@@ -105,3 +105,36 @@ async fn a_delivery_pass_sends_five_messages_at_once() {
         started.elapsed()
     );
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn two_delivery_passes_never_send_one_message_twice() {
+    let hits = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let sink = Router::new()
+        .route(
+            "/hook",
+            post(
+                |axum::extract::State(h): axum::extract::State<
+                    std::sync::Arc<std::sync::atomic::AtomicUsize>,
+                >| async move {
+                    h.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                    tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+                },
+            ),
+        )
+        .with_state(hits.clone());
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    tokio::spawn(async move { axum::serve(listener, sink).await.unwrap() });
+    let app = TestApp::spawn("test").await;
+    queue_webhook(&app, &format!("http://{addr}/hook")).await;
+    // The sink answers after 300 ms, so the second pass starts while the first is still sending.
+    let first = tokio::spawn({
+        let s = app.state.clone();
+        async move { monita::notify::deliver_due(&s).await }
+    });
+    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    monita::notify::deliver_due(&app.state).await.unwrap();
+    first.await.unwrap().unwrap();
+    tokio::time::sleep(std::time::Duration::from_millis(1_500)).await;
+    assert_eq!(hits.load(std::sync::atomic::Ordering::SeqCst), 1);
+}

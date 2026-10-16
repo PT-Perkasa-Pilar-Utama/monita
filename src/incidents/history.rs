@@ -42,7 +42,6 @@ pub async fn intervals(
     Ok(out)
 }
 
-#[derive(serde::Serialize)]
 pub struct PublicUpdate {
     pub label: String,
     pub message: String,
