@@ -2,6 +2,8 @@
 
 ## Sprint 1: Checks run (done 2026-10-16)
 
+AC-14.01 (a fail ping opens an incident) and the missed-heartbeat incident complete in Sprint 2 with US-17. Sprint 1 records them as heartbeat state.
+
 1. US-01: Create the first super admin (Super admin)
 2. US-02: Create a TL account (Super admin)
 3. US-03: Set a password from an invite link (TL)

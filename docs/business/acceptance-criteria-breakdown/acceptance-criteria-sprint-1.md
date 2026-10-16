@@ -315,4 +315,4 @@ Then Monita opens an incident without waiting for the grace time
 ```
 
 > Note: AC-14.01 depends on incidents, which arrive in Sprint 2. In Sprint 1, the failure is stored as the heartbeat state.
-> Note: AC-11.03 names "start offset" as a setting. The source says each offset is random, so the setting is not defined.
+> Note: AC-11.03: the start offset is random per monitor and has no setting. The limits page sets the check cap only.
