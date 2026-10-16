@@ -117,8 +117,14 @@ pub async fn open_auto(
     Ok(id)
 }
 
-/// Closes an automatic incident. Returns its start time and the severity it opened with.
-pub async fn resolve_auto(c: &Connection, id: i64, now: i64) -> anyhow::Result<(i64, String)> {
+/// Closes an automatic incident with `message`, or "Recovered after ..." when `None`. Returns its
+/// start time and the severity it opened with.
+pub async fn resolve_auto(
+    c: &Connection,
+    id: i64,
+    message: Option<&str>,
+    now: i64,
+) -> anyhow::Result<(i64, String)> {
     let (started, severity) = {
         let mut rows = c
             .query(
@@ -131,13 +137,8 @@ pub async fn resolve_auto(c: &Connection, id: i64, now: i64) -> anyhow::Result<(
             None => anyhow::bail!("incident {id} is gone"),
         }
     };
-    resolve_with(
-        c,
-        id,
-        &format!("Recovered after {}.", time::duration(now - started)),
-        now,
-    )
-    .await?;
+    let recovered = format!("Recovered after {}.", time::duration(now - started));
+    resolve_with(c, id, message.unwrap_or(&recovered), now).await?;
     Ok((started, severity))
 }
 

@@ -58,6 +58,7 @@ impl Monitor {
 }
 
 pub struct CheckRow {
+    pub id: i64,
     pub checked_at: i64,
     pub ok: bool,
     pub status_code: Option<i64>,
@@ -65,12 +66,13 @@ pub struct CheckRow {
     pub error: Option<String>,
 }
 
-const COLS: &str = "m.id, m.project_id, m.name, m.url, m.interval_s, m.timeout_ms, m.expected_status, m.keyword, m.skip_tls_verify, m.severity, m.is_public, m.next_check_at, c.checked_at, c.ok, c.status_code, c.latency_ms, c.error, m.created_at";
+const COLS: &str = "m.id, m.project_id, m.name, m.url, m.interval_s, m.timeout_ms, m.expected_status, m.keyword, m.skip_tls_verify, m.severity, m.is_public, m.next_check_at, c.checked_at, c.ok, c.status_code, c.latency_ms, c.error, m.created_at, c.id";
 const FROM: &str = "FROM monitors m LEFT JOIN check_results c ON c.id = (SELECT id FROM check_results WHERE monitor_id = m.id ORDER BY checked_at DESC, id DESC LIMIT 1)";
 
 fn monitor(r: &turso::Row) -> turso::Result<Monitor> {
     let last = match r.get::<Option<i64>>(12)? {
         Some(at) => Some(CheckRow {
+            id: r.get(18)?,
             checked_at: at,
             ok: r.get::<i64>(13)? == 1,
             status_code: r.get(14)?,
@@ -241,26 +243,25 @@ pub async fn recent_checks(
     c: &Connection,
     monitor_id: i64,
     since: i64,
-    before: i64,
+    before: (i64, i64),
     limit: i64,
 ) -> anyhow::Result<Vec<CheckRow>> {
-    let mut rows = c
-        .query(
-            "SELECT checked_at, ok, status_code, latency_ms, error FROM check_results
-             WHERE monitor_id = ?1 AND checked_at >= ?2 AND checked_at < ?3
-             ORDER BY checked_at DESC, id DESC LIMIT ?4",
-            (monitor_id, since, before, limit),
-        )
-        .await?;
-    let mut out = Vec::new();
-    while let Some(r) = rows.next().await? {
-        out.push(CheckRow {
-            checked_at: r.get(0)?,
-            ok: r.get::<i64>(1)? == 1,
-            status_code: r.get(2)?,
-            latency_ms: r.get(3)?,
-            error: r.get(4)?,
-        });
-    }
-    Ok(out)
+    crate::platform::db::query_all(
+        c,
+        "SELECT id, checked_at, ok, status_code, latency_ms, error FROM check_results
+         WHERE monitor_id = ?1 AND checked_at >= ?2 AND (checked_at < ?3 OR (checked_at = ?3 AND id < ?4))
+         ORDER BY checked_at DESC, id DESC LIMIT ?5",
+        (monitor_id, since, before.0, before.1, limit),
+        |r| {
+            Ok(CheckRow {
+                id: r.get(0)?,
+                checked_at: r.get(1)?,
+                ok: r.get::<i64>(2)? == 1,
+                status_code: r.get(3)?,
+                latency_ms: r.get(4)?,
+                error: r.get(5)?,
+            })
+        },
+    )
+    .await
 }

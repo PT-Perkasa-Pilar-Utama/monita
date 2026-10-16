@@ -148,6 +148,13 @@ async fn invite_submit(
         )
             .into_response()
     };
+    // api-specs 02: a dead link is 410 before any other check.
+    if !super::invite_is_usable(&state.db, &token).await? {
+        return Ok(invalid(
+            StatusCode::GONE,
+            AccountError::InviteInvalid.to_string(),
+        ));
+    }
     if f.password != f.password_confirm {
         return Ok(invalid(
             StatusCode::UNPROCESSABLE_ENTITY,

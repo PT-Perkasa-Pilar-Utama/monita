@@ -10,6 +10,10 @@ const MIGRATIONS: &[(i64, &str)] = &[
         3,
         include_str!("../../migrations/0003_stable_source_ids.sql"),
     ),
+    (
+        4,
+        include_str!("../../migrations/0004_retention_indexes.sql"),
+    ),
 ];
 
 pub async fn run(db: &Db) -> anyhow::Result<()> {

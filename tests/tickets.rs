@@ -85,9 +85,11 @@ async fn a_reporter_submits_through_the_api_and_the_form() {
             None,
         )
         .await;
-    assert_eq!(form.status(), 200);
+    assert_eq!(form.status(), 303, "a reload must not resubmit");
+    let thanks = app.get(&common::location(&form), None).await;
     assert!(
-        form.text()
+        thanks
+            .text()
             .await
             .unwrap()
             .contains("Your report is ticket #2")

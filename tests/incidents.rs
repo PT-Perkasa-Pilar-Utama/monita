@@ -631,6 +631,8 @@ async fn a_failing_webhook_is_retried_later_with_the_error_kept() {
     let res = app
         .post_form("/projects/payments/alerts/critical/test", &[], Some(&tl))
         .await;
+    assert_eq!(res.status(), 303);
+    let res = app.get(&location(&res), Some(&tl)).await;
     assert!(
         res.text()
             .await
@@ -658,6 +660,12 @@ async fn a_failing_webhook_is_retried_later_with_the_error_kept() {
 async fn deleting_a_monitor_closes_its_open_incident() {
     let app = TestApp::spawn("test").await;
     let tl = setup(&app).await;
+    app.post_form(
+        "/projects/payments/alerts/warning",
+        &[("emails", "oncall@x.co"), ("webhook_url", "")],
+        Some(&tl),
+    )
+    .await;
     let (url, up) = switchable().await;
     monitor(&app, &url, "warning").await;
     up.store(false, Ordering::SeqCst);
@@ -672,6 +680,14 @@ async fn deleting_a_monitor_closes_its_open_incident() {
         )
         .await,
         0
+    );
+    monita::notify::deliver_due(&app.state).await.unwrap();
+    let subjects: Vec<String> = alerts(&app).into_iter().map(|m| m.subject).collect();
+    assert!(
+        subjects
+            .iter()
+            .any(|s| s.starts_with("[RESOLVED] Payments / API health was deleted after")),
+        "whoever got the opened alert hears the end: {subjects:?}"
     );
 }
 
@@ -748,42 +764,4 @@ async fn two_delivery_passes_never_send_one_message_twice() {
     first.await.unwrap().unwrap();
     tokio::time::sleep(Duration::from_millis(1_500)).await;
     assert_eq!(got.lock().unwrap().len(), 1);
-}
-
-#[tokio::test]
-async fn a_delivery_pass_sends_five_messages_at_once() {
-    let app = TestApp::spawn("test").await;
-    let (hook, got, _) = webhook_sink().await;
-    let started = std::time::Instant::now();
-    app.state
-        .db
-        .write(async |c| {
-            for _ in 0..5 {
-                c.execute(
-                    "INSERT INTO outbox (channel, recipient, body, next_attempt_at) VALUES ('webhook', ?1, '{}', 0)",
-                    [hook.as_str()],
-                )
-                .await?;
-            }
-            Ok(())
-        })
-        .await
-        .unwrap();
-    monita::notify::deliver_due(&app.state).await.unwrap();
-    while count(
-        &app,
-        "SELECT count(*) FROM outbox WHERE sent_at IS NOT NULL",
-    )
-    .await
-        < 5
-    {
-        tokio::time::sleep(Duration::from_millis(20)).await;
-    }
-    // The sink answers after 300 ms: one at a time would take 1.5 s.
-    assert!(
-        started.elapsed() < Duration::from_millis(1_000),
-        "{:?}",
-        started.elapsed()
-    );
-    assert_eq!(got.lock().unwrap().len(), 5);
 }

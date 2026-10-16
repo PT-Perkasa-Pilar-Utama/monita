@@ -3,7 +3,7 @@
 use askama::Template;
 use axum::{
     Form, Router,
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::StatusCode,
     response::{IntoResponse, Redirect, Response},
     routing::{get, post},
@@ -62,13 +62,31 @@ async fn view(
     })
 }
 
+#[derive(Deserialize, Default)]
+#[serde(default)]
+struct Tested {
+    tested: String,
+    to: Option<String>,
+}
+
+/// After "Send a test" the POST redirects here with `?tested=<severity>&to=<count>`.
 async fn page(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
     Path(slug): Path<String>,
+    Query(q): Query<Tested>,
 ) -> Result<Response, PageError> {
     let project = projects::find_for(&state.db, &user, &slug).await?;
-    Ok(render(&view(&state, &user, project).await?))
+    let mut page = view(&state, &user, project).await?;
+    if matches!(q.tested.as_str(), "critical" | "warning") {
+        page.notice = match q.to.and_then(|n| n.parse::<usize>().ok()).unwrap_or(0) {
+            0 => "No recipients set for this severity.".into(),
+            1 => "Test queued for 1 recipient. It arrives within a minute.".into(),
+            n => format!("Test queued for {n} recipients. They arrive within a minute."),
+        };
+        page.focus = q.tested;
+    }
+    Ok(render(&page))
 }
 
 #[derive(Deserialize)]
@@ -130,12 +148,5 @@ async fn test(
     severity_ok(&severity)?;
     let project = projects::find_for(&state.db, &user, &slug).await?;
     let n = super::send_test(&state.db, project.id, &severity, &state.config.base_url).await?;
-    let mut page = view(&state, &user, project).await?;
-    page.focus = severity;
-    page.notice = match n {
-        0 => "No recipients set for this severity.".into(),
-        1 => "Test queued for 1 recipient. It arrives within a minute.".into(),
-        n => format!("Test queued for {n} recipients. They arrive within a minute."),
-    };
-    Ok(render(&page))
+    Ok(Redirect::to(&format!("/projects/{slug}/alerts?tested={severity}&to={n}")).into_response())
 }

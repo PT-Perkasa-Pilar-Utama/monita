@@ -239,6 +239,19 @@ async fn a_fail_body_is_the_cause_up_to_1_kb_and_413_past_it() {
 }
 
 #[tokio::test]
+async fn guessing_tokens_from_one_ip_gets_429() {
+    let app = TestApp::spawn("test").await;
+    // 121 misses span at most two minute windows, so one window sees more than 60.
+    let mut statuses = Vec::new();
+    for i in 0..121 {
+        let res = ping(&app, reqwest::Method::GET, &format!("/ping/guess{i}")).await;
+        statuses.push(res.status().as_u16());
+    }
+    assert_eq!(statuses[0], 404);
+    assert!(statuses.contains(&429), "misses are throttled per IP");
+}
+
+#[tokio::test]
 async fn a_missed_deadline_is_reported_once_and_the_next_ping_clears_it() {
     let app = TestApp::spawn("test").await;
     let (tl, token) = setup(&app).await;

@@ -4,7 +4,7 @@ use super::{FieldErrors, store::heartbeats as store};
 use crate::platform::{
     db::Db,
     now,
-    rate_limit::{Limiter, Verdict},
+    rate_limit::{self, Limiter, Verdict},
     settings, token,
 };
 use crate::{
@@ -163,11 +163,13 @@ pub async fn update(
         .await
 }
 
-/// Also closes the heartbeat's open incident.
-pub async fn delete(db: &Db, project_id: i64, id: i64) -> anyhow::Result<()> {
+/// Also closes the heartbeat's open incident and alerts that it ended.
+pub async fn delete(db: &Db, base_url: &str, project_id: i64, id: i64) -> anyhow::Result<()> {
     db.write(async |c| {
-        if store::find(c, project_id, id).await?.is_some() {
-            incidents::source_deleted(c, SourceKind::Heartbeat, id, now()).await?;
+        if let Some(hb) = store::find(c, project_id, id).await? {
+            if let Some(ev) = incidents::source_deleted(c, &hb.source(), now()).await? {
+                notify::send(c, &ev, base_url).await?;
+            }
             store::delete(c, project_id, id).await?;
         }
         Ok(())
@@ -197,9 +199,13 @@ pub enum PingOutcome {
 pub struct Ping<'a> {
     pub token: &'a str,
     pub kind: PingKind,
-    pub source_ip: Option<String>,
+    pub source_ip: Option<std::net::IpAddr>,
     pub cause: Option<String>,
 }
+
+/// Unknown-token pings allowed per minute from one IP before 429. A real job never misses;
+/// a scanner does, and each miss costs a lookup.
+const MISSES_PER_MIN: u32 = 60;
 
 /// AC-13.02: over `rl_ping_per_s` a ping is refused, and the ping already counted this second
 /// keeps the heartbeat alive. `/fail` has its own bucket, so a job that pings and then fails in
@@ -210,9 +216,14 @@ pub async fn accept_ping(
     base_url: &str,
     p: Ping<'_>,
 ) -> anyhow::Result<PingOutcome> {
+    let miss_key = format!("pingmiss:{}", rate_limit::ip_key(p.source_ip));
+    if let Verdict::Deny(retry) = limiter.over(&miss_key, MISSES_PER_MIN, 60, now()) {
+        return Ok(PingOutcome::Limited(retry));
+    }
     let (hb, limit) = {
         let conn = db.read().await?;
         let Some(hb) = store::find_by_token(&conn, p.token).await? else {
+            limiter.hit(&miss_key, MISSES_PER_MIN, 60, now());
             return Ok(PingOutcome::UnknownToken);
         };
         (hb, settings::get_or(&conn, "rl_ping_per_s", 1).await)
@@ -225,8 +236,12 @@ pub async fn accept_ping(
     if let Verdict::Deny(retry) = limiter.hit(&bucket, limit, 1, now()) {
         return Ok(PingOutcome::Limited(retry));
     }
-    record_ping(db, base_url, &hb, p.kind, p.source_ip, p.cause).await?;
-    Ok(PingOutcome::Accepted)
+    let source_ip = p.source_ip.map(|ip| ip.to_string());
+    if record_ping(db, base_url, &hb, p.kind, source_ip, p.cause).await? {
+        Ok(PingOutcome::Accepted)
+    } else {
+        Ok(PingOutcome::UnknownToken)
+    }
 }
 
 /// AC-13.01, AC-14.01, AC-17.03, AC-18.01. An OK ping pushes the deadline out and closes an
@@ -238,7 +253,7 @@ async fn record_ping(
     kind: PingKind,
     source_ip: Option<String>,
     cause: Option<String>,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<bool> {
     let t = now();
     let signal = match kind {
         PingKind::Ok => Signal::Ping,
@@ -249,11 +264,15 @@ async fn record_ping(
         },
     };
     db.write(async |c| {
+        // The heartbeat may have been deleted since the lookup; that is a 404, not a 500.
+        if !store::exists(c, hb.id).await? {
+            return Ok(false);
+        }
         store::insert_ping(c, hb.id, kind, source_ip.as_deref(), cause.as_deref(), t).await?;
         if let Some(ev) = incidents::observe(c, &hb.source(), &signal, t).await? {
             notify::send(c, &ev, base_url).await?;
         }
-        Ok(())
+        Ok(true)
     })
     .await
 }

@@ -69,3 +69,39 @@ async fn a_failed_webhook_never_stores_its_url() {
     assert!(!error.is_empty());
     assert!(!error.contains("secret-token"), "{error}");
 }
+
+#[tokio::test]
+async fn a_delivery_pass_sends_five_messages_at_once() {
+    let hits = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let sink = Router::new()
+        .route(
+            "/hook",
+            post(
+                |axum::extract::State(h): axum::extract::State<
+                    std::sync::Arc<std::sync::atomic::AtomicUsize>,
+                >| async move {
+                    tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+                    h.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                },
+            ),
+        )
+        .with_state(hits.clone());
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    tokio::spawn(async move { axum::serve(listener, sink).await.unwrap() });
+    let app = TestApp::spawn("test").await;
+    let started = std::time::Instant::now();
+    for _ in 0..5 {
+        queue_webhook(&app, &format!("http://{addr}/hook")).await;
+    }
+    monita::notify::deliver_due(&app.state).await.unwrap();
+    while hits.load(std::sync::atomic::Ordering::SeqCst) < 5 {
+        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+    }
+    // The sink answers after 300 ms: one at a time would take 1.5 s.
+    assert!(
+        started.elapsed() < std::time::Duration::from_millis(1_000),
+        "{:?}",
+        started.elapsed()
+    );
+}

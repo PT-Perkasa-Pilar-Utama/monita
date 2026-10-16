@@ -150,11 +150,13 @@ fn compose(ev: &Event, project: &(String, String), base_url: &str) -> (String, C
             severity,
             duration_s,
             source_name,
+            deleted,
             ..
         } => {
             let url = format!("{base_url}/projects/{slug}/incidents/{incident_id}");
+            let how = if *deleted { "was deleted" } else { "is up" };
             let text = format!(
-                "[RESOLVED] {name} / {source_name} is up after {}",
+                "[RESOLVED] {name} / {source_name} {how} after {}",
                 time::duration(*duration_s)
             );
             (
@@ -251,6 +253,11 @@ pub async fn send_test(
         Ok(n)
     })
     .await
+}
+
+/// Read-only: is any outbox row due at `at`? The scheduler asks before it spawns a delivery pass.
+pub async fn any_due(c: &Connection, at: i64) -> anyhow::Result<bool> {
+    store::any_due(c, at).await
 }
 
 pub fn spawn_delivery(state: &AppState, running: &Arc<AtomicBool>) {

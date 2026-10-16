@@ -43,6 +43,31 @@ impl Limiter {
         entry.1 += 1;
         Verdict::Allow
     }
+
+    /// Like `hit`, but counts nothing: is `key` already at `limit` in the current window?
+    pub fn over(&self, key: &str, limit: u32, window_s: i64, now: i64) -> Verdict {
+        let window_start = now - now.rem_euclid(window_s);
+        let w = self.windows.lock().expect("rate limit lock");
+        match w.by_key.get(key) {
+            Some(&(start, n)) if start == window_start && n >= limit => {
+                Verdict::Deny((window_start + window_s - now).max(1))
+            }
+            _ => Verdict::Allow,
+        }
+    }
+}
+
+/// The bucket name for a caller's IP. IPv6 is keyed on its /64: one host owns the whole prefix
+/// and could otherwise rotate addresses past every per-IP limit.
+pub fn ip_key(ip: Option<std::net::IpAddr>) -> String {
+    match ip {
+        Some(std::net::IpAddr::V6(v6)) => {
+            let prefix = u128::from(v6) & (u128::MAX << 64);
+            format!("{}/64", std::net::Ipv6Addr::from(prefix))
+        }
+        Some(v4) => v4.to_string(),
+        None => "unknown".into(),
+    }
 }
 
 /// Paths limited per client IP (SEC-12): public pages, sign-in, public and ticket APIs.
@@ -85,8 +110,11 @@ pub async fn per_ip(
         .extensions()
         .get::<axum::extract::ConnectInfo<std::net::SocketAddr>>()
         .map(|c| c.0);
-    let ip = super::client_ip(req.headers(), peer, state.config.trust_proxy)
-        .map_or_else(|| "unknown".to_string(), |ip| ip.to_string());
+    let ip = ip_key(super::client_ip(
+        req.headers(),
+        peer,
+        state.config.trust_proxy,
+    ));
     let limit = match state.db.read().await {
         Ok(c) => super::settings::get_or(&c, "rl_ip_per_min", 60).await,
         Err(e) => {
@@ -130,5 +158,27 @@ mod tests {
         }
         l.hit("ip:new", 60, 60, 181);
         assert_eq!(l.windows.lock().unwrap().by_key.len(), 1);
+    }
+
+    #[test]
+    fn ipv6_callers_share_a_bucket_per_64() {
+        let a = ip_key(Some("2001:db8:1:2::1".parse().unwrap()));
+        let b = ip_key(Some("2001:db8:1:2:ffff::9".parse().unwrap()));
+        let other = ip_key(Some("2001:db8:1:3::1".parse().unwrap()));
+        assert_eq!(a, b);
+        assert_ne!(a, other);
+        assert_eq!(ip_key(Some("10.0.0.1".parse().unwrap())), "10.0.0.1");
+    }
+
+    #[test]
+    fn over_reports_a_full_window_without_counting() {
+        let l = Limiter::default();
+        assert!(matches!(l.over("k", 1, 60, 120), Verdict::Allow));
+        l.hit("k", 1, 60, 120);
+        assert!(matches!(l.over("k", 1, 60, 130), Verdict::Deny(50)));
+        assert!(
+            matches!(l.over("k", 1, 60, 180), Verdict::Allow),
+            "new window"
+        );
     }
 }

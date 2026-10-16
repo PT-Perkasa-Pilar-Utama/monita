@@ -60,30 +60,45 @@ pub fn spawn(state: AppState) -> JoinHandle<()> {
             // One read guard per tick, shared with the probes it starts (a second read could
             // queue behind a waiting reset and deadlock).
             let pass = Arc::new(state.gate.clone().read_owned().await);
-            // One read connection serves the tick's three cheap checks.
+            // One read connection serves the tick's cheap checks. `healthy` is false when any
+            // database step failed, and then the peer is not told Monita is alive.
+            let mut healthy = false;
             match state.db.read().await {
                 Ok(conn) => {
                     // A primary-key read; a changed cap applies on the next tick.
                     cap = resize(&conn, &slots, cap).await;
+                    healthy = true;
                     if let Err(e) = run_due_monitors(&state, &conn, &slots, &pass).await {
                         tracing::error!(error = %e, "scheduler: monitor pass failed");
+                        healthy = false;
                     }
                     let base_url = &state.config.base_url;
                     if let Err(e) =
                         super::heartbeat::sweep_missed(&state.db, &conn, base_url, now()).await
                     {
                         tracing::error!(error = %e, "scheduler: heartbeat sweep failed");
+                        healthy = false;
+                    }
+                    match crate::notify::any_due(&conn, now()).await {
+                        Ok(true) => crate::notify::spawn_delivery(&state, &delivering),
+                        Ok(false) => {}
+                        Err(e) => {
+                            tracing::error!(error = %e, "scheduler: outbox check failed");
+                            healthy = false;
+                        }
                     }
                 }
                 Err(e) => tracing::error!(error = %e, "scheduler: no read connection this tick"),
             }
-            crate::notify::spawn_delivery(&state, &delivering);
             // Daily jobs have minute precision at best; tick 0 checks them at start.
             if ticks.is_multiple_of(60) {
                 crate::platform::jobs::spawn_daily(&state, &daily);
             }
             ticks += 1;
-            if state.config.ping_url.is_some() && now() - last_peer_ping >= PEER_PING_EVERY_S {
+            if healthy
+                && state.config.ping_url.is_some()
+                && now() - last_peer_ping >= PEER_PING_EVERY_S
+            {
                 last_peer_ping = now();
                 spawn_peer_ping(&state);
             }

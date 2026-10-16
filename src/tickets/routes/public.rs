@@ -31,9 +31,17 @@ impl ReportPage {
     }
 }
 
+#[derive(Deserialize, Default)]
+#[serde(default)]
+pub(super) struct Created {
+    created: Option<String>,
+}
+
+/// After a submit the form redirects here with `?created=<number>`, so a reload never resubmits.
 pub(super) async fn report_form(
     State(state): State<AppState>,
     Path(slug): Path<String>,
+    axum::extract::Query(q): axum::extract::Query<Created>,
 ) -> Result<Response, PageError> {
     let project = public_project(&state, &slug).await?;
     Ok(render(&ReportPage {
@@ -43,7 +51,7 @@ pub(super) async fn report_form(
         description: String::new(),
         page_url: String::new(),
         error: String::new(),
-        created: None,
+        created: q.created.and_then(|n| n.parse().ok()),
     }))
 }
 
@@ -88,10 +96,11 @@ pub(super) async fn report_submit(
     )
     .await
     {
-        Ok(c) => {
-            page.created = Some(c.number);
-            Ok(render(&page))
-        }
+        Ok(c) => Ok(Redirect::to(&format!(
+            "/status/{}/report?created={}",
+            page.project.slug, c.number
+        ))
+        .into_response()),
         Err(TicketError::Other(e)) => Err(e.into()),
         Err(e) => {
             let status = if matches!(e, TicketError::DailyCap) {
@@ -205,10 +214,8 @@ pub(super) async fn public_board(
 ) -> Result<Response, PageError> {
     let project = public_project(&state, &slug).await?;
     let tickets = crate::tickets::public_board(&state.db, project.id).await?;
-    let mut res = render(&BoardPage { project, tickets });
-    res.headers_mut().insert(
-        header::CACHE_CONTROL,
-        HeaderValue::from_static("public, max-age=30"),
-    );
-    Ok(res)
+    Ok(crate::platform::render::public_cache(render(&BoardPage {
+        project,
+        tickets,
+    })))
 }

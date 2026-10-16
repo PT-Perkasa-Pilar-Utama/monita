@@ -35,8 +35,13 @@ pub async fn run(db: &Db, now: i64) -> anyhow::Result<()> {
     }
     let raw_cutoff = now - RAW_KEEP_S;
     let outbox_cutoff = now - OUTBOX_KEEP_S;
+    // Small transactions: checks and pings queue on the one writer while each runs.
+    while db
+        .write(async |c| store::sweep_chunk(c, raw_cutoff).await)
+        .await?
+        > 0
+    {}
     db.write(async |c| {
-        store::sweep(c, raw_cutoff).await?;
         crate::notify::purge_delivered(c, outbox_cutoff).await?;
         crate::accounts::purge_expired(c, now).await
     })

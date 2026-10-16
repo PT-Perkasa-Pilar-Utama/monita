@@ -166,6 +166,38 @@ async fn rollup_summarizes_old_days_before_the_sweep_deletes_raw_rows() {
 }
 
 #[tokio::test]
+async fn the_sweep_deletes_more_than_one_chunk_of_old_rows() {
+    let app = TestApp::spawn("test").await;
+    let tl = app.tl("rina@x.co").await;
+    app.post_form("/projects", &[("name", "P"), ("slug", "pp")], Some(&tl))
+        .await;
+    let t = now();
+    app.state
+        .db
+        .write(async |c| {
+            c.execute(
+                "INSERT INTO monitors (id, project_id, name, url, next_check_at) VALUES (1, 1, 'API', 'https://x.invalid/', 9999999999)",
+                (),
+            )
+            .await?;
+            for i in 0..12_000 {
+                c.execute(
+                    "INSERT INTO check_results (monitor_id, checked_at, ok) VALUES (1, ?1, 1)",
+                    [t - 30 * 86_400 + i],
+                )
+                .await?;
+            }
+            Ok(())
+        })
+        .await
+        .unwrap();
+    monita::checks::retention::run(&app.state.db, t)
+        .await
+        .unwrap();
+    assert_eq!(count(&app, "SELECT count(*) FROM check_results").await, 0);
+}
+
+#[tokio::test]
 async fn nightly_backup_is_a_readable_copy_and_old_ones_are_pruned() {
     // AC-33.01
     let dir = tempfile::tempdir().unwrap();
@@ -218,6 +250,10 @@ async fn nightly_backup_is_a_readable_copy_and_old_ones_are_pruned() {
             .await
             .unwrap()
             .is_some()
+    );
+    assert!(
+        !dir.path().join(".partial").exists(),
+        "the private staging folder is gone"
     );
 }
 

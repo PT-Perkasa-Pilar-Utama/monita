@@ -279,7 +279,7 @@ async fn delete(
     Path((slug, id)): Path<(String, i64)>,
 ) -> Result<Response, PageError> {
     let project = projects::find_for(&state.db, &user, &slug).await?;
-    super::delete_monitor(&state.db, project.id, id).await?;
+    super::delete_monitor(&state.db, &state.config.base_url, project.id, id).await?;
     Ok(Redirect::to(&format!("/projects/{slug}/monitors")).into_response())
 }
 
@@ -290,7 +290,7 @@ struct DetailPage {
     project: Project,
     monitor: Monitor,
     checks: Vec<CheckRow>,
-    older: Option<i64>,
+    older: Option<String>,
     incident: Option<ItemState>,
 }
 
@@ -330,10 +330,14 @@ async fn detail(
     let monitor = super::find_monitor(&state.db, project.id, id)
         .await?
         .ok_or(PageError::NotFound)?;
-    let before = paging.before.and_then(|b| b.parse().ok());
+    // `checked_at.id`: two checks can share a second, so the time alone would skip one.
+    let before = paging.before.and_then(|b| {
+        let (t, id) = b.split_once('.')?;
+        Some((t.parse().ok()?, id.parse().ok()?))
+    });
     let checks = super::recent_checks(&state.db, id, before, PAGE).await?;
     let older = (checks.len() as i64 == PAGE)
-        .then(|| checks.last().map(|c| c.checked_at))
+        .then(|| checks.last().map(|c| format!("{}.{}", c.checked_at, c.id)))
         .flatten();
     let incident = incidents::states_for(&state.db, project.id)
         .await?

@@ -239,7 +239,7 @@ async fn delete(
     Path((slug, id)): Path<(String, i64)>,
 ) -> Result<Response, PageError> {
     let project = projects::find_for(&state.db, &user, &slug).await?;
-    heartbeat::delete(&state.db, project.id, id).await?;
+    heartbeat::delete(&state.db, &state.config.base_url, project.id, id).await?;
     Ok(Redirect::to(&format!("/projects/{slug}/heartbeats")).into_response())
 }
 
@@ -313,7 +313,7 @@ async fn ping(
     let ping = heartbeat::Ping {
         token,
         kind,
-        source_ip: client_ip(headers, peer, state.config.trust_proxy).map(|ip| ip.to_string()),
+        source_ip: client_ip(headers, peer, state.config.trust_proxy),
         cause,
     };
     match heartbeat::accept_ping(&state.db, &state.limiter, &state.config.base_url, ping).await {

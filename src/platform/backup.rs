@@ -14,13 +14,24 @@ pub async fn run(state: &AppState, now: i64) -> anyhow::Result<Option<PathBuf>> 
         "monita-{}.db",
         super::time::day(now).replace('-', "")
     ));
-    if file.exists() {
-        std::fs::remove_file(&file)?;
+    // SEC-18 during the copy too: VACUUM INTO creates the file with the process umask, so it is
+    // written inside a private folder, restricted, then moved into place.
+    let partial = dir.join(".partial");
+    if partial.exists() {
+        std::fs::remove_dir_all(&partial)?;
     }
-    state.db.vacuum_into(&file).await?;
-    remove_companions(&file)?;
-    restrict(&file)?;
-    prune(dir, state.config.backup_keep.max(1))?;
+    std::fs::create_dir(&partial)?;
+    restrict(&partial, 0o700)?;
+    let staged = partial.join("copy.db");
+    state.db.vacuum_into(&staged).await?;
+    remove_companions(&staged)?;
+    restrict(&staged, 0o600)?;
+    std::fs::rename(&staged, &file)?;
+    std::fs::remove_dir(&partial)?;
+    // The copy is good; a prune failure must not make the job redo it every 10 minutes.
+    if let Err(e) = prune(dir, state.config.backup_keep.max(1)) {
+        tracing::warn!(error = %e, "could not prune old backups");
+    }
     tracing::info!(file = %file.display(), "backup written");
     Ok(Some(file))
 }
@@ -37,13 +48,13 @@ fn remove_companions(file: &Path) -> std::io::Result<()> {
 }
 
 /// SEC-18: backups are readable by the service user only.
-fn restrict(file: &Path) -> std::io::Result<()> {
+fn restrict(path: &Path, mode: u32) -> std::io::Result<()> {
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(file, std::fs::Permissions::from_mode(0o600))?;
+        std::fs::set_permissions(path, std::fs::Permissions::from_mode(mode))?;
     }
-    let _ = file;
+    let _ = (path, mode);
     Ok(())
 }
 

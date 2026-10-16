@@ -167,12 +167,18 @@ pub async fn update_monitor(
         .await
 }
 
-/// Also closes the monitor's open incident.
-pub async fn delete_monitor(db: &Db, project_id: i64, id: i64) -> anyhow::Result<()> {
+/// Also closes the monitor's open incident and alerts that it ended.
+pub async fn delete_monitor(
+    db: &Db,
+    base_url: &str,
+    project_id: i64,
+    id: i64,
+) -> anyhow::Result<()> {
     db.write(async |c| {
-        if store::find_monitor(c, project_id, id).await?.is_some() {
-            crate::incidents::source_deleted(c, crate::incidents::SourceKind::Monitor, id, now())
-                .await?;
+        if let Some(m) = store::find_monitor(c, project_id, id).await? {
+            if let Some(ev) = crate::incidents::source_deleted(c, &m.source(), now()).await? {
+                crate::notify::send(c, &ev, base_url).await?;
+            }
             store::delete_monitor(c, project_id, id).await?;
         }
         Ok(())
@@ -221,7 +227,7 @@ pub async fn find_monitor(db: &Db, project_id: i64, id: i64) -> anyhow::Result<O
 pub async fn recent_checks(
     db: &Db,
     monitor_id: i64,
-    before: Option<i64>,
+    before: Option<(i64, i64)>,
     limit: i64,
 ) -> anyhow::Result<Vec<CheckRow>> {
     let since = now() - 7 * 86_400;
@@ -229,7 +235,7 @@ pub async fn recent_checks(
         &db.read().await?,
         monitor_id,
         since,
-        before.unwrap_or(i64::MAX),
+        before.unwrap_or((i64::MAX, i64::MAX)),
         limit,
     )
     .await

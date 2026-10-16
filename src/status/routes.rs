@@ -24,14 +24,6 @@ pub fn router() -> Router<AppState> {
         .route("/api/v1/public/status/{slug}", get(json))
 }
 
-fn public_cache(mut res: Response) -> Response {
-    res.headers_mut().insert(
-        header::CACHE_CONTROL,
-        HeaderValue::from_static("public, max-age=30"),
-    );
-    res
-}
-
 #[derive(Deserialize)]
 struct DaysQuery {
     days: Option<String>,
@@ -54,9 +46,9 @@ async fn json(
         }
     };
     let mut res = match super::load(&state.db, &slug, days).await {
-        Ok(Some(status)) => {
-            public_cache(Json(serde_json::json!({ "data": status })).into_response())
-        }
+        Ok(Some(status)) => crate::platform::render::public_cache(
+            Json(serde_json::json!({ "data": status })).into_response(),
+        ),
         Ok(None) => api_error(
             StatusCode::NOT_FOUND,
             "not_found",
@@ -153,5 +145,7 @@ async fn page(
     let status = super::load(&state.db, &slug, DAYS)
         .await?
         .ok_or(PageError::NotFound)?;
-    Ok(public_cache(render(&Page { status })))
+    Ok(crate::platform::render::public_cache(render(&Page {
+        status,
+    })))
 }

@@ -2,7 +2,7 @@
    Parameters start with m_ because askama binds arguments by name: a caller variable with the
    same name as a parameter would read the parameter instead. #}
 
-{% macro icon(m_name) %}<svg class="icon" aria-hidden="true"><use href="/static/icons.svg?v={{ crate::platform::assets::ASSET_VERSION }}#i-{{ m_name }}"/></svg>{% endmacro %}
+{% macro icon(m_name) %}<svg class="icon" aria-hidden="true"><use href="{{ crate::platform::assets::url("icons.svg") }}#i-{{ m_name }}"/></svg>{% endmacro %}
 
 {% macro st(m_kind) %}<span class="st st--{{ m_kind }}"></span>{% endmacro %}
 

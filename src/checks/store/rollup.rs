@@ -79,13 +79,19 @@ pub async fn upsert_summary(
     Ok(())
 }
 
-pub async fn sweep(c: &Connection, raw_cutoff: i64) -> anyhow::Result<()> {
-    c.execute(
-        "DELETE FROM check_results WHERE checked_at < ?1",
-        [raw_cutoff],
-    )
-    .await?;
-    c.execute("DELETE FROM pings WHERE received_at < ?1", [raw_cutoff])
+/// Deletes up to 5 000 raw rows of each table older than `raw_cutoff`. Returns how many went.
+pub async fn sweep_chunk(c: &Connection, raw_cutoff: i64) -> anyhow::Result<u64> {
+    let results = c
+        .execute(
+            "DELETE FROM check_results WHERE rowid IN (SELECT rowid FROM check_results WHERE checked_at < ?1 LIMIT 5000)",
+            [raw_cutoff],
+        )
         .await?;
-    Ok(())
+    let pings = c
+        .execute(
+            "DELETE FROM pings WHERE rowid IN (SELECT rowid FROM pings WHERE received_at < ?1 LIMIT 5000)",
+            [raw_cutoff],
+        )
+        .await?;
+    Ok(results + pings)
 }

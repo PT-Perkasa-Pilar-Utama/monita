@@ -446,6 +446,58 @@ async fn a_passing_check_on_a_healthy_monitor_writes_no_incident_state() {
 }
 
 #[tokio::test]
+async fn older_checks_keep_rows_that_share_a_second() {
+    let app = TestApp::spawn("test").await;
+    let tl = tl_project(&app).await;
+    let t = monita::platform::now() - 60;
+    app.state
+        .db
+        .write(async |c| {
+            c.execute(
+                "INSERT INTO monitors (id, project_id, name, url, next_check_at) VALUES (1, 1, 'API', 'https://x.invalid/', 9999999999)",
+                (),
+            )
+            .await?;
+            for _ in 0..101 {
+                c.execute(
+                    "INSERT INTO check_results (monitor_id, checked_at, ok, error) VALUES (1, ?1, 0, 'row')",
+                    [t],
+                )
+                .await?;
+            }
+            Ok(())
+        })
+        .await
+        .unwrap();
+    let first = app
+        .get("/projects/payments/monitors/1", Some(&tl))
+        .await
+        .text()
+        .await
+        .unwrap();
+    assert_eq!(first.matches(">row<").count(), 100);
+    let link = first
+        .split("href=\"?before=")
+        .nth(1)
+        .and_then(|s| s.split('"').next())
+        .expect("an older-checks link");
+    let second = app
+        .get(
+            &format!("/projects/payments/monitors/1?before={link}"),
+            Some(&tl),
+        )
+        .await
+        .text()
+        .await
+        .unwrap();
+    assert_eq!(
+        second.matches(">row<").count(),
+        1,
+        "the 101st check is not skipped"
+    );
+}
+
+#[tokio::test]
 async fn another_project_cannot_open_a_monitor_by_id() {
     let app = TestApp::spawn("test").await;
     tl_project(&app).await;

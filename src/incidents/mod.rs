@@ -76,6 +76,8 @@ pub enum Event {
         source_name: String,
         severity: String,
         duration_s: i64,
+        /// The source was deleted while down, so "up" would be wrong.
+        deleted: bool,
     },
 }
 
@@ -124,7 +126,7 @@ pub async fn observe(
         Some(Effect::Resolve) => match open_id {
             Some(id) => {
                 // The opened alert went to the incident's severity; the source's may have changed since.
-                let (started, severity) = store::resolve_auto(c, id, now).await?;
+                let (started, severity) = store::resolve_auto(c, id, None, now).await?;
                 opened = None;
                 Some(Event::Resolved {
                     incident_id: id,
@@ -132,6 +134,7 @@ pub async fn observe(
                     source_name: source.name.clone(),
                     severity,
                     duration_s: now - started,
+                    deleted: false,
                 })
             }
             None => {
@@ -149,17 +152,30 @@ pub async fn observe(
 }
 
 /// A deleted monitor or heartbeat closes its open automatic incident, so nothing stays open forever.
+/// Returns the resolved event for the open incident, so whoever got "opened" also hears the end.
 pub async fn source_deleted(
     c: &Connection,
-    kind: SourceKind,
-    id: i64,
+    source: &Source,
     now: i64,
-) -> anyhow::Result<()> {
-    let (_, open_id) = store::load_source(c, kind, id).await?;
-    if let Some(incident) = open_id {
-        store::resolve_with(c, incident, "The monitor or heartbeat was deleted.", now).await?;
-    }
-    store::forget_source(c, kind, id).await
+) -> anyhow::Result<Option<Event>> {
+    let (_, open_id) = store::load_source(c, source.kind, source.id).await?;
+    let event = match open_id {
+        Some(id) => {
+            let message = "The monitor or heartbeat was deleted.";
+            let (started, severity) = store::resolve_auto(c, id, Some(message), now).await?;
+            Some(Event::Resolved {
+                incident_id: id,
+                project_id: source.project_id,
+                source_name: source.name.clone(),
+                severity,
+                duration_s: now - started,
+                deleted: true,
+            })
+        }
+        None => None,
+    };
+    store::forget_source(c, source.kind, source.id).await?;
+    Ok(event)
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

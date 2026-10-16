@@ -88,8 +88,9 @@ pub fn router(state: AppState) -> Router {
 
 pub async fn serve(config: Config) -> anyhow::Result<()> {
     let bind = config.bind;
-    let (router, state) = build(config).await?;
+    // Bind first: a second instance on a taken port must fail before its loops touch the DB.
     let listener = TcpListener::bind(bind).await?;
+    let (router, state) = build(config).await?;
     tracing::info!(%bind, "monita listening");
     axum::serve(
         listener,
@@ -97,11 +98,10 @@ pub async fn serve(config: Config) -> anyhow::Result<()> {
     )
     .with_graceful_shutdown(shutdown_signal())
     .await?;
-    // Spec 13.4: the held write guard also stops the scheduler, whose next tick waits behind it.
-    if drain(&state.gate, std::time::Duration::from_secs(10))
-        .await
-        .is_none()
-    {
+    // Spec 13.4: the write guard stops the scheduler, whose next tick waits behind it, so it must
+    // stay held until the process exits.
+    let held = drain(&state.gate, std::time::Duration::from_secs(10)).await;
+    if held.is_none() {
         tracing::warn!("background work still running after 10 s; exiting anyway");
     }
     Ok(())
@@ -119,14 +119,23 @@ pub async fn drain(
 }
 
 async fn shutdown_signal() {
+    // A handler that cannot be installed must wait forever, not end the server at start.
     let ctrl_c = async {
-        let _ = tokio::signal::ctrl_c().await;
+        if let Err(e) = tokio::signal::ctrl_c().await {
+            tracing::error!(error = %e, "no Ctrl-C handler");
+            std::future::pending::<()>().await;
+        }
     };
     #[cfg(unix)]
     let term = async {
-        if let Ok(mut s) = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
-        {
-            s.recv().await;
+        match tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()) {
+            Ok(mut s) => {
+                s.recv().await;
+            }
+            Err(e) => {
+                tracing::error!(error = %e, "no SIGTERM handler");
+                std::future::pending::<()>().await;
+            }
         }
     };
     #[cfg(not(unix))]
@@ -148,7 +157,12 @@ mod tests {
             tokio::time::sleep(Duration::from_millis(100)).await;
             drop(running);
         });
-        assert!(drain(&gate, Duration::from_secs(2)).await.is_some());
+        let held = drain(&gate, Duration::from_secs(2)).await;
+        assert!(held.is_some());
+        assert!(
+            gate.try_read().is_err(),
+            "nothing new starts while the guard is held"
+        );
 
         let gate: Arc<tokio::sync::RwLock<()>> = Arc::default();
         let _stuck = gate.clone().read_owned().await;
