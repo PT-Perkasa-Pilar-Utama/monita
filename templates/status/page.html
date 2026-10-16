@@ -1,0 +1,45 @@
+{% extends "layout/public.html" %}
+{% import "ui/macros.html" as ui %}
+{% block title %}{{ status.project.name }} status{% endblock %}
+{% block content %}
+<header class="stack stack--sm">
+  <span class="cap">Status</span>
+  <h1>{{ status.project.name }}</h1>
+</header>
+<div class="headline">{% call ui::st(status.overall) %}{% endcall %}{{ self.headline() }}</div>
+
+{% if status.items.is_empty() %}
+  <p class="muted">This project has no public monitors yet.</p>
+{% else %}
+<section class="stack" aria-label="Systems">
+  {% for i in status.items %}
+  <div class="stack stack--sm">
+    <div class="row row--between"><span class="row">{% call ui::state(i.state, self.state_word(i)) %}{% endcall %}<strong>{{ i.name }}</strong></span><span class="cap">{{ self.uptime(i) }}</span></div>
+    <div class="uptime">
+      <div class="uptime__bars">{% for d in i.days %}<span class="{{ self.bar_class(d) }}" title="{{ self.bar_title(d) }}"></span>{% endfor %}</div>
+      <div class="uptime__legend"><span class="cap">90 days ago</span><span class="cap">Today</span></div>
+    </div>
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
+
+<section class="stack" aria-label="Incidents">
+  <h2>Incidents</h2>
+  {% if status.incidents.is_empty() %}
+    <p class="muted">No incidents in the last 90 days.</p>
+  {% endif %}
+  {% for inc in status.incidents %}
+  <article class="stack stack--sm">
+    <div class="stack stack--sm"><strong>{{ inc.title }}</strong><span class="cap">{{ self.when(inc) }} · {{ inc.items.join(", ") }}</span></div>
+    <ol class="timeline">
+      {% for u in inc.updates %}
+      <li class="timeline__item"><span class="st st--{% if u.label == "resolved" %}up{% else if u.label == "investigating" %}down{% else if u.label == "identified" %}progress{% else %}done{% endif %} timeline__mark"></span>
+        <div class="timeline__body"><div class="timeline__meta">{% call ui::chip(u.label, self.label(u.label)) %}{% endcall %}<span class="cap">{{ self.hhmm(u.at) }}</span></div><span class="timeline__text">{{ u.message }}</span></div>
+      </li>
+      {% endfor %}
+    </ol>
+  </article>
+  {% endfor %}
+</section>
+{% endblock %}

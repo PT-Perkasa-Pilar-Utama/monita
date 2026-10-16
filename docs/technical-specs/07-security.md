@@ -39,6 +39,7 @@
 | SEC-17 | Reset endpoint | Registered only when `MONITA_ENV` is `dev` or `test`. Enforced at route registration, not by authorization. In prod the path returns 404. |
 | SEC-18 | Data at rest | The DB file and backups have mode 0600 and belong to the `monita` user. |
 | SEC-19 | Request limits | Body limit 64 KB on forms and JSON. Ticket description at most 10 000 chars. |
+| SEC-21 | Status page privacy | Public pages and JSON never show an update's author, and show Monita's own detection entry as `Detected.` without its cause, which can name internal hosts. Incidents and their item lists are cut to public items. |
 | SEC-20 | Logs | No passwords, tokens, keys or ticket descriptions in logs. Tokens appear as their first 6 chars at most. |
 
 ## 7.3 Operational endpoints

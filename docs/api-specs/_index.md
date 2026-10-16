@@ -19,11 +19,11 @@ Legend: `OK` implemented and tested, `WIP` in progress, `TODO` not started, `SCA
 | `POST /api/v1/ref-ids` | [08](08-tickets.md#81-post-apiv1ref-ids) | OK |
 | `POST /api/v1/tickets` | [08](08-tickets.md#82-post-apiv1tickets) | TODO |
 | `GET /api/v1/tickets/mine` | [08](08-tickets.md#83-get-apiv1ticketsmine) | TODO |
-| `GET /api/v1/public/status/{slug}` | [07](07-status.md#71-get-apiv1publicstatusslug) | TODO |
+| `GET /api/v1/public/status/{slug}` | [07](07-status.md#71-get-apiv1publicstatusslug) | OK |
 | `GET, HEAD, POST /ping/{token}` | [04](04-checks.md#41-get-head-post-pingtoken) | OK |
 | `GET, HEAD, POST /ping/{token}/fail` | [04](04-checks.md#42-get-head-post-pingtokenfail) | OK |
 | `GET /healthz` | [09](09-system.md#91-get-healthz) | OK |
-| `POST /admin/reset-state` | [09](09-system.md#92-post-adminreset-state) | WIP (token auth only; session auth with US-03) |
+| `POST /admin/reset-state` | [09](09-system.md#92-post-adminreset-state) | OK (header token in dev and test; the session option is not built) |
 
 ### HTML routes
 
@@ -34,7 +34,7 @@ Legend: `OK` implemented and tested, `WIP` in progress, `TODO` not started, `SCA
 | Monitors, heartbeats | [04](04-checks.md#43-html-routes) | OK |
 | Incidents | [05](05-incidents.md) | OK |
 | Alert routes | [06](06-notify.md) | OK |
-| Status page | [07](07-status.md#72-html-routes) | TODO |
+| Status page | [07](07-status.md#72-html-routes) | OK |
 | Tickets kanban, public board, ticket form | [08](08-tickets.md#84-html-routes) | TODO |
 
 ## Files in This Directory

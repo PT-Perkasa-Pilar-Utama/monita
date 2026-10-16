@@ -19,16 +19,28 @@ pub struct TestApp {
 
 impl TestApp {
     pub async fn spawn(env: &str) -> Self {
+        Self::spawn_with(env, &[]).await
+    }
+
+    /// `extra` sets more `MONITA_*` variables, for example the backup folder.
+    pub async fn spawn_with(env: &str, extra: &[(&str, &str)]) -> Self {
         let dir = tempfile::tempdir().unwrap();
         let db = dir.path().join("monita.db").to_str().unwrap().to_string();
         let env = env.to_string();
+        let extra: Vec<(String, String)> = extra
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect();
         let config = Config::from_lookup(|k| match k {
             "MONITA_ENV" => Some(env.clone()),
             "MONITA_BIND" => Some("127.0.0.1:0".into()),
             "MONITA_BASE_URL" => Some(BASE_URL.into()),
             "MONITA_DB_PATH" => Some(db.clone()),
             "MONITA_RESET_TOKEN" => Some(RESET_TOKEN.into()),
-            _ => None,
+            other => extra
+                .iter()
+                .find(|(key, _)| key == other)
+                .map(|(_, v)| v.clone()),
         })
         .unwrap();
         let (router, state) = monita::app::build_with(config, Mailer::memory())

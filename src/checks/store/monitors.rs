@@ -18,6 +18,7 @@ pub struct Monitor {
     pub is_public: bool,
     pub next_check_at: i64,
     pub last: Option<CheckRow>,
+    pub created_at: i64,
 }
 
 impl Monitor {
@@ -64,7 +65,7 @@ pub struct CheckRow {
     pub error: Option<String>,
 }
 
-const COLS: &str = "m.id, m.project_id, m.name, m.url, m.interval_s, m.timeout_ms, m.expected_status, m.keyword, m.skip_tls_verify, m.severity, m.is_public, m.next_check_at, c.checked_at, c.ok, c.status_code, c.latency_ms, c.error";
+const COLS: &str = "m.id, m.project_id, m.name, m.url, m.interval_s, m.timeout_ms, m.expected_status, m.keyword, m.skip_tls_verify, m.severity, m.is_public, m.next_check_at, c.checked_at, c.ok, c.status_code, c.latency_ms, c.error, m.created_at";
 const FROM: &str = "FROM monitors m LEFT JOIN check_results c ON c.id = (SELECT id FROM check_results WHERE monitor_id = m.id ORDER BY checked_at DESC, id DESC LIMIT 1)";
 
 fn monitor(r: &turso::Row) -> turso::Result<Monitor> {
@@ -92,6 +93,7 @@ fn monitor(r: &turso::Row) -> turso::Result<Monitor> {
         is_public: r.get::<i64>(10)? == 1,
         next_check_at: r.get(11)?,
         last,
+        created_at: r.get(17)?,
     })
 }
 

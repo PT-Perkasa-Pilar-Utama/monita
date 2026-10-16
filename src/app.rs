@@ -65,6 +65,7 @@ pub fn router(state: AppState) -> Router {
         .merge(crate::checks::heartbeat_routes::router())
         .merge(crate::incidents::routes::router())
         .merge(crate::notify::routes::router())
+        .merge(crate::status::routes::router())
         .merge(crate::platform::limits::router());
 
     // SEC-17: the route does not exist in prod. Registration is the control, not authorization.
@@ -73,6 +74,10 @@ pub fn router(state: AppState) -> Router {
     }
 
     r.layer(middleware::from_fn_with_state(
+        state.clone(),
+        crate::platform::rate_limit::per_ip,
+    ))
+    .layer(middleware::from_fn_with_state(
         state.clone(),
         headers::origin_check,
     ))

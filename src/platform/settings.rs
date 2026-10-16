@@ -45,3 +45,23 @@ pub async fn set(conn: &Connection, key: &str, value: i64) -> anyhow::Result<()>
     .await?;
     Ok(())
 }
+
+/// Internal bookkeeping such as `last_rollup_day`. Not in `KEYS`, so the limits page never shows it.
+pub async fn get_raw(conn: &Connection, key: &str) -> anyhow::Result<Option<String>> {
+    let mut rows = conn
+        .query("SELECT value FROM settings WHERE key = ?1", [key])
+        .await?;
+    Ok(match rows.next().await? {
+        Some(row) => Some(row.get::<String>(0)?),
+        None => None,
+    })
+}
+
+pub async fn set_raw(conn: &Connection, key: &str, value: &str) -> anyhow::Result<()> {
+    conn.execute(
+        "INSERT INTO settings (key, value) VALUES (?1, ?2) ON CONFLICT (key) DO UPDATE SET value = excluded.value",
+        (key, value),
+    )
+    .await?;
+    Ok(())
+}

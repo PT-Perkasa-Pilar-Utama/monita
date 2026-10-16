@@ -159,7 +159,7 @@ Both keep 7 days. See [13 section 13.6](13-check-scheduler.md).
 | downtime_s | INTEGER | From incidents that overlap the day |
 | avg_latency_ms | INTEGER NULL | Monitors only |
 
-Uptime % for a day = `1 - downtime_s / 86400`.
+Uptime % for a day = `1 - downtime_s / 86400`. The status page computes the same figure live from incidents; this table keeps the history after raw rows are swept (US-32). Daily-job bookkeeping (`last_rollup_day`, `last_backup_day`) lives in `settings` outside the limits page.
 
 ### 6.3.11 incidents, incident_items, incident_sources, status_updates
 

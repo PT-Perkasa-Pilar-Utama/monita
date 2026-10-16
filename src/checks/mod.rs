@@ -4,6 +4,7 @@
 pub mod heartbeat;
 pub mod heartbeat_routes;
 mod probe;
+pub mod retention;
 pub mod routes;
 pub mod scheduler;
 mod store;
@@ -105,6 +106,46 @@ pub fn valid_expected_status(s: &str) -> bool {
                 && ((p[1] == b'x' && p[2] == b'x')
                     || (p[1].is_ascii_digit() && p[2].is_ascii_digit()))
         })
+}
+
+/// A monitor or heartbeat marked public, for the status page (US-21).
+pub struct PublicItem {
+    pub kind: crate::incidents::SourceKind,
+    pub id: i64,
+    pub name: String,
+    pub created_at: i64,
+    /// False until the first check or ping: the page shows it as waiting.
+    pub seen: bool,
+}
+
+pub async fn public_items(db: &Db, project_id: i64) -> anyhow::Result<Vec<PublicItem>> {
+    use crate::incidents::SourceKind;
+    let mut out: Vec<PublicItem> = list_monitors(db, project_id)
+        .await?
+        .into_iter()
+        .filter(|m| m.is_public)
+        .map(|m| PublicItem {
+            kind: SourceKind::Monitor,
+            id: m.id,
+            seen: m.last.is_some(),
+            name: m.name,
+            created_at: m.created_at,
+        })
+        .collect();
+    out.extend(
+        heartbeat::list(db, project_id)
+            .await?
+            .into_iter()
+            .filter(|h| h.is_public)
+            .map(|h| PublicItem {
+                kind: SourceKind::Heartbeat,
+                id: h.id,
+                seen: h.last_ping_at.is_some(),
+                name: h.name,
+                created_at: h.created_at,
+            }),
+    );
+    Ok(out)
 }
 
 /// AC-09.01, AC-11.01: the first check lands at a random point inside the interval.

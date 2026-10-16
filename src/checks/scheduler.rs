@@ -19,9 +19,36 @@ use crate::{
     platform::{now, settings},
 };
 
+/// AC-34.03: tell the peer Monita (or an outside heartbeat) that this one is alive.
+const PEER_PING_EVERY_S: i64 = 60;
+
+fn spawn_peer_ping(state: &AppState) {
+    let Some(url) = state.config.ping_url.clone() else {
+        return;
+    };
+    let client = state.http.webhook().clone();
+    tokio::spawn(async move {
+        let sent = client
+            .get(&url)
+            .timeout(Duration::from_secs(10))
+            .send()
+            .await;
+        match sent {
+            Ok(r) if r.status().is_success() => {}
+            Ok(r) => tracing::warn!(
+                status = r.status().as_u16(),
+                "peer ping answered with an error"
+            ),
+            Err(e) => tracing::warn!(error = %e, "peer ping failed"),
+        }
+    });
+}
+
 pub fn spawn(state: AppState) -> JoinHandle<()> {
     tokio::spawn(async move {
         let delivering = Arc::new(AtomicBool::new(false));
+        let daily = Arc::new(AtomicBool::new(false));
+        let mut last_peer_ping = 0i64;
         let slots = Arc::new(Semaphore::new(0));
         let mut cap = 0usize;
         let mut tick = tokio::time::interval(Duration::from_secs(1));
@@ -43,6 +70,11 @@ pub fn spawn(state: AppState) -> JoinHandle<()> {
                 tracing::error!(error = %e, "scheduler: heartbeat sweep failed");
             }
             crate::notify::spawn_delivery(&state, &delivering);
+            crate::platform::jobs::spawn_daily(&state, &daily);
+            if state.config.ping_url.is_some() && now() - last_peer_ping >= PEER_PING_EVERY_S {
+                last_peer_ping = now();
+                spawn_peer_ping(&state);
+            }
         }
     })
 }

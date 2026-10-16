@@ -324,3 +324,71 @@ pub async fn states_for(
     }
     Ok(out)
 }
+
+/// (item, started_at, resolved_at) of automatic incidents still open or resolved after `since`.
+pub async fn auto_intervals(
+    c: &Connection,
+    project_id: i64,
+    since: i64,
+) -> anyhow::Result<Vec<(ItemRef, i64, Option<i64>)>> {
+    let mut rows = c
+        .query(
+            "SELECT it.source_kind, it.source_id, i.started_at, i.resolved_at FROM incidents i JOIN incident_items it ON it.incident_id = i.id
+             WHERE i.project_id = ?1 AND i.origin = 'auto' AND (i.resolved_at IS NULL OR i.resolved_at >= ?2)",
+            (project_id, since),
+        )
+        .await?;
+    let mut out = Vec::new();
+    while let Some(r) = rows.next().await? {
+        if let Some(kind) = SourceKind::parse(&r.get::<String>(0)?) {
+            out.push((
+                ItemRef {
+                    kind,
+                    id: r.get(1)?,
+                },
+                r.get(2)?,
+                r.get(3)?,
+            ));
+        }
+    }
+    Ok(out)
+}
+
+/// Incidents started since `since` or still open, newest first.
+pub async fn since(
+    c: &Connection,
+    project_id: i64,
+    since: i64,
+) -> anyhow::Result<Vec<IncidentRow>> {
+    let mut rows = c
+        .query(
+            format!("SELECT {COLS} FROM incidents i WHERE i.project_id = ?1 AND (i.started_at >= ?2 OR i.resolved_at IS NULL) ORDER BY i.started_at DESC LIMIT 200"),
+            (project_id, since),
+        )
+        .await?;
+    let mut out = Vec::new();
+    while let Some(r) = rows.next().await? {
+        out.push(row(&r)?);
+    }
+    Ok(out)
+}
+
+pub async fn source_intervals(
+    c: &Connection,
+    kind: SourceKind,
+    id: i64,
+    since: i64,
+) -> anyhow::Result<Vec<(i64, Option<i64>)>> {
+    let mut rows = c
+        .query(
+            "SELECT i.started_at, i.resolved_at FROM incidents i JOIN incident_items it ON it.incident_id = i.id
+             WHERE it.source_kind = ?1 AND it.source_id = ?2 AND i.origin = 'auto' AND (i.resolved_at IS NULL OR i.resolved_at >= ?3)",
+            (kind.as_str(), id, since),
+        )
+        .await?;
+    let mut out = Vec::new();
+    while let Some(r) = rows.next().await? {
+        out.push((r.get(0)?, r.get(1)?));
+    }
+    Ok(out)
+}

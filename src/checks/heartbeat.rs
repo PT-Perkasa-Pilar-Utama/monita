@@ -54,6 +54,7 @@ pub struct Heartbeat {
     pub last_ping_at: Option<i64>,
     pub deadline_at: Option<i64>,
     pub last_kind: Option<String>,
+    pub created_at: i64,
 }
 
 impl Heartbeat {

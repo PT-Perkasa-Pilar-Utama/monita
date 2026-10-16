@@ -28,7 +28,7 @@ AC-14.01 completed in Sprint 2 with US-17.
 5. US-19: Post a status update (TL)
 6. US-20: Open an incident by hand (TL)
 
-## Sprint 3: Public status
+## Sprint 3: Public status (done 2026-10-16)
 
 1. US-21: View a status page (Visitor)
 2. US-22: Read status data as JSON (Project developer)

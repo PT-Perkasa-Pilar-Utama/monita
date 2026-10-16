@@ -2,10 +2,12 @@
 //! Spec: docs/technical-specs/05-module-definitions.md section 5.8.
 
 pub mod assets;
+pub mod backup;
 pub mod config;
 pub mod db;
 pub mod headers;
 pub mod health;
+pub mod jobs;
 pub mod limits;
 pub mod migrate;
 pub mod page;

@@ -4,6 +4,7 @@
 //! transaction and pass the returned event to `notify::send` in that same transaction.
 
 pub mod engine;
+pub mod history;
 pub mod routes;
 mod store;
 

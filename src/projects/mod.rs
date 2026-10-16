@@ -216,6 +216,23 @@ impl FromRequestParts<AppState> for ApiProject {
                 ));
             }
         }
+        // SEC-12: per-key limit, read from settings on each call.
+        let limit = match state.db.read().await {
+            Ok(c) => crate::platform::settings::get(&c, "rl_key_per_min")
+                .await
+                .unwrap_or(120),
+            Err(_) => 120,
+        };
+        if let crate::platform::rate_limit::Verdict::Deny(retry) =
+            state
+                .limiter
+                .hit(&format!("key:{key_id}"), limit.max(1) as u32, 60, now())
+        {
+            return Err(crate::platform::rate_limit::too_many(
+                parts.uri.path(),
+                retry,
+            ));
+        }
         let t = now();
         if last_used.is_none_or(|at| t - at >= 60) {
             let _ = state

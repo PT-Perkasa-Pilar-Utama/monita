@@ -2,5 +2,6 @@
 
 pub mod heartbeats;
 mod monitors;
+pub mod rollup;
 
 pub use monitors::*;

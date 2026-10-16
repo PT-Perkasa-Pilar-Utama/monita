@@ -36,6 +36,67 @@ impl Limiter {
     }
 }
 
+/// Paths limited per client IP (SEC-12): public pages, sign-in, public and ticket APIs.
+/// `/ping/` has its own limit; `/healthz`, assets and signed-in pages are not limited here.
+pub fn ip_limited(method: &axum::http::Method, path: &str) -> bool {
+    path.starts_with("/status/")
+        || path.starts_with("/api/v1/public/")
+        || path.starts_with("/api/v1/tickets")
+        || (path == "/login" && method == axum::http::Method::POST)
+}
+
+/// 429 with `Retry-After`: the JSON envelope under `/api/`, plain text elsewhere.
+pub fn too_many(path: &str, retry_after: i64) -> axum::response::Response {
+    use axum::{
+        Json,
+        http::{StatusCode, header},
+        response::IntoResponse,
+    };
+    let retry = [(header::RETRY_AFTER, retry_after.to_string())];
+    let message = format!("Too many requests. Retry in {retry_after} s.");
+    if path.starts_with("/api/") {
+        (
+            StatusCode::TOO_MANY_REQUESTS,
+            retry,
+            Json(serde_json::json!({ "error": { "code": "rate_limited", "message": message } })),
+        )
+            .into_response()
+    } else {
+        (StatusCode::TOO_MANY_REQUESTS, retry, message).into_response()
+    }
+}
+
+/// Middleware for SEC-12's per-IP limit, read from `settings.rl_ip_per_min` on each request.
+pub async fn per_ip(
+    axum::extract::State(state): axum::extract::State<crate::app::AppState>,
+    req: axum::extract::Request,
+    next: axum::middleware::Next,
+) -> axum::response::Response {
+    if !ip_limited(req.method(), req.uri().path()) {
+        return next.run(req).await;
+    }
+    let peer = req
+        .extensions()
+        .get::<axum::extract::ConnectInfo<std::net::SocketAddr>>()
+        .map(|c| c.0);
+    let ip = super::client_ip(req.headers(), peer, state.config.trust_proxy)
+        .map_or_else(|| "unknown".to_string(), |ip| ip.to_string());
+    let limit = match state.db.read().await {
+        Ok(c) => super::settings::get(&c, "rl_ip_per_min")
+            .await
+            .unwrap_or(60),
+        Err(_) => 60,
+    };
+    if let Verdict::Deny(retry) =
+        state
+            .limiter
+            .hit(&format!("ip:{ip}"), limit.max(1) as u32, 60, super::now())
+    {
+        return too_many(req.uri().path(), retry);
+    }
+    next.run(req).await
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

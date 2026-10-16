@@ -51,6 +51,18 @@ impl Db {
         }
     }
 
+    /// Writes a consistent copy of the database to `path` (US-33). `VACUUM INTO` cannot run in a
+    /// transaction, so this locks the writer directly. It refuses to overwrite: remove `path` first.
+    pub async fn vacuum_into(&self, path: &Path) -> anyhow::Result<()> {
+        let target = path
+            .to_str()
+            .context("backup path must be UTF-8")?
+            .replace('\'', "''");
+        let conn = self.writer.lock().await;
+        conn.execute(&format!("VACUUM INTO '{target}'"), ()).await?;
+        Ok(())
+    }
+
     /// Drops every table. Only reset-state calls this. Foreign keys must be off outside a
     /// transaction, so this does not use `write`.
     pub async fn drop_all_tables(&self) -> anyhow::Result<()> {

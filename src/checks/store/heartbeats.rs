@@ -5,7 +5,7 @@ use turso::Connection;
 use crate::checks::heartbeat::{Heartbeat, HeartbeatInput, PingKind, PingRow};
 
 const COLS: &str = "h.id, h.project_id, h.name, h.token, h.period_s, h.grace_s, h.severity, h.is_public, h.last_ping_at, h.deadline_at,
-    (SELECT kind FROM pings WHERE heartbeat_id = h.id ORDER BY received_at DESC, id DESC LIMIT 1)";
+    (SELECT kind FROM pings WHERE heartbeat_id = h.id ORDER BY received_at DESC, id DESC LIMIT 1), h.created_at";
 
 fn row(r: &turso::Row) -> turso::Result<Heartbeat> {
     Ok(Heartbeat {
@@ -20,6 +20,7 @@ fn row(r: &turso::Row) -> turso::Result<Heartbeat> {
         last_ping_at: r.get(8)?,
         deadline_at: r.get(9)?,
         last_kind: r.get(10)?,
+        created_at: r.get(11)?,
     })
 }
 
