@@ -1,0 +1,38 @@
+{% extends "layout/app.html" %}
+{% import "ui/macros.html" as ui %}
+{% block title %}{% if id.is_some() %}Edit{% else %}New{% endif %} monitor · {{ project.name }} · Monita{% endblock %}
+{% block crumbs %}<span>{{ project.name }}</span><span class="subtle">/</span><a class="link-quiet" href="/projects/{{ project.slug }}/monitors">Monitors</a><span class="subtle">/</span><strong>{% if id.is_some() %}Edit{% else %}New{% endif %}</strong>{% endblock %}
+{% block content %}
+<section class="panel">
+  <div class="panel__head"><h2>{% if id.is_some() %}Edit monitor{% else %}New monitor{% endif %}</h2></div>
+  <form class="panel__body form" method="post" action="{{ self.action() }}">
+    {% if !errors.is_empty() %}{% call ui::notice("error", "Fix the fields marked below.") %}{% endcall %}{% endif %}
+    {% call ui::input("name", "name", "Name", "text", input.name, self.err("name"), "For example API health.") %}{% endcall %}
+    {% call ui::input("url", "url", "URL", "url", input.url, self.err("url"), "Monita sends GET to this URL. Internal addresses work.") %}{% endcall %}
+    <div class="field__row">
+      <div class="field{% if !self.err("interval_s").is_empty() %} field--error{% endif %}">
+        <label class="label" for="interval_s">Check every</label>
+        <select class="select" id="interval_s" name="interval_s">
+          {% for (secs, label) in self.intervals() %}<option value="{{ secs }}"{% if secs == input.interval_s %} selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+      </div>
+      {% call ui::input("timeout_s", "timeout_s", "Timeout (seconds)", "number", self.timeout_s(), self.err("timeout_ms"), "1 to 30.") %}{% endcall %}
+      {% call ui::input("expected_status", "expected_status", "Expected status", "text", input.expected_status, self.err("expected_status"), "2xx, or codes like 200,204.") %}{% endcall %}
+    </div>
+    {% call ui::input("keyword", "keyword", "Keyword (optional)", "text", self.keyword(), self.err("keyword"), "The response body must contain this text.") %}{% endcall %}
+    <fieldset class="field fieldset">
+      <legend class="label">Severity</legend>
+      <div class="choices">
+        <label class="check" for="sev-critical"><input type="radio" id="sev-critical" name="severity" value="critical"{% if input.severity == "critical" %} checked{% endif %}><span><strong>Critical</strong> <span class="muted">email and chat</span></span></label>
+        <label class="check" for="sev-warning"><input type="radio" id="sev-warning" name="severity" value="warning"{% if input.severity != "critical" %} checked{% endif %}><span><strong>Warning</strong> <span class="muted">email only</span></span></label>
+      </div>
+    </fieldset>
+    <label class="check" for="is_public"><input type="checkbox" id="is_public" name="is_public" value="on"{% if input.is_public %} checked{% endif %}><span>Show on the public status page</span></label>
+    <label class="check" for="skip_tls_verify"><input type="checkbox" id="skip_tls_verify" name="skip_tls_verify" value="on"{% if input.skip_tls_verify %} checked{% endif %}><span>Accept self-signed certificates</span></label>
+    <div class="form__actions"><button class="btn btn--primary" type="submit">Save monitor</button><a class="btn btn--ghost" href="/projects/{{ project.slug }}/monitors">Cancel</a></div>
+  </form>
+  {% if let Some(id) = id %}
+  <form class="panel__body" method="post" action="/projects/{{ project.slug }}/monitors/{{ id }}/delete"><button class="btn btn--danger btn--sm" type="submit">Delete monitor and its checks</button></form>
+  {% endif %}
+</section>
+{% endblock %}

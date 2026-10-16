@@ -13,6 +13,7 @@ argon2 = "0.6"
 askama = "0.16"
 axum = "0.8"
 clap = { version = "4.6", features = ["derive"] }
+reqwest = { version = "0.13", default-features = false, features = ["rustls", "http2", "charset"] }
 getrandom = "0.4"
 rust-embed = { version = "8.13", features = ["mime-guess"] }
 serde = { version = "1.0", features = ["derive"] }
@@ -25,7 +26,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 turso = "=0.8.3"
 
 [dev-dependencies]
-reqwest = { version = "0.13", default-features = false, features = ["json", "form"] }
+reqwest = { version = "0.13", default-features = false, features = ["rustls", "json", "form"] }
 tempfile = "3.27"
 
 # Local builds on an 8 GiB laptop: line tables for backtraces, no debug info for dependencies.

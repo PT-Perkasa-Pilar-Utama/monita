@@ -9,7 +9,7 @@ One loop drives every timed job in Monita: monitor checks, heartbeat deadlines, 
 | Driver | One tokio loop that ticks every 1 s and reads due work from the database | T3. Edits apply on the next tick. A restart resumes. |
 | Monitor due | `next_check_at <= now` | Indexed column |
 | Claim | Set `next_check_at = now + interval_s` before the probe starts | A slow probe is never picked twice. |
-| Concurrency | `tokio::sync::Semaphore` with `settings.check_concurrency` permits (50) | Q10 |
+| Concurrency | `tokio::sync::Semaphore` with `settings.check_concurrency` permits (50), re-read every tick | Q10 |
 | Batch size | `LIMIT available_permits` | The loop never queues more than it can run. |
 | New monitor offset | `next_check_at = now + rand(0..interval_s)` | Q10. Spreads load. |
 | Interval edit | `next_check_at = now + rand(0..interval_s)` | Same spreading |

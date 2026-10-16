@@ -21,6 +21,7 @@ pub struct AppState {
     /// Unix seconds of the scheduler's last tick. `/healthz` reads it.
     pub last_tick: Arc<AtomicI64>,
     pub mailer: Mailer,
+    pub http: crate::checks::Clients,
 }
 
 /// Opens the database, migrates it and starts the background loops.
@@ -40,6 +41,7 @@ pub async fn build_with(config: Config, mailer: Mailer) -> anyhow::Result<(Route
         config: Arc::new(config),
         last_tick: Arc::new(AtomicI64::new(0)),
         mailer,
+        http: crate::checks::Clients::new()?,
     };
     crate::checks::scheduler::spawn(state.clone());
     Ok((router(state.clone()), state))
@@ -51,7 +53,9 @@ pub fn router(state: AppState) -> Router {
         .route("/static/{*path}", get(assets::serve))
         .merge(crate::accounts::routes::router())
         .merge(crate::projects::routes::router())
-        .merge(crate::tickets::routes::router());
+        .merge(crate::tickets::routes::router())
+        .merge(crate::checks::routes::router())
+        .merge(crate::platform::limits::router());
 
     // SEC-17: the route does not exist in prod. Registration is the control, not authorization.
     if state.config.env != Env::Prod {

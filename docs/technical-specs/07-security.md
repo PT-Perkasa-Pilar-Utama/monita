@@ -20,15 +20,15 @@
 
 | ID | Control | Implementation |
 | --- | --- | --- |
-| SEC-01 | Session cookie | `monita_session`: 32 random bytes, `HttpOnly`, `Secure` when `MONITA_BASE_URL` is `https://`, `SameSite=Lax`, `Path=/`. Only the SHA-256 hash is stored. |
+| SEC-01 | Session cookie | `monita_session`: 128 random bits (26 base32 chars), `HttpOnly`, `Secure` when `MONITA_BASE_URL` is `https://`, `SameSite=Lax`, `Path=/`. Only the SHA-256 hash is stored. |
 | SEC-02 | Session revocation | A new invite, a disabled user, or sign-out deletes the session rows. Sessions expire after 14 days. |
-| SEC-03 | CSRF | Every non-GET request with a session must carry an `Origin` header that matches `MONITA_BASE_URL`. Otherwise 403. |
+| SEC-03 | CSRF | Every non-GET request outside `/api/`, `/ping/` and reset-state must carry an `Origin` header equal to `MONITA_BASE_URL`. Otherwise 403. |
 | SEC-04 | Output escaping | askama escapes HTML by default. `|safe` is forbidden outside `templates/ui/` icons. |
 | SEC-05 | Content Security Policy | `default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; frame-ancestors 'none'`. Plus `X-Content-Type-Options: nosniff` and `Referrer-Policy: same-origin`. |
 | SEC-06 | Password storage | Argon2id with the crate defaults. Minimum length 12. |
-| SEC-07 | API key storage | Keys are `mk_` + 26 base32 chars (130 bits). Only the hash is stored. Shown once. |
+| SEC-07 | API key storage | Keys are `mk_` + 26 base32 chars (128 random bits). Only the hash is stored. Shown once. |
 | SEC-08 | IP allowlist | Optional per project. Checked after key lookup. The client IP comes from the socket, or from `X-Forwarded-For` only when `MONITA_TRUST_PROXY=true`. |
-| SEC-09 | Token entropy | Invite, ref ID and heartbeat tokens: 128 bits or more from `rand::rngs::OsRng`. |
+| SEC-09 | Token entropy | Session, invite, API key, ref ID and heartbeat tokens: 128 bits from the OS (`getrandom`). |
 | SEC-10 | Constant-time compare | Token lookups go through the hash index, so no secret is compared byte by byte in code. |
 | SEC-11 | Invite expiry | 72 h, single use. |
 | SEC-12 | Rate limits | Fixed window, in memory: 60/min per IP on public pages, the ticket form and `/login`; 120/min per API key; 1/s per heartbeat. Over the limit returns 429 with `Retry-After`. |

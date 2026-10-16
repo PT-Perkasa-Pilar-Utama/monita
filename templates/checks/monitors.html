@@ -1,0 +1,31 @@
+{% extends "layout/app.html" %}
+{% import "ui/macros.html" as ui %}
+{% block title %}Monitors · {{ project.name }} · Monita{% endblock %}
+{% block crumbs %}<span>{{ project.name }}</span><span class="subtle">/</span><strong>Monitors</strong>{% endblock %}
+{% block actions %}<a class="btn btn--primary btn--sm" href="/projects/{{ project.slug }}/monitors/new">{% call ui::icon("plus") %}{% endcall %}New monitor</a>{% endblock %}
+{% block content %}
+<div class="page-head"><div><span class="cap">{{ monitors.len() }} monitors</span><h1>Monitors</h1></div></div>
+<section class="panel">
+  {% if monitors.is_empty() %}
+    {% call ui::empty("No monitors yet", "A monitor checks a URL on an interval and tells you when it stops answering. Add the health endpoint of your service first.") %}{% endcall %}
+  {% else %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Monitor</th><th>State</th><th>Severity</th><th class="hide-sm">Every</th><th class="t-right">Last check</th></tr></thead>
+      <tbody>
+      {% for m in monitors %}
+        {% let st = self.state(m) %}
+        <tr>
+          <td><a class="table__title" href="/projects/{{ project.slug }}/monitors/{{ m.id }}">{{ m.name }}</a><div class="table__sub">{{ m.url }}</div></td>
+          <td>{% call ui::state(st.0, st.1) %}{% endcall %}</td>
+          <td>{% if m.severity == "critical" %}{% call ui::chip("critical", "Critical") %}{% endcall %}{% else %}{% call ui::chip("warning", "Warning") %}{% endcall %}{% endif %}</td>
+          <td class="hide-sm mono">{{ self.every(m) }}</td>
+          <td class="t-right"><span class="mono">{{ self.last(m) }}</span><div class="cap">{{ self.ago(m) }}</div></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

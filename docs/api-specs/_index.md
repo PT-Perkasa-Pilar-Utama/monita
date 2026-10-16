@@ -31,7 +31,7 @@ Legend: `OK` implemented and tested, `WIP` in progress, `TODO` not started, `SCA
 | --- | --- | --- |
 | Sign-in, invites, TL management | [02](02-authentication.md) | OK |
 | Projects, API keys | [03](03-projects.md) | OK |
-| Monitors, heartbeats | [04](04-checks.md#43-html-routes) | TODO |
+| Monitors, heartbeats | [04](04-checks.md#43-html-routes) | WIP (monitors and limits OK; heartbeats next) |
 | Incidents | [05](05-incidents.md) | TODO |
 | Alert routes | [06](06-notify.md) | TODO |
 | Status page | [07](07-status.md#72-html-routes) | TODO |

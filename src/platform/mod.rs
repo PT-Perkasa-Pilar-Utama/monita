@@ -6,6 +6,7 @@ pub mod config;
 pub mod db;
 pub mod headers;
 pub mod health;
+pub mod limits;
 pub mod migrate;
 pub mod page;
 pub mod render;
