@@ -1,6 +1,6 @@
 # Monita v1: Sprint Breakdown
 
-## Sprint 1: Checks run
+## Sprint 1: Checks run (done 2026-10-16)
 
 1. US-01: Create the first super admin (Super admin)
 2. US-02: Create a TL account (Super admin)

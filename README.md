@@ -6,11 +6,11 @@ It ships as one Rust binary with one SQLite-format database file. The motto: eas
 
 ## Status
 
-v1 is in build. The docs and the platform scaffold are on `main`; features land sprint by sprint.
+v1 is in build. Features land sprint by sprint. Seeded dev accounts are listed in [seeds/README.md](seeds/README.md).
 
 | Sprint | Delivers | State |
 | --- | --- | --- |
-| 1. Checks run | Accounts and invites, projects, API keys, HTTP monitors, heartbeats | In progress |
+| 1. Checks run | Accounts and invites, projects, API keys, HTTP monitors, heartbeats | Done |
 | 2. Incidents and alerts | Automatic incidents, status updates, email and webhook alerts | Planned |
 | 3. Public status | Status page, public JSON, rate limits, retention, backup | Planned |
 | 4. Tickets | Ref IDs, bug tickets, kanban, public board | Planned |
