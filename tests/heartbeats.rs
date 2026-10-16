@@ -305,6 +305,20 @@ async fn a_fail_is_stored_while_the_rest_of_its_body_still_uploads() {
 }
 
 #[tokio::test]
+async fn a_whitespace_fail_body_past_the_16_mib_cap_is_answered() {
+    let app = TestApp::spawn("test").await;
+    let (_tl, token) = setup(&app).await;
+    let res = app
+        .http
+        .post(app.url(&format!("/ping/{token}/fail")))
+        .body(vec![b'\n'; 17 * 1024 * 1024])
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), 200);
+}
+
+#[tokio::test]
 async fn an_ok_ping_with_megabytes_of_body_is_answered_200() {
     let app = TestApp::spawn("test").await;
     let (_tl, token) = setup(&app).await;

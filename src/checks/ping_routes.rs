@@ -71,7 +71,8 @@ async fn ping(state: &AppState, token: &str, kind: PingKind, req: Request) -> Re
         PingKind::Ok => (None, 0),
     };
     let stored = heartbeat::record(&state.db, &state.config.base_url, admitted, cause).await;
-    drain(body, deadline, BODY_MAX - seen).await;
+    // The last chunk can carry the cause read past the cap.
+    drain(body, deadline, BODY_MAX.saturating_sub(seen)).await;
     match stored {
         Ok(true) => plain(StatusCode::OK, "OK"),
         Ok(false) => plain(StatusCode::NOT_FOUND, "not found"),
