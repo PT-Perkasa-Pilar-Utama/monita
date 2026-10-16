@@ -165,6 +165,7 @@ strong { color: var(--fg); font-weight: 590; }
 .stack--lg { gap: var(--s6); }
 .row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
 .row--between { justify-content: space-between; }
+.row--end { justify-content: flex-end; }
 .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: var(--s4); }
 .cols > * { min-width: 0; }
 

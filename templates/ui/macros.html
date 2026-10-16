@@ -1,24 +1,25 @@
-{# Design system macros. Spec: docs/design-system/02-components.md. #}
+{# Design system macros. Spec: docs/design-system/02-components.md.
+   Parameters start with m_ because askama binds arguments by name: a caller variable with the
+   same name as a parameter would read the parameter instead. #}
 
-{% macro icon(name) %}<svg class="icon" aria-hidden="true"><use href="/static/icons.svg#i-{{ name }}"/></svg>{% endmacro %}
+{% macro icon(m_name) %}<svg class="icon" aria-hidden="true"><use href="/static/icons.svg?v={{ crate::platform::assets::ASSET_VERSION }}#i-{{ m_name }}"/></svg>{% endmacro %}
 
-{% macro st(kind) %}<span class="st st--{{ kind }}"></span>{% endmacro %}
+{% macro st(m_kind) %}<span class="st st--{{ m_kind }}"></span>{% endmacro %}
 
-{% macro state(kind, label) %}<span class="state{% if kind == "down" %} state--down{% endif %}"><span class="st st--{{ kind }}"></span>{{ label }}</span>{% endmacro %}
+{% macro state(m_kind, m_label) %}<span class="state{% if m_kind == "down" %} state--down{% endif %}"><span class="st st--{{ m_kind }}"></span>{{ m_label }}</span>{% endmacro %}
 
-{% macro chip(kind, label) %}<span class="chip chip--{{ kind }}">{{ label }}</span>{% endmacro %}
+{% macro chip(m_kind, m_label) %}<span class="chip chip--{{ m_kind }}">{{ m_label }}</span>{% endmacro %}
 
-{% macro notice(kind, text) %}<div class="notice notice--{{ kind }}" role="{% if kind == "error" %}alert{% else %}status{% endif %}">{{ text }}</div>{% endmacro %}
+{% macro notice(m_kind, m_text) %}<div class="notice notice--{{ m_kind }}" role="{% if m_kind == "error" %}alert{% else %}status{% endif %}">{{ m_text }}</div>{% endmacro %}
 
-{% macro secret(id, value) %}<div class="secret"><code id="{{ id }}">{{ value }}</code><button class="btn btn--sm" type="button" data-copy="{{ id }}">Copy</button></div>{% endmacro %}
+{% macro secret(m_id, m_value) %}<div class="secret"><code id="{{ m_id }}">{{ m_value }}</code><button class="btn btn--sm" type="button" data-copy="{{ m_id }}">Copy</button></div>{% endmacro %}
 
-{% macro empty(title, text) %}<div class="empty"><h3>{{ title }}</h3><p>{{ text }}</p>{% endmacro %}
-{% macro empty_end() %}</div>{% endmacro %}
+{% macro empty(m_title, m_text) %}<div class="empty"><h3>{{ m_title }}</h3><p>{{ m_text }}</p></div>{% endmacro %}
 
-{% macro input(id, name, label, kind, value, error, help) %}
-<div class="field{% if !error.is_empty() %} field--error{% endif %}">
-  <label class="label" for="{{ id }}">{{ label }}</label>
-  <input class="input" id="{{ id }}" name="{{ name }}" type="{{ kind }}" value="{{ value }}"{% if !error.is_empty() %} aria-invalid="true" aria-describedby="{{ id }}-error"{% endif %}>
-  {% if !error.is_empty() %}<span class="error" id="{{ id }}-error">{{ error }}</span>{% else if !help.is_empty() %}<span class="help">{{ help }}</span>{% endif %}
+{% macro input(m_id, m_name, m_label, m_type, m_value, m_error, m_help) %}
+<div class="field{% if !m_error.is_empty() %} field--error{% endif %}">
+  <label class="label" for="{{ m_id }}">{{ m_label }}</label>
+  <input class="input" id="{{ m_id }}" name="{{ m_name }}" type="{{ m_type }}" value="{{ m_value }}"{% if !m_error.is_empty() %} aria-invalid="true" aria-describedby="{{ m_id }}-error"{% endif %}>
+  {% if !m_error.is_empty() %}<span class="error" id="{{ m_id }}-error">{{ m_error }}</span>{% else if !m_help.is_empty() %}<span class="help">{{ m_help }}</span>{% endif %}
 </div>
 {% endmacro %}

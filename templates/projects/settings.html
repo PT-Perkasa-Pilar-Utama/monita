@@ -1,0 +1,70 @@
+{% extends "layout/app.html" %}
+{% import "ui/macros.html" as ui %}
+{% block title %}Settings · {{ project.name }} · Monita{% endblock %}
+{% block crumbs %}<span>{{ project.name }}</span><span class="subtle">/</span><strong>Settings</strong>{% endblock %}
+{% block content %}
+<div class="page-head"><div><span class="cap">{{ project.slug }}</span><h1>Settings</h1></div>
+  <nav class="tabs" aria-label="Settings sections"><a href="#general">General</a><a href="#keys">API keys</a><a href="#allowlist">Allowlist</a></nav>
+</div>
+<div class="stack stack--lg">
+  <section class="panel" id="general">
+    <div class="panel__head"><h2>General</h2></div>
+    <div class="panel__body stack">
+      <dl class="kv"><dt>Name</dt><dd>{{ project.name }}</dd><dt>Status page</dt><dd class="mono">/status/{{ project.slug }}</dd><dt>Owner</dt><dd>{{ project.owner_email }}</dd><dt>Created</dt><dd>{{ self.utc(project.created_at) }}</dd></dl>
+      {% if shell.is_admin %}
+      <form class="form" method="post" action="/projects/{{ project.slug }}/owner">
+        <div class="field"><label class="label" for="owner_id">Reassign to</label>
+          <select class="select" id="owner_id" name="owner_id">
+            {% for u in tls %}<option value="{{ u.id }}"{% if u.id == project.owner_id %} selected{% endif %}>{{ u.email }}</option>{% endfor %}
+          </select>
+          <span class="help">Monitors, incidents and tickets stay with the project.</span>
+        </div>
+        <div class="form__actions"><button class="btn" type="submit">Reassign project</button></div>
+      </form>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="panel" id="keys">
+    <div class="panel__head"><h2>API keys</h2><span class="cap">Bearer mk_…</span></div>
+    <div class="panel__body stack">
+      {% if let Some(key) = new_key %}
+      <div class="stack stack--sm">{% call ui::notice("ok", "Key created. Copy it now: Monita shows it only once.") %}{% endcall %}{% call ui::secret("new-key", key) %}{% endcall %}</div>
+      {% endif %}
+      <form class="form" method="post" action="/projects/{{ project.slug }}/keys">
+        {% call ui::input("key-name", "name", "Key name", "text", key_name, key_error, "For example backend-prod.") %}{% endcall %}
+        <div class="form__actions"><button class="btn btn--primary" type="submit">Create key</button></div>
+      </form>
+    </div>
+    {% if !keys.is_empty() %}
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>Name</th><th>Key</th><th class="hide-sm">Last used</th><th class="t-right">Status</th></tr></thead>
+        <tbody>
+        {% for k in keys %}
+          <tr>
+            <td class="table__title">{{ k.name }}</td>
+            <td class="mono">{{ k.prefix }}…</td>
+            <td class="hide-sm">{{ self.ago(k.last_used_at) }}</td>
+            <td class="t-right">{% if k.revoked_at.is_some() %}{% call ui::state("unknown", "Revoked") %}{% endcall %}{% else %}<form method="post" action="/projects/{{ project.slug }}/keys/{{ k.id }}/revoke"><button class="btn btn--sm btn--danger" type="submit">Revoke</button></form>{% endif %}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </section>
+
+  <section class="panel" id="allowlist">
+    <div class="panel__head"><h2>IP allowlist</h2><span class="cap">{% if project.ip_allowlist.is_some() %}On{% else %}Off{% endif %}</span></div>
+    <form class="panel__body form" method="post" action="/projects/{{ project.slug }}/allowlist">
+      <div class="field{% if !allowlist_error.is_empty() %} field--error{% endif %}">
+        <label class="label" for="cidrs">Allowed IPs and ranges</label>
+        <textarea class="textarea mono" id="cidrs" name="cidrs" placeholder="10.20.0.0/16">{{ allowlist }}</textarea>
+        {% if !allowlist_error.is_empty() %}<span class="error">{{ allowlist_error }}</span>{% else %}<span class="help">One per line. Leave empty to allow API keys from any IP.</span>{% endif %}
+      </div>
+      <div class="form__actions"><button class="btn" type="submit">Save allowlist</button></div>
+    </form>
+  </section>
+</div>
+{% endblock %}

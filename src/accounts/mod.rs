@@ -1,4 +1,372 @@
 //! accounts module: users, invites, sessions.
-//! Spec: docs/technical-specs/05-module-definitions.md section 5.1.
+//! Spec: docs/technical-specs/05-module-definitions.md section 5.1 and 09.
 
 pub mod routes;
+mod store;
+
+use argon2::{
+    Argon2,
+    password_hash::{PasswordHasher, PasswordVerifier, phc::PasswordHash},
+};
+use axum::{
+    extract::FromRequestParts,
+    http::{HeaderMap, header, request::Parts},
+    response::{IntoResponse, Redirect, Response},
+};
+
+use crate::{
+    app::AppState,
+    platform::{db::Db, now, page::PageError, token},
+};
+
+pub use store::UserRow;
+
+pub const SESSION_COOKIE: &str = "monita_session";
+const SESSION_TTL_S: i64 = 14 * 86_400;
+const INVITE_TTL_S: i64 = 72 * 3_600;
+pub const MIN_PASSWORD: usize = 12;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Role {
+    SuperAdmin,
+    Tl,
+}
+
+impl Role {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Role::SuperAdmin => "super_admin",
+            Role::Tl => "tl",
+        }
+    }
+
+    fn parse(s: &str) -> Option<Self> {
+        match s {
+            "super_admin" => Some(Role::SuperAdmin),
+            "tl" => Some(Role::Tl),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct User {
+    pub id: i64,
+    pub email: String,
+    pub role: Role,
+}
+
+impl User {
+    pub fn is_admin(&self) -> bool {
+        self.role == Role::SuperAdmin
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum AccountError {
+    #[error("An account with this email already exists.")]
+    EmailTaken,
+    #[error("Enter a valid email address.")]
+    InvalidEmail,
+    #[error("Use at least 12 characters.")]
+    PasswordTooShort,
+    #[error("Wrong email or password.")]
+    BadCredentials,
+    #[error("This link is invalid, expired or already used.")]
+    InviteInvalid,
+    #[error(transparent)]
+    Other(#[from] anyhow::Error),
+}
+
+pub fn normalize_email(raw: &str) -> Result<String, AccountError> {
+    let email = raw.trim().to_lowercase();
+    let valid = email.len() <= 254
+        && !email.contains(char::is_whitespace)
+        && matches!(email.split_once('@'), Some((l, d)) if !l.is_empty() && d.contains('.') && !d.contains('@'));
+    if valid {
+        Ok(email)
+    } else {
+        Err(AccountError::InvalidEmail)
+    }
+}
+
+async fn hash_password(password: &str) -> Result<String, AccountError> {
+    if password.chars().count() < MIN_PASSWORD {
+        return Err(AccountError::PasswordTooShort);
+    }
+    let pw = password.to_owned();
+    let hashed = tokio::task::spawn_blocking(move || {
+        Argon2::default()
+            .hash_password(pw.as_bytes())
+            .map(|h| h.to_string())
+    })
+    .await
+    .map_err(anyhow::Error::from)?
+    .map_err(|e| anyhow::anyhow!("hash failed: {e}"))?;
+    Ok(hashed)
+}
+
+async fn verify_password(password: &str, stored: &str) -> bool {
+    let (pw, stored) = (password.to_owned(), stored.to_owned());
+    tokio::task::spawn_blocking(move || {
+        PasswordHash::new(&stored)
+            .map(|h| Argon2::default().verify_password(pw.as_bytes(), &h).is_ok())
+            .unwrap_or(false)
+    })
+    .await
+    .unwrap_or(false)
+}
+
+/// US-01: the first super admin, from the CLI.
+pub async fn create_super_admin(
+    db: &Db,
+    email: &str,
+    password: &str,
+) -> Result<User, AccountError> {
+    let email = normalize_email(email)?;
+    let hash = hash_password(password).await?;
+    let id = db
+        .write(async |c| store::insert_user(c, &email, Role::SuperAdmin, Some(&hash)).await)
+        .await?
+        .ok_or(AccountError::EmailTaken)?;
+    Ok(User {
+        id,
+        email,
+        role: Role::SuperAdmin,
+    })
+}
+
+/// Signs in. Returns the raw session token for the cookie.
+pub async fn login(db: &Db, email: &str, password: &str) -> Result<String, AccountError> {
+    let email = normalize_email(email).map_err(|_| AccountError::BadCredentials)?;
+    let user = store::find_user_by_email(&db.read().await?, &email).await?;
+    // ponytail: an unknown email skips argon2, so its timing differs; verify a dummy hash if enumeration matters.
+    let Some(user) = user.filter(|u| u.disabled_at.is_none()) else {
+        return Err(AccountError::BadCredentials);
+    };
+    let Some(stored) = user.password_hash.as_deref() else {
+        return Err(AccountError::BadCredentials);
+    };
+    if !verify_password(password, stored).await {
+        return Err(AccountError::BadCredentials);
+    }
+    new_session(db, user.id).await
+}
+
+async fn new_session(db: &Db, user_id: i64) -> Result<String, AccountError> {
+    let raw = token::random_token();
+    let hash = token::hash(&raw);
+    db.write(async |c| store::insert_session(c, user_id, &hash, now() + SESSION_TTL_S).await)
+        .await?;
+    Ok(raw)
+}
+
+pub async fn logout(db: &Db, raw_token: &str) -> anyhow::Result<()> {
+    let hash = token::hash(raw_token);
+    db.write(async |c| store::delete_session(c, &hash).await)
+        .await
+}
+
+/// US-02: creates a TL with no password and queues the invite email. Returns the invite link.
+pub async fn invite_tl(db: &Db, base_url: &str, email: &str) -> Result<String, AccountError> {
+    let email = normalize_email(email)?;
+    let raw = token::random_token();
+    let link = format!("{base_url}/invite/{raw}");
+    let hash = token::hash(&raw);
+    let created = db
+        .write(async |c| {
+            let Some(id) = store::insert_user(c, &email, Role::Tl, None).await? else {
+                return Ok(false);
+            };
+            store::replace_invite(c, id, &hash, now() + INVITE_TTL_S).await?;
+            queue_invite_email(c, &email, &link).await?;
+            Ok(true)
+        })
+        .await?;
+    if created {
+        Ok(link)
+    } else {
+        Err(AccountError::EmailTaken)
+    }
+}
+
+/// US-04: a new invite for an existing user. Older invites and all sessions stop working.
+pub async fn reinvite(db: &Db, base_url: &str, user_id: i64) -> Result<String, PageError> {
+    let raw = token::random_token();
+    let link = format!("{base_url}/invite/{raw}");
+    let hash = token::hash(&raw);
+    let found = db
+        .write(async |c| {
+            let Some(email) = store::email_of(c, user_id).await? else {
+                return Ok(false);
+            };
+            store::replace_invite(c, user_id, &hash, now() + INVITE_TTL_S).await?;
+            queue_invite_email(c, &email, &link).await?;
+            Ok(true)
+        })
+        .await?;
+    if found {
+        Ok(link)
+    } else {
+        Err(PageError::NotFound)
+    }
+}
+
+async fn queue_invite_email(c: &turso::Connection, email: &str, link: &str) -> anyhow::Result<()> {
+    let body = format!(
+        "You are invited to Monita.\n\nSet your password here:\n{link}\n\nThe link works once and expires in 72 hours."
+    );
+    crate::notify::queue_email(c, email, "You are invited to Monita", &body, now()).await
+}
+
+pub async fn invite_is_usable(db: &Db, raw_token: &str) -> anyhow::Result<bool> {
+    let invite = store::find_invite(&db.read().await?, &token::hash(raw_token)).await?;
+    Ok(invite.is_some_and(|i| i.used_at.is_none() && i.expires_at > now()))
+}
+
+/// US-03 and US-04: sets the password, uses the invite up, signs the user in.
+pub async fn accept_invite(
+    db: &Db,
+    raw_token: &str,
+    password: &str,
+) -> Result<String, AccountError> {
+    let hash = hash_password(password).await?;
+    let token_hash = token::hash(raw_token);
+    let user_id = db
+        .write(async |c| {
+            let Some(invite) = store::find_invite(c, &token_hash).await? else {
+                return Ok(None);
+            };
+            if invite.used_at.is_some() || invite.expires_at <= now() {
+                return Ok(None);
+            }
+            store::use_invite(c, invite.id, invite.user_id, &hash, now()).await?;
+            Ok(Some(invite.user_id))
+        })
+        .await?
+        .ok_or(AccountError::InviteInvalid)?;
+    new_session(db, user_id).await
+}
+
+pub async fn list_users(db: &Db) -> anyhow::Result<Vec<UserRow>> {
+    store::list_users(&db.read().await?).await
+}
+
+pub async fn list_tls(db: &Db) -> anyhow::Result<Vec<UserRow>> {
+    Ok(list_users(db)
+        .await?
+        .into_iter()
+        .filter(|u| u.role == "tl" && u.disabled_at.is_none())
+        .collect())
+}
+
+pub async fn disable(db: &Db, user_id: i64) -> anyhow::Result<()> {
+    db.write(async |c| store::disable_user(c, user_id, now()).await)
+        .await
+}
+
+pub fn session_cookie(raw: &str, secure: bool) -> String {
+    format!(
+        "{SESSION_COOKIE}={raw}; Path=/; HttpOnly; SameSite=Lax; Max-Age={SESSION_TTL_S}{}",
+        if secure { "; Secure" } else { "" }
+    )
+}
+
+pub fn clear_cookie() -> String {
+    format!("{SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0")
+}
+
+pub fn session_token(headers: &HeaderMap) -> Option<String> {
+    headers
+        .get_all(header::COOKIE)
+        .iter()
+        .filter_map(|v| v.to_str().ok())
+        .flat_map(|v| v.split(';'))
+        .find_map(|kv| {
+            kv.trim()
+                .strip_prefix(&format!("{SESSION_COOKIE}="))
+                .map(str::to_owned)
+        })
+        .filter(|t| !t.is_empty())
+}
+
+/// The signed-in user. Redirects to `/login` when there is no valid session.
+pub struct CurrentUser(pub User);
+
+impl FromRequestParts<AppState> for CurrentUser {
+    type Rejection = Response;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
+        let to_login = || Redirect::to("/login").into_response();
+        let Some(raw) = session_token(&parts.headers) else {
+            return Err(to_login());
+        };
+        let conn = state
+            .db
+            .read()
+            .await
+            .map_err(|e| PageError::from(e).into_response())?;
+        match store::find_session_user(&conn, &token::hash(&raw), now()).await {
+            Ok(Some(u)) => match Role::parse(&u.role) {
+                Some(role) => Ok(CurrentUser(User {
+                    id: u.id,
+                    email: u.email,
+                    role,
+                })),
+                None => Err(to_login()),
+            },
+            Ok(None) => Err(to_login()),
+            Err(e) => Err(PageError::from(e).into_response()),
+        }
+    }
+}
+
+/// A signed-in super admin. Others get 403.
+pub struct AdminUser(pub User);
+
+impl FromRequestParts<AppState> for AdminUser {
+    type Rejection = Response;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
+        let CurrentUser(user) = CurrentUser::from_request_parts(parts, state).await?;
+        if user.is_admin() {
+            Ok(AdminUser(user))
+        } else {
+            Err(PageError::Forbidden.into_response())
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn email_is_trimmed_lowercased_and_checked() {
+        assert_eq!(
+            normalize_email("  Rina@Company.co.id ").unwrap(),
+            "rina@company.co.id"
+        );
+        assert!(normalize_email("rina").is_err());
+        assert!(normalize_email("@company.co.id").is_err());
+        assert!(normalize_email("ri na@company.co.id").is_err());
+    }
+
+    #[test]
+    fn reads_the_session_cookie_among_others() {
+        let mut h = HeaderMap::new();
+        h.insert(
+            header::COOKIE,
+            "a=1; monita_session=abc; b=2".parse().unwrap(),
+        );
+        assert_eq!(session_token(&h).as_deref(), Some("abc"));
+        h.insert(header::COOKIE, "monita_session=".parse().unwrap());
+        assert_eq!(session_token(&h), None);
+    }
+}

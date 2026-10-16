@@ -20,7 +20,7 @@
 
 | ID | Control | Implementation |
 | --- | --- | --- |
-| SEC-01 | Session cookie | `monita_session`: 32 random bytes, `HttpOnly`, `Secure` (unless `MONITA_ENV=dev`), `SameSite=Lax`, `Path=/`. Only the SHA-256 hash is stored. |
+| SEC-01 | Session cookie | `monita_session`: 32 random bytes, `HttpOnly`, `Secure` when `MONITA_BASE_URL` is `https://`, `SameSite=Lax`, `Path=/`. Only the SHA-256 hash is stored. |
 | SEC-02 | Session revocation | A new invite, a disabled user, or sign-out deletes the session rows. Sessions expire after 14 days. |
 | SEC-03 | CSRF | Every non-GET request with a session must carry an `Origin` header that matches `MONITA_BASE_URL`. Otherwise 403. |
 | SEC-04 | Output escaping | askama escapes HTML by default. `|safe` is forbidden outside `templates/ui/` icons. |

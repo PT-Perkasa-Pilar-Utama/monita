@@ -18,6 +18,20 @@ enum Cmd {
     Serve,
     /// Run pending migrations and exit.
     Migrate,
+    /// Manage accounts.
+    Admin {
+        #[command(subcommand)]
+        cmd: AdminCmd,
+    },
+}
+
+#[derive(Subcommand)]
+enum AdminCmd {
+    /// Create a super admin. Reads the password from stdin.
+    Create {
+        #[arg(long)]
+        email: String,
+    },
 }
 
 #[tokio::main]
@@ -31,6 +45,24 @@ async fn main() -> anyhow::Result<()> {
         Cmd::Migrate => {
             let db = Db::open(&config.db_path).await?;
             migrate::run(&db).await
+        }
+        Cmd::Admin {
+            cmd: AdminCmd::Create { email },
+        } => {
+            let db = Db::open(&config.db_path).await?;
+            migrate::run(&db).await?;
+            // ponytail: the password echoes on a TTY; add termios no-echo if admins run this over a shared screen.
+            eprint!("Password for {email}: ");
+            let mut password = String::new();
+            std::io::stdin().read_line(&mut password)?;
+            let user = monita::accounts::create_super_admin(
+                &db,
+                &email,
+                password.trim_end_matches(['\r', '\n']),
+            )
+            .await?;
+            println!("created super admin {}", user.email);
+            Ok(())
         }
     }
 }

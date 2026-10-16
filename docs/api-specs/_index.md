@@ -16,7 +16,7 @@ Legend: `OK` implemented and tested, `WIP` in progress, `TODO` not started, `SCA
 
 | Operation | File | Status |
 | --- | --- | --- |
-| `POST /api/v1/ref-ids` | [08](08-tickets.md#81-post-apiv1ref-ids) | TODO |
+| `POST /api/v1/ref-ids` | [08](08-tickets.md#81-post-apiv1ref-ids) | OK |
 | `POST /api/v1/tickets` | [08](08-tickets.md#82-post-apiv1tickets) | TODO |
 | `GET /api/v1/tickets/mine` | [08](08-tickets.md#83-get-apiv1ticketsmine) | TODO |
 | `GET /api/v1/public/status/{slug}` | [07](07-status.md#71-get-apiv1publicstatusslug) | TODO |
@@ -29,8 +29,8 @@ Legend: `OK` implemented and tested, `WIP` in progress, `TODO` not started, `SCA
 
 | Group | File | Status |
 | --- | --- | --- |
-| Sign-in, invites, TL management | [02](02-authentication.md) | TODO |
-| Projects, API keys | [03](03-projects.md) | TODO |
+| Sign-in, invites, TL management | [02](02-authentication.md) | OK |
+| Projects, API keys | [03](03-projects.md) | OK |
 | Monitors, heartbeats | [04](04-checks.md#43-html-routes) | TODO |
 | Incidents | [05](05-incidents.md) | TODO |
 | Alert routes | [06](06-notify.md) | TODO |

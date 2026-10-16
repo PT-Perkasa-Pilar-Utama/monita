@@ -1,11 +1,13 @@
-//! Security headers on every response. Controls SEC-05 in docs/technical-specs/07-security.md.
+//! Security headers (SEC-05) and the Origin check against CSRF (SEC-03).
 
 use axum::{
-    extract::Request,
-    http::{HeaderValue, header},
+    extract::{Request, State},
+    http::{HeaderValue, Method, StatusCode, header},
     middleware::Next,
-    response::Response,
+    response::{IntoResponse, Response},
 };
+
+use crate::app::AppState;
 
 const CSP: &str = "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'";
 
@@ -25,4 +27,23 @@ pub async fn security_headers(req: Request, next: Next) -> Response {
         HeaderValue::from_static("same-origin"),
     );
     res
+}
+
+/// Browser form posts must come from Monita's own origin. Machine endpoints
+/// (`/api/`, `/ping/`, reset-state) authenticate with keys or tokens instead.
+pub async fn origin_check(State(state): State<AppState>, req: Request, next: Next) -> Response {
+    let safe = matches!(*req.method(), Method::GET | Method::HEAD | Method::OPTIONS);
+    let path = req.uri().path();
+    let machine =
+        path.starts_with("/api/") || path.starts_with("/ping/") || path == "/admin/reset-state";
+    if !safe && !machine {
+        let origin = req
+            .headers()
+            .get(header::ORIGIN)
+            .and_then(|v| v.to_str().ok());
+        if origin != Some(state.config.base_url.as_str()) {
+            return (StatusCode::FORBIDDEN, "Request blocked: wrong origin.").into_response();
+        }
+    }
+    next.run(req).await
 }

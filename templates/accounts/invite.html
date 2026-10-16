@@ -1,0 +1,18 @@
+{% extends "layout/bare.html" %}
+{% import "ui/macros.html" as ui %}
+{% block title %}Set your password · Monita{% endblock %}
+{% block content %}
+<section class="panel">
+  <div class="panel__head"><h1 class="h-panel">{% if usable %}Set your password{% else %}Link not valid{% endif %}</h1></div>
+  {% if usable %}
+  <form class="panel__body form" method="post">
+    {% if let Some(error) = error %}{% call ui::notice("error", error) %}{% endcall %}{% endif %}
+    {% call ui::input("password", "password", "New password", "password", "", "", "Use at least 12 characters.") %}{% endcall %}
+    {% call ui::input("password_confirm", "password_confirm", "Repeat password", "password", "", "", "") %}{% endcall %}
+    <div class="form__actions"><button class="btn btn--primary" type="submit">Save password</button></div>
+  </form>
+  {% else %}
+  <div class="panel__body stack"><p>This link is invalid, expired or already used. Ask your Monita admin for a new invite.</p></div>
+  {% endif %}
+</section>
+{% endblock %}

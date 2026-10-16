@@ -1,0 +1,40 @@
+{% extends "layout/app.html" %}
+{% import "ui/macros.html" as ui %}
+{% block title %}Projects · Monita{% endblock %}
+{% block crumbs %}<strong>Projects</strong>{% endblock %}
+{% block content %}
+<div class="page-head"><div><span class="cap">{{ projects.len() }} projects</span><h1>Projects</h1></div></div>
+<div class="stack stack--lg">
+  <section class="panel">
+    {% if projects.is_empty() %}
+      {% call ui::empty("No projects yet", "A project groups the monitors, heartbeats and tickets of one system. Create the first one below.") %}{% endcall %}
+    {% else %}
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>Project</th><th class="hide-sm">Owner</th><th class="t-right">Status page</th></tr></thead>
+        <tbody>
+        {% for p in projects %}
+          <tr>
+            <td><a class="table__title" href="/projects/{{ p.slug }}/monitors">{{ p.name }}</a><div class="table__sub">{{ p.slug }}</div></td>
+            <td class="hide-sm">{{ p.owner_email }}</td>
+            <td class="t-right"><a class="link-quiet mono" href="/status/{{ p.slug }}">/status/{{ p.slug }}</a></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </section>
+  <section class="panel">
+    <div class="panel__head"><h2>New project</h2></div>
+    <form class="panel__body form" method="post" action="/projects">
+      {% if !error.is_empty() %}{% call ui::notice("error", error) %}{% endcall %}{% endif %}
+      <div class="field__row">
+        {% call ui::input("name", "name", "Name", "text", name, "", "For example Payments.") %}{% endcall %}
+        {% call ui::input("slug", "slug", "Slug", "text", slug, "", "Lowercase, used in the status page URL.") %}{% endcall %}
+      </div>
+      <div class="form__actions"><button class="btn btn--primary" type="submit">Create project</button></div>
+    </form>
+  </section>
+</div>
+{% endblock %}

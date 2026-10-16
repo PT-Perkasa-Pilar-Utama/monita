@@ -1,0 +1,47 @@
+{% extends "layout/app.html" %}
+{% import "ui/macros.html" as ui %}
+{% block title %}Users · Monita{% endblock %}
+{% block crumbs %}<span>Admin</span><span class="subtle">/</span><strong>Users</strong>{% endblock %}
+{% block content %}
+<div class="page-head"><div><span class="cap">{{ users.len() }} accounts</span><h1>Users</h1></div></div>
+<div class="stack stack--lg">
+  {% if let Some((email, link)) = invite %}
+  <div class="stack stack--sm">
+    {% call ui::notice("ok", "Invite queued for " ~ email ~ ". The link works once and expires in 72 hours.") %}{% endcall %}
+    {% call ui::secret("invite-link", link) %}{% endcall %}
+  </div>
+  {% endif %}
+  <section class="panel">
+    <div class="panel__head"><h2>Invite a tech lead</h2></div>
+    <form class="panel__body form" method="post" action="/admin/users">
+      {% call ui::input("email", "email", "Email", "email", email, error, "Monita emails a link to set the password.") %}{% endcall %}
+      <div class="form__actions"><button class="btn btn--primary" type="submit">Send invite</button></div>
+    </form>
+  </section>
+  <section class="panel">
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>Email</th><th>Role</th><th>Status</th><th class="hide-sm">Joined</th><th class="t-right">Actions</th></tr></thead>
+        <tbody>
+        {% for u in users %}
+          <tr>
+            <td class="table__title">{{ u.email }}</td>
+            <td>{% if u.role == "super_admin" %}Super admin{% else %}Tech lead{% endif %}</td>
+            <td>{% if u.disabled_at.is_some() %}{% call ui::state("unknown", "Disabled") %}{% endcall %}{% else if u.password_hash.is_none() %}{% call ui::state("issue", "Invited") %}{% endcall %}{% else %}{% call ui::state("up", "Active") %}{% endcall %}{% endif %}</td>
+            <td class="hide-sm mono">{{ self.joined(u) }}</td>
+            <td class="t-right">
+              {% if u.role == "tl" %}
+              <div class="row row--end">
+                <form method="post" action="/admin/users/{{ u.id }}/invite"><button class="btn btn--sm" type="submit">New invite</button></form>
+                {% if u.disabled_at.is_none() %}<form method="post" action="/admin/users/{{ u.id }}/disable"><button class="btn btn--sm btn--danger" type="submit">Disable</button></form>{% endif %}
+              </div>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+{% endblock %}
