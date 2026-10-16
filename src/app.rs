@@ -22,6 +22,7 @@ pub struct AppState {
     pub last_tick: Arc<AtomicI64>,
     pub mailer: Mailer,
     pub http: crate::checks::Clients,
+    pub limiter: Arc<crate::platform::rate_limit::Limiter>,
 }
 
 /// Opens the database, migrates it and starts the background loops.
@@ -42,6 +43,7 @@ pub async fn build_with(config: Config, mailer: Mailer) -> anyhow::Result<(Route
         last_tick: Arc::new(AtomicI64::new(0)),
         mailer,
         http: crate::checks::Clients::new()?,
+        limiter: Arc::default(),
     };
     crate::checks::scheduler::spawn(state.clone());
     Ok((router(state.clone()), state))
@@ -55,6 +57,7 @@ pub fn router(state: AppState) -> Router {
         .merge(crate::projects::routes::router())
         .merge(crate::tickets::routes::router())
         .merge(crate::checks::routes::router())
+        .merge(crate::checks::heartbeat_routes::router())
         .merge(crate::platform::limits::router());
 
     // SEC-17: the route does not exist in prod. Registration is the control, not authorization.

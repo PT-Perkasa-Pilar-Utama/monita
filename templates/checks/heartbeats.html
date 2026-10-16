@@ -1,0 +1,31 @@
+{% extends "layout/app.html" %}
+{% import "ui/macros.html" as ui %}
+{% block title %}Heartbeats · {{ project.name }} · Monita{% endblock %}
+{% block crumbs %}<span>{{ project.name }}</span><span class="subtle">/</span><strong>Heartbeats</strong>{% endblock %}
+{% block actions %}<a class="btn btn--primary btn--sm" href="/projects/{{ project.slug }}/heartbeats/new">{% call ui::icon("plus") %}{% endcall %}New heartbeat</a>{% endblock %}
+{% block content %}
+<div class="page-head"><div><span class="cap">{{ heartbeats.len() }} heartbeats</span><h1>Heartbeats</h1></div></div>
+<section class="panel">
+  {% if heartbeats.is_empty() %}
+    {% call ui::empty("No heartbeats yet", "A heartbeat tells you when a cron job stops running. Create one and add its URL to the end of the job.") %}{% endcall %}
+  {% else %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Heartbeat</th><th>State</th><th>Severity</th><th class="hide-sm">Runs every</th><th class="t-right">Last ping</th></tr></thead>
+      <tbody>
+      {% for h in heartbeats %}
+        {% let st = h.state() %}
+        <tr>
+          <td><a class="table__title" href="/projects/{{ project.slug }}/heartbeats/{{ h.id }}">{{ h.name }}</a></td>
+          <td>{% call ui::state(st.0, st.1) %}{% endcall %}</td>
+          <td>{% if h.severity == "critical" %}{% call ui::chip("critical", "Critical") %}{% endcall %}{% else %}{% call ui::chip("warning", "Warning") %}{% endcall %}{% endif %}</td>
+          <td class="hide-sm">{{ self.every(h) }}</td>
+          <td class="t-right cap">{{ self.last(h) }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

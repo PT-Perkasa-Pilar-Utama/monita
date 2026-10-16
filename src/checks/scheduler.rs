@@ -31,6 +31,14 @@ pub fn spawn(state: AppState) -> JoinHandle<()> {
             if let Err(e) = run_due_monitors(&state, &slots).await {
                 tracing::error!(error = %e, "scheduler: monitor pass failed");
             }
+            // Sprint 2: each missed heartbeat becomes incidents::observe(Heartbeat, HeartbeatMissed).
+            match super::heartbeat::sweep_missed(&state.db, now()).await {
+                Ok(ids) if !ids.is_empty() => {
+                    tracing::warn!(?ids, "heartbeats missed their deadline")
+                }
+                Ok(_) => {}
+                Err(e) => tracing::error!(error = %e, "scheduler: heartbeat sweep failed"),
+            }
             crate::notify::spawn_delivery(&state, &delivering);
         }
     })

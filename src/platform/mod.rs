@@ -9,6 +9,7 @@ pub mod health;
 pub mod limits;
 pub mod migrate;
 pub mod page;
+pub mod rate_limit;
 pub mod render;
 pub mod reset_state;
 pub mod settings;
@@ -17,7 +18,7 @@ pub mod token;
 
 use std::net::{IpAddr, SocketAddr};
 
-use axum::{extract::ConnectInfo, http::request::Parts};
+use axum::http::HeaderMap;
 
 /// Current time in Unix seconds, UTC.
 pub fn now() -> i64 {
@@ -29,10 +30,13 @@ pub fn now() -> i64 {
 
 /// The caller's IP: the socket peer, or the first `X-Forwarded-For` entry behind a trusted proxy.
 // ponytail: trusts the left-most X-Forwarded-For entry; switch to right-most-untrusted if the proxy chain grows.
-pub fn client_ip(parts: &Parts, trust_proxy: bool) -> Option<IpAddr> {
+pub fn client_ip(
+    headers: &HeaderMap,
+    peer: Option<SocketAddr>,
+    trust_proxy: bool,
+) -> Option<IpAddr> {
     if trust_proxy
-        && let Some(ip) = parts
-            .headers
+        && let Some(ip) = headers
             .get("x-forwarded-for")
             .and_then(|v| v.to_str().ok())
             .and_then(|v| v.split(',').next())
@@ -40,8 +44,5 @@ pub fn client_ip(parts: &Parts, trust_proxy: bool) -> Option<IpAddr> {
     {
         return Some(ip);
     }
-    parts
-        .extensions
-        .get::<ConnectInfo<SocketAddr>>()
-        .map(|ConnectInfo(addr)| addr.ip())
+    peer.map(|addr| addr.ip())
 }

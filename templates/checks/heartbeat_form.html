@@ -1,0 +1,34 @@
+{% extends "layout/app.html" %}
+{% import "ui/macros.html" as ui %}
+{% block title %}{% if id.is_some() %}Edit{% else %}New{% endif %} heartbeat · {{ project.name }} · Monita{% endblock %}
+{% block crumbs %}<span>{{ project.name }}</span><span class="subtle">/</span><a class="link-quiet" href="/projects/{{ project.slug }}/heartbeats">Heartbeats</a><span class="subtle">/</span><strong>{% if id.is_some() %}Edit{% else %}New{% endif %}</strong>{% endblock %}
+{% block content %}
+<section class="panel">
+  <div class="panel__head"><h2>{% if id.is_some() %}Edit heartbeat{% else %}New heartbeat{% endif %}</h2></div>
+  <form class="panel__body form" method="post" action="{{ self.action() }}">
+    {% if !errors.is_empty() %}{% call ui::notice("error", "Fix the fields marked below.") %}{% endcall %}{% endif %}
+    {% call ui::input("name", "name", "Name", "text", input.name, self.err("name"), "For example nightly-settlement.") %}{% endcall %}
+    <div class="field__row">
+      <div class="field"><label class="label" for="period_s">Runs every</label>
+        <select class="select" id="period_s" name="period_s">{% for (v, l) in self.periods() %}<option value="{{ v }}"{% if *v == input.period_s %} selected{% endif %}>{{ l }}</option>{% endfor %}</select>
+      </div>
+      <div class="field"><label class="label" for="grace_s">Grace time</label>
+        <select class="select" id="grace_s" name="grace_s">{% for (v, l) in self.graces() %}<option value="{{ v }}"{% if *v == input.grace_s %} selected{% endif %}>{{ l }}</option>{% endfor %}</select>
+        <span class="help">How late a ping may arrive before Monita calls it missed.</span>
+      </div>
+    </div>
+    <fieldset class="field fieldset">
+      <legend class="label">Severity</legend>
+      <div class="choices">
+        <label class="check" for="sev-critical"><input type="radio" id="sev-critical" name="severity" value="critical"{% if input.severity == "critical" %} checked{% endif %}><span><strong>Critical</strong> <span class="muted">email and chat</span></span></label>
+        <label class="check" for="sev-warning"><input type="radio" id="sev-warning" name="severity" value="warning"{% if input.severity != "critical" %} checked{% endif %}><span><strong>Warning</strong> <span class="muted">email only</span></span></label>
+      </div>
+    </fieldset>
+    <label class="check" for="is_public"><input type="checkbox" id="is_public" name="is_public" value="on"{% if input.is_public %} checked{% endif %}><span>Show on the public status page</span></label>
+    <div class="form__actions"><button class="btn btn--primary" type="submit">Save heartbeat</button><a class="btn btn--ghost" href="/projects/{{ project.slug }}/heartbeats">Cancel</a></div>
+  </form>
+  {% if let Some(id) = id %}
+  <form class="panel__body" method="post" action="/projects/{{ project.slug }}/heartbeats/{{ id }}/delete"><button class="btn btn--danger btn--sm" type="submit">Delete heartbeat and its pings</button></form>
+  {% endif %}
+</section>
+{% endblock %}

@@ -2,7 +2,7 @@
 
 use turso::Connection;
 
-use super::{CheckResult, MonitorInput};
+use crate::checks::{CheckResult, MonitorInput};
 
 pub struct Monitor {
     pub id: i64,
@@ -35,8 +35,8 @@ impl Monitor {
         }
     }
 
-    pub fn target(&self) -> super::probe::Target<'_> {
-        super::probe::Target {
+    pub fn target(&self) -> crate::checks::probe::Target<'_> {
+        crate::checks::probe::Target {
             url: &self.url,
             timeout_ms: self.timeout_ms,
             expected_status: &self.expected_status,

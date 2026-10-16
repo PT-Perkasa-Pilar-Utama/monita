@@ -186,7 +186,11 @@ impl FromRequestParts<AppState> for ApiProject {
             .ok_or_else(unauthorized)?;
         drop(conn);
         if let Some(list) = &project.ip_allowlist {
-            let ip = crate::platform::client_ip(parts, state.config.trust_proxy);
+            let peer = parts
+                .extensions
+                .get::<axum::extract::ConnectInfo<std::net::SocketAddr>>()
+                .map(|c| c.0);
+            let ip = crate::platform::client_ip(&parts.headers, peer, state.config.trust_proxy);
             if !ip.is_some_and(|ip| allowlist::contains(list, ip)) {
                 return Err(api_error(
                     StatusCode::FORBIDDEN,
