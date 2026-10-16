@@ -1,0 +1,14 @@
+{
+  "name": "monita-e2e",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "test:full": "E2E_FULL=1 playwright test",
+    "test:unit": "bun test lib"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@types/bun": "1.4.3"
+  }
+}
