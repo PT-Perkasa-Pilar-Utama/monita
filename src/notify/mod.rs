@@ -3,23 +3,26 @@
 //! Callers queue messages inside their own write transaction; the outbox loop delivers them,
 //! so a slow SMTP server or webhook never blocks a check or a request.
 
+mod digest;
+mod mailer;
 pub mod routes;
 mod store;
 
 use std::{
-    sync::{Arc, Mutex, atomic::AtomicBool},
+    sync::{Arc, atomic::AtomicBool},
     time::Duration,
 };
 
-use lettre::{AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor, message::Mailbox};
 use turso::Connection;
 
 use crate::{
     app::AppState,
     incidents::Event,
-    platform::{config::Config, db::Db, now, time},
+    platform::{db::Db, now, time},
 };
 
+pub use digest::digest;
+pub use mailer::{Mailer, SentEmail};
 pub use store::Route;
 
 /// Retry delays after the 1st, 2nd and 3rd failure. The 4th failure marks the row failed.
@@ -223,39 +226,6 @@ pub async fn send_ticket(
     store::queue(c, "webhook", url, None, &body.to_string(), now()).await
 }
 
-const LAST_DIGEST_TICKET: &str = "last_digest_ticket_id";
-
-/// US-30: one email per project to its owner, listing tickets created after the last digest
-/// that are still in Triage. No email when there are none. Returns emails queued.
-pub async fn digest(db: &Db, base_url: &str, now: i64) -> anyhow::Result<usize> {
-    let after = crate::platform::settings::get_raw(&db.read().await?, LAST_DIGEST_TICKET)
-        .await?
-        .and_then(|v| v.parse::<i64>().ok())
-        .unwrap_or(0);
-    let projects = crate::projects::all(db).await?;
-    db.write(async |c| {
-        let mut sent = 0;
-        for p in &projects {
-            let fresh = crate::tickets::new_in_triage_after(c, p.id, after).await?;
-            if fresh.is_empty() {
-                continue;
-            }
-            let lines: Vec<String> = fresh.iter().map(|(n, t)| format!("#{n}  {t}\n     {base_url}/projects/{}/tickets/{n}", p.slug)).collect();
-            let subject = match fresh.len() {
-                1 => format!("[Monita] {}: 1 new ticket", p.name),
-                n => format!("[Monita] {}: {n} new tickets", p.name),
-            };
-            let body = format!("New tickets in Triage for {}:\n\n{}\n\nOpen the board: {base_url}/projects/{}/tickets\n", p.name, lines.join("\n"), p.slug);
-            store::queue(c, "email", &p.owner_email, Some(&subject), &body, now).await?;
-            sent += 1;
-        }
-        let watermark = crate::tickets::max_id(c).await?;
-        crate::platform::settings::set_raw(c, LAST_DIGEST_TICKET, &watermark.to_string()).await?;
-        Ok(sent)
-    })
-    .await
-}
-
 /// The test button on the alerts page: one message per recipient of that severity.
 pub async fn send_test(
     db: &Db,
@@ -281,72 +251,6 @@ pub async fn send_test(
         Ok(n)
     })
     .await
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct SentEmail {
-    pub to: String,
-    pub subject: String,
-    pub body: String,
-}
-
-/// The mail port. `Smtp` in production, `Log` when no SMTP server is set, `Memory` for tests.
-#[derive(Clone)]
-pub enum Mailer {
-    Smtp {
-        transport: AsyncSmtpTransport<Tokio1Executor>,
-        from: Mailbox,
-    },
-    Log,
-    Memory(Arc<Mutex<Vec<SentEmail>>>),
-}
-
-impl Mailer {
-    pub fn from_config(config: &Config) -> anyhow::Result<Self> {
-        let Some(url) = &config.smtp_url else {
-            return Ok(Mailer::Log);
-        };
-        let transport = AsyncSmtpTransport::<Tokio1Executor>::from_url(url)?
-            .timeout(Some(SEND_TIMEOUT))
-            .build();
-        Ok(Mailer::Smtp {
-            transport,
-            from: config.mail_from.parse()?,
-        })
-    }
-
-    pub fn memory() -> Self {
-        Mailer::Memory(Arc::default())
-    }
-
-    pub fn sent(&self) -> Vec<SentEmail> {
-        match self {
-            Mailer::Memory(m) => m.lock().expect("mailer lock").clone(),
-            _ => Vec::new(),
-        }
-    }
-
-    async fn send(&self, email: SentEmail) -> anyhow::Result<()> {
-        match self {
-            Mailer::Smtp { transport, from } => {
-                let msg = Message::builder()
-                    .from(from.clone())
-                    .to(email.to.parse()?)
-                    .subject(email.subject)
-                    .body(email.body)?;
-                transport.send(msg).await?;
-                Ok(())
-            }
-            Mailer::Log => {
-                tracing::info!(to = %email.to, subject = %email.subject, "email (no SMTP configured)");
-                Ok(())
-            }
-            Mailer::Memory(m) => {
-                m.lock().expect("mailer lock").push(email);
-                Ok(())
-            }
-        }
-    }
 }
 
 pub fn spawn_delivery(state: &AppState, running: &Arc<AtomicBool>) {
@@ -445,31 +349,4 @@ async fn deliver_one(state: &AppState, row: store::OutboxRow) -> anyhow::Result<
         .write(async |c| store::mark(c, row.id, &outcome, now()).await)
         .await?;
     Ok(result.is_ok())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// The SMTP pool needs a Tokio runtime, as in `monita serve`.
-    #[tokio::test]
-    async fn production_smtp_settings_parse() {
-        let config = Config::from_lookup(|k| match k {
-            "MONITA_ENV" => Some("prod".into()),
-            "MONITA_BASE_URL" => Some("https://monita.company.co.id".into()),
-            "MONITA_SMTP_URL" => Some("smtps://user:password@smtp.company.co.id:465".into()),
-            "MONITA_MAIL_FROM" => Some("Monita <monita@company.co.id>".into()),
-            _ => None,
-        })
-        .unwrap();
-        assert!(matches!(
-            Mailer::from_config(&config).unwrap(),
-            Mailer::Smtp { .. }
-        ));
-        let no_smtp = Config::from_lookup(|_| None).unwrap();
-        assert!(matches!(
-            Mailer::from_config(&no_smtp).unwrap(),
-            Mailer::Log
-        ));
-    }
 }

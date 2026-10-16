@@ -65,7 +65,7 @@ Two builders (the user and Claude), 2 days, sprints 1 to 4 in `docs/business/spr
 - Every write goes through `Db::write` (one writer connection, `BEGIN IMMEDIATE`). Reads use `Db::read()`. Never open a writing connection elsewhere.
 - No transaction stays open across a network call.
 - Templates use `templates/ui/macros.html`. No inline `style=` (CSP blocks it). No color literal outside `:root` in `app.css`.
-- File cap: 400 lines per `.rs`, 200 per template. Past it, turn the file into a folder module and keep `mod.rs` as the interface.
+- File cap: 400 lines per `.rs`, 200 per template. Past it, turn the file into a folder module and keep `mod.rs` as the interface. The cap applies to `src/`. A test file is a flat list of scenarios and may run to 800 lines.
 
 ## Runtime do and don't
 

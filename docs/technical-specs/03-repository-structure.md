@@ -15,15 +15,16 @@ monita/
 │   ├── lib.rs                 module tree; integration tests link against it
 │   ├── main.rs                CLI: `serve`, `migrate`, `admin create`
 │   ├── app.rs                 AppState, router assembly, background loop start
-│   ├── platform/              config, db, migrate, render, assets, health, rate_limit,
-│   │                          settings, backup, peer, reset_state
+│   ├── platform/              config, db, migrate, render, page, assets, headers, health,
+│   │                          rate_limit, limits, settings, jobs, backup, time, token, reset_state
 │   ├── accounts/              mod.rs (interface), routes.rs, store.rs
-│   ├── projects/              mod.rs, routes.rs, store.rs
-│   ├── checks/                mod.rs, probe.rs, scheduler.rs, retention.rs, routes.rs, store.rs
-│   ├── incidents/             mod.rs, engine.rs (pure), store.rs, routes.rs
-│   ├── notify/                mod.rs, outbox.rs, mailer.rs, webhook.rs, digest.rs, store.rs
-│   ├── status/                routes.rs
-│   └── tickets/               mod.rs, routes.rs, store.rs
+│   ├── projects/              mod.rs, allowlist.rs, routes.rs, store.rs
+│   ├── checks/                mod.rs, probe.rs, heartbeat.rs, scheduler.rs, retention.rs,
+│   │                          routes.rs, heartbeat_routes.rs, store/{monitors, heartbeats, rollup}
+│   ├── incidents/             mod.rs, engine.rs (pure), history.rs, routes.rs, store/{mod, reads}
+│   ├── notify/                mod.rs (send, outbox delivery), mailer.rs, digest.rs, routes.rs, store.rs
+│   ├── status/                mod.rs, routes.rs
+│   └── tickets/               mod.rs, store.rs, routes/{mod, api, public, admin}
 ├── templates/                 askama templates, one folder per module, plus layout/ and ui/
 ├── static/                    app.css, htmx.min.js (2.0.11), icons.svg; embedded by rust-embed
 ├── tests/                     Rust integration tests (temp-file DB, fake adapters)
