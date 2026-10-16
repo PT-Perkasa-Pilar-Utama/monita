@@ -175,13 +175,13 @@ async fn a_second_ping_within_a_second_gets_429_and_the_heartbeat_stays_up() {
 }
 
 #[tokio::test]
-async fn a_fail_ping_marks_the_heartbeat_failed_at_once() {
-    // AC-14.01 (Sprint 1 records the state; Sprint 2 opens the incident)
+async fn a_fail_ping_marks_the_heartbeat_down_at_once() {
+    // AC-14.01
     let app = TestApp::spawn("test").await;
     let (tl, token) = setup(&app).await;
     let res = ping(&app, reqwest::Method::POST, &format!("/ping/{token}/fail")).await;
     assert_eq!(res.status(), 200);
-    assert_eq!(state_label(&app, &tl).await, "Failed");
+    assert_eq!(state_label(&app, &tl).await, "Down");
     assert_eq!(
         count(&app, "SELECT count(*) FROM pings WHERE kind = 'fail'").await,
         1
@@ -213,7 +213,7 @@ async fn a_missed_deadline_is_reported_once_and_the_next_ping_clears_it() {
         }
         tokio::time::sleep(Duration::from_millis(100)).await;
     }
-    assert_eq!(state_label(&app, &tl).await, "Missed");
+    assert_eq!(state_label(&app, &tl).await, "Down");
     assert_eq!(
         ping(&app, reqwest::Method::GET, &format!("/ping/{token}"))
             .await

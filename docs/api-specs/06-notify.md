@@ -16,12 +16,12 @@ Fields: [../technical-specs/06-data-model.md section 6.3.6](../technical-specs/0
 
 ```json
 {
-  "text": "[CRITICAL] Payments / API health is DOWN: HTTP 503 after 2 checks",
+  "text": "[CRITICAL] Payments / API health is down: HTTP 503, expected 2xx after 2 checks",
   "event": "incident.opened",
   "project": "payments",
-  "source": { "kind": "monitor", "name": "API health" },
+  "source": "API health",
   "severity": "critical",
-  "cause": "HTTP 503",
+  "cause": "HTTP 503, expected 2xx after 2 checks",
   "incident_url": "https://monita.company.co.id/projects/payments/incidents/42",
   "at": 1792137600
 }

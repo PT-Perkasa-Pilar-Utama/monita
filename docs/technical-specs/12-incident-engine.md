@@ -38,7 +38,9 @@ pub enum Event {
 
 /// Applies one signal. Returns the event to send, if any.
 /// Errors only on database failure.
-pub async fn observe(tx: &Tx, source: Source, signal: Signal, now: i64) -> Result<Option<Event>>;
+/// `Source` carries kind, id, project_id, name and severity, filled by the checks module,
+/// so this module never reads checks tables.
+pub async fn observe(c: &Connection, source: &Source, signal: &Signal, now: i64) -> Result<Option<Event>>;
 ```
 
 Pure core:

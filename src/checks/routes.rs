@@ -9,11 +9,13 @@ use axum::{
     routing::{get, post},
 };
 use serde::Deserialize;
+use std::collections::HashMap;
 
 use super::{CheckRow, FieldErrors, INTERVALS_S, Monitor, MonitorInput};
 use crate::{
     accounts::CurrentUser,
     app::AppState,
+    incidents::{self, ItemState, SourceKind},
     platform::{
         now,
         page::{PageError, Shell},
@@ -34,12 +36,15 @@ pub fn router() -> Router<AppState> {
         .route("/projects/{slug}/monitors/{id}/delete", post(delete))
 }
 
-/// Sprint 1 state: the last check decides. Sprint 2 replaces this with the incident state.
-pub fn state_of(last: &Option<CheckRow>) -> (&'static str, &'static str) {
-    match last {
-        None => ("unknown", "Waiting"),
-        Some(c) if c.ok => ("up", "Up"),
-        Some(_) => ("down", "Down"),
+/// The incident state wins (2 failed checks open one); before the first check a monitor is waiting.
+pub fn state_of(
+    last: &Option<CheckRow>,
+    incident: Option<ItemState>,
+) -> (&'static str, &'static str) {
+    match (incident, last) {
+        (Some(s), _) => super::state_label(s),
+        (None, None) => ("unknown", "Waiting"),
+        (None, Some(_)) => ("up", "Up"),
     }
 }
 
@@ -68,12 +73,16 @@ struct ListPage {
     shell: Shell,
     project: Project,
     monitors: Vec<Monitor>,
+    states: HashMap<(SourceKind, i64), ItemState>,
     now: i64,
 }
 
 impl ListPage {
     fn state(&self, m: &Monitor) -> (&'static str, &'static str) {
-        state_of(&m.last)
+        state_of(
+            &m.last,
+            self.states.get(&(SourceKind::Monitor, m.id)).copied(),
+        )
     }
     fn every(&self, m: &Monitor) -> &'static str {
         interval_label(m.interval_s)
@@ -99,10 +108,12 @@ async fn list(
 ) -> Result<Response, PageError> {
     let project = projects::find_for(&state.db, &user, &slug).await?;
     let monitors = super::list_monitors(&state.db, project.id).await?;
+    let states = incidents::states_for(&state.db, project.id).await?;
     Ok(render(&ListPage {
         shell: projects::routes::shell(&user, "monitors", Some(&project)),
         project,
         monitors,
+        states,
         now: now(),
     }))
 }
@@ -272,11 +283,12 @@ struct DetailPage {
     monitor: Monitor,
     checks: Vec<CheckRow>,
     older: Option<i64>,
+    incident: Option<ItemState>,
 }
 
 impl DetailPage {
     fn state(&self) -> (&'static str, &'static str) {
-        state_of(&self.monitor.last)
+        state_of(&self.monitor.last, self.incident)
     }
     fn every(&self) -> &'static str {
         interval_label(self.monitor.interval_s)
@@ -313,11 +325,16 @@ async fn detail(
     let older = (checks.len() as i64 == PAGE)
         .then(|| checks.last().map(|c| c.checked_at))
         .flatten();
+    let incident = incidents::states_for(&state.db, project.id)
+        .await?
+        .get(&(SourceKind::Monitor, id))
+        .copied();
     Ok(render(&DetailPage {
         shell: projects::routes::shell(&user, "monitors", Some(&project)),
         project,
         monitor,
         checks,
         older,
+        incident,
     }))
 }

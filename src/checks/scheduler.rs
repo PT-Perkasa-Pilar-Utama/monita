@@ -8,7 +8,10 @@ use std::{
     time::Duration,
 };
 
-use tokio::{sync::Semaphore, task::JoinHandle};
+use tokio::{
+    sync::{OwnedRwLockReadGuard, Semaphore},
+    task::JoinHandle,
+};
 
 use super::store;
 use crate::{
@@ -26,18 +29,18 @@ pub fn spawn(state: AppState) -> JoinHandle<()> {
         loop {
             tick.tick().await;
             state.last_tick.store(now(), Ordering::Relaxed);
+            // One read guard per tick, shared with the probes it starts (a second read could
+            // queue behind a waiting reset and deadlock).
+            let pass = Arc::new(state.gate.clone().read_owned().await);
             // A primary-key read; a changed cap applies on the next tick.
             cap = resize(&state, &slots, cap).await;
-            if let Err(e) = run_due_monitors(&state, &slots).await {
+            if let Err(e) = run_due_monitors(&state, &slots, &pass).await {
                 tracing::error!(error = %e, "scheduler: monitor pass failed");
             }
-            // Sprint 2: each missed heartbeat becomes incidents::observe(Heartbeat, HeartbeatMissed).
-            match super::heartbeat::sweep_missed(&state.db, now()).await {
-                Ok(ids) if !ids.is_empty() => {
-                    tracing::warn!(?ids, "heartbeats missed their deadline")
-                }
-                Ok(_) => {}
-                Err(e) => tracing::error!(error = %e, "scheduler: heartbeat sweep failed"),
+            if let Err(e) =
+                super::heartbeat::sweep_missed(&state.db, &state.config.base_url, now()).await
+            {
+                tracing::error!(error = %e, "scheduler: heartbeat sweep failed");
             }
             crate::notify::spawn_delivery(&state, &delivering);
         }
@@ -63,7 +66,11 @@ async fn resize(state: &AppState, slots: &Semaphore, cap: usize) -> usize {
 
 /// Claims as many due monitors as there are free slots, and probes each in its own task.
 /// Only this loop takes permits, so every claimed monitor gets one.
-async fn run_due_monitors(state: &AppState, slots: &Arc<Semaphore>) -> anyhow::Result<()> {
+async fn run_due_monitors(
+    state: &AppState,
+    slots: &Arc<Semaphore>,
+    pass: &Arc<OwnedRwLockReadGuard<()>>,
+) -> anyhow::Result<()> {
     let free = slots.available_permits() as i64;
     if free == 0 {
         return Ok(());
@@ -78,13 +85,13 @@ async fn run_due_monitors(state: &AppState, slots: &Arc<Semaphore>) -> anyhow::R
             break;
         };
         let state = state.clone();
+        let held = pass.clone();
         tokio::spawn(async move {
+            let _held = held;
             let result = super::probe(&monitor.target(), &state.http).await;
             drop(permit);
-            let stored = state
-                .db
-                .write(async |c| store::insert_check(c, monitor.id, &result).await)
-                .await;
+            let stored =
+                super::record_check(&state.db, &state.config.base_url, &monitor, &result).await;
             if let Err(e) = stored {
                 tracing::error!(monitor = monitor.id, error = %e, "scheduler: could not store a check");
             }

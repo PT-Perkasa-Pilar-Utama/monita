@@ -18,6 +18,7 @@ One loop drives every timed job in Monita: monitor checks, heartbeat deadlines, 
 | New heartbeat | `deadline_at = created_at + period_s + grace_s` | A job that never pings still alerts. |
 | Daily jobs | Run when the UTC hour has passed and `settings.last_<job>_day` is not today | One loop, no cron crate |
 | Liveness | An `AtomicI64` holds the last tick time. `/healthz` reads it. | T5 |
+| Reset safety | Each tick holds one shared read guard on `AppState.gate` until its probes finish writing; reset-state takes the write guard. | No stale result lands after a reset. |
 
 ## 13.2 Tick
 
@@ -71,8 +72,6 @@ src/checks/retention.rs   pub async fn rollup_and_sweep(conn, day) -> Result<()>
 
 ## 13.7 Open follow-ups
 
-- `/ping/{token}/fail` ignores its body. The contract (api-specs 04 section 4.2) stores up to 1 KB as the cause; Sprint 2 adds migration `0002` with `pings.cause` and passes it to `observe`.
-- Reset-state does not pause this loop. Sprint 2 adds the pause before incident tests reset a database that has due monitors.
 
 - Check concurrency above 50, if a mass outage delays checks too much. Trigger: lateness p95 over 10 s during an outage.
 - Resolved 2026-10-16: writes go through one writer connection behind a mutex ([05 section 5.8.5](05-module-definitions.md#585-database-access)). Revisit only if write lock wait p95 exceeds 50 ms.

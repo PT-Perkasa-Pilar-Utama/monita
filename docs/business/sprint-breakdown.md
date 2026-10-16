@@ -2,7 +2,7 @@
 
 ## Sprint 1: Checks run (done 2026-10-16)
 
-AC-14.01 (a fail ping opens an incident) and the missed-heartbeat incident complete in Sprint 2 with US-17. Sprint 1 records them as heartbeat state.
+AC-14.01 completed in Sprint 2 with US-17.
 
 1. US-01: Create the first super admin (Super admin)
 2. US-02: Create a TL account (Super admin)
@@ -19,7 +19,7 @@ AC-14.01 (a fail ping opens an incident) and the missed-heartbeat incident compl
 13. US-13: Send a heartbeat ping (Project job)
 14. US-14: Report a job failure (Project job)
 
-## Sprint 2: Incidents and alerts
+## Sprint 2: Incidents and alerts (done 2026-10-16)
 
 1. US-15: Set alert recipients per severity (TL)
 2. US-16: Get alerts on open and close (TL)

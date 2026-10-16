@@ -251,7 +251,10 @@ async fn due_monitors_are_checked_and_the_detail_lists_the_results() {
         .text()
         .await
         .unwrap();
-    assert!(list.contains("state state--down"));
+    assert!(
+        !list.contains("state state--down"),
+        "AC-17.02: one failed check is not an outage"
+    );
     assert!(list.contains("200 · "));
 }
 

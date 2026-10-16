@@ -11,6 +11,7 @@ use axum::{
     routing::{get, post},
 };
 use serde::Deserialize;
+use std::collections::HashMap;
 
 use super::{
     FieldErrors,
@@ -19,6 +20,7 @@ use super::{
 use crate::{
     accounts::CurrentUser,
     app::AppState,
+    incidents::{self, ItemState, SourceKind},
     platform::{
         client_ip, now,
         page::{PageError, Shell},
@@ -53,10 +55,14 @@ struct ListPage {
     shell: Shell,
     project: Project,
     heartbeats: Vec<Heartbeat>,
+    states: HashMap<(SourceKind, i64), ItemState>,
     now: i64,
 }
 
 impl ListPage {
+    fn state(&self, h: &Heartbeat) -> (&'static str, &'static str) {
+        h.state(self.states.get(&(SourceKind::Heartbeat, h.id)).copied())
+    }
     fn every(&self, h: &Heartbeat) -> String {
         heartbeat::label(&PERIODS_S, h.period_s)
     }
@@ -74,10 +80,12 @@ async fn list(
 ) -> Result<Response, PageError> {
     let project = projects::find_for(&state.db, &user, &slug).await?;
     let heartbeats = heartbeat::list(&state.db, project.id).await?;
+    let states = incidents::states_for(&state.db, project.id).await?;
     Ok(render(&ListPage {
         shell: projects::routes::shell(&user, "heartbeats", Some(&project)),
         project,
         heartbeats,
+        states,
         now: now(),
     }))
 }
@@ -240,9 +248,13 @@ struct DetailPage {
     hb: Heartbeat,
     ping_url: String,
     pings: Vec<PingRow>,
+    incident: Option<ItemState>,
 }
 
 impl DetailPage {
+    fn state(&self) -> (&'static str, &'static str) {
+        self.hb.state(self.incident)
+    }
     fn period(&self) -> String {
         heartbeat::label(&PERIODS_S, self.hb.period_s)
     }
@@ -264,12 +276,17 @@ async fn detail(
         .await?
         .ok_or(PageError::NotFound)?;
     let pings = heartbeat::recent_pings(&state.db, id, 100).await?;
+    let incident = incidents::states_for(&state.db, project.id)
+        .await?
+        .get(&(SourceKind::Heartbeat, id))
+        .copied();
     Ok(render(&DetailPage {
         shell: projects::routes::shell(&user, "heartbeats", Some(&project)),
         ping_url: ping_url(&state, &hb),
         project,
         hb,
         pings,
+        incident,
     }))
 }
 
@@ -288,6 +305,7 @@ async fn ping(
     kind: PingKind,
     headers: &HeaderMap,
     peer: Option<SocketAddr>,
+    cause: Option<String>,
 ) -> Response {
     let found = match heartbeat::find_by_token(&state.db, token).await {
         Ok(found) => found,
@@ -317,7 +335,7 @@ async fn ping(
             .into_response();
     }
     let ip = client_ip(headers, peer, state.config.trust_proxy).map(|ip| ip.to_string());
-    match heartbeat::record_ping(&state.db, &hb, kind, ip).await {
+    match heartbeat::record_ping(&state.db, &state.config.base_url, &hb, kind, ip, cause).await {
         Ok(()) => plain(StatusCode::OK, "OK"),
         Err(e) => {
             tracing::error!(heartbeat = hb.id, error = %e, "ping write failed");
@@ -337,7 +355,15 @@ async fn ping_ok(
     Path(token): Path<String>,
     req: Request,
 ) -> Response {
-    ping(&state, &token, PingKind::Ok, req.headers(), peer(&req)).await
+    ping(
+        &state,
+        &token,
+        PingKind::Ok,
+        req.headers(),
+        peer(&req),
+        None,
+    )
+    .await
 }
 
 async fn ping_fail(
@@ -345,5 +371,20 @@ async fn ping_fail(
     Path(token): Path<String>,
     req: Request,
 ) -> Response {
-    ping(&state, &token, PingKind::Fail, req.headers(), peer(&req)).await
+    let (headers, peer) = (req.headers().clone(), peer(&req));
+    // The body, if any, is the job's own error text; up to 1 KB is kept (api-specs 04 section 4.2).
+    let body = axum::body::to_bytes(req.into_body(), 64 * 1024)
+        .await
+        .unwrap_or_default();
+    let text = String::from_utf8_lossy(&body);
+    let cause: String = text.trim().chars().take(1024).collect();
+    ping(
+        &state,
+        &token,
+        PingKind::Fail,
+        &headers,
+        peer,
+        (!cause.is_empty()).then_some(cause),
+    )
+    .await
 }

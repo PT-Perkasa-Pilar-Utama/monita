@@ -135,6 +135,7 @@ pub async fn insert_ping(
     id: i64,
     kind: PingKind,
     source_ip: Option<&str>,
+    cause: Option<&str>,
     at: i64,
 ) -> anyhow::Result<()> {
     let kind_str = match kind {
@@ -142,8 +143,8 @@ pub async fn insert_ping(
         PingKind::Fail => "fail",
     };
     c.execute(
-        "INSERT INTO pings (heartbeat_id, received_at, kind, source_ip) VALUES (?1, ?2, ?3, ?4)",
-        (id, at, kind_str, source_ip),
+        "INSERT INTO pings (heartbeat_id, received_at, kind, source_ip, cause) VALUES (?1, ?2, ?3, ?4, ?5)",
+        (id, at, kind_str, source_ip, cause),
     )
     .await?;
     if kind == PingKind::Ok {
@@ -153,22 +154,19 @@ pub async fn insert_ping(
 }
 
 /// Returns the heartbeats past their deadline and clears those deadlines.
-pub async fn take_missed(c: &Connection, at: i64) -> anyhow::Result<Vec<i64>> {
-    let mut ids = Vec::new();
-    {
-        let mut rows = c
-            .query("SELECT id FROM heartbeats WHERE deadline_at <= ?1", [at])
-            .await?;
-        while let Some(r) = rows.next().await? {
-            ids.push(r.get::<i64>(0)?);
-        }
-    }
-    for id in &ids {
+pub async fn take_missed(c: &Connection, at: i64) -> anyhow::Result<Vec<Heartbeat>> {
+    let missed = many(
+        c,
+        format!("SELECT {COLS} FROM heartbeats h WHERE h.deadline_at <= ?1"),
+        [at],
+    )
+    .await?;
+    for hb in &missed {
         c.execute(
             "UPDATE heartbeats SET deadline_at = NULL WHERE id = ?1",
-            [*id],
+            [hb.id],
         )
         .await?;
     }
-    Ok(ids)
+    Ok(missed)
 }

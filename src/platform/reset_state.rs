@@ -45,7 +45,8 @@ pub async fn handler(
             );
         }
     };
-    // ponytail: the scheduler is not paused yet; it only ticks until US-09 adds checks. Pause it then.
+    // Waits for running checks and blocks new ones until the reset is done.
+    let _exclusive = state.gate.write().await;
     let result = async {
         state.db.drop_all_tables().await?;
         migrate::run(&state.db).await?;

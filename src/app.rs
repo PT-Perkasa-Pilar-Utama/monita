@@ -23,11 +23,15 @@ pub struct AppState {
     pub mailer: Mailer,
     pub http: crate::checks::Clients,
     pub limiter: Arc<crate::platform::rate_limit::Limiter>,
+    /// Background work holds a read guard; reset-state takes the write guard, so a reset never
+    /// races a check that is mid-write.
+    pub gate: Arc<tokio::sync::RwLock<()>>,
 }
 
 /// Opens the database, migrates it and starts the background loops.
 pub async fn build(config: Config) -> anyhow::Result<(Router, AppState)> {
-    build_with(config, Mailer::Log).await
+    let mailer = Mailer::from_config(&config)?;
+    build_with(config, mailer).await
 }
 
 /// `build` with a chosen mail adapter. Tests pass `Mailer::memory()`.
@@ -44,6 +48,7 @@ pub async fn build_with(config: Config, mailer: Mailer) -> anyhow::Result<(Route
         mailer,
         http: crate::checks::Clients::new()?,
         limiter: Arc::default(),
+        gate: Arc::default(),
     };
     crate::checks::scheduler::spawn(state.clone());
     Ok((router(state.clone()), state))
@@ -58,6 +63,8 @@ pub fn router(state: AppState) -> Router {
         .merge(crate::tickets::routes::router())
         .merge(crate::checks::routes::router())
         .merge(crate::checks::heartbeat_routes::router())
+        .merge(crate::incidents::routes::router())
+        .merge(crate::notify::routes::router())
         .merge(crate::platform::limits::router());
 
     // SEC-17: the route does not exist in prod. Registration is the control, not authorization.

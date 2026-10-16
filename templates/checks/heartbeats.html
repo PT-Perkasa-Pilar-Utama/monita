@@ -14,7 +14,7 @@
       <thead><tr><th>Heartbeat</th><th>State</th><th>Severity</th><th class="hide-sm">Runs every</th><th class="t-right">Last ping</th></tr></thead>
       <tbody>
       {% for h in heartbeats %}
-        {% let st = h.state() %}
+        {% let st = self.state(h) %}
         <tr>
           <td><a class="table__title" href="/projects/{{ project.slug }}/heartbeats/{{ h.id }}">{{ h.name }}</a></td>
           <td>{% call ui::state(st.0, st.1) %}{% endcall %}</td>

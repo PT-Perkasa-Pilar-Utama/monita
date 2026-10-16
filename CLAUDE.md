@@ -144,7 +144,8 @@ A new e2e spec file must match a project in `e2e/lib/shards.ts`; `bun test lib` 
 - [ ] Ref IDs: `POST /api/v1/ref-ids`, project from the API key, `single_use` flag. Caps: 5 per ref ID per day, 100 per project per day.
 - [ ] Rate limits: 60/min per IP (public, ticket form, login), 120/min per API key, 1/s per heartbeat (extra pings return 429 and still count).
 - [ ] API key format `mk_` + 26 base32 chars; heartbeat tokens stored raw; everything else hashed.
-- [ ] Scheduler: one 1 s loop; claim by setting `next_check_at` before probing; 50 concurrent checks.
+- [ ] Scheduler: one 1 s loop; claim by setting `next_check_at` before probing; 50 concurrent checks. Each tick holds one shared read guard on `AppState.gate`; reset-state takes the write guard.
+- [ ] `incidents::observe` and `notify::send` run inside the same `Db::write` as the check or ping that caused them. The outbox claims rows with a 120 s lease.
 - [ ] Dev machine has 8 GiB RAM: 4 cargo jobs, e2e at most 2 workers.
 
 ## Quick reference

@@ -2,6 +2,10 @@
 
 use super::{FieldErrors, store::heartbeats as store};
 use crate::platform::{db::Db, now, token};
+use crate::{
+    incidents::{self, Signal, Source, SourceKind},
+    notify,
+};
 
 pub const PERIODS_S: [(i64, &str); 12] = [
     (60, "1 minute"),
@@ -53,16 +57,22 @@ pub struct Heartbeat {
 }
 
 impl Heartbeat {
-    /// Sprint 1 state from the pings alone. Sprint 2 replaces it with the incident state.
-    pub fn state(&self) -> (&'static str, &'static str) {
-        if self.last_kind.as_deref() == Some("fail") {
-            ("down", "Failed")
-        } else if self.deadline_at.is_none() {
-            ("down", "Missed")
-        } else if self.last_ping_at.is_none() {
-            ("unknown", "Waiting")
-        } else {
-            ("up", "Up")
+    /// The incident state wins; with no open incident, a heartbeat that never pinged is waiting.
+    pub fn state(&self, incident: Option<incidents::ItemState>) -> (&'static str, &'static str) {
+        match incident {
+            Some(s) => super::state_label(s),
+            None if self.last_ping_at.is_none() => ("unknown", "Waiting"),
+            None => ("up", "Up"),
+        }
+    }
+
+    pub fn source(&self) -> Source {
+        Source {
+            kind: SourceKind::Heartbeat,
+            id: self.id,
+            project_id: self.project_id,
+            name: self.name.clone(),
+            severity: self.severity.clone(),
         }
     }
 
@@ -148,9 +158,16 @@ pub async fn update(
         .await
 }
 
+/// Also closes the heartbeat's open incident.
 pub async fn delete(db: &Db, project_id: i64, id: i64) -> anyhow::Result<()> {
-    db.write(async |c| store::delete(c, project_id, id).await)
-        .await
+    db.write(async |c| {
+        if store::find(c, project_id, id).await?.is_some() {
+            incidents::source_deleted(c, SourceKind::Heartbeat, id, now()).await?;
+            store::delete(c, project_id, id).await?;
+        }
+        Ok(())
+    })
+    .await
 }
 
 pub async fn list(db: &Db, project_id: i64) -> anyhow::Result<Vec<Heartbeat>> {
@@ -169,19 +186,47 @@ pub async fn recent_pings(db: &Db, id: i64, limit: i64) -> anyhow::Result<Vec<Pi
     store::recent_pings(&db.read().await?, id, now() - 7 * 86_400, limit).await
 }
 
-/// AC-13.01, AC-14.01. An OK ping pushes the deadline out; a fail ping leaves it.
+/// AC-13.01, AC-14.01, AC-17.03, AC-18.01. An OK ping pushes the deadline out and closes an
+/// open incident; a fail ping opens one at once and leaves the deadline.
 pub async fn record_ping(
     db: &Db,
+    base_url: &str,
     hb: &Heartbeat,
     kind: PingKind,
     source_ip: Option<String>,
+    cause: Option<String>,
 ) -> anyhow::Result<()> {
     let t = now();
-    db.write(async |c| store::insert_ping(c, hb.id, kind, source_ip.as_deref(), t).await)
-        .await
+    let signal = match kind {
+        PingKind::Ok => Signal::Ping,
+        PingKind::Fail => Signal::FailPing {
+            cause: cause
+                .clone()
+                .unwrap_or_else(|| "The job reported a failure".into()),
+        },
+    };
+    db.write(async |c| {
+        store::insert_ping(c, hb.id, kind, source_ip.as_deref(), cause.as_deref(), t).await?;
+        if let Some(ev) = incidents::observe(c, &hb.source(), &signal, t).await? {
+            notify::send(c, &ev, base_url).await?;
+        }
+        Ok(())
+    })
+    .await
 }
 
-/// Heartbeats past their deadline. Each is returned once: its deadline is cleared until the next ping.
-pub async fn sweep_missed(db: &Db, at: i64) -> anyhow::Result<Vec<i64>> {
-    db.write(async |c| store::take_missed(c, at).await).await
+/// Heartbeats past their deadline, each reported once: its deadline is cleared until the next ping.
+pub async fn sweep_missed(db: &Db, base_url: &str, at: i64) -> anyhow::Result<usize> {
+    db.write(async |c| {
+        let missed = store::take_missed(c, at).await?;
+        for hb in &missed {
+            if let Some(ev) =
+                incidents::observe(c, &hb.source(), &Signal::HeartbeatMissed, at).await?
+            {
+                notify::send(c, &ev, base_url).await?;
+            }
+        }
+        Ok(missed.len())
+    })
+    .await
 }

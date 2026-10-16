@@ -21,7 +21,7 @@ Legend: `OK` implemented and tested, `WIP` in progress, `TODO` not started, `SCA
 | `GET /api/v1/tickets/mine` | [08](08-tickets.md#83-get-apiv1ticketsmine) | TODO |
 | `GET /api/v1/public/status/{slug}` | [07](07-status.md#71-get-apiv1publicstatusslug) | TODO |
 | `GET, HEAD, POST /ping/{token}` | [04](04-checks.md#41-get-head-post-pingtoken) | OK |
-| `GET, HEAD, POST /ping/{token}/fail` | [04](04-checks.md#42-get-head-post-pingtokenfail) | WIP (records the fail; the incident and the body as cause arrive with US-17) |
+| `GET, HEAD, POST /ping/{token}/fail` | [04](04-checks.md#42-get-head-post-pingtokenfail) | OK |
 | `GET /healthz` | [09](09-system.md#91-get-healthz) | OK |
 | `POST /admin/reset-state` | [09](09-system.md#92-post-adminreset-state) | WIP (token auth only; session auth with US-03) |
 
@@ -32,8 +32,8 @@ Legend: `OK` implemented and tested, `WIP` in progress, `TODO` not started, `SCA
 | Sign-in, invites, TL management | [02](02-authentication.md) | OK |
 | Projects, API keys | [03](03-projects.md) | OK |
 | Monitors, heartbeats | [04](04-checks.md#43-html-routes) | OK |
-| Incidents | [05](05-incidents.md) | TODO |
-| Alert routes | [06](06-notify.md) | TODO |
+| Incidents | [05](05-incidents.md) | OK |
+| Alert routes | [06](06-notify.md) | OK |
 | Status page | [07](07-status.md#72-html-routes) | TODO |
 | Tickets kanban, public board, ticket form | [08](08-tickets.md#84-html-routes) | TODO |
 

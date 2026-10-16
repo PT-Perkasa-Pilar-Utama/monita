@@ -17,6 +17,15 @@ pub use store::{CheckRow, Monitor};
 
 pub const INTERVALS_S: [i64; 4] = [30, 60, 180, 300];
 
+/// Pill kind and word for an item with an open incident.
+pub fn state_label(s: crate::incidents::ItemState) -> (&'static str, &'static str) {
+    match s {
+        crate::incidents::ItemState::Down => ("down", "Down"),
+        crate::incidents::ItemState::Issue => ("issue", "Issue"),
+        crate::incidents::ItemState::Up => ("up", "Up"),
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CheckResult {
     pub checked_at: i64,
@@ -117,9 +126,46 @@ pub async fn update_monitor(
         .await
 }
 
+/// Also closes the monitor's open incident.
 pub async fn delete_monitor(db: &Db, project_id: i64, id: i64) -> anyhow::Result<()> {
-    db.write(async |c| store::delete_monitor(c, project_id, id).await)
-        .await
+    db.write(async |c| {
+        if store::find_monitor(c, project_id, id).await?.is_some() {
+            crate::incidents::source_deleted(c, crate::incidents::SourceKind::Monitor, id, now())
+                .await?;
+            store::delete_monitor(c, project_id, id).await?;
+        }
+        Ok(())
+    })
+    .await
+}
+
+/// Stores one result and feeds it to the incident engine, in one transaction (spec 12).
+pub async fn record_check(
+    db: &Db,
+    base_url: &str,
+    monitor: &Monitor,
+    result: &CheckResult,
+) -> anyhow::Result<()> {
+    let signal = if result.ok {
+        crate::incidents::Signal::CheckOk
+    } else {
+        crate::incidents::Signal::CheckFailed {
+            cause: result
+                .error
+                .clone()
+                .unwrap_or_else(|| "Check failed".into()),
+        }
+    };
+    db.write(async |c| {
+        store::insert_check(c, monitor.id, result).await?;
+        if let Some(ev) =
+            crate::incidents::observe(c, &monitor.source(), &signal, result.checked_at).await?
+        {
+            crate::notify::send(c, &ev, base_url).await?;
+        }
+        Ok(())
+    })
+    .await
 }
 
 pub async fn list_monitors(db: &Db, project_id: i64) -> anyhow::Result<Vec<Monitor>> {

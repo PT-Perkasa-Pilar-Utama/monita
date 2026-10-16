@@ -16,6 +16,11 @@ pub struct Clients {
 }
 
 impl Clients {
+    /// Outgoing webhooks verify TLS.
+    pub fn webhook(&self) -> &reqwest::Client {
+        &self.strict
+    }
+
     pub fn new() -> anyhow::Result<Self> {
         let base = || {
             reqwest::Client::builder()

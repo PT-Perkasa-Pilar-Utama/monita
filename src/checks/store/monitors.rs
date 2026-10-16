@@ -35,6 +35,16 @@ impl Monitor {
         }
     }
 
+    pub fn source(&self) -> crate::incidents::Source {
+        crate::incidents::Source {
+            kind: crate::incidents::SourceKind::Monitor,
+            id: self.id,
+            project_id: self.project_id,
+            name: self.name.clone(),
+            severity: self.severity.clone(),
+        }
+    }
+
     pub fn target(&self) -> crate::checks::probe::Target<'_> {
         crate::checks::probe::Target {
             url: &self.url,

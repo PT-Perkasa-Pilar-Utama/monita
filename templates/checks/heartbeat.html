@@ -4,7 +4,7 @@
 {% block crumbs %}<span>{{ project.name }}</span><span class="subtle">/</span><a class="link-quiet" href="/projects/{{ project.slug }}/heartbeats">Heartbeats</a><span class="subtle">/</span><strong>{{ hb.name }}</strong>{% endblock %}
 {% block actions %}<a class="btn btn--sm" href="/projects/{{ project.slug }}/heartbeats/{{ hb.id }}/edit">Edit</a>{% endblock %}
 {% block content %}
-{% let st = hb.state() %}
+{% let st = self.state() %}
 <div class="page-head"><div><span class="cap">Heartbeat</span><h1>{{ hb.name }}</h1></div>{% call ui::state(st.0, st.1) %}{% endcall %}</div>
 <div class="stack stack--lg">
   <section class="panel">

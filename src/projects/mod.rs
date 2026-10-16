@@ -99,6 +99,23 @@ pub async fn find_public(db: &Db, slug: &str) -> anyhow::Result<Option<Project>>
     store::find_by_slug(&db.read().await?, slug).await
 }
 
+/// Name and slug for messages, inside a caller's transaction.
+pub async fn name_slug(
+    c: &turso::Connection,
+    project_id: i64,
+) -> anyhow::Result<Option<(String, String)>> {
+    let mut rows = c
+        .query(
+            "SELECT name, slug FROM projects WHERE id = ?1",
+            [project_id],
+        )
+        .await?;
+    Ok(match rows.next().await? {
+        Some(r) => Some((r.get(0)?, r.get(1)?)),
+        None => None,
+    })
+}
+
 pub async fn owner_of(db: &Db, project_id: i64) -> anyhow::Result<Option<i64>> {
     store::owner_of(&db.read().await?, project_id).await
 }
