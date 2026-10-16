@@ -19,6 +19,8 @@ struct Writer {
     /// True between BEGIN and COMMIT/ROLLBACK. A caller future dropped mid-transaction (a client
     /// that disconnects) leaves it set; the next user rolls the stale transaction back first.
     in_tx: bool,
+    /// True while a `write_without_fk` runs; `clean` turns the checks back on after a drop.
+    fk_off: bool,
 }
 
 impl Writer {
@@ -29,6 +31,12 @@ impl Writer {
                 tracing::error!(error = %e, "rollback of an abandoned transaction failed");
             }
             self.in_tx = false;
+        }
+        if self.fk_off {
+            if let Err(e) = self.conn.execute("PRAGMA foreign_keys = ON", ()).await {
+                tracing::error!(error = %e, "could not turn foreign keys back on");
+            }
+            self.fk_off = false;
         }
     }
 }
@@ -43,7 +51,11 @@ impl Db {
         let conn = connect(&database).await?;
         Ok(Self {
             database,
-            writer: Arc::new(Mutex::new(Writer { conn, in_tx: false })),
+            writer: Arc::new(Mutex::new(Writer {
+                conn,
+                in_tx: false,
+                fk_off: false,
+            })),
         })
     }
 
@@ -59,8 +71,40 @@ impl Db {
         &self,
         f: impl AsyncFnOnce(&Connection) -> anyhow::Result<T>,
     ) -> anyhow::Result<T> {
+        self.write_inner(false, f).await
+    }
+
+    /// `write` with foreign keys off, for table rebuilds (SQLite's 12-step ALTER procedure) and
+    /// reset-state. The pragma cannot change inside a transaction, so it wraps BEGIN and COMMIT.
+    /// turso 0.8.3 answers `PRAGMA foreign_key_check` with no rows, so `f` must keep every
+    /// reference valid itself.
+    pub async fn write_without_fk<T>(
+        &self,
+        f: impl AsyncFnOnce(&Connection) -> anyhow::Result<T>,
+    ) -> anyhow::Result<T> {
+        self.write_inner(true, f).await
+    }
+
+    async fn write_inner<T>(
+        &self,
+        fk_off: bool,
+        f: impl AsyncFnOnce(&Connection) -> anyhow::Result<T>,
+    ) -> anyhow::Result<T> {
         let mut w = self.writer.lock().await;
         w.clean().await;
+        if fk_off {
+            w.conn.execute("PRAGMA foreign_keys = OFF", ()).await?;
+            w.fk_off = true;
+        }
+        let result = Self::transaction(&mut w, f).await;
+        w.clean().await;
+        result
+    }
+
+    async fn transaction<T>(
+        w: &mut Writer,
+        f: impl AsyncFnOnce(&Connection) -> anyhow::Result<T>,
+    ) -> anyhow::Result<T> {
         w.conn.execute("BEGIN IMMEDIATE", ()).await?;
         w.in_tx = true;
         let result = match f(&w.conn).await {
@@ -80,57 +124,43 @@ impl Db {
         result
     }
 
-    /// Writes a consistent copy of the database to `path` (US-33). `VACUUM INTO` cannot run in a
-    /// transaction, so this locks the writer directly. It refuses to overwrite: remove `path` first.
+    /// Writes a consistent copy of the database to `path` (US-33). It runs on its own reading
+    /// connection, so writes go on during a long copy. It refuses to overwrite: remove `path` first.
+    // ponytail: turso runs the copy without yielding, so it holds one runtime worker until done;
+    // move it to a dedicated thread if backups grow past a few seconds.
     pub async fn vacuum_into(&self, path: &Path) -> anyhow::Result<()> {
         let target = path
             .to_str()
             .context("backup path must be UTF-8")?
             .replace('\'', "''");
-        let mut w = self.writer.lock().await;
-        w.clean().await;
-        w.conn
+        self.read()
+            .await?
             .execute(&format!("VACUUM INTO '{target}'"), ())
             .await?;
         Ok(())
     }
 
-    /// Drops every table. Only reset-state calls this. Foreign keys must be off outside a
-    /// transaction, so this does not use `write`.
+    /// Drops every table. Only reset-state calls this.
     pub async fn drop_all_tables(&self) -> anyhow::Result<()> {
-        let mut w = self.writer.lock().await;
-        w.clean().await;
-        let conn = &w.conn;
-        let mut names = Vec::new();
-        {
-            let mut rows = conn
-                .query(
-                    "SELECT name FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%'",
+        let names = query_all(
+            &self.read().await?,
+            "SELECT name FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%'",
+            (),
+            |r| r.get::<String>(0),
+        )
+        .await?;
+        self.write_without_fk(async |c| {
+            for name in &names {
+                // IF EXISTS: turso drops a table's internal AUTOINCREMENT counter with it.
+                c.execute(
+                    &format!("DROP TABLE IF EXISTS \"{}\"", name.replace('"', "\"\"")),
                     (),
                 )
                 .await?;
-            while let Some(row) = rows.next().await? {
-                names.push(row.get::<String>(0)?);
             }
-        }
-        conn.execute("PRAGMA foreign_keys = OFF", ()).await?;
-        let result = async {
-            conn.execute("BEGIN IMMEDIATE", ()).await?;
-            for name in &names {
-                conn.execute(&format!("DROP TABLE \"{}\"", name.replace('"', "\"\"")), ())
-                    .await?;
-            }
-            conn.execute("COMMIT", ()).await?;
-            anyhow::Ok(())
-        }
-        .await;
-        if result.is_err()
-            && let Err(e) = conn.execute("ROLLBACK", ()).await
-        {
-            tracing::warn!(error = %e, "rollback after a failed table drop failed");
-        }
-        conn.execute("PRAGMA foreign_keys = ON", ()).await?;
-        result
+            Ok(())
+        })
+        .await
     }
 }
 
@@ -179,6 +209,38 @@ mod tests {
         let path = dir.path().join("data/nested/t.db");
         Db::open(&path).await.unwrap();
         assert!(path.parent().unwrap().is_dir());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_write_does_not_wait_for_a_backup_copy() {
+        let dir = tempfile::tempdir().unwrap();
+        let db = Db::open(&dir.path().join("t.db")).await.unwrap();
+        db.write(async |c| {
+            c.execute("CREATE TABLE big (v TEXT)", ()).await?;
+            for i in 0..20_000 {
+                c.execute("INSERT INTO big VALUES (?1)", [format!("{i:0>200}")])
+                    .await?;
+            }
+            Ok(())
+        })
+        .await
+        .unwrap();
+        let copy = {
+            let (db, path) = (db.clone(), dir.path().join("copy.db"));
+            tokio::spawn(async move { db.vacuum_into(&path).await })
+        };
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        db.write(async |c| {
+            c.execute("INSERT INTO big VALUES ('during')", ()).await?;
+            Ok(())
+        })
+        .await
+        .unwrap();
+        assert!(
+            !copy.is_finished(),
+            "the write finished while the copy still ran"
+        );
+        copy.await.unwrap().unwrap();
     }
 
     #[tokio::test]

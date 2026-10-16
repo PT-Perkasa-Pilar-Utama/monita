@@ -108,7 +108,7 @@ erDiagram
 
 | column | type | nullable | default | key | notes |
 | --- | --- | --- | --- | --- | --- |
-| id | INTEGER | no | | PK | |
+| id | INTEGER | no | | PK AUTOINCREMENT | Never reused (migration 0003): incident_items, incident_sources and daily_summaries name a source by kind and id without a foreign key. |
 | project_id | INTEGER | no | | FK projects | |
 | name | TEXT | no | | | `API health` |
 | url | TEXT | no | | | `https://pay.internal/api/health` |
@@ -126,7 +126,7 @@ erDiagram
 
 | column | type | nullable | default | key | notes |
 | --- | --- | --- | --- | --- | --- |
-| id | INTEGER | no | | PK | |
+| id | INTEGER | no | | PK AUTOINCREMENT | Never reused, as for monitors. |
 | project_id | INTEGER | no | | FK projects | |
 | name | TEXT | no | | | `nightly-report` |
 | token | TEXT | no | | UNIQUE | 26-char base32 |
@@ -238,24 +238,7 @@ Any move is allowed between `triage`, `backlog` and `in_progress`. Entering `don
 
 Rule: migrations are numbered files in `migrations/`, embedded at compile time with paths relative to the source file, and applied by one runner inside the binary. The database path comes from the environment.
 
-```rust
-// src/platform/migrate.rs
-const MIGRATIONS: &[(i64, &str)] = &[
-    (1, include_str!("../../migrations/0001_init.sql")),
-];
-
-pub async fn run(conn: &turso::Connection) -> anyhow::Result<()> {
-    conn.execute("CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY, applied_at INTEGER NOT NULL)", ()).await?;
-    for (version, sql) in MIGRATIONS {
-        if applied(conn, *version).await? { continue; }
-        conn.execute("BEGIN", ()).await?;
-        conn.execute_batch(sql).await?;
-        conn.execute("INSERT INTO schema_migrations VALUES (?1, unixepoch())", [*version]).await?;
-        conn.execute("COMMIT", ()).await?;
-    }
-    Ok(())
-}
-```
+`platform::migrate::run` applies each pending file in its own `Db::write_without_fk` transaction and records it in `schema_migrations`. Foreign keys are off during a migration, because a table rebuild (SQLite's generalized ALTER TABLE procedure) drops a parent table, which would otherwise cascade. A rebuild copies every row with its id, so references stay valid; turso 0.8.3 answers `PRAGMA foreign_key_check` with no rows, so that check is not available.
 
 | Command | Effect |
 | --- | --- |

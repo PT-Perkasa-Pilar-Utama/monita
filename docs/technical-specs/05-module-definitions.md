@@ -120,7 +120,7 @@ When `MONITA_PING_URL` is set, a loop sends `GET` to it every 60 s. A failure lo
 
 ### 5.8.4 Backup
 
-Daily at 01:00 UTC. Writes `monita-YYYYMMDD.db` to `MONITA_BACKUP_DIR` with `VACUUM INTO` through the writer connection, and keeps the newest `MONITA_BACKUP_KEEP` files. The spike on 2026-10-16 confirmed `VACUUM INTO` on turso 0.8.3; `sqlite3` reads the copy with a clean `integrity_check`.
+Daily at 01:00 UTC. Writes `monita-YYYYMMDD.db` to `MONITA_BACKUP_DIR` with `VACUUM INTO` on its own reading connection, so writes go on during the copy, and keeps the newest `MONITA_BACKUP_KEEP` files. The spike on 2026-10-16 confirmed `VACUUM INTO` on turso 0.8.3; `sqlite3` reads the copy with a clean `integrity_check`.
 
 ### 5.8.5 Database access
 
