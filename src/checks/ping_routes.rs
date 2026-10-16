@@ -93,8 +93,8 @@ async fn ping(state: &AppState, token: &str, kind: PingKind, req: Request) -> Re
 }
 
 /// For `/fail`, reads the first 1 KB of the body as the cause. Calls `record`, then reads the
-/// rest of the body without keeping it, so a large upload never delays the incident and a slow
-/// one delays it by the deadline at most.
+/// rest of the body without keeping it. The incident waits for 1 KB of text after leading
+/// whitespace, the end of the body, the byte cap, or the deadline; never for the rest.
 async fn handle_body<T>(
     mut body: Body,
     kind: PingKind,
@@ -171,7 +171,7 @@ async fn ping_ok(
     Path(token): Path<String>,
     req: Request,
 ) -> Response {
-    ping(&state, &token, PingKind::Ok, req).await
+    detached(state, token, PingKind::Ok, req).await
 }
 
 async fn ping_fail(
@@ -179,7 +179,21 @@ async fn ping_fail(
     Path(token): Path<String>,
     req: Request,
 ) -> Response {
-    ping(&state, &token, PingKind::Fail, req).await
+    detached(state, token, PingKind::Fail, req).await
+}
+
+/// Runs the ping in its own task. hyper drops a handler when its client hangs up, and a ping
+/// already admitted must still be recorded. Runtime shutdown can still cut the task mid-write.
+// ponytail: hyper drops a request whose client closes before dispatch; a hyper-util serve loop
+// with half_close(true) may hear it.
+async fn detached(state: AppState, token: String, kind: PingKind, req: Request) -> Response {
+    match tokio::spawn(async move { ping(&state, &token, kind, req).await }).await {
+        Ok(res) => res,
+        Err(e) => {
+            tracing::error!(error = %e, "ping task failed");
+            plain(StatusCode::INTERNAL_SERVER_ERROR, "error")
+        }
+    }
 }
 
 #[cfg(test)]
