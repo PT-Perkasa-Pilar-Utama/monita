@@ -48,19 +48,13 @@ async fn many(
     Ok(out)
 }
 
-pub async fn insert(c: &Connection, owner_id: i64, name: &str, slug: &str) -> anyhow::Result<()> {
+pub async fn insert(c: &Connection, owner_id: i64, name: &str, slug: &str) -> anyhow::Result<i64> {
     c.execute(
         "INSERT INTO projects (owner_id, name, slug) VALUES (?1, ?2, ?3)",
         (owner_id, name, slug),
     )
     .await?;
-    let id = c.last_insert_rowid();
-    c.execute(
-        "INSERT INTO alert_routes (project_id, severity, use_webhook) VALUES (?1, 'critical', 1), (?1, 'warning', 0)",
-        [id],
-    )
-    .await?;
-    Ok(())
+    Ok(c.last_insert_rowid())
 }
 
 pub async fn find_by_slug(c: &Connection, slug: &str) -> anyhow::Result<Option<Project>> {

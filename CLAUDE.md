@@ -42,11 +42,11 @@ tests/                integration, tests/common::TestApp    e2e/ specs, lib, glo
 
 | Module | Owns tables | Interface others call |
 | --- | --- | --- |
-| accounts | users, invites, sessions | `CurrentUser` extractor, `require_role` |
-| projects | projects, api_keys | `ApiProject` extractor, `owner_of`, `can_manage` |
-| checks | monitors, heartbeats, check_results, pings, daily_summaries | `probe`, `record_ping`, `scheduler::spawn` |
+| accounts | users, invites, sessions | `CurrentUser` and `AdminUser` extractors, `purge_expired` |
+| projects | projects, api_keys | `ApiProject` extractor, `find_for`, `can_manage` |
+| checks | monitors, heartbeats, check_results, pings, daily_summaries | `probe`, `accept_ping`, `scheduler::spawn` |
 | incidents | incidents, incident_items, incident_sources, status_updates | `observe` (the only door for check results), `open_manual`, `post_update`, `states_for`, `source_deleted` |
-| notify | alert_routes, outbox | `send(Event)`: inserts outbox rows, never blocks |
+| notify | alert_routes, outbox | `send(Event)`: inserts outbox rows, never blocks; `create_routes`, `purge_delivered` |
 | status | none | public page and JSON |
 | tickets | ref_ids, tickets | `issue_ref_id`, `submit` |
 | platform | settings, schema_migrations | `Db`, `render`, `now`, config |
@@ -59,7 +59,7 @@ Two builders (the user and Claude), 2 days, sprints 1 to 4 in `docs/business/spr
 
 ## Architecture laws
 
-- A module touches only its own tables. Cross-module calls go through `pub` items in `mod.rs`. Never import another module's `store` or `engine`.
+- A module writes only its own tables. A read-only `JOIN users` for an email or name is allowed. Cross-module calls go through `pub` items in `mod.rs`. Never import another module's `store` or `engine`.
 - Handlers in `routes.rs` parse, call, render. No SQL and no business rules in handlers.
 - SQL lives in `store.rs`. Rules live in `mod.rs` or a named logic file (`engine.rs`, `probe.rs`).
 - Every write goes through `Db::write` (one writer connection, `BEGIN IMMEDIATE`). Reads use `Db::read()`. Never open a writing connection elsewhere.

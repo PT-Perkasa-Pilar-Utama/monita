@@ -76,8 +76,9 @@ pub fn step(s: SourceState, sig: &Signal) -> (SourceState, Option<Effect>);
 
 ```text
 src/incidents/
-  mod.rs      observe, open_manual, post_update, current_state, Event, Source, Signal
+  mod.rs      observe, open_manual, post_update, states_for, item_names, Event, Source, Signal
   engine.rs   SourceState, Effect, step            (pure, 100 % branch-tested)
+  history.rs  downtime per day, the public incident history
   store.rs    SQL for incidents, incident_items, incident_sources, status_updates
   routes.rs   TL pages: list, detail, post update, open manual
 ```

@@ -186,15 +186,7 @@ async fn reassign(
     Form(f): Form<OwnerForm>,
 ) -> Result<Response, PageError> {
     let p = super::find_for(&state.db, &admin, &slug).await?;
-    let valid_owner = f.owner_id == admin.id
-        || crate::accounts::list_tls(&state.db)
-            .await?
-            .iter()
-            .any(|u| u.id == f.owner_id);
-    if !valid_owner {
-        return Err(PageError::NotFound);
-    }
-    super::reassign(&state.db, p.id, f.owner_id).await?;
+    super::reassign(&state.db, p.id, f.owner_id, &admin).await?;
     Ok(Redirect::to(&format!("/projects/{slug}/settings")).into_response())
 }
 

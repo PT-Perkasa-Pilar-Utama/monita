@@ -11,7 +11,9 @@ Each module owns its tables (see [06](06-data-model.md)). Other modules use only
 | Item | Contract |
 | --- | --- |
 | `CurrentUser` extractor | Reads the `monita_session` cookie, looks up the hash in `sessions`, rejects expired or disabled users. Redirects to `/login` for HTML, returns 401 for JSON. |
-| `require_role(Role)` | Returns 403 when the role does not match. |
+| `AdminUser` extractor | `CurrentUser` that is a super admin. Others get 403. |
+| `is_active_tl(c, user_id) -> bool` | Used by `projects::reassign`. |
+| `purge_expired(c, now)` | Retention: expired sessions and invites, and invites used more than 7 days ago. |
 | `create_super_admin(email, password)` | CLI only. Errors: `EmailTaken`. |
 | `invite_tl(email) -> InviteLink` | Creates the user with no password, creates an invite, deletes the user's older invites and all sessions. Sends the email through `notify::send`. |
 
@@ -24,8 +26,9 @@ Each module owns its tables (see [06](06-data-model.md)). Other modules use only
 | Item | Contract |
 | --- | --- |
 | `ApiProject` extractor | Reads `Authorization: Bearer mk_...`, hashes it, finds a live key, checks the allowlist against the client IP. 401 for a missing or bad key, 403 for an IP outside the list. Updates `last_used_at` at most once per minute. |
-| `owner_of(project_id) -> UserId` | Used by `notify` and access checks. |
-| `can_manage(user, project_id) -> bool` | True for the owner and for every super admin. |
+| `find_for(db, user, slug) -> Project` | The project a user may manage, or 404 so other projects' names do not leak. |
+| `can_manage(user, project) -> bool` | True for the owner and for every super admin. |
+| `reassign(db, project_id, new_owner, acting)` | US-05. The new owner is an active TL or the acting super admin; anyone else is 404. |
 
 ## 5.3 checks
 
@@ -34,7 +37,7 @@ Each module owns its tables (see [06](06-data-model.md)). Other modules use only
 | Item | Contract |
 | --- | --- |
 | `probe(&Monitor, &Client) -> CheckResult` | One HTTP request with the monitor timeout. `ok` when the status matches `expected_status` and the body contains `keyword` (if set). Never returns an error: failures are a `CheckResult` with `ok = false` and an `error` string. Reads at most 1 MB of body. |
-| `record_ping(token, kind)` | Used by the `/ping` routes. Unknown token: `NotFound`. Pushes `deadline_at` forward. |
+| `accept_ping(db, limiter, base_url, Ping) -> PingOutcome` | Used by the `/ping` routes. Finds the heartbeat by token (`UnknownToken`), applies the per-heartbeat rate limit (`Limited(retry)`, with `/fail` in its own bucket), then records the ping: an OK ping pushes `deadline_at` forward. |
 | scheduler loop | Internal. See [13](13-check-scheduler.md). |
 
 **Seam:** the outbound HTTP client is a `reqwest::Client` in `AppState`. Tests point monitors at a local axum test server, so no port is needed.
@@ -46,7 +49,7 @@ Each module owns its tables (see [06](06-data-model.md)). Other modules use only
 | Item | Contract |
 | --- | --- |
 | `observe(source, signal) -> Option<Event>` | The only door for check results. Applies the 2-fail rule, opens and closes automatic incidents, writes the system status updates, and returns the event for `notify`. Idempotent for a repeated signal. See [12](12-incident-engine.md). |
-| `open_manual(db, &NewIncident, now)` | Creates a manual incident (title, items, severity, first message, author) with the first update, label Investigating. Errors: empty title, no items, empty message. |
+| `open_manual(db, &NewIncident, now)` | Creates a manual incident (title, items, severity, first message, author) with the first update, label Investigating. `items` are the form's `kind:id` values; it keeps those that name one of the project's monitors or heartbeats, read through `checks`, once each. Errors: empty title, no items, empty message. |
 | `post_update(incident, label, message, author)` | Message is required. Resolved on a manual incident closes it. |
 | `states_for(db, project_id) -> HashMap<(SourceKind, id), ItemState>` | `Down` while an automatic incident is open, `Issue` while a manual one names the item. Items with no entry are up, or waiting before their first check. Used by checks pages and `status`. |
 

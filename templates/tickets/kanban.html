@@ -4,7 +4,7 @@
 {% block crumbs %}<span>{{ project.name }}</span><span class="subtle">/</span><strong>Tickets</strong>{% endblock %}
 {% block actions %}<a class="btn btn--ghost btn--sm" href="/status/{{ project.slug }}/tickets">Public board</a>{% endblock %}
 {% block content %}
-<div class="page-head"><div><span class="cap">{{ tickets.len() }} tickets · Triage stays private</span><h1>Tickets</h1></div></div>
+<div class="page-head"><div><span class="cap">{{ tickets.len() }} tickets · Triage stays private · Done shows the newest 200</span><h1>Tickets</h1></div></div>
 {% if tickets.is_empty() %}
 <section class="panel">{% call ui::empty("No tickets yet", "Project users report bugs with a ref ID from your system, through the API or the form at /status/" ~ project.slug ~ "/report.") %}{% endcall %}</section>
 {% else %}

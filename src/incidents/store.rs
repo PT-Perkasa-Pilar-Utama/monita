@@ -192,14 +192,19 @@ pub async fn add_update(
     Ok(true)
 }
 
-pub async fn open_manual(c: &Connection, n: &super::NewIncident, now: i64) -> anyhow::Result<i64> {
+pub async fn open_manual(
+    c: &Connection,
+    n: &super::NewIncident,
+    items: &[ItemRef],
+    now: i64,
+) -> anyhow::Result<i64> {
     c.execute(
         "INSERT INTO incidents (project_id, origin, title, severity, started_at, created_by) VALUES (?1, 'manual', ?2, ?3, ?4, ?5)",
         (n.project_id, n.title.trim(), n.severity.as_str(), now, n.author),
     )
     .await?;
     let id = c.last_insert_rowid();
-    for item in &n.items {
+    for item in items {
         c.execute(
             "INSERT OR IGNORE INTO incident_items (incident_id, source_kind, source_id) VALUES (?1, ?2, ?3)",
             (id, item.kind.as_str(), item.id),

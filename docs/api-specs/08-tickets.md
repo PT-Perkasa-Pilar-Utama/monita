@@ -52,7 +52,7 @@ Output 201:
 | --- | --- |
 | Purpose | A reporter lists their own tickets. |
 | Access | Header `X-Ref-Id: <ref_id>`. Header, not query, so the ID stays out of access logs. 60/min per IP. CORS `*`. |
-| Behavior | Find the ref ID, including revoked or used ones. Return its tickets, newest first, including Triage. (AC-29.01) |
+| Behavior | Find the ref ID, including revoked or used ones. Return its newest 100 tickets, newest first, including Triage. (AC-29.01) |
 | Errors | 401 `unauthorized` for a missing header. 422 `ref_id_invalid` for an unknown ID. |
 
 Output 200:
@@ -62,8 +62,7 @@ Output 200:
   "data": [
     { "number": 17, "title": "Checkout button does nothing", "stage": "in_progress",
       "close_reason": null, "created_at": 1792137600, "updated_at": 1792224000 }
-  ],
-  "next_cursor": null
+  ]
 }
 ```
 
@@ -80,8 +79,8 @@ The reporter sees their original title. The description is not returned.
 | GET | `/status/{slug}/report` | public | | Ticket form | AC-24.01 |
 | POST | `/status/{slug}/report` | public, 60/min per IP | `ref_id`, `title`, `description`, `page_url` | Same rules as 8.2. The ref ID must belong to this project. | AC-24.01, AC-24.03 to AC-24.05 |
 | GET, POST | `/status/{slug}/mine` | public | GET shows the form; POST takes `ref_id` | Same data as 8.3. The ref ID must belong to this project. | AC-29.01 |
-| GET | `/status/{slug}/tickets` | public | | Public board: stages Backlog, In progress, Done. Fields: number, public title or title, stage, created, updated. | AC-28.01, AC-28.02, AC-26.01 |
-| GET | `/projects/{slug}/tickets` | owner, super_admin | | Kanban: Triage, Backlog, In progress, Done | AC-25.01 |
+| GET | `/status/{slug}/tickets` | public | | Public board: stages Backlog, In progress, Done. Fields: number, public title or title, stage, created, updated. Every open ticket; Done shows the newest 200, and the page says so. | AC-28.01, AC-28.02, AC-26.01 |
+| GET | `/projects/{slug}/tickets` | owner, super_admin | | Kanban: Triage, Backlog, In progress, Done. Every open ticket; Done shows the newest 200, and the page says so. | AC-25.01 |
 | GET | `/projects/{slug}/tickets/{number}` | owner, super_admin | | Full ticket, including description and ref ID prefix | |
 | POST | `/projects/{slug}/tickets/{number}/stage` | owner, super_admin | `stage`, `close_reason` (required for `done`) | Move. Missing reason for `done`: 422. Leaving `done` clears the reason. | AC-25.03 |
 | POST | `/projects/{slug}/tickets/{number}/public-title` | owner, super_admin | `public_title` (empty clears it) | Save | AC-26.01 |

@@ -443,3 +443,42 @@ async fn each_new_ticket_calls_the_warning_webhook_when_it_is_on() {
     assert_eq!(calls[0]["ticket_number"], 2);
     assert_eq!(calls[0]["text"], "[TICKET] Payments #2: On: webhook");
 }
+
+#[tokio::test]
+async fn boards_show_every_open_ticket_and_the_newest_200_done() {
+    let app = TestApp::spawn("test").await;
+    let s = setup(&app).await;
+    app.state
+        .db
+        .write(async |c| {
+            c.execute(
+                "INSERT INTO ref_ids (id, project_id, token_hash) VALUES (1, 1, 'h')",
+                (),
+            )
+            .await?;
+            for n in 1..=301 {
+                let (stage, reason) = if n <= 201 { ("done", Some("fixed")) } else { ("backlog", None) };
+                c.execute(
+                    "INSERT INTO tickets (project_id, number, ref_id, title, description, stage, close_reason, updated_at) VALUES (1, ?1, 1, ?2, 'd', ?3, ?4, ?1)",
+                    (n, format!("Ticket {n}"), stage, reason),
+                )
+                .await?;
+            }
+            Ok(())
+        })
+        .await
+        .unwrap();
+    for (path, cookie) in [
+        ("/projects/payments/tickets", Some(s.tl.as_str())),
+        ("/status/payments/tickets", None),
+    ] {
+        let html = app.get(path, cookie).await.text().await.unwrap();
+        assert_eq!(html.matches("class=\"card\"").count(), 300, "{path}");
+        assert!(
+            !html.contains(">Ticket 1<"),
+            "{path}: the oldest Done drops off"
+        );
+        assert!(html.contains(">Ticket 2<") && html.contains(">Ticket 301<"));
+        assert!(html.contains("Done shows the newest 200"));
+    }
+}

@@ -107,6 +107,18 @@ pub async fn disable_tl(c: &Connection, user_id: i64, at: i64) -> anyhow::Result
     Ok(true)
 }
 
+/// Expired sessions and invites, and invites used more than 7 days ago.
+pub async fn purge_expired(c: &Connection, now: i64) -> anyhow::Result<()> {
+    c.execute("DELETE FROM sessions WHERE expires_at < ?1", [now])
+        .await?;
+    c.execute(
+        "DELETE FROM invites WHERE expires_at < ?1 OR (used_at IS NOT NULL AND used_at < ?2)",
+        (now, now - 7 * 86_400),
+    )
+    .await?;
+    Ok(())
+}
+
 /// Deletes the user's older invites and sessions, then stores the new invite.
 pub async fn replace_invite(
     c: &Connection,

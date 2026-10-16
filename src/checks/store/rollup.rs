@@ -79,12 +79,7 @@ pub async fn upsert_summary(
     Ok(())
 }
 
-pub async fn sweep(
-    c: &Connection,
-    raw_cutoff: i64,
-    outbox_cutoff: i64,
-    now: i64,
-) -> anyhow::Result<()> {
+pub async fn sweep(c: &Connection, raw_cutoff: i64) -> anyhow::Result<()> {
     c.execute(
         "DELETE FROM check_results WHERE checked_at < ?1",
         [raw_cutoff],
@@ -92,17 +87,5 @@ pub async fn sweep(
     .await?;
     c.execute("DELETE FROM pings WHERE received_at < ?1", [raw_cutoff])
         .await?;
-    c.execute(
-        "DELETE FROM outbox WHERE created_at < ?1 AND (sent_at IS NOT NULL OR failed_at IS NOT NULL)",
-        [outbox_cutoff],
-    )
-    .await?;
-    c.execute("DELETE FROM sessions WHERE expires_at < ?1", [now])
-        .await?;
-    c.execute(
-        "DELETE FROM invites WHERE expires_at < ?1 OR (used_at IS NOT NULL AND used_at < ?2)",
-        (now, raw_cutoff),
-    )
-    .await?;
     Ok(())
 }

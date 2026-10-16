@@ -1,7 +1,12 @@
 //! Heartbeats: a job pings Monita; a missing ping is the failure. Spec 13 section 13.1.
 
 use super::{FieldErrors, store::heartbeats as store};
-use crate::platform::{db::Db, now, token};
+use crate::platform::{
+    db::Db,
+    now,
+    rate_limit::{Limiter, Verdict},
+    settings, token,
+};
 use crate::{
     incidents::{self, Signal, Source, SourceKind},
     notify,
@@ -178,17 +183,55 @@ pub async fn find(db: &Db, project_id: i64, id: i64) -> anyhow::Result<Option<He
     store::find(&db.read().await?, project_id, id).await
 }
 
-pub async fn find_by_token(db: &Db, tok: &str) -> anyhow::Result<Option<Heartbeat>> {
-    store::find_by_token(&db.read().await?, tok).await
-}
-
 pub async fn recent_pings(db: &Db, id: i64, limit: i64) -> anyhow::Result<Vec<PingRow>> {
     store::recent_pings(&db.read().await?, id, now() - 7 * 86_400, limit).await
 }
 
+pub enum PingOutcome {
+    Accepted,
+    UnknownToken,
+    /// Seconds until the next ping is accepted.
+    Limited(i64),
+}
+
+pub struct Ping<'a> {
+    pub token: &'a str,
+    pub kind: PingKind,
+    pub source_ip: Option<String>,
+    pub cause: Option<String>,
+}
+
+/// AC-13.02: over `rl_ping_per_s` a ping is refused, and the ping already counted this second
+/// keeps the heartbeat alive. `/fail` has its own bucket, so a job that pings and then fails in
+/// one second is still heard.
+pub async fn accept_ping(
+    db: &Db,
+    limiter: &Limiter,
+    base_url: &str,
+    p: Ping<'_>,
+) -> anyhow::Result<PingOutcome> {
+    let (hb, limit) = {
+        let conn = db.read().await?;
+        let Some(hb) = store::find_by_token(&conn, p.token).await? else {
+            return Ok(PingOutcome::UnknownToken);
+        };
+        (hb, settings::get_or(&conn, "rl_ping_per_s", 1).await)
+    };
+    let bucket = match p.kind {
+        PingKind::Ok => format!("ping:{}", hb.id),
+        PingKind::Fail => format!("pingfail:{}", hb.id),
+    };
+    let limit = u32::try_from(limit.max(1)).unwrap_or(u32::MAX);
+    if let Verdict::Deny(retry) = limiter.hit(&bucket, limit, 1, now()) {
+        return Ok(PingOutcome::Limited(retry));
+    }
+    record_ping(db, base_url, &hb, p.kind, p.source_ip, p.cause).await?;
+    Ok(PingOutcome::Accepted)
+}
+
 /// AC-13.01, AC-14.01, AC-17.03, AC-18.01. An OK ping pushes the deadline out and closes an
 /// open incident; a fail ping opens one at once and leaves the deadline.
-pub async fn record_ping(
+async fn record_ping(
     db: &Db,
     base_url: &str,
     hb: &Heartbeat,

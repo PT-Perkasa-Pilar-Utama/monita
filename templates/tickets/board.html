@@ -2,7 +2,7 @@
 {% import "ui/macros.html" as ui %}
 {% block title %}Known issues · {{ project.name }}{% endblock %}
 {% block content %}
-<header class="stack stack--sm"><span class="cap">{{ project.name }}</span><h1>Known issues</h1></header>
+<header class="stack stack--sm"><span class="cap">{{ project.name }} · Done shows the newest 200</span><h1>Known issues</h1></header>
 <div class="board">
 {% for (key, label) in self.columns() %}
   {% let cards = self.column(key) %}

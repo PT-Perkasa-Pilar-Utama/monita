@@ -35,8 +35,12 @@ pub async fn run(db: &Db, now: i64) -> anyhow::Result<()> {
     }
     let raw_cutoff = now - RAW_KEEP_S;
     let outbox_cutoff = now - OUTBOX_KEEP_S;
-    db.write(async |c| store::sweep(c, raw_cutoff, outbox_cutoff, now).await)
-        .await
+    db.write(async |c| {
+        store::sweep(c, raw_cutoff).await?;
+        crate::notify::purge_delivered(c, outbox_cutoff).await?;
+        crate::accounts::purge_expired(c, now).await
+    })
+    .await
 }
 
 async fn rollup_day(db: &Db, day: i64, now: i64) -> anyhow::Result<()> {

@@ -147,6 +147,24 @@ pub async fn claim_due(
     Ok(out)
 }
 
+pub async fn create_routes(c: &Connection, project_id: i64) -> anyhow::Result<()> {
+    c.execute(
+        "INSERT INTO alert_routes (project_id, severity, use_webhook) VALUES (?1, 'critical', 1), (?1, 'warning', 0)",
+        [project_id],
+    )
+    .await?;
+    Ok(())
+}
+
+pub async fn purge_delivered(c: &Connection, cutoff: i64) -> anyhow::Result<()> {
+    c.execute(
+        "DELETE FROM outbox WHERE created_at < ?1 AND (sent_at IS NOT NULL OR failed_at IS NOT NULL)",
+        [cutoff],
+    )
+    .await?;
+    Ok(())
+}
+
 /// A finished row loses its body: an invite email carries a live sign-up link (SEC-20).
 pub async fn mark(c: &Connection, id: i64, outcome: &Outcome, at: i64) -> anyhow::Result<()> {
     match outcome {

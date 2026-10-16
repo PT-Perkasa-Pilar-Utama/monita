@@ -15,7 +15,9 @@ use std::collections::HashMap;
 
 use super::{
     FieldErrors,
-    heartbeat::{self, GRACES_S, Heartbeat, HeartbeatInput, PERIODS_S, PingKind, PingRow},
+    heartbeat::{
+        self, GRACES_S, Heartbeat, HeartbeatInput, PERIODS_S, PingKind, PingOutcome, PingRow,
+    },
 };
 use crate::{
     accounts::CurrentUser,
@@ -24,9 +26,8 @@ use crate::{
     platform::{
         client_ip, now,
         page::{PageError, Shell},
-        rate_limit::Verdict,
         render::render,
-        settings, time,
+        time,
     },
     projects::{self, Project},
 };
@@ -307,46 +308,23 @@ async fn ping(
     peer: Option<SocketAddr>,
     cause: Option<String>,
 ) -> Response {
-    let found = match heartbeat::find_by_token(&state.db, token).await {
-        Ok(found) => found,
-        Err(e) => {
-            tracing::error!(error = %e, "ping lookup failed");
-            return plain(StatusCode::INTERNAL_SERVER_ERROR, "error");
-        }
+    let ping = heartbeat::Ping {
+        token,
+        kind,
+        source_ip: client_ip(headers, peer, state.config.trust_proxy).map(|ip| ip.to_string()),
+        cause,
     };
-    let Some(hb) = found else {
-        return plain(StatusCode::NOT_FOUND, "not found");
-    };
-    // AC-13.02: a ping over the limit gets 429. The ping already counted this second keeps the heartbeat alive.
-    // `/fail` has its own bucket, so a job that pings and then fails in one second is still heard.
-    let limit = match state.db.read().await {
-        Ok(c) => settings::get_or(&c, "rl_ping_per_s", 1).await,
-        Err(e) => {
-            tracing::warn!(error = %e, "no read connection; using the default ping limit");
-            1
-        }
-    };
-    if let Verdict::Deny(retry) = state.limiter.hit(
-        &match kind {
-            PingKind::Ok => format!("ping:{}", hb.id),
-            PingKind::Fail => format!("pingfail:{}", hb.id),
-        },
-        u32::try_from(limit.max(1)).unwrap_or(u32::MAX),
-        1,
-        now(),
-    ) {
-        return (
+    match heartbeat::accept_ping(&state.db, &state.limiter, &state.config.base_url, ping).await {
+        Ok(PingOutcome::Accepted) => plain(StatusCode::OK, "OK"),
+        Ok(PingOutcome::UnknownToken) => plain(StatusCode::NOT_FOUND, "not found"),
+        Ok(PingOutcome::Limited(retry)) => (
             StatusCode::TOO_MANY_REQUESTS,
             [(header::RETRY_AFTER, retry.to_string())],
             "slow down",
         )
-            .into_response();
-    }
-    let ip = client_ip(headers, peer, state.config.trust_proxy).map(|ip| ip.to_string());
-    match heartbeat::record_ping(&state.db, &state.config.base_url, &hb, kind, ip, cause).await {
-        Ok(()) => plain(StatusCode::OK, "OK"),
+            .into_response(),
         Err(e) => {
-            tracing::error!(heartbeat = hb.id, error = %e, "ping write failed");
+            tracing::error!(error = %e, "ping failed");
             plain(StatusCode::INTERNAL_SERVER_ERROR, "error")
         }
     }

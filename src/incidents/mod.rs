@@ -251,11 +251,44 @@ pub async fn post_update(
         .await?)
 }
 
-/// A manual incident as the TL fills it in (US-20).
+/// Names of the project's monitors and heartbeats, for item lists and the manual form. Read
+/// through `checks`, so this module never reads its tables.
+pub async fn item_names(db: &Db, project_id: i64) -> anyhow::Result<Vec<(ItemRef, String)>> {
+    let mut out: Vec<(ItemRef, String)> = crate::checks::list_monitors(db, project_id)
+        .await?
+        .into_iter()
+        .map(|m| {
+            (
+                ItemRef {
+                    kind: SourceKind::Monitor,
+                    id: m.id,
+                },
+                m.name,
+            )
+        })
+        .collect();
+    out.extend(
+        crate::checks::heartbeat::list(db, project_id)
+            .await?
+            .into_iter()
+            .map(|h| {
+                (
+                    ItemRef {
+                        kind: SourceKind::Heartbeat,
+                        id: h.id,
+                    },
+                    h.name,
+                )
+            }),
+    );
+    Ok(out)
+}
+
+/// A manual incident as the TL fills it in (US-20). `items` are the form's `kind:id` values.
 pub struct NewIncident {
     pub project_id: i64,
     pub title: String,
-    pub items: Vec<ItemRef>,
+    pub items: Vec<String>,
     pub severity: String,
     pub message: String,
     pub author: i64,
@@ -266,13 +299,20 @@ pub async fn open_manual(db: &Db, n: &NewIncident, now: i64) -> Result<i64, Upda
     if n.title.trim().is_empty() {
         return Err(UpdateError::EmptyTitle);
     }
-    if n.items.is_empty() {
+    let mut items: Vec<ItemRef> = Vec::new();
+    for (item, _) in item_names(db, n.project_id).await? {
+        let key = format!("{}:{}", item.kind.as_str(), item.id);
+        if n.items.contains(&key) {
+            items.push(item);
+        }
+    }
+    if items.is_empty() {
         return Err(UpdateError::NoItems);
     }
     if n.message.trim().is_empty() {
         return Err(UpdateError::EmptyMessage);
     }
     Ok(db
-        .write(async |c| store::open_manual(c, n, now).await)
+        .write(async |c| store::open_manual(c, n, &items, now).await)
         .await?)
 }

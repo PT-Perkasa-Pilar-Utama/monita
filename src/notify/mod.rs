@@ -33,6 +33,16 @@ const PARALLEL: usize = 5;
 /// How long a claimed row stays invisible to other passes. Longer than a full batch can take.
 const LEASE_S: i64 = 120;
 
+/// AC-15.02: a new project's two routes. Critical calls its webhook once one is set; warning does not.
+pub async fn create_routes(c: &Connection, project_id: i64) -> anyhow::Result<()> {
+    store::create_routes(c, project_id).await
+}
+
+/// Retention (US-32): finished rows older than `cutoff`. Runs inside the caller's write.
+pub async fn purge_delivered(c: &Connection, cutoff: i64) -> anyhow::Result<()> {
+    store::purge_delivered(c, cutoff).await
+}
+
 /// Queues one email. Call it inside `Db::write` with the change that caused it.
 pub async fn queue_email(
     c: &Connection,

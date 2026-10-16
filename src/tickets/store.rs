@@ -144,9 +144,12 @@ fn row(r: &turso::Row) -> turso::Result<TicketRow> {
     })
 }
 
+/// Every open ticket, and the newest 200 in Done: a board stays readable after years of fixes.
+const OPEN_OR_RECENT_DONE: &str = "(t.stage != 'done' OR t.id IN (SELECT id FROM tickets WHERE project_id = ?1 AND stage = 'done' ORDER BY updated_at DESC LIMIT 200))";
+
 pub async fn board(c: &Connection, project_id: i64) -> anyhow::Result<Vec<TicketRow>> {
     let mut rows = c
-        .query(format!("SELECT {COLS} FROM tickets t JOIN ref_ids r ON r.id = t.ref_id WHERE t.project_id = ?1 ORDER BY t.updated_at DESC LIMIT 500"), [project_id])
+        .query(format!("SELECT {COLS} FROM tickets t JOIN ref_ids r ON r.id = t.ref_id WHERE t.project_id = ?1 AND {OPEN_OR_RECENT_DONE} ORDER BY t.updated_at DESC"), [project_id])
         .await?;
     let mut out = Vec::new();
     while let Some(r) = rows.next().await? {
@@ -172,8 +175,8 @@ pub async fn find(
 pub async fn public_board(c: &Connection, project_id: i64) -> anyhow::Result<Vec<PublicTicket>> {
     let mut rows = c
         .query(
-            "SELECT number, coalesce(public_title, title), stage, close_reason, created_at, updated_at FROM tickets
-             WHERE project_id = ?1 AND stage != 'triage' ORDER BY updated_at DESC LIMIT 500",
+            format!("SELECT t.number, coalesce(t.public_title, t.title), t.stage, t.close_reason, t.created_at, t.updated_at FROM tickets t
+             WHERE t.project_id = ?1 AND t.stage != 'triage' AND {OPEN_OR_RECENT_DONE} ORDER BY t.updated_at DESC"),
             [project_id],
         )
         .await?;

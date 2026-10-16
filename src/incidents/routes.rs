@@ -1,7 +1,5 @@
 //! Incident pages. Contract: docs/api-specs/05-incidents.md.
 
-use std::collections::HashMap;
-
 use askama::Template;
 use axum::{
     Router,
@@ -12,11 +10,10 @@ use axum::{
 };
 use serde::Deserialize;
 
-use super::{IncidentRow, ItemRef, LABELS, SourceKind, UpdateError, UpdateRow};
+use super::{IncidentRow, LABELS, UpdateError, UpdateRow};
 use crate::{
     accounts::CurrentUser,
     app::AppState,
-    checks,
     platform::{
         now,
         page::{PageError, Shell},
@@ -42,38 +39,6 @@ pub fn label_title(label: &str) -> &'static str {
         "resolved" => "Resolved",
         _ => "Update",
     }
-}
-
-/// Names of the project's monitors and heartbeats, for item lists and the manual form.
-async fn names(state: &AppState, project_id: i64) -> anyhow::Result<Vec<(ItemRef, String)>> {
-    let mut out: Vec<(ItemRef, String)> = checks::list_monitors(&state.db, project_id)
-        .await?
-        .into_iter()
-        .map(|m| {
-            (
-                ItemRef {
-                    kind: SourceKind::Monitor,
-                    id: m.id,
-                },
-                m.name,
-            )
-        })
-        .collect();
-    out.extend(
-        checks::heartbeat::list(&state.db, project_id)
-            .await?
-            .into_iter()
-            .map(|h| {
-                (
-                    ItemRef {
-                        kind: SourceKind::Heartbeat,
-                        id: h.id,
-                    },
-                    h.name,
-                )
-            }),
-    );
-    Ok(out)
 }
 
 #[derive(Template)]
@@ -188,7 +153,7 @@ async fn detail_page(
     let (incident, items, updates) = super::find(&state.db, project.id, id)
         .await?
         .ok_or(PageError::NotFound)?;
-    let all = names(state, project.id).await?;
+    let all = super::item_names(&state.db, project.id).await?;
     let items = items
         .iter()
         .map(|it| {
@@ -282,7 +247,7 @@ async fn new_page(
     project: Project,
     picked: &[String],
 ) -> Result<NewPage, PageError> {
-    let choices = names(state, project.id)
+    let choices = super::item_names(&state.db, project.id)
         .await?
         .into_iter()
         .map(|(r, n)| {
@@ -331,15 +296,6 @@ async fn create(
         .filter(|(k, _)| k == "items")
         .map(|(_, v)| v.clone())
         .collect();
-    let known: HashMap<String, ItemRef> = names(&state, project.id)
-        .await?
-        .into_iter()
-        .map(|(r, _)| (format!("{}:{}", r.kind.as_str(), r.id), r))
-        .collect();
-    let items: Vec<ItemRef> = picked
-        .iter()
-        .filter_map(|p| known.get(p).cloned())
-        .collect();
     let severity = if field("severity") == "critical" {
         "critical"
     } else {
@@ -348,7 +304,7 @@ async fn create(
     let incident = super::NewIncident {
         project_id: project.id,
         title: field("title"),
-        items,
+        items: picked.clone(),
         severity: severity.into(),
         message: field("message"),
         author: user.id,

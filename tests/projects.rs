@@ -133,6 +133,42 @@ async fn super_admin_reassigns_a_project_and_its_keys_stay() {
 }
 
 #[tokio::test]
+async fn a_project_goes_only_to_an_active_tl() {
+    let app = TestApp::spawn("test").await;
+    let admin = app.super_admin("admin@x.co").await;
+    let rina = app.tl("rina@x.co").await;
+    app.tl("budi@x.co").await;
+    project(&app, &rina, "Payments", "payments").await;
+    let budi_id = monita::accounts::list_users(&app.state.db)
+        .await
+        .unwrap()
+        .into_iter()
+        .find(|u| u.email == "budi@x.co")
+        .unwrap()
+        .id;
+    monita::accounts::disable(&app.state.db, budi_id)
+        .await
+        .unwrap();
+    for owner in [budi_id.to_string(), "999".to_string()] {
+        let res = app
+            .post_form(
+                "/projects/payments/owner",
+                &[("owner_id", &owner)],
+                Some(&admin),
+            )
+            .await;
+        assert_eq!(res.status(), 404, "owner {owner}");
+    }
+    assert_eq!(
+        app.get("/projects/payments/settings", Some(&rina))
+            .await
+            .status(),
+        200,
+        "rina still owns it"
+    );
+}
+
+#[tokio::test]
 async fn a_tl_cannot_reassign() {
     let app = TestApp::spawn("test").await;
     let rina = app.tl("rina@x.co").await;

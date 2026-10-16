@@ -60,16 +60,17 @@ pub async fn create(
             if store::find_by_slug(c, &slug).await?.is_some() {
                 return Ok(false);
             }
-            store::insert(c, owner.id, name, &slug).await?;
+            let id = store::insert(c, owner.id, name, &slug).await?;
+            crate::notify::create_routes(c, id).await?;
             Ok(true)
         })
         .await?;
     if !created {
         return Err(ProjectError::SlugTaken);
     }
-    Ok(store::find_by_slug(&db.read().await?, &slug)
+    store::find_by_slug(&db.read().await?, &slug)
         .await?
-        .expect("just created"))
+        .ok_or_else(|| ProjectError::Other(anyhow::anyhow!("project {slug} vanished after insert")))
 }
 
 pub async fn list_for(db: &Db, user: &User) -> anyhow::Result<Vec<Project>> {
@@ -120,10 +121,28 @@ pub async fn name_slug(
     })
 }
 
-/// US-05: monitors, incidents and tickets stay with the project.
-pub async fn reassign(db: &Db, project_id: i64, new_owner: i64) -> anyhow::Result<()> {
-    db.write(async |c| store::set_owner(c, project_id, new_owner, now()).await)
-        .await
+/// US-05: monitors, incidents and tickets stay with the project. The new owner is an active TL
+/// or the super admin making the change; anyone else is 404.
+pub async fn reassign(
+    db: &Db,
+    project_id: i64,
+    new_owner: i64,
+    acting: &User,
+) -> Result<(), PageError> {
+    let done = db
+        .write(async |c| {
+            if new_owner != acting.id && !crate::accounts::is_active_tl(c, new_owner).await? {
+                return Ok(false);
+            }
+            store::set_owner(c, project_id, new_owner, now()).await?;
+            Ok(true)
+        })
+        .await?;
+    if done {
+        Ok(())
+    } else {
+        Err(PageError::NotFound)
+    }
 }
 
 /// US-07: returns the raw key once. Only its hash is stored.

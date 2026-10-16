@@ -186,7 +186,7 @@ async fn api_mine(State(state): State<AppState>, headers: HeaderMap) -> Response
         ));
     };
     cors(match super::mine(&state.db, ref_id, None).await {
-        Ok(list) => Json(serde_json::json!({ "data": list, "next_cursor": null })).into_response(),
+        Ok(list) => Json(serde_json::json!({ "data": list })).into_response(),
         Err(e) => ticket_error(e),
     })
 }

@@ -256,12 +256,21 @@ pub async fn list_users(db: &Db) -> anyhow::Result<Vec<UserRow>> {
     store::list_users(&db.read().await?).await
 }
 
+pub async fn is_active_tl(c: &turso::Connection, user_id: i64) -> anyhow::Result<bool> {
+    Ok(store::active_tl_email(c, user_id).await?.is_some())
+}
+
 pub async fn list_tls(db: &Db) -> anyhow::Result<Vec<UserRow>> {
     Ok(list_users(db)
         .await?
         .into_iter()
         .filter(|u| u.role == "tl" && u.disabled_at.is_none())
         .collect())
+}
+
+/// Retention (US-32): runs inside the caller's write.
+pub async fn purge_expired(c: &turso::Connection, now: i64) -> anyhow::Result<()> {
+    store::purge_expired(c, now).await
 }
 
 /// Disabling is final: the user's invites go too, and only an active TL can be disabled.

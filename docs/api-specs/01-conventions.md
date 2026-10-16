@@ -21,7 +21,7 @@ Success:
 Collection:
 
 ```json
-{ "data": [ ], "next_cursor": null }
+{ "data": [ ] }
 ```
 
 Error:
@@ -34,7 +34,7 @@ Error:
 
 ## 1.3 Pagination
 
-Cursor-based where a list can grow: `?cursor=<opaque>&limit=<1..100>`, default 50. `next_cursor` is `null` on the last page.
+JSON lists are capped, not paged. Each endpoint states its cap, for example the newest 100 tickets in 8.3.
 
 ## 1.4 Status codes
 
