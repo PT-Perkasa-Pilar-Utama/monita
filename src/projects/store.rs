@@ -42,12 +42,7 @@ async fn many(
     sql: String,
     params: impl turso::params::IntoParams,
 ) -> anyhow::Result<Vec<Project>> {
-    let mut rows = c.query(sql, params).await?;
-    let mut out = Vec::new();
-    while let Some(r) = rows.next().await? {
-        out.push(row(&r)?);
-    }
-    Ok(out)
+    crate::platform::db::query_all(c, sql, params, row).await
 }
 
 pub async fn insert(c: &Connection, owner_id: i64, name: &str, slug: &str) -> anyhow::Result<i64> {

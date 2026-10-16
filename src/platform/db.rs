@@ -47,8 +47,11 @@ impl Db {
         })
     }
 
+    /// A reading connection. It skips the `foreign_keys` pragma: only the writer needs it.
     pub async fn read(&self) -> anyhow::Result<Connection> {
-        connect(&self.database).await
+        let conn = self.database.connect()?;
+        conn.execute("PRAGMA busy_timeout = 5000", ()).await?;
+        Ok(conn)
     }
 
     /// Runs `f` on the writer inside `BEGIN IMMEDIATE ... COMMIT`. Rolls back when `f` fails.
@@ -136,6 +139,21 @@ async fn connect(database: &Database) -> anyhow::Result<Connection> {
     conn.execute("PRAGMA busy_timeout = 5000", ()).await?;
     conn.execute("PRAGMA foreign_keys = ON", ()).await?;
     Ok(conn)
+}
+
+/// Runs a query and maps every row with `f`.
+pub async fn query_all<T>(
+    conn: &Connection,
+    sql: impl AsRef<str>,
+    params: impl turso::params::IntoParams,
+    f: impl Fn(&turso::Row) -> turso::Result<T>,
+) -> anyhow::Result<Vec<T>> {
+    let mut rows = conn.query(sql.as_ref(), params).await?;
+    let mut out = Vec::new();
+    while let Some(r) = rows.next().await? {
+        out.push(f(&r)?);
+    }
+    Ok(out)
 }
 
 /// Runs a query that returns one integer, such as `SELECT count(*) ...`.

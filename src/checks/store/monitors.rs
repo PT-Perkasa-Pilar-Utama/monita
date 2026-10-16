@@ -171,12 +171,7 @@ async fn many(
     sql: String,
     params: impl turso::params::IntoParams,
 ) -> anyhow::Result<Vec<Monitor>> {
-    let mut rows = c.query(sql, params).await?;
-    let mut out = Vec::new();
-    while let Some(r) = rows.next().await? {
-        out.push(monitor(&r)?);
-    }
-    Ok(out)
+    crate::platform::db::query_all(c, sql, params, monitor).await
 }
 
 pub async fn list_monitors(c: &Connection, project_id: i64) -> anyhow::Result<Vec<Monitor>> {

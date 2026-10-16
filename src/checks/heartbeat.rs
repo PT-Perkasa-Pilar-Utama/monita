@@ -259,8 +259,14 @@ async fn record_ping(
 }
 
 /// Heartbeats past their deadline, each reported once: its deadline is cleared until the next ping.
-pub async fn sweep_missed(db: &Db, base_url: &str, at: i64) -> anyhow::Result<usize> {
-    if !store::any_missed(&db.read().await?, at).await? {
+/// `read` answers the cheap "anything missed?" question before the writer is taken.
+pub async fn sweep_missed(
+    db: &Db,
+    read: &turso::Connection,
+    base_url: &str,
+    at: i64,
+) -> anyhow::Result<usize> {
+    if !store::any_missed(read, at).await? {
         return Ok(0);
     }
     db.write(async |c| {

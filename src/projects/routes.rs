@@ -209,11 +209,10 @@ async fn create_key(
     Form(f): Form<KeyForm>,
 ) -> Result<Response, PageError> {
     let p = super::find_for(&state.db, &user, &slug).await?;
-    let project_id = p.id;
+    let created = super::create_key(&state.db, p.id, &f.name).await;
     let mut page = settings_view(&state, &user, p).await?;
-    match super::create_key(&state.db, project_id, &f.name).await {
+    match created {
         Ok(raw) => {
-            page.keys = super::list_keys(&state.db, project_id).await?;
             page.new_key = Some(raw);
             Ok(render(&page))
         }

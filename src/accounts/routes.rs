@@ -246,22 +246,9 @@ async fn users_reinvite(
     AdminUser(admin): AdminUser,
     Path(id): Path<i64>,
 ) -> Result<Response, PageError> {
-    let link = super::reinvite(&state.db, &state.config.base_url, id).await?;
-    let email = super::list_users(&state.db)
-        .await?
-        .into_iter()
-        .find(|u| u.id == id)
-        .map(|u| u.email)
-        .unwrap_or_default();
+    let invite = super::reinvite(&state.db, &state.config.base_url, id).await?;
     Ok(render(
-        &users_view(
-            &state,
-            &admin,
-            String::new(),
-            String::new(),
-            Some((email, link)),
-        )
-        .await?,
+        &users_view(&state, &admin, String::new(), String::new(), Some(invite)).await?,
     ))
 }
 

@@ -140,14 +140,11 @@ pub async fn observe(
             }
         },
     };
-    store::save_source(
-        c,
-        source.kind,
-        source.id,
-        next,
-        if next.open { opened } else { None },
-    )
-    .await?;
+    let next_open_id = if next.open { opened } else { None };
+    // A passing check on a healthy source changes nothing; skip the write.
+    if (next, next_open_id) != (state, open_id) {
+        store::save_source(c, source.kind, source.id, next, next_open_id).await?;
+    }
     Ok(event)
 }
 

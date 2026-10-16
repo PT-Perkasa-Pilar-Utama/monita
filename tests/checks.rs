@@ -427,6 +427,25 @@ async fn a_blank_number_re_renders_the_form_with_its_error() {
 }
 
 #[tokio::test]
+async fn a_passing_check_on_a_healthy_monitor_writes_no_incident_state() {
+    let app = TestApp::spawn("test").await;
+    tl_project(&app).await;
+    let (base, _) = target().await;
+    checks::create_monitor(&app.state.db, 1, &input("API", &format!("{base}/ok")))
+        .await
+        .unwrap();
+    make_due(&app).await;
+    assert_eq!(
+        wait_for(&app, "SELECT count(*) FROM check_results", 1).await,
+        1
+    );
+    assert_eq!(
+        count(&app, "SELECT count(*) FROM incident_sources").await,
+        0
+    );
+}
+
+#[tokio::test]
 async fn another_project_cannot_open_a_monitor_by_id() {
     let app = TestApp::spawn("test").await;
     tl_project(&app).await;

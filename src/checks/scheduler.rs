@@ -60,15 +60,22 @@ pub fn spawn(state: AppState) -> JoinHandle<()> {
             // One read guard per tick, shared with the probes it starts (a second read could
             // queue behind a waiting reset and deadlock).
             let pass = Arc::new(state.gate.clone().read_owned().await);
-            // A primary-key read; a changed cap applies on the next tick.
-            cap = resize(&state, &slots, cap).await;
-            if let Err(e) = run_due_monitors(&state, &slots, &pass).await {
-                tracing::error!(error = %e, "scheduler: monitor pass failed");
-            }
-            if let Err(e) =
-                super::heartbeat::sweep_missed(&state.db, &state.config.base_url, now()).await
-            {
-                tracing::error!(error = %e, "scheduler: heartbeat sweep failed");
+            // One read connection serves the tick's three cheap checks.
+            match state.db.read().await {
+                Ok(conn) => {
+                    // A primary-key read; a changed cap applies on the next tick.
+                    cap = resize(&conn, &slots, cap).await;
+                    if let Err(e) = run_due_monitors(&state, &conn, &slots, &pass).await {
+                        tracing::error!(error = %e, "scheduler: monitor pass failed");
+                    }
+                    let base_url = &state.config.base_url;
+                    if let Err(e) =
+                        super::heartbeat::sweep_missed(&state.db, &conn, base_url, now()).await
+                    {
+                        tracing::error!(error = %e, "scheduler: heartbeat sweep failed");
+                    }
+                }
+                Err(e) => tracing::error!(error = %e, "scheduler: no read connection this tick"),
             }
             crate::notify::spawn_delivery(&state, &delivering);
             // Daily jobs have minute precision at best; tick 0 checks them at start.
@@ -85,15 +92,10 @@ pub fn spawn(state: AppState) -> JoinHandle<()> {
 }
 
 /// Grows or shrinks the slot pool to `check_concurrency`. Returns the new cap.
-async fn resize(state: &AppState, slots: &Semaphore, cap: usize) -> usize {
-    let wanted = match state.db.read().await {
-        Ok(conn) => settings::get_or(&conn, "check_concurrency", 50).await,
-        Err(e) => {
-            tracing::warn!(error = %e, "no read connection; check_concurrency unchanged");
-            return cap;
-        }
-    }
-    .clamp(1, 500) as usize;
+async fn resize(conn: &turso::Connection, slots: &Semaphore, cap: usize) -> usize {
+    let wanted = settings::get_or(conn, "check_concurrency", 50)
+        .await
+        .clamp(1, 500) as usize;
     reshape(slots, cap, wanted)
 }
 
@@ -112,6 +114,7 @@ fn reshape(slots: &Semaphore, cap: usize, wanted: usize) -> usize {
 /// Only this loop takes permits, so every claimed monitor gets one.
 async fn run_due_monitors(
     state: &AppState,
+    conn: &turso::Connection,
     slots: &Arc<Semaphore>,
     pass: &Arc<OwnedRwLockReadGuard<()>>,
 ) -> anyhow::Result<()> {
@@ -120,7 +123,7 @@ async fn run_due_monitors(
         return Ok(());
     }
     let t = now();
-    if !store::any_due(&state.db.read().await?, t).await? {
+    if !store::any_due(conn, t).await? {
         return Ok(());
     }
     let due = state

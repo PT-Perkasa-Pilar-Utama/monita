@@ -213,25 +213,27 @@ pub async fn invite_tl(db: &Db, base_url: &str, email: &str) -> Result<String, A
 }
 
 /// US-04: a new invite for an existing user. Older invites and all sessions stop working.
-pub async fn reinvite(db: &Db, base_url: &str, user_id: i64) -> Result<String, PageError> {
+/// Returns the TL's email and the new link.
+pub async fn reinvite(
+    db: &Db,
+    base_url: &str,
+    user_id: i64,
+) -> Result<(String, String), PageError> {
     let raw = token::random_token();
     let link = format!("{base_url}/invite/{raw}");
     let hash = token::hash(&raw);
-    let found = db
+    let email = db
         .write(async |c| {
             let Some(email) = store::active_tl_email(c, user_id).await? else {
-                return Ok(false);
+                return Ok(None);
             };
             store::replace_invite(c, user_id, &hash, now() + INVITE_TTL_S).await?;
             queue_invite_email(c, &email, &link).await?;
-            Ok(true)
+            Ok(Some(email))
         })
-        .await?;
-    if found {
-        Ok(link)
-    } else {
-        Err(PageError::NotFound)
-    }
+        .await?
+        .ok_or(PageError::NotFound)?;
+    Ok((email, link))
 }
 
 async fn queue_invite_email(c: &turso::Connection, email: &str, link: &str) -> anyhow::Result<()> {
