@@ -2,6 +2,7 @@ import { availableParallelism, loadavg, totalmem } from "node:os";
 import { defineConfig } from "@playwright/test";
 import { describeCapacity, workersFor } from "./lib/capacity";
 import { BASE_URL, PORT, RESET_TOKEN } from "./lib/env";
+import { projectsFor } from "./lib/shards";
 
 const ci = process.env["CI"] !== undefined;
 const capacity = {
@@ -27,10 +28,9 @@ export default defineConfig({
     channel: "chrome",
     headless: true,
     trace: "retain-on-failure",
-    video: "retain-on-failure",
     screenshot: "only-on-failure",
   },
-  projects: [{ name: "app" }],
+  projects: projectsFor(process.env["E2E_SHARD"]),
   // Playwright starts the debug binary and stops it at the end. `make e2e` builds it first.
   webServer: {
     command: "../target/debug/monita serve",

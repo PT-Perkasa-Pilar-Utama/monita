@@ -54,7 +54,8 @@ Every row was confirmed in the design grill on 2026-10-16.
 | Supply chain | cargo-deny | Licenses and advisories. |
 | Task runner | `Makefile` | `check-fast`, `check` (local gate), `release-check` (adds the LTO build), `e2e`, `e2e-full`, `release`. 4 rustc jobs at `nice 10` by default. |
 | Hooks | `.githooks/pre-commit` | `cargo fmt --check` and clippy when Rust files are staged. `make setup` enables it. |
-| CI | GitHub Actions, `.github/workflows/ci.yml` | `make check` and cargo-deny, `make e2e` with the report as an artifact, and on `main` the musl release binary as an artifact. |
+| CI | GitHub Actions, `.github/workflows/ci.yml` | Actions pinned by commit SHA. `check` builds once (`make check`) and uploads the debug binary; `deny` runs beside it; e2e runs one job per shard (`e2e/lib/shards.ts`) on that binary and skips a shard that passed on the same inputs. Docs-only pull requests run the fast gate alone. |
+| Release | `.github/workflows/release.yml` | On a `v*` tag push only: musl build, boot check, tar.gz with the systemd files, checksums, provenance attestation, draft GitHub release. |
 
 ## 4.6 Deployment
 
