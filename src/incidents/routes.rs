@@ -10,7 +10,7 @@ use axum::{
 };
 use serde::Deserialize;
 
-use super::{IncidentRow, LABELS, UpdateError, UpdateRow};
+use super::{IncidentRow, UpdateError, UpdateRow};
 use crate::{
     accounts::CurrentUser,
     app::AppState,
@@ -131,8 +131,8 @@ impl DetailPage {
     fn title(&self, label: &str) -> &'static str {
         label_title(label)
     }
-    fn labels(&self) -> [&'static str; 4] {
-        LABELS
+    fn labels(&self) -> &'static [&'static str] {
+        super::allowed_labels(&self.incident.origin, self.incident.resolved_at.is_some())
     }
     fn dot(&self, label: &str) -> &'static str {
         match label {

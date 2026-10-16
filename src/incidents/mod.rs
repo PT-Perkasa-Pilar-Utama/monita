@@ -214,11 +214,25 @@ pub enum UpdateError {
     EmptyTitle,
     #[error("Pick at least one monitor or heartbeat.")]
     NoItems,
+    #[error("Monita resolves this incident when its check passes.")]
+    AutoResolves,
+    #[error("A closed incident takes only Resolved updates.")]
+    Closed,
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 }
 
-/// US-19. A message is required. Resolved closes a manual incident; on an automatic one it is a note.
+/// The labels a TL may post. A closed incident takes follow-up notes as Resolved (AC-19.03); an
+/// open automatic incident cannot be marked Resolved, because only a passing check ends it.
+pub fn allowed_labels(origin: &str, closed: bool) -> &'static [&'static str] {
+    match (closed, origin) {
+        (true, _) => &LABELS[3..],
+        (false, "auto") => &LABELS[..3],
+        _ => &LABELS,
+    }
+}
+
+/// US-19. A message is required. Resolved closes a manual incident.
 pub async fn post_update(
     db: &Db,
     project_id: i64,
@@ -235,20 +249,32 @@ pub async fn post_update(
     if !LABELS.contains(&label) {
         return Err(UpdateError::BadLabel);
     }
-    Ok(db
-        .write(async |c| {
-            store::add_update(
-                c,
-                project_id,
-                incident_id,
-                label,
-                message,
-                Some(author),
-                now,
-            )
-            .await
-        })
-        .await?)
+    db.write(async |c| {
+        let Some((origin, resolved_at)) = store::origin_and_end(c, project_id, incident_id).await?
+        else {
+            return Ok(Ok(false));
+        };
+        if !allowed_labels(&origin, resolved_at.is_some()).contains(&label) {
+            return Ok(Err(if resolved_at.is_some() {
+                UpdateError::Closed
+            } else {
+                UpdateError::AutoResolves
+            }));
+        }
+        store::add_update(
+            c,
+            incident_id,
+            &origin,
+            resolved_at,
+            label,
+            message,
+            Some(author),
+            now,
+        )
+        .await?;
+        Ok(Ok(true))
+    })
+    .await?
 }
 
 /// Names of the project's monitors and heartbeats, for item lists and the manual form. Read

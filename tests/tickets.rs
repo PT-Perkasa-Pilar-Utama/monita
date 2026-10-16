@@ -482,3 +482,27 @@ async fn boards_show_every_open_ticket_and_the_newest_200_done() {
         assert!(html.contains("Done shows the newest 200"));
     }
 }
+
+#[tokio::test]
+async fn the_digest_skips_a_disabled_owner() {
+    let app = TestApp::spawn("test").await;
+    let s = setup(&app).await;
+    let rid = ref_id(&app, &s.key, false).await;
+    submit(&app, &rid, "Checkout broken").await;
+    let rina = monita::accounts::list_users(&app.state.db)
+        .await
+        .unwrap()
+        .into_iter()
+        .find(|u| u.email == "rina@x.co")
+        .unwrap()
+        .id;
+    monita::accounts::disable(&app.state.db, rina)
+        .await
+        .unwrap();
+    assert_eq!(
+        monita::notify::digest(&app.state.db, common::BASE_URL, now())
+            .await
+            .unwrap(),
+        0
+    );
+}

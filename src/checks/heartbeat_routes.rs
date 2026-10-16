@@ -358,12 +358,12 @@ async fn ping_fail(
     req: Request,
 ) -> Response {
     let (headers, peer) = (req.headers().clone(), peer(&req));
-    // The body, if any, is the job's own error text; up to 1 KB is kept (api-specs 04 section 4.2).
-    let body = axum::body::to_bytes(req.into_body(), 64 * 1024)
-        .await
-        .unwrap_or_default();
-    let text = String::from_utf8_lossy(&body);
-    let cause: String = text.trim().chars().take(1024).collect();
+    // The body, if any, is the job's own error text, at most 1 KB (api-specs 04 section 4.2).
+    // A client that disconnects mid-body also lands here; it never reads the answer.
+    let Ok(body) = axum::body::to_bytes(req.into_body(), 1024).await else {
+        return plain(StatusCode::PAYLOAD_TOO_LARGE, "body over 1 KB");
+    };
+    let cause = String::from_utf8_lossy(&body).trim().to_string();
     ping(
         &state,
         &token,

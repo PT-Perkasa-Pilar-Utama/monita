@@ -157,7 +157,7 @@ make run                        # dev server on 127.0.0.1:8080, ./data/monita.db
 make check-fast                 # fmt, clippy, unit tests
 make check                      # the gate
 make e2e                        # Playwright smoke and story specs, port 18080
-cargo run -- migrate            # apply migrations and exit
+MONITA_ENV=dev cargo run -- migrate   # apply migrations and exit
 curl -s localhost:8080/healthz  # health
 curl -s -X POST localhost:8080/admin/reset-state -H "x-reset-token: $MONITA_RESET_TOKEN" \
   -H 'content-type: application/json' -d '{"seed":"dev"}'   # dev/test only

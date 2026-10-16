@@ -275,7 +275,10 @@ async fn post_webhook(state: &AppState, url: &str, body: &str) -> anyhow::Result
         .body(body.to_string())
         .timeout(WEBHOOK_TIMEOUT)
         .send()
-        .await?;
+        .await
+        // The URL is the credential for Slack-style hooks (SEC-20).
+        .map_err(|e| anyhow::anyhow!("{}", e.without_url()))?;
+    // A redirect is a failure: following it would turn the POST into a GET without the payload.
     anyhow::ensure!(
         res.status().is_success(),
         "webhook answered HTTP {}",
@@ -307,8 +310,14 @@ pub async fn deliver_due(state: &AppState) -> anyhow::Result<usize> {
         let Some(done) = running.join_next().await else {
             break;
         };
-        if done?? {
-            sent += 1;
+        // One row's failure must not cancel the others: its row stays leased and retries.
+        match done {
+            Ok(Ok(true)) => sent += 1,
+            Ok(Ok(false)) => {}
+            Ok(Err(e)) => {
+                tracing::error!(error = %e, "could not record a delivery; the row retries after its lease");
+            }
+            Err(e) => tracing::error!(error = %e, "a delivery task panicked"),
         }
     }
     Ok(sent)

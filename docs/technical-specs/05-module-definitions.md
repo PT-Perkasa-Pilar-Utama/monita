@@ -50,7 +50,7 @@ Each module owns its tables (see [06](06-data-model.md)). Other modules use only
 | --- | --- |
 | `observe(source, signal) -> Option<Event>` | The only door for check results. Applies the 2-fail rule, opens and closes automatic incidents, writes the system status updates, and returns the event for `notify`. Idempotent for a repeated signal. See [12](12-incident-engine.md). |
 | `open_manual(db, &NewIncident, now)` | Creates a manual incident (title, items, severity, first message, author) with the first update, label Investigating. `items` are the form's `kind:id` values; it keeps those that name one of the project's monitors or heartbeats, read through `checks`, once each. Errors: empty title, no items, empty message. |
-| `post_update(incident, label, message, author)` | Message is required. Resolved on a manual incident closes it. |
+| `post_update(incident, label, message, author)` | Message is required. Resolved on a manual incident closes it. An open automatic incident refuses Resolved: only a passing check ends it. A closed incident takes only Resolved, as a follow-up note (AC-19.03). `allowed_labels(origin, closed)` gives the form the same list. |
 | `states_for(db, project_id) -> HashMap<(SourceKind, id), ItemState>` | `Down` while an automatic incident is open, `Issue` while a manual one names the item. Items with no entry are up, or waiting before their first check. Used by checks pages and `status`. |
 
 **Why deep:** checks and the UI know nothing about streaks or the open and close rules. `engine.rs` holds them as pure functions.

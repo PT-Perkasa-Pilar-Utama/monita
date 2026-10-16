@@ -19,9 +19,9 @@ pub struct Clients {
 }
 
 impl Clients {
-    /// Outgoing webhooks verify TLS.
+    /// Outgoing webhooks verify TLS and never follow a redirect.
     pub fn webhook(&self) -> &reqwest::Client {
-        &self.strict
+        &self.strict_no_follow
     }
 
     pub fn new() -> anyhow::Result<Self> {

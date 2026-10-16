@@ -166,26 +166,35 @@ async fn insert_update(
     Ok(())
 }
 
-pub async fn add_update(
+/// (origin, resolved_at) of an incident in the project.
+pub async fn origin_and_end(
     c: &Connection,
     project_id: i64,
     incident_id: i64,
-    label: &str,
-    message: &str,
-    author: Option<i64>,
-    now: i64,
-) -> anyhow::Result<bool> {
+) -> anyhow::Result<Option<(String, Option<i64>)>> {
     let mut rows = c
         .query(
             "SELECT origin, resolved_at FROM incidents WHERE id = ?1 AND project_id = ?2",
             (incident_id, project_id),
         )
         .await?;
-    let Some(r) = rows.next().await? else {
-        return Ok(false);
-    };
-    let (origin, resolved_at): (String, Option<i64>) = (r.get(0)?, r.get(1)?);
-    drop(rows);
+    Ok(match rows.next().await? {
+        Some(r) => Some((r.get(0)?, r.get(1)?)),
+        None => None,
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
+pub async fn add_update(
+    c: &Connection,
+    incident_id: i64,
+    origin: &str,
+    resolved_at: Option<i64>,
+    label: &str,
+    message: &str,
+    author: Option<i64>,
+    now: i64,
+) -> anyhow::Result<()> {
     insert_update(c, incident_id, label, message, author, now).await?;
     if label == "resolved" && origin == "manual" && resolved_at.is_none() {
         c.execute(
@@ -194,7 +203,7 @@ pub async fn add_update(
         )
         .await?;
     }
-    Ok(true)
+    Ok(())
 }
 
 pub async fn open_manual(

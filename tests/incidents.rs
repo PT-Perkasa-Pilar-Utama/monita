@@ -498,15 +498,16 @@ async fn status_updates_need_a_message_and_work_after_close() {
             Some(&tl),
         )
         .await;
-    assert_eq!(note.status(), 303);
     assert_eq!(
-        count(
-            &app,
-            "SELECT count(*) FROM incidents WHERE resolved_at IS NULL"
-        )
-        .await,
-        1,
-        "Resolved is a note on an automatic incident"
+        note.status(),
+        422,
+        "only a passing check resolves an automatic incident"
+    );
+    assert!(
+        note.text()
+            .await
+            .unwrap()
+            .contains("Monita resolves this incident when its check passes.")
     );
 
     up.store(true, Ordering::SeqCst);
@@ -522,6 +523,18 @@ async fn status_updates_need_a_message_and_work_after_close() {
         )
         .await;
     assert_eq!(after.status(), 303);
+    let reopened = app
+        .post_form(
+            "/projects/payments/incidents/1/updates",
+            &[("label", "investigating"), ("message", "Still looking")],
+            Some(&tl),
+        )
+        .await;
+    assert_eq!(
+        reopened.status(),
+        422,
+        "a closed incident takes only Resolved notes"
+    );
     let html = app
         .get("/projects/payments/incidents/1", Some(&tl))
         .await

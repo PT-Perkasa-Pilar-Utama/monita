@@ -208,6 +208,37 @@ async fn a_fail_right_after_a_success_ping_is_still_heard() {
 }
 
 #[tokio::test]
+async fn a_fail_body_is_the_cause_up_to_1_kb_and_413_past_it() {
+    let app = TestApp::spawn("test").await;
+    let (_, token) = setup(&app).await;
+    let url = app.url(&format!("/ping/{token}/fail"));
+    let big = app
+        .http
+        .post(&url)
+        .body("x".repeat(1025))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(big.status(), 413);
+    let ok = app
+        .http
+        .post(&url)
+        .body("disk full on /var")
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(ok.status(), 200);
+    assert_eq!(
+        count(
+            &app,
+            "SELECT count(*) FROM pings WHERE kind = 'fail' AND cause = 'disk full on /var'"
+        )
+        .await,
+        1
+    );
+}
+
+#[tokio::test]
 async fn a_missed_deadline_is_reported_once_and_the_next_ping_clears_it() {
     let app = TestApp::spawn("test").await;
     let (tl, token) = setup(&app).await;

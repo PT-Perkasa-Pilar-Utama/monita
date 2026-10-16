@@ -38,9 +38,6 @@ pub async fn build(config: Config) -> anyhow::Result<(Router, AppState)> {
 
 /// `build` with a chosen mail adapter. Tests pass `Mailer::memory()`.
 pub async fn build_with(config: Config, mailer: Mailer) -> anyhow::Result<(Router, AppState)> {
-    if let Some(dir) = config.db_path.parent() {
-        std::fs::create_dir_all(dir)?;
-    }
     let db = Db::open(&config.db_path).await?;
     migrate::run(&db).await?;
     let state = AppState {

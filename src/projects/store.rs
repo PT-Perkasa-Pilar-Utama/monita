@@ -1,4 +1,4 @@
-//! SQL for projects, api_keys, and the alert_routes rows a new project starts with.
+//! SQL for projects and api_keys.
 
 use turso::Connection;
 
@@ -6,6 +6,7 @@ pub struct Project {
     pub id: i64,
     pub owner_id: i64,
     pub owner_email: String,
+    pub owner_active: bool,
     pub name: String,
     pub slug: String,
     pub ip_allowlist: Option<String>,
@@ -21,7 +22,7 @@ pub struct ApiKeyRow {
     pub created_at: i64,
 }
 
-const COLS: &str = "p.id, p.owner_id, u.email, p.name, p.slug, p.ip_allowlist, p.created_at";
+const COLS: &str = "p.id, p.owner_id, u.email, p.name, p.slug, p.ip_allowlist, p.created_at, u.disabled_at IS NULL";
 
 fn row(r: &turso::Row) -> turso::Result<Project> {
     Ok(Project {
@@ -32,6 +33,7 @@ fn row(r: &turso::Row) -> turso::Result<Project> {
         slug: r.get(4)?,
         ip_allowlist: r.get(5)?,
         created_at: r.get(6)?,
+        owner_active: r.get::<i64>(7)? == 1,
     })
 }
 

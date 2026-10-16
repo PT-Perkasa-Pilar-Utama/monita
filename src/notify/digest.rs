@@ -15,7 +15,8 @@ pub async fn digest(db: &Db, base_url: &str, now: i64) -> anyhow::Result<usize> 
     let projects = crate::projects::all(db).await?;
     db.write(async |c| {
         let mut sent = 0;
-        for p in &projects {
+        // A disabled owner has left; ticket titles must not reach their mailbox.
+        for p in projects.iter().filter(|p| p.owner_active) {
             let fresh = crate::tickets::new_in_triage_after(c, p.id, after).await?;
             if fresh.is_empty() {
                 continue;

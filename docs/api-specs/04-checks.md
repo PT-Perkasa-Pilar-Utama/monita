@@ -25,7 +25,7 @@ curl -fsS -m 10 https://monita.company.co.id/ping/k3j9w2x7q4m8p6r1t5v0y2z8ab
 | --- | --- |
 | Purpose | A project job reports its own failure. |
 | Access | Anyone with the token. |
-| Input | Path `token`. Optional body, up to 1 KB of text, stored as the cause. |
+| Input | Path `token`. Optional body, up to 1 KB of text, stored as the cause. A body over 1 KB is 413. |
 | Behavior | Rate limit as 4.1, in its own bucket `pingfail:{id}`, so a fail right after a success ping is never refused. Insert `pings(kind=fail)`. `observe(Heartbeat, FailPing{cause})` opens an incident at once (AC-14.01). `deadline_at` does not move. |
 | Output | 200 `OK` |
 | Errors | Same as 4.1 |

@@ -92,7 +92,7 @@ mod tests {
             Mailer::from_config(&config).unwrap(),
             Mailer::Smtp { .. }
         ));
-        let no_smtp = Config::from_lookup(|_| None).unwrap();
+        let no_smtp = Config::from_lookup(|k| (k == "MONITA_ENV").then(|| "dev".into())).unwrap();
         assert!(matches!(
             Mailer::from_config(&no_smtp).unwrap(),
             Mailer::Log

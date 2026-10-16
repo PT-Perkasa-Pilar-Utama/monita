@@ -35,6 +35,9 @@ impl Writer {
 
 impl Db {
     pub async fn open(path: &Path) -> anyhow::Result<Self> {
+        if let Some(dir) = path.parent().filter(|d| !d.as_os_str().is_empty()) {
+            std::fs::create_dir_all(dir)?;
+        }
         let path = path.to_str().context("database path must be UTF-8")?;
         let database = Builder::new_local(path).build().await?;
         let conn = connect(&database).await?;
@@ -55,8 +58,8 @@ impl Db {
     ) -> anyhow::Result<T> {
         let mut w = self.writer.lock().await;
         w.clean().await;
-        w.in_tx = true;
         w.conn.execute("BEGIN IMMEDIATE", ()).await?;
+        w.in_tx = true;
         let result = match f(&w.conn).await {
             Ok(v) => match w.conn.execute("COMMIT", ()).await {
                 Ok(_) => {
@@ -151,6 +154,14 @@ pub async fn query_i64(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn open_creates_the_missing_data_folder() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("data/nested/t.db");
+        Db::open(&path).await.unwrap();
+        assert!(path.parent().unwrap().is_dir());
+    }
 
     #[tokio::test]
     async fn drop_all_tables_then_migrate_again() {

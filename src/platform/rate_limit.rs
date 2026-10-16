@@ -2,12 +2,18 @@
 
 use std::{collections::HashMap, sync::Mutex};
 
-/// Windows older than this are dropped when the map grows past `SWEEP_AT` keys.
-const SWEEP_AT: usize = 10_000;
+/// The longest window any caller uses. Older windows can never deny again.
+const LONGEST_WINDOW_S: i64 = 60;
 
 #[derive(Default)]
 pub struct Limiter {
-    windows: Mutex<HashMap<String, (i64, u32)>>,
+    windows: Mutex<Windows>,
+}
+
+#[derive(Default)]
+struct Windows {
+    by_key: HashMap<String, (i64, u32)>,
+    swept_at: i64,
 }
 
 pub enum Verdict {
@@ -20,11 +26,14 @@ impl Limiter {
     /// Counts one hit for `key` in the window of `window_s` seconds that contains `now`.
     pub fn hit(&self, key: &str, limit: u32, window_s: i64, now: i64) -> Verdict {
         let window_start = now - now.rem_euclid(window_s);
-        let mut map = self.windows.lock().expect("rate limit lock");
-        if map.len() > SWEEP_AT {
-            map.retain(|_, (start, _)| *start >= window_start - 3600);
+        let mut w = self.windows.lock().expect("rate limit lock");
+        // Once a second at most, so the map stays bounded by the keys seen in the last minute.
+        if now > w.swept_at {
+            w.swept_at = now;
+            w.by_key
+                .retain(|_, (start, _)| *start >= now - LONGEST_WINDOW_S);
         }
-        let entry = map.entry(key.to_string()).or_insert((window_start, 0));
+        let entry = w.by_key.entry(key.to_string()).or_insert((window_start, 0));
         if entry.0 != window_start {
             *entry = (window_start, 0);
         }
@@ -111,5 +120,15 @@ mod tests {
             matches!(l.hit("k", 2, 60, 180), Verdict::Allow),
             "new window"
         );
+    }
+
+    #[test]
+    fn expired_windows_are_dropped_so_the_map_stays_bounded() {
+        let l = Limiter::default();
+        for ip in 0..1_000 {
+            l.hit(&format!("ip:{ip}"), 60, 60, 120);
+        }
+        l.hit("ip:new", 60, 60, 181);
+        assert_eq!(l.windows.lock().unwrap().by_key.len(), 1);
     }
 }

@@ -39,7 +39,7 @@ fn spawn_peer_ping(state: &AppState) {
                 status = r.status().as_u16(),
                 "peer ping answered with an error"
             ),
-            Err(e) => tracing::warn!(error = %e, "peer ping failed"),
+            Err(e) => tracing::warn!(error = %e.without_url(), "peer ping failed"),
         }
     });
 }

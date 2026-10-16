@@ -12,6 +12,7 @@ The incident engine turns check signals into incidents and events. It applies to
 | Fail ping | Opens at once | Q7. The job reports its own failure. |
 | Close | The first passing check or ping closes an automatic incident | Q4. Downtime stays exact. |
 | Manual incidents | Never closed by signals. The TL posts Resolved. | Q5 |
+| TL labels | An open automatic incident takes Investigating, Identified, Monitoring. A closed incident takes only Resolved, as a note. | A public timeline never says Resolved while the item is down. |
 | One open auto incident per source | `incident_sources.open_incident_id` | No duplicate incidents for one outage |
 | System timeline entries | On open: label Investigating, message "Detected: <cause>". On close: label Resolved, message "Recovered after <duration>". Author NULL. | The timeline has a start and an end without TL action. |
 | Pure core | `engine::step(state, signal) -> (state, Vec<Effect>)` with no I/O | Unit tests cover every rule without a database. |

@@ -37,8 +37,10 @@ impl Config {
     /// Reads every variable through `get`, so tests pass a map instead of the process env.
     pub fn from_lookup(get: impl Fn(&str) -> Option<String>) -> anyhow::Result<Self> {
         let var = |k: &str| get(k).filter(|v| !v.trim().is_empty());
+        // No default: a prod host that loses this line must not come up in dev with reset-state.
         let env = match var("MONITA_ENV").as_deref() {
-            None | Some("dev") => Env::Dev,
+            None => bail!("MONITA_ENV is required: dev, test or prod"),
+            Some("dev") => Env::Dev,
             Some("test") => Env::Test,
             Some("prod") => Env::Prod,
             Some(other) => bail!("MONITA_ENV must be dev, test or prod, got {other:?}"),
@@ -58,10 +60,10 @@ impl Config {
                 v.parse().with_context(|| format!("{k} must be a number"))
             })
         };
-        let digest_utc_hour = parse_num("MONITA_DIGEST_UTC_HOUR", 1)? as u32;
-        if digest_utc_hour > 23 {
-            bail!("MONITA_DIGEST_UTC_HOUR must be 0 to 23");
-        }
+        let digest_utc_hour = u32::try_from(parse_num("MONITA_DIGEST_UTC_HOUR", 1)?)
+            .ok()
+            .filter(|h| *h <= 23)
+            .context("MONITA_DIGEST_UTC_HOUR must be 0 to 23")?;
         let reset_token = match env {
             Env::Prod => None,
             _ => var("MONITA_RESET_TOKEN"),
@@ -102,10 +104,17 @@ mod tests {
     }
 
     #[test]
-    fn defaults_to_dev() {
-        let c = cfg(&[]).unwrap();
-        assert_eq!(c.env, Env::Dev);
+    fn refuses_to_start_without_an_env() {
+        assert!(cfg(&[]).is_err());
+        let c = cfg(&[("MONITA_ENV", "dev")]).unwrap();
         assert_eq!(c.base_url, "http://localhost:8080");
+    }
+
+    #[test]
+    fn a_digest_hour_past_23_is_refused_even_when_it_wraps_a_u32() {
+        for hour in ["24", "4294967297"] {
+            assert!(cfg(&[("MONITA_ENV", "dev"), ("MONITA_DIGEST_UTC_HOUR", hour)]).is_err());
+        }
     }
 
     #[test]

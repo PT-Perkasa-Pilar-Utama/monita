@@ -52,16 +52,20 @@ pub fn client_ip(
     peer: Option<SocketAddr>,
     trust_proxy: bool,
 ) -> Option<IpAddr> {
+    // The last header line: a proxy may add its own line instead of appending to the client's.
     if trust_proxy
         && let Some(ip) = headers
-            .get("x-forwarded-for")
+            .get_all("x-forwarded-for")
+            .iter()
+            .next_back()
             .and_then(|v| v.to_str().ok())
             .and_then(|v| v.rsplit(',').next())
-            .and_then(|v| v.trim().parse().ok())
+            .and_then(|v| v.trim().parse::<IpAddr>().ok())
     {
-        return Some(ip);
+        return Some(ip.to_canonical());
     }
-    peer.map(|addr| addr.ip())
+    // A dual-stack listener sees IPv4 callers as `::ffff:a.b.c.d`; allowlists name them as IPv4.
+    peer.map(|addr| addr.ip().to_canonical())
 }
 
 #[cfg(test)]
@@ -84,6 +88,21 @@ mod tests {
             client_ip(&h, Some(peer), false),
             Some(peer.ip()),
             "headers are ignored without a trusted proxy"
+        );
+        h.append("x-forwarded-for", "198.51.100.7".parse().unwrap());
+        assert_eq!(
+            client_ip(&h, Some(peer), true),
+            Some("198.51.100.7".parse().unwrap()),
+            "the proxy's own line wins"
+        );
+    }
+
+    #[test]
+    fn an_ipv4_caller_on_a_dual_stack_socket_reads_as_ipv4() {
+        let peer: SocketAddr = "[::ffff:10.20.1.5]:5000".parse().unwrap();
+        assert_eq!(
+            client_ip(&HeaderMap::new(), Some(peer), false),
+            Some("10.20.1.5".parse().unwrap())
         );
     }
 }

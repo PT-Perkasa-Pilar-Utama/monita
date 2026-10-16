@@ -4,7 +4,7 @@ Monita reads its configuration from environment variables at start. systemd load
 
 | Variable | Meaning | dev | test (e2e) | prod |
 | --- | --- | --- | --- | --- |
-| `MONITA_ENV` | `dev`, `test` or `prod`. Gates reset-state. | `dev` | `test` | `prod` |
+| `MONITA_ENV` | `dev`, `test` or `prod`. Gates reset-state. Required: Monita refuses to start without it. | `dev` | `test` | `prod` |
 | `MONITA_BIND` | Listen address | `127.0.0.1:8080` | `127.0.0.1:18080` | `0.0.0.0:8080` |
 | `MONITA_BASE_URL` | Public URL, for links and the Origin check | `http://localhost:8080` | `http://127.0.0.1:18080` | `https://monita.company.co.id` |
 | `MONITA_DB_PATH` | Database file | `./data/monita.db` | `./data/e2e.db` | `/var/lib/monita/monita.db` |

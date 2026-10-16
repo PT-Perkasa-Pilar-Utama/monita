@@ -76,7 +76,14 @@ async fn an_api_key_is_limited_per_minute() {
             .send()
     };
     assert_eq!(call().await.unwrap().status(), 201);
-    assert_eq!(call().await.unwrap().status(), 201);
+    let lower = app
+        .http
+        .post(app.url("/api/v1/ref-ids"))
+        .header("authorization", format!("bearer {key}"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(lower.status(), 201, "the scheme is case-insensitive");
     let third = call().await.unwrap();
     assert_eq!(third.status(), 429);
     let body: Value = third.json().await.unwrap();
