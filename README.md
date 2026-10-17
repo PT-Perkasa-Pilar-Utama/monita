@@ -1,165 +1,76 @@
-# Monita
+<div align="center">
 
-Monita is a self-hosted uptime and incident service for the projects of one IT department. It is a small version of Better Stack. Monita checks project URLs, receives heartbeat pings from cron jobs, opens and closes incidents, sends alerts, publishes a status page per project, and collects bug tickets from project users.
+<img src="docs/assets/logo.svg" alt="Monita" width="236">
 
-It ships as one Rust binary with one SQLite-format database file. The motto: easy to integrate, simple, lightweight, fast, reliable.
+**Uptime, heartbeats, incidents, status pages and bug tickets for every project in your team.**
+One self-hosted binary, one SQLite file.
 
-## What it does
+[![CI](https://github.com/PT-Perkasa-Pilar-Utama/monita/actions/workflows/ci.yml/badge.svg)](https://github.com/PT-Perkasa-Pilar-Utama/monita/actions/workflows/ci.yml)
 
-| Feature | How it works |
+**[Try the demo](https://pt-perkasa-pilar-utama.github.io/monita/demo/)** &nbsp;·&nbsp;
+**[Install](#install)** &nbsp;·&nbsp;
+**[Docs](#docs)**
+
+</div>
+
+Monita watches your projects and tells people when one breaks. It is a small, self-hosted take on
+Better Stack.
+
+- **Check:** HTTP monitors every 30 s to 5 min, and heartbeats that cron jobs ping.
+- **Alert:** an incident opens on two failed checks or one missed ping. Email and webhook alerts follow.
+- **Tell users:** each project gets a public status page with 90 days of uptime and your updates.
+- **Collect bugs:** users file tickets through the status page; you sort them on a kanban.
+
+The [demo](https://pt-perkasa-pilar-utama.github.io/monita/demo/) is a read-only snapshot of the
+real app on sample data.
+
+![A project's public status page: 90 days of uptime per service and the incident timeline](docs/assets/screens/status.png)
+
+| Monitors | Tickets |
 | --- | --- |
-| HTTP monitors | Monita requests a URL every 30 s to 5 min and checks the status code, an optional keyword, and the timeout. |
-| Heartbeats | A cron job calls `/ping/{token}` after each run. A missed ping, or a call to `/ping/{token}/fail`, opens an incident. |
-| Incidents | Two failed checks in a row open an incident. The first pass closes it. A tech lead can also open a manual incident and post updates: investigating, identified, monitoring, resolved. |
-| Alerts | Email and webhook, per project and severity. Delivery goes through an outbox, so a slow SMTP server never delays a check. |
-| Status page | Each project gets `/status/{slug}` and a public JSON at `/api/v1/public/status/{slug}`, with 90 days of uptime. |
-| Bug tickets | The project's backend issues a ref ID with its API key. A user sends a ticket with that ref ID through the status page or the API. The tech lead moves it on a kanban; a public board shows the accepted ones. |
+| ![Monitors with state, severity and last check](docs/assets/screens/monitors.png) | ![The ticket kanban: triage, backlog, in progress, done](docs/assets/screens/tickets.png) |
 
-Two roles: a super admin invites tech leads, and each tech lead manages only the projects they own. User stories and acceptance criteria are in [docs/business/](docs/business/).
+## Install
 
-Integrate a cron job in one line:
+On a Linux VM, with the binary from [Releases](https://github.com/PT-Perkasa-Pilar-Utama/monita/releases):
+
+```sh
+install -m 0755 monita /usr/local/bin/monita
+sudo monita setup             # public URL, SMTP, folders, first super admin
+sudo monita service install   # systemd unit, started now and at every boot
+```
+
+Put your HTTPS reverse proxy in front of `127.0.0.1:8080`. Backups, restore and upgrades:
+[Install and run](docs/INSTALL.md).
+
+## Ping from a cron job
 
 ```sh
 if backup.sh; then curl -fsS -m 10 https://monita.example.com/ping/<token>
 else curl -fsS -m 10 https://monita.example.com/ping/<token>/fail; fi
 ```
 
-## Stack
-
-| Layer | Technology |
-| --- | --- |
-| Language | Rust 1.97 |
-| HTTP | axum 0.8, tokio |
-| UI | Server-rendered askama templates and plain forms, one CSS file ([design system](docs/design-system/)) |
-| Database | turso 0.8 (SQLite file format) |
-| Tests | `cargo test`, Playwright on Bun |
-
-## Quickstart
-
-Prerequisites: Rust (the toolchain in `rust-toolchain.toml` installs itself through rustup), Bun 1.4 and Google Chrome for the browser tests.
-
-```sh
-make setup          # enable the git hooks, install the e2e packages
-make run            # serve on http://127.0.0.1:8080 with ./data/monita.db
-```
-
-To load the demo project and the dev accounts in [seeds/README.md](seeds/README.md), start with a reset token and reset once:
-
-```sh
-MONITA_RESET_TOKEN=dev make run
-curl -s -X POST http://127.0.0.1:8080/admin/reset-state -H 'x-reset-token: dev' \
-  -H 'content-type: application/json' -d '{"seed":"dev"}'
-```
-
-Check that it runs:
-
-```sh
-curl -s http://127.0.0.1:8080/healthz
-# {"status":"ok","db":"ok","scheduler_lag_s":0,"outbox_pending":0,"version":"0.1.0"}
-```
-
-Run the gate before you hand off a change:
-
-```sh
-make check          # format, clippy, unit and integration tests
-make e2e            # browser tests against the debug binary on port 18080
-```
-
-Configuration comes from `MONITA_*` environment variables: [docs/technical-specs/11-environment-configuration.md](docs/technical-specs/11-environment-configuration.md). A production example is in [deploy/monita.env.example](deploy/monita.env.example), and the systemd unit is [deploy/monita.service](deploy/monita.service).
-
-## Repository map
-
-```text
-src/            Rust crate: one folder per module (accounts, projects, checks, incidents,
-                notify, status, tickets) plus platform (config, db, migrations, rendering)
-templates/      askama templates: layout/, ui/ macros, one folder per module
-static/         app.css, app.js, icons, fonts; embedded in the binary
-migrations/     numbered SQL files, applied at start
-seeds/          dev and QA data for /admin/reset-state (never in prod)
-tests/          Rust integration tests
-e2e/            Playwright suite and its CI shard table
-deploy/         systemd unit and environment example
-docs/           decisions, stories, specs, API contracts, design system
-```
+No ping within the period you set opens an incident, and so does `/fail` at once. A failing job can
+send its error as the request body: the first 1 KB becomes the incident's cause.
 
 ## Docs
 
-| Read | For |
-| --- | --- |
-| [CLAUDE.md](CLAUDE.md) | Rules for anyone changing the code, human or agent |
-| [docs/decisions/](docs/decisions/) | Why Monita is shaped this way |
-| [docs/technical-specs/](docs/technical-specs/) | Architecture, modules, data model, security |
-| [docs/api-specs/](docs/api-specs/) | The HTTP contracts projects integrate against, and what is built |
-| [docs/design-system/](docs/design-system/) | UI tokens, components, page recipes |
+| Run it | Integrate | Reference |
+| --- | --- | --- |
+| [Install and run](docs/INSTALL.md) | [Ping API](docs/api-specs/04-checks.md) | [Technical specs](docs/technical-specs/_index.md) |
+| [Configuration](docs/technical-specs/11-environment-configuration.md) | [Status JSON](docs/api-specs/07-status.md) | [API specs](docs/api-specs/_index.md) |
+| [Command line](docs/api-specs/10-cli.md) | [Tickets API](docs/api-specs/08-tickets.md) | [Design system](docs/design-system/) |
+| [Security](docs/technical-specs/07-security.md) | [Webhook payload](docs/api-specs/06-notify.md) | [Decisions](docs/decisions/) |
 
-## Run it in production
+## Contributing
 
-Monita runs as one systemd service on a Linux VM. These steps assume Ubuntu or Debian and root access.
-
-1. Install the binary from a release (or build it with `make release`):
-
-   ```sh
-   tar -xzf monita_v0.1.0_linux_amd64.tar.gz
-   install -m 0755 monita /usr/local/bin/monita
-   ```
-
-2. Answer the setup questions. It writes `/etc/monita/monita.env` (mode 0600) and creates the first super admin:
-
-   ```sh
-   sudo monita setup
-   ```
-
-   Every variable is described in [docs/technical-specs/11-environment-configuration.md](docs/technical-specs/11-environment-configuration.md). For a scripted install, `monita setup --yes` takes the answers from `MONITA_*` variables ([docs/api-specs/10-cli.md](docs/api-specs/10-cli.md)).
-
-3. Install and start the service. It creates the `monita` user and the folders, writes the systemd unit, and waits for `/healthz`:
-
-   ```sh
-   sudo monita service install
-   monita whereis               # env file, database, backups, unit, logs
-   ```
-
-4. Put the company reverse proxy in front for HTTPS. Setup's defaults, `MONITA_TRUST_PROXY=true` and `MONITA_BIND=127.0.0.1:8080`, assume one. If other hosts can reach the port, they can forge `X-Forwarded-For`.
-
-`monita service status`, `monita service logs -f` and `monita service uninstall` cover the rest. The manual unit is [deploy/monita.service](deploy/monita.service), and `service install` writes the same file.
-
-### Backups and restore
-
-Monita writes `monita-YYYYMMDD.db` to `MONITA_BACKUP_DIR` at 01:00 UTC and keeps the newest `MONITA_BACKUP_KEEP` (7). To restore one:
+Rust (the toolchain in `rust-toolchain.toml` installs itself), Bun 1.4 and Google Chrome:
 
 ```sh
-systemctl stop monita
-mv /var/lib/monita/monita.db /var/lib/monita/monita.db.broken
-rm -f /var/lib/monita/monita.db-wal /var/lib/monita/monita.db-shm
-install -m 0600 -o monita /var/backups/monita/monita-20261016.db /var/lib/monita/monita.db
-systemctl start monita
+make setup    # git hooks and e2e packages
+make run      # http://127.0.0.1:8080
+make check    # format, clippy, unit and integration tests
+make e2e      # browser tests on port 18080
 ```
 
-A backup is a plain SQLite file: `sqlite3 monita-20261016.db 'PRAGMA integrity_check'` checks it.
-
-### Watch Monita from outside
-
-Monita cannot alert about its own outage. Run a second Monita at another site and give each a heartbeat on the other:
-
-1. On Monita B, create a heartbeat named `monita-a`, period 1 minute, grace 5 minutes, severity critical.
-2. On Monita A, set `MONITA_PING_URL` to that heartbeat's ping URL and restart. A pings it at start and every 60 seconds.
-3. Do the same in the other direction.
-
-If one site loses power, the other sends "monita-a missed its heartbeat". A free Better Stack heartbeat works the same way in place of Monita B. `GET /healthz` returns 503 when the database fails or the scheduler stops ticking, for a load balancer or an uptime check.
-
-### Lost super admin password
-
-```sh
-systemctl stop monita        # the running service locks the database file
-sudo monita admin reset-password --email you@company.co.id
-systemctl start monita
-```
-
-The command asks for the new password without echo (or reads stdin in a script) and signs the admin out everywhere. A TL gets a new invite from a super admin instead.
-
-### Upgrade
-
-Install the new binary over the old one and run `systemctl restart monita`. Migrations run at start. Take a backup first: `systemctl stop monita && cp /var/lib/monita/monita.db /var/backups/monita/pre-upgrade.db`.
-
-## Releases
-
-Push a `v*` tag that matches the version in `Cargo.toml`. [release.yml](.github/workflows/release.yml) builds the static Linux binary and opens a draft GitHub release.
+[CLAUDE.md](CLAUDE.md) lists every rule and command. Seeded accounts: [seeds/README.md](seeds/README.md).
