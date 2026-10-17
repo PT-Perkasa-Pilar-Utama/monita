@@ -106,7 +106,9 @@ async fn public_json_matches_the_page_and_allows_any_origin() {
     assert_eq!(item["name"], "Checkout");
     assert_eq!(item["state"], "down");
     assert_eq!(item["days"].as_array().unwrap().len(), 7);
-    assert!(item["days"][6]["downtime_s"].as_i64().unwrap() >= 600);
+    // The 600 s can straddle UTC midnight, so it is split across the last two bars.
+    let downtime = |d: usize| item["days"][d]["downtime_s"].as_i64().unwrap();
+    assert!(downtime(5) + downtime(6) >= 600);
     let incident = &data["incidents"][0];
     assert_eq!(incident["items"][0], "Checkout");
     assert_eq!(
