@@ -152,6 +152,8 @@ Each line was argued in review and decided. Do not reopen one without a new fact
 - `http-body` is a dev-dependency only: the ping-body unit tests need hand-made bodies. The body readers take a `Budget` (deadline and byte cap) as a parameter for the same tests.
 - Ping-body limits are tested by mechanism with small injected budgets. `BODY_MAX` and `BODY_TIMEOUT` are not asserted by value. That would restate a constant, and an over-cap request resets on Linux.
 - A test file may run to 800 lines; the 400-line cap is for `src/`.
+- Charts are SVG drawn on the server from bucketed aggregates (`checks::chart`), not a JS chart library: no script for CSP to allow, and no unbounded rows reach the page.
+- Availability and the chart's down bands count automatic incidents only, as the status page does. An open manual incident shows its items as Issue, never as downtime.
 
 ## Context recovery checklist
 

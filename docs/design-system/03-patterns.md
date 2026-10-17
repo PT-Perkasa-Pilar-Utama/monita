@@ -30,8 +30,8 @@ Project menu, in this order: Monitors, Heartbeats, Incidents, Tickets, Alerts, S
 - Name things by what a TL knows: "Ping URL", not "heartbeat token endpoint".
 - Buttons say what happens: "Save heartbeat", "Revoke key", "Post update".
 - Errors say what to do: "Enter a name, for example nightly-settlement."
-- Times: relative in lists ("6m ago"), absolute with zone on detail pages ("16 Oct, 14:02 WIB").
-- Durations: `6m 18s`, `2h 4m`, `3d 2h`. Latency: `182ms`. Uptime: two decimals, `99.91%`.
+- Times: relative in lists ("6m ago"), absolute in UTC on detail pages ("2026-10-16 14:02 UTC").
+- Durations: `6m 18s`, `2h 4m`, `3d 2h`. Latency: `182ms`. Uptime: two decimals on the status page (`99.91%`), three in the availability table (`99.987%`).
 
 ## 3.5 Do and don't
 
