@@ -11,11 +11,13 @@ use std::{
 };
 
 use axum::{Router, http::StatusCode, routing::get};
-use common::{TestApp, location};
+use common::{TestApp, json_of};
 use monita::{
     checks::{self, Clients, MonitorInput, probe},
     platform::db::query_i64,
 };
+use reqwest::Method;
+use serde_json::json;
 
 /// `/ok` 200 "all good", `/fail` 503, `/slow` waits 600 ms. Counts requests in flight.
 async fn target() -> (String, Arc<AtomicUsize>) {
@@ -159,113 +161,119 @@ async fn a_monitor_that_expects_a_redirect_sees_it_and_others_follow_it() {
 }
 
 #[tokio::test]
-async fn new_monitor_form_shows_every_field_with_defaults() {
+async fn check_options_offer_the_intervals_and_the_monitor_defaults() {
     // AC-09.01, AC-09.02
     let app = TestApp::spawn("test").await;
     let tl = tl_project(&app).await;
-    let html = app
-        .get("/projects/payments/monitors/new", Some(&tl))
-        .await
-        .text()
-        .await
-        .unwrap();
-    for field in [
-        "name=\"name\"",
-        "name=\"url\"",
-        "name=\"interval_s\"",
-        "name=\"timeout_s\"",
-        "name=\"expected_status\"",
-        "name=\"keyword\"",
-        "name=\"severity\"",
-        "name=\"is_public\"",
-    ] {
-        assert!(html.contains(field), "missing {field}");
-    }
-    assert!(html.contains("<option value=\"60\" selected>1m</option>"));
-    assert!(html.contains("value=\"10\""), "timeout 10 s");
-    assert!(html.contains("value=\"2xx\""));
-    assert!(html.contains("value=\"warning\" checked"));
-    assert!(!html.contains("name=\"is_public\" value=\"on\" checked"));
+    let o = json_of(app.api_get("/api/ui/check-options", Some(&tl)).await).await;
+    let intervals: Vec<i64> = o["data"]["intervals"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| c["value"].as_i64().unwrap())
+        .collect();
+    assert_eq!(intervals, [30, 60, 180, 300]);
+    assert_eq!(
+        o["data"]["monitor"],
+        json!({ "interval_s": 60, "timeout_s": 10, "expected_status": "2xx", "severity": "warning" })
+    );
 }
 
 #[tokio::test]
 async fn tl_creates_a_monitor_and_bad_input_is_refused() {
     let app = TestApp::spawn("test").await;
     let tl = tl_project(&app).await;
-    let form = [
-        ("name", "API health"),
-        ("url", "https://pay.internal/health"),
-        ("interval_s", "30"),
-        ("timeout_s", "5"),
-        ("expected_status", "200,204"),
-        ("keyword", ""),
-        ("severity", "critical"),
-        ("is_public", "on"),
-    ];
+    let form = json!({
+        "name": "API health",
+        "url": "https://pay.internal/health",
+        "interval_s": "30",
+        "timeout_s": "5",
+        "expected_status": "200,204",
+        "keyword": "",
+        "severity": "critical",
+        "is_public": true,
+    });
     let res = app
-        .post_form("/projects/payments/monitors", &form, Some(&tl))
+        .api_post("/api/ui/projects/payments/monitors", form, Some(&tl))
         .await;
-    assert_eq!(res.status(), 303);
-    let detail = app
-        .get(&location(&res), Some(&tl))
-        .await
-        .text()
-        .await
-        .unwrap();
-    assert!(
-        detail.contains("API health") && detail.contains("200,204") && detail.contains("Critical")
-    );
+    assert_eq!(res.status(), 201);
+    let id = json_of(res).await["data"]["id"].as_i64().unwrap();
+    let detail = json_of(
+        app.api_get(
+            &format!("/api/ui/projects/payments/monitors/{id}"),
+            Some(&tl),
+        )
+        .await,
+    )
+    .await;
+    let m = &detail["data"]["monitor"];
+    assert_eq!(m["name"], "API health");
+    assert_eq!(m["expected_status"], "200,204");
+    assert_eq!(m["severity"], "critical");
+    assert_eq!(m["timeout_s"], 5);
+    assert_eq!(m["is_public"], true);
 
-    let bad = [
-        ("name", ""),
-        ("url", "ftp://x"),
-        ("interval_s", "45"),
-        ("timeout_s", "99"),
-        ("expected_status", "ok"),
-        ("severity", "warning"),
-    ];
+    let bad = json!({
+        "name": "",
+        "url": "ftp://x",
+        "interval_s": "45",
+        "timeout_s": "99",
+        "expected_status": "ok",
+        "severity": "warning",
+    });
     let res = app
-        .post_form("/projects/payments/monitors", &bad, Some(&tl))
+        .api_post("/api/ui/projects/payments/monitors", bad, Some(&tl))
         .await;
     assert_eq!(res.status(), 422);
-    let html = res.text().await.unwrap();
-    assert!(html.contains("The URL must start with http:// or https://."));
+    let fields = &json_of(res).await["error"]["fields"];
+    assert_eq!(
+        fields["url"],
+        "The URL must start with http:// or https://."
+    );
+    assert_eq!(
+        fields["timeout_s"], "Use 1 to 30 seconds.",
+        "the form's own name"
+    );
+    for f in ["name", "interval_s", "expected_status"] {
+        assert!(fields[f].is_string(), "missing {f}");
+    }
     assert_eq!(count(&app, "SELECT count(*) FROM monitors").await, 1);
 }
 
 #[tokio::test]
-async fn the_monitor_list_filters_by_search_and_severity() {
+async fn tl_edits_and_deletes_a_monitor() {
     let app = TestApp::spawn("test").await;
     let tl = tl_project(&app).await;
-    for (name, severity) in [("Checkout API", "critical"), ("Admin panel", "warning")] {
-        let url = format!("https://{}.internal/", name.len());
-        let form = [
-            ("name", name),
-            ("url", url.as_str()),
-            ("interval_s", "60"),
-            ("timeout_s", "10"),
-            ("expected_status", "2xx"),
-            ("severity", severity),
-        ];
-        let res = app
-            .post_form("/projects/payments/monitors", &form, Some(&tl))
-            .await;
-        assert_eq!(res.status(), 303);
-    }
-    let page = |q: &'static str| {
-        let (app, tl) = (&app, &tl);
-        async move {
-            let path = format!("/projects/payments/monitors{q}");
-            app.get(&path, Some(tl)).await.text().await.unwrap()
-        }
-    };
-    let html = page("?q=checkout").await;
-    assert!(html.contains("Checkout API") && !html.contains("Admin panel"));
-    assert!(html.contains("1 of 2 monitors"));
-    let html = page("?severity=warning").await;
-    assert!(!html.contains("Checkout API") && html.contains("Admin panel"));
-    let html = page("?q=nothing-like-this").await;
-    assert!(html.contains("Nothing matches these filters"));
+    let mut form = json!({
+        "name": "API", "url": "https://pay.internal/", "interval_s": "60",
+        "timeout_s": "10", "expected_status": "2xx", "severity": "warning",
+    });
+    let res = app
+        .api_post(
+            "/api/ui/projects/payments/monitors",
+            form.clone(),
+            Some(&tl),
+        )
+        .await;
+    let path = format!(
+        "/api/ui/projects/payments/monitors/{}",
+        json_of(res).await["data"]["id"]
+    );
+    form["name"] = json!("API v2");
+    let res = app
+        .api_send(Method::PUT, &path, form.clone(), Some(&tl))
+        .await;
+    assert_eq!(res.status(), 204);
+    let detail = json_of(app.api_get(&path, Some(&tl)).await).await;
+    assert_eq!(detail["data"]["monitor"]["name"], "API v2");
+
+    let res = app
+        .api_send(Method::DELETE, &path, json!({}), Some(&tl))
+        .await;
+    assert_eq!(res.status(), 204);
+    assert_eq!(app.api_get(&path, Some(&tl)).await.status(), 404);
+    let res = app.api_send(Method::PUT, &path, form, Some(&tl)).await;
+    assert_eq!(res.status(), 404, "a deleted monitor cannot be saved");
 }
 
 #[tokio::test]
@@ -290,26 +298,33 @@ async fn due_monitors_are_checked_and_the_detail_lists_the_results() {
         2
     );
 
-    let html = app
-        .get("/projects/payments/monitors/2", Some(&tl))
-        .await
-        .text()
-        .await
-        .unwrap();
-    assert!(html.contains("503"));
-    assert!(html.contains("HTTP 503, expected 2xx"));
-    assert!(html.contains("ms</td>"), "latency column");
-    let list = app
-        .get("/projects/payments/monitors", Some(&tl))
-        .await
-        .text()
-        .await
-        .unwrap();
+    let detail = json_of(
+        app.api_get("/api/ui/projects/payments/monitors/2", Some(&tl))
+            .await,
+    )
+    .await;
+    let check = &detail["data"]["checks"][0];
+    assert_eq!(check["status_code"], 503);
+    assert_eq!(check["ok"], false);
+    assert_eq!(check["error"], "HTTP 503, expected 2xx");
+    assert!(check["latency_ms"].is_i64(), "latency column");
+    let list = json_of(
+        app.api_get("/api/ui/projects/payments/monitors", Some(&tl))
+            .await,
+    )
+    .await;
+    let rows = list["data"]["monitors"].as_array().unwrap();
     assert!(
-        !list.contains("state state--down"),
+        rows.iter().all(|m| m["state"] != "down"),
         "AC-17.02: one failed check is not an outage"
     );
-    assert!(list.contains("200 in "));
+    let ok = rows.iter().find(|m| m["name"] == "OK page").unwrap();
+    assert!(
+        ok["last"]["summary"]
+            .as_str()
+            .unwrap()
+            .starts_with("200 in ")
+    );
 }
 
 #[tokio::test]
@@ -465,26 +480,22 @@ async fn the_system_page_queues_a_test_email_to_the_signed_in_admin_only() {
 }
 
 #[tokio::test]
-async fn a_blank_number_re_renders_the_form_with_its_error() {
+async fn a_blank_number_comes_back_as_that_fields_error() {
     let app = TestApp::spawn("test").await;
     let tl = tl_project(&app).await;
     let res = app
-        .post_form(
-            "/projects/payments/monitors",
-            &[
-                ("name", "API"),
-                ("url", "https://x.invalid/"),
-                ("interval_s", "60"),
-                ("timeout_s", ""),
-                ("expected_status", "2xx"),
-                ("severity", "warning"),
-            ],
+        .api_post(
+            "/api/ui/projects/payments/monitors",
+            json!({
+                "name": "API", "url": "https://x.invalid/", "interval_s": "60",
+                "timeout_s": "", "expected_status": "2xx", "severity": "warning",
+            }),
             Some(&tl),
         )
         .await;
     assert_eq!(res.status(), 422);
-    let html = res.text().await.unwrap();
-    assert!(html.contains("Use 1 to 30 seconds.") && html.contains("value=\"API\""));
+    let fields = json_of(res).await["error"]["fields"].take();
+    assert_eq!(fields, json!({ "timeout_s": "Use 1 to 30 seconds." }));
 }
 
 #[tokio::test]
@@ -530,32 +541,20 @@ async fn older_checks_keep_rows_that_share_a_second() {
         })
         .await
         .unwrap();
-    let first = app
-        .get("/projects/payments/monitors/1", Some(&tl))
-        .await
-        .text()
-        .await
-        .unwrap();
-    assert_eq!(first.matches(">row<").count(), 25);
-    let link = first
-        .split("&amp;before=")
-        .nth(1)
-        .and_then(|s| s.split('"').next())
-        .expect("an older-checks link");
-    let second = app
-        .get(
-            &format!("/projects/payments/monitors/1?before={link}"),
-            Some(&tl),
-        )
-        .await
-        .text()
-        .await
-        .unwrap();
-    assert_eq!(
-        second.matches(">row<").count(),
-        1,
-        "the 26th check is not skipped"
-    );
+    let page = |q: String| {
+        let (app, tl) = (&app, &tl);
+        async move {
+            let path = format!("/api/ui/projects/payments/monitors/1{q}");
+            json_of(app.api_get(&path, Some(tl)).await).await["data"].take()
+        }
+    };
+    let rows = |d: &serde_json::Value| d["checks"].as_array().unwrap().len();
+    let first = page(String::new()).await;
+    assert_eq!(rows(&first), 25);
+    let before = first["older"].as_str().expect("an older-checks link");
+    let second = page(format!("?before={before}")).await;
+    assert_eq!(rows(&second), 1, "the 26th check is not skipped");
+    assert!(second["older"].is_null());
 }
 
 #[tokio::test]
@@ -568,9 +567,19 @@ async fn another_project_cannot_open_a_monitor_by_id() {
     let budi = app.tl("budi@x.co").await;
     app.project(&budi, "Other", "other").await;
     assert_eq!(
-        app.get("/projects/other/monitors/1", Some(&budi))
+        app.api_get("/api/ui/projects/other/monitors/1", Some(&budi))
             .await
             .status(),
         404
     );
+    let res = app
+        .api_send(
+            Method::DELETE,
+            "/api/ui/projects/other/monitors/1",
+            json!({}),
+            Some(&budi),
+        )
+        .await;
+    assert_eq!(res.status(), 204, "a delete of nothing is a no-op");
+    assert_eq!(count(&app, "SELECT count(*) FROM monitors").await, 1);
 }

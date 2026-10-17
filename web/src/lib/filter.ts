@@ -7,3 +7,17 @@ export function matches(query: string, ...texts: (string | null | undefined)[]):
   if (!q) return true;
   return texts.some((t) => (t ?? "").toLowerCase().includes(q));
 }
+
+/** A list's search and its two selects; an empty value matches every row. */
+export type ListFilter = { q: string; state: string; severity: string };
+
+/** True when the search matches any text and each set select equals the row's value. */
+export function keeps(f: ListFilter, texts: (string | null | undefined)[], state: string, severity: string): boolean {
+  return matches(f.q, ...texts) && (!f.state || f.state === state) && (!f.severity || f.severity === severity);
+}
+
+/** "4 monitors", or "2 of 4 monitors" when the filter hides some. */
+export function countLabel(shown: number, total: number, noun: string): string {
+  const plural = total === 1 ? noun : `${noun}s`;
+  return shown === total ? `${total} ${plural}` : `${shown} of ${total} ${plural}`;
+}

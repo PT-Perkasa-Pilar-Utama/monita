@@ -63,7 +63,7 @@ function Tile({ to, icon: Icon, title, children, server }: { to: string; icon: A
     </Card>
   );
   const cls = "group rounded-xl outline-none focus-visible:ring-[3px] focus-visible:ring-ring";
-  // ponytail: monitors, heartbeats and tickets are server pages until R2 and R4.
+  // ponytail: tickets are a server page until R4.
   return server ? (
     <a href={to} className={cls}>
       {body}
@@ -100,10 +100,10 @@ export function Overview(): ReactElement {
         actions={
           <>
             <Button asChild>
-              <a href={`${base}/monitors/new`}>
+              <Link to={`${base}/monitors/new`}>
                 <Plus data-icon="inline-start" />
                 New monitor
-              </a>
+              </Link>
             </Button>
             <Button asChild variant="secondary">
               <a href={`${base}/incidents/new`}>Report incident</a>
@@ -117,7 +117,7 @@ export function Overview(): ReactElement {
             <Skeleton className="h-24 rounded-xl" />
           ) : (
             <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,240px),1fr))] gap-4">
-              <Tile to={`${base}/monitors`} icon={Activity} title="Monitors" server>
+              <Tile to={`${base}/monitors`} icon={Activity} title="Monitors">
                 {d.monitors.total === 0 ? "Add your first monitor." : (
                   <>
                     <StateRing kind={d.monitors.kind} />
@@ -125,7 +125,7 @@ export function Overview(): ReactElement {
                   </>
                 )}
               </Tile>
-              <Tile to={`${base}/heartbeats`} icon={Heartbeat} title="Heartbeats" server>
+              <Tile to={`${base}/heartbeats`} icon={Heartbeat} title="Heartbeats">
                 {d.heartbeats.total === 0 ? "Watch your first cron job." : (
                   <>
                     <StateRing kind={d.heartbeats.kind} />

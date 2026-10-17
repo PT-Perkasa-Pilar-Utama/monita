@@ -4,11 +4,12 @@ mod common;
 
 use std::time::Duration;
 
-use common::{BASE_URL, RESET_TOKEN, TestApp, location};
+use common::{BASE_URL, RESET_TOKEN, TestApp, json_of};
 use monita::{
     checks::heartbeat::{self, HeartbeatInput},
     platform::db::query_i64,
 };
+use serde_json::json;
 
 async fn count(app: &TestApp, sql: &str) -> i64 {
     query_i64(&app.state.db.read().await.unwrap(), sql, ())
@@ -49,17 +50,15 @@ async fn ping(app: &TestApp, method: reqwest::Method, path: &str) -> reqwest::Re
 }
 
 async fn state_label(app: &TestApp, tl: &str) -> String {
-    let html = app
-        .get("/projects/payments/heartbeats/1", Some(tl))
-        .await
-        .text()
-        .await
-        .unwrap();
-    let hero = &html[html
-        .find("<span class=\"hero__state")
-        .expect("the hero state")..];
-    let label = &hero[hero.find('>').unwrap() + 1..];
-    label[..label.find("</span>").unwrap()].to_string()
+    let d = json_of(
+        app.api_get("/api/ui/projects/payments/heartbeats/1", Some(tl))
+            .await,
+    )
+    .await;
+    d["data"]["heartbeat"]["state"]
+        .as_str()
+        .unwrap()
+        .to_string()
 }
 
 #[tokio::test]
@@ -68,48 +67,65 @@ async fn tl_creates_a_heartbeat_and_sees_its_ping_url() {
     let app = TestApp::spawn("test").await;
     let tl = app.tl("rina@x.co").await;
     app.project(&tl, "Payments", "payments").await;
-    let form = app
-        .get("/projects/payments/heartbeats/new", Some(&tl))
-        .await
-        .text()
-        .await
-        .unwrap();
-    for field in [
-        "name=\"name\"",
-        "name=\"period_s\"",
-        "name=\"grace_s\"",
-        "name=\"severity\"",
-        "name=\"is_public\"",
-    ] {
-        assert!(form.contains(field), "missing {field}");
-    }
+    let o = json_of(app.api_get("/api/ui/check-options", Some(&tl)).await).await;
+    assert_eq!(
+        o["data"]["heartbeat"],
+        json!({ "period_s": 86_400, "grace_s": 1_800, "severity": "warning" })
+    );
     let res = app
-        .post_form(
-            "/projects/payments/heartbeats",
-            &[
-                ("name", "nightly-settlement"),
-                ("period_s", "3600"),
-                ("grace_s", "300"),
-                ("severity", "critical"),
-            ],
+        .api_post(
+            "/api/ui/projects/payments/heartbeats",
+            json!({
+                "name": "nightly-settlement",
+                "period_s": "3600",
+                "grace_s": "300",
+                "severity": "critical",
+            }),
             Some(&tl),
         )
         .await;
-    assert_eq!(res.status(), 303);
-    let html = app
-        .get(&location(&res), Some(&tl))
-        .await
-        .text()
-        .await
-        .unwrap();
-    let token = heartbeat::find(&app.state.db, 1, 1)
+    assert_eq!(res.status(), 201);
+    let id = json_of(res).await["data"]["id"].as_i64().unwrap();
+    let d = json_of(
+        app.api_get(
+            &format!("/api/ui/projects/payments/heartbeats/{id}"),
+            Some(&tl),
+        )
+        .await,
+    )
+    .await;
+    let token = heartbeat::find(&app.state.db, 1, id)
         .await
         .unwrap()
         .unwrap()
         .token;
     assert_eq!(token.len(), 26);
-    assert!(html.contains(&format!("{BASE_URL}/ping/{token}")));
-    assert!(html.contains("Waiting"));
+    assert_eq!(d["data"]["ping_url"], format!("{BASE_URL}/ping/{token}"));
+    assert_eq!(d["data"]["heartbeat"]["state"], "unknown", "waiting");
+    assert_eq!(d["data"]["heartbeat"]["severity"], "critical");
+}
+
+#[tokio::test]
+async fn tl_edits_and_deletes_a_heartbeat() {
+    let app = TestApp::spawn("test").await;
+    let (tl, token) = setup(&app).await;
+    let path = "/api/ui/projects/payments/heartbeats/1";
+    let form = json!({ "name": "nightly v2", "period_s": "3600", "grace_s": "300", "severity": "warning" });
+    let res = app
+        .api_send(reqwest::Method::PUT, path, form, Some(&tl))
+        .await;
+    assert_eq!(res.status(), 204);
+    let d = json_of(app.api_get(path, Some(&tl)).await).await;
+    assert_eq!(d["data"]["heartbeat"]["name"], "nightly v2");
+    assert_eq!(d["data"]["heartbeat"]["period_s"], 3600);
+
+    let res = app
+        .api_send(reqwest::Method::DELETE, path, json!({}), Some(&tl))
+        .await;
+    assert_eq!(res.status(), 204);
+    assert_eq!(app.api_get(path, Some(&tl)).await.status(), 404);
+    let res = ping(&app, reqwest::Method::GET, &format!("/ping/{token}")).await;
+    assert_eq!(res.status(), 404, "a deleted heartbeat's URL is gone");
 }
 
 #[tokio::test]
@@ -136,7 +152,7 @@ async fn get_head_and_post_all_count_as_a_ping() {
         count(&app, "SELECT count(*) FROM pings WHERE kind = 'ok'").await,
         3
     );
-    assert_eq!(state_label(&app, &tl).await, "Up");
+    assert_eq!(state_label(&app, &tl).await, "up");
     let deadline = count(&app, "SELECT deadline_at FROM heartbeats").await;
     let now = monita::platform::now();
     assert!(
@@ -164,7 +180,7 @@ async fn a_second_ping_within_a_second_gets_429_and_the_heartbeat_stays_up() {
     assert_eq!(statuses[0], 200);
     assert!(statuses.contains(&429), "{statuses:?}");
     assert_eq!(retry_after.as_deref(), Some("1"));
-    assert_eq!(state_label(&app, &tl).await, "Up");
+    assert_eq!(state_label(&app, &tl).await, "up");
 }
 
 #[tokio::test]
@@ -174,7 +190,7 @@ async fn a_fail_ping_marks_the_heartbeat_down_at_once() {
     let (tl, token) = setup(&app).await;
     let res = ping(&app, reqwest::Method::POST, &format!("/ping/{token}/fail")).await;
     assert_eq!(res.status(), 200);
-    assert_eq!(state_label(&app, &tl).await, "Down");
+    assert_eq!(state_label(&app, &tl).await, "down");
     assert_eq!(
         count(&app, "SELECT count(*) FROM pings WHERE kind = 'fail'").await,
         1
@@ -189,7 +205,7 @@ async fn a_fail_right_after_a_success_ping_is_still_heard() {
     assert_eq!(ok.status(), 200);
     let fail = ping(&app, reqwest::Method::POST, &format!("/ping/{token}/fail")).await;
     assert_eq!(fail.status(), 200);
-    assert_eq!(state_label(&app, &tl).await, "Down");
+    assert_eq!(state_label(&app, &tl).await, "down");
     assert_eq!(
         count(
             &app,
@@ -217,7 +233,7 @@ async fn a_long_fail_body_still_opens_the_incident_with_its_first_kb() {
         200,
         "the failure is never dropped for its size"
     );
-    assert_eq!(state_label(&app, &tl).await, "Down");
+    assert_eq!(state_label(&app, &tl).await, "down");
     assert_eq!(
         count(
             &app,
@@ -261,7 +277,7 @@ async fn a_fail_body_of_megabytes_is_read_to_its_end_and_answered() {
         .await
         .unwrap();
     assert_eq!(res.status(), 200, "cut, never 413 or a reset");
-    assert_eq!(state_label(&app, &tl).await, "Down");
+    assert_eq!(state_label(&app, &tl).await, "down");
     assert_eq!(
         count(
             &app,
@@ -449,14 +465,14 @@ async fn a_missed_deadline_is_reported_once_and_the_next_ping_clears_it() {
         }
         tokio::time::sleep(Duration::from_millis(100)).await;
     }
-    assert_eq!(state_label(&app, &tl).await, "Down");
+    assert_eq!(state_label(&app, &tl).await, "down");
     assert_eq!(
         ping(&app, reqwest::Method::GET, &format!("/ping/{token}"))
             .await
             .status(),
         200
     );
-    assert_eq!(state_label(&app, &tl).await, "Up");
+    assert_eq!(state_label(&app, &tl).await, "up");
 }
 
 #[tokio::test]
@@ -472,18 +488,15 @@ async fn bad_period_is_refused() {
     let tl = app.tl("rina@x.co").await;
     app.project(&tl, "Payments", "payments").await;
     let res = app
-        .post_form(
-            "/projects/payments/heartbeats",
-            &[
-                ("name", "x"),
-                ("period_s", "7"),
-                ("grace_s", "0"),
-                ("severity", "warning"),
-            ],
+        .api_post(
+            "/api/ui/projects/payments/heartbeats",
+            json!({ "name": "x", "period_s": "7", "grace_s": "0", "severity": "warning" }),
             Some(&tl),
         )
         .await;
     assert_eq!(res.status(), 422);
+    let fields = &json_of(res).await["error"]["fields"];
+    assert!(fields["period_s"].is_string(), "{fields}");
 }
 
 async fn admitted(app: &TestApp, token: &str) -> heartbeat::Admitted {

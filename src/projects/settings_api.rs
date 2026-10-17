@@ -2,7 +2,7 @@
 //! Alerts are in `notify::api`. Contract: docs/api-specs/03-projects.md.
 
 use axum::{
-    Json, Router,
+    Router,
     extract::{Path, State},
     http::StatusCode,
     response::IntoResponse,
@@ -14,7 +14,7 @@ use super::{ProfileInput, ProjectError, api::form_error};
 use crate::{
     accounts::{AdminUser, CurrentUser},
     app::AppState,
-    platform::ui::{UiError, UiResult, created, data},
+    platform::ui::{Body, UiError, UiResult, created, data},
 };
 
 pub fn router() -> Router<AppState> {
@@ -36,7 +36,7 @@ async fn profile(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
     Path(slug): Path<String>,
-    Json(input): Json<ProfileInput>,
+    Body(input): Body<ProfileInput>,
 ) -> UiResult {
     let p = super::find_for(&state.db, &user, &slug).await?;
     super::update_profile(&state.db, p.id, &input)
@@ -65,7 +65,7 @@ async fn reassign(
     State(state): State<AppState>,
     AdminUser(admin): AdminUser,
     Path(slug): Path<String>,
-    Json(f): Json<OwnerInput>,
+    Body(f): Body<OwnerInput>,
 ) -> UiResult {
     let p = super::find_for(&state.db, &admin, &slug).await?;
     let Some(owner_id) = super::find_owner(&state.db, &admin, &f.owner_email).await? else {
@@ -102,7 +102,7 @@ async fn create_key(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
     Path(slug): Path<String>,
-    Json(f): Json<KeyInput>,
+    Body(f): Body<KeyInput>,
 ) -> UiResult {
     let p = super::find_for(&state.db, &user, &slug).await?;
     let key = super::create_key(&state.db, p.id, &f.name)
@@ -131,7 +131,7 @@ async fn allowlist(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
     Path(slug): Path<String>,
-    Json(f): Json<AllowlistInput>,
+    Body(f): Body<AllowlistInput>,
 ) -> UiResult {
     let p = super::find_for(&state.db, &user, &slug).await?;
     super::set_allowlist(&state.db, p.id, &f.cidrs)

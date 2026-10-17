@@ -5,8 +5,12 @@ import type { Severity, StateKind, UpdateLabel } from "@/lib/types";
 const STATE: Record<StateKind, string> = { up: "Up", down: "Down", issue: "Issue", unknown: "Waiting" };
 
 /** A monitor's or heartbeat's state: Up, Down, Issue, or Waiting before its first result. */
-export function StateBadge({ kind, label }: { kind: StateKind; label?: string }): ReactElement {
-  return <Badge variant={kind}>{label ?? STATE[kind]}</Badge>;
+export function StateBadge({ kind, label, id }: { kind: StateKind; label?: string; id?: string }): ReactElement {
+  return (
+    <Badge id={id} variant={kind}>
+      {label ?? STATE[kind]}
+    </Badge>
+  );
 }
 
 /** Critical alerts by email and webhook; Warning by email only. */

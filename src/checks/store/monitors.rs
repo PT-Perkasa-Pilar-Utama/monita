@@ -58,6 +58,7 @@ impl Monitor {
     }
 }
 
+#[derive(serde::Serialize)]
 pub struct CheckRow {
     pub id: i64,
     pub checked_at: i64,

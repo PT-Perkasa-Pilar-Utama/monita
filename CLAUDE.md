@@ -156,7 +156,7 @@ Each line was argued in review and decided. Do not reopen one without a new fact
 - Ping-body limits are tested by mechanism with small injected budgets. `BODY_MAX` and `BODY_TIMEOUT` are not asserted by value. That would restate a constant, and an over-cap request resets on Linux.
 - A test file may run to 800 lines; the 400-line cap is for `src/`.
 - The accent is magenta and means the brand: the mark, the accent button, focus, links, the chart line. It never marks a state; green, red and yellow do, and a finished stage uses `--neutral-strong`.
-- Charts are SVG drawn on the server from bucketed aggregates (`checks::chart`), not a JS chart library: no script for CSP to allow, and no unbounded rows reach the page.
+- Charts are laid out on the server from bucketed aggregates (`checks::chart` returns SVG geometry), and React draws the SVG. No JS chart library: no unbounded rows reach the page, and the bundle stays small.
 - Availability and the chart's down bands count automatic incidents only, as the status page does. An open manual incident shows its items as Issue, never as downtime.
 - The release profile trades speed for size: fat LTO and `opt-level = "s"` (NFR-07, under 30 MB). v0.1.0 used thin LTO at the default level and was 31.5 MB on Linux. On macOS the change took the binary from 25.8 MB to 19.4 MB and an Argon2 sign-in hash from 16 ms to 20 ms. Keeping argon2 and blake2 at `opt-level = 3` saved only 1 ms, so the profile has no per-crate overrides.
 

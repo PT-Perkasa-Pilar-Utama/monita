@@ -2,7 +2,7 @@
 //! Contract: docs/api-specs/02-authentication.md.
 
 use axum::{
-    Json, Router,
+    Router,
     extract::{Path, State},
     http::{HeaderMap, StatusCode, header},
     response::{IntoResponse, Response},
@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use super::{AccountError, CurrentUser};
 use crate::{
     app::AppState,
-    platform::ui::{UiError, UiResult, data},
+    platform::ui::{Body, UiError, UiResult, data},
 };
 
 pub fn router() -> Router<AppState> {
@@ -61,7 +61,7 @@ struct LoginInput {
     password: String,
 }
 
-async fn login(State(state): State<AppState>, Json(f): Json<LoginInput>) -> UiResult {
+async fn login(State(state): State<AppState>, Body(f): Body<LoginInput>) -> UiResult {
     match super::login(&state.db, &f.email, &f.password).await {
         Ok(raw) => Ok(signed_in(&state, &raw)),
         Err(AccountError::Other(e)) => Err(e.into()),
@@ -98,7 +98,7 @@ struct InviteInput {
 async fn accept(
     State(state): State<AppState>,
     Path(token): Path<String>,
-    Json(f): Json<InviteInput>,
+    Body(f): Body<InviteInput>,
 ) -> UiResult {
     // api-specs 02: a dead link is 410 before any other check.
     if !super::invite_is_usable(&state.db, &token).await? {

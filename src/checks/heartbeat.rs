@@ -134,6 +134,7 @@ pub enum PingKind {
     Fail,
 }
 
+#[derive(serde::Serialize)]
 pub struct PingRow {
     pub id: i64,
     pub received_at: i64,

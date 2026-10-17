@@ -1,7 +1,7 @@
 //! Projects as JSON for the frontend. Contract: docs/api-specs/03-projects.md.
 
 use axum::{
-    Json, Router,
+    Router,
     extract::{Path, State},
     routing::get,
 };
@@ -13,7 +13,7 @@ use crate::{
     app::AppState,
     platform::{
         page::TabCounts,
-        ui::{UiError, UiResult, created, data},
+        ui::{Body, UiError, UiResult, created, data},
     },
 };
 
@@ -114,7 +114,7 @@ pub fn form_error(e: ProjectError) -> UiError {
 async fn create(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
-    Json(input): Json<ProjectInput>,
+    Body(input): Body<ProjectInput>,
 ) -> UiResult {
     let p = super::create(&state.db, &user, &input)
         .await

@@ -38,7 +38,7 @@ export function TableEmpty({
   return (
     <Empty className="page-in gap-4 px-6 py-12 md:py-14">
       <EmptyHeader>
-        <EmptyTitle className="text-sm font-semibold tracking-normal">
+        <EmptyTitle role="heading" aria-level={2} className="text-sm font-semibold tracking-normal">
           {filtered ? `No ${noun ?? "rows"} match these filters.` : title}
         </EmptyTitle>
         {!filtered && description && <EmptyDescription>{description}</EmptyDescription>}

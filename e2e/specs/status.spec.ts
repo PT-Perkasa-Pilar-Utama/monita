@@ -13,10 +13,12 @@ test.describe("as the TL", () => {
     await page.getByLabel("URL").fill("http://127.0.0.1:18080/healthz");
     await page.getByLabel("Show on the public status page").check();
     await page.getByRole("button", { name: "Save monitor" }).click();
+    await expect(page.getByRole("heading", { name: "Checkout" })).toBeVisible();
 
     await page.goto(`/projects/${slug}/heartbeats/new`);
     await page.getByLabel("Name").fill("internal-etl");
     await page.getByRole("button", { name: "Save heartbeat" }).click();
+    await expect(page.getByRole("heading", { name: "internal-etl" })).toBeVisible();
 
     const visitor = await browser.newContext({ storageState: { cookies: [], origins: [] } });
     const v = await visitor.newPage();

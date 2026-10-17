@@ -1,16 +1,15 @@
 //! checks module: monitors, heartbeats, pings, results, the scheduler loop.
 //! Spec: docs/technical-specs/05-module-definitions.md section 5.3 and 13-check-scheduler.md.
 
+pub mod api;
 mod cause;
 pub mod chart;
 pub mod heartbeat;
-pub mod heartbeat_routes;
-mod insight;
+pub(crate) mod insight;
 pub(crate) mod overview;
 pub mod ping_routes;
 mod probe;
 pub mod retention;
-pub mod routes;
 pub mod scheduler;
 pub mod series;
 mod store;

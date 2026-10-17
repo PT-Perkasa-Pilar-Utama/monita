@@ -3,12 +3,13 @@
 
 mod common;
 
-use common::TestApp;
+use common::{TestApp, json_of};
 use monita::platform::{
     caps,
     db::{query_all, query_i64},
     now,
 };
+use serde_json::json;
 
 /// Runs `sql` as one batch on the writer.
 async fn sql(app: &TestApp, sql: &str) {
@@ -87,36 +88,32 @@ async fn a_full_project_refuses_another_monitor_and_heartbeat() {
     ))
     .await;
     let res = app
-        .post_form(
-            "/projects/payments/monitors",
-            &[
-                ("name", "API"),
-                ("url", "https://api.x.co"),
-                ("interval_s", "60"),
-                ("timeout_s", "10"),
-                ("expected_status", "2xx"),
-                ("keyword", ""),
-                ("severity", "warning"),
-            ],
+        .api_post(
+            "/api/ui/projects/payments/monitors",
+            json!({
+                "name": "API", "url": "https://api.x.co", "interval_s": "60",
+                "timeout_s": "10", "expected_status": "2xx", "severity": "warning",
+            }),
             Some(&tl),
         )
         .await;
     assert_eq!(res.status(), 422);
-    assert!(res.text().await.unwrap().contains(caps::MONITORS_FULL));
+    assert_eq!(
+        json_of(res).await["error"]["fields"]["name"],
+        caps::MONITORS_FULL
+    );
     let res = app
-        .post_form(
-            "/projects/payments/heartbeats",
-            &[
-                ("name", "Backup"),
-                ("period_s", "86400"),
-                ("grace_s", "1800"),
-                ("severity", "warning"),
-            ],
+        .api_post(
+            "/api/ui/projects/payments/heartbeats",
+            json!({ "name": "Backup", "period_s": "86400", "grace_s": "1800", "severity": "warning" }),
             Some(&tl),
         )
         .await;
     assert_eq!(res.status(), 422);
-    assert!(res.text().await.unwrap().contains(caps::HEARTBEATS_FULL));
+    assert_eq!(
+        json_of(res).await["error"]["fields"]["name"],
+        caps::HEARTBEATS_FULL
+    );
 }
 
 #[tokio::test]
@@ -266,36 +263,20 @@ async fn the_ping_list_pages_with_an_older_link() {
         upto(caps::PINGS_PAGE + 1)
     ))
     .await;
-    let first = app
-        .get("/projects/payments/heartbeats/1", Some(&tl))
-        .await
-        .text()
-        .await
-        .unwrap();
-    let before = first
-        .split("&amp;before=")
-        .nth(1)
-        .and_then(|s| s.split('"').next())
-        .expect("an Older pings link");
-    let second = app
-        .get(
-            &format!("/projects/payments/heartbeats/1?before={before}"),
-            Some(&tl),
-        )
-        .await
-        .text()
-        .await
-        .unwrap();
-    assert!(
-        !second.contains("&amp;before="),
-        "the last page has no Older link"
-    );
-    // Each ping row carries an OK state; nothing else on the page does.
-    let rows = |html: &str| html.matches("state--up\">OK</span>").count();
-    assert_eq!(
-        rows(&first) as i64 + rows(&second) as i64,
-        caps::PINGS_PAGE + 1
-    );
+    let page = |q: String| {
+        let (app, tl) = (&app, &tl);
+        async move {
+            let path = format!("/api/ui/projects/payments/heartbeats/1{q}");
+            json_of(app.api_get(&path, Some(tl)).await).await["data"].take()
+        }
+    };
+    let first = page(String::new()).await;
+    let before = first["older"].as_str().expect("an Older pings link");
+    let second = page(format!("?before={before}")).await;
+    assert!(second["older"].is_null(), "the last page has no Older link");
+    let rows = |d: &serde_json::Value| d["pings"].as_array().unwrap().len() as i64;
+    assert_eq!(rows(&first), caps::PINGS_PAGE);
+    assert_eq!(rows(&first) + rows(&second), caps::PINGS_PAGE + 1);
 }
 
 #[tokio::test]

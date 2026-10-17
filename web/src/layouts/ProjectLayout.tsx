@@ -30,8 +30,8 @@ function ProjectChrome(): ReactElement | null {
       label="Project"
       tabs={[
         { to: base, label: "Overview", icon: LayoutGrid, end: true },
-        { to: `${base}/monitors`, label: "Monitors", icon: Activity, count: counts.monitors, server: true },
-        { to: `${base}/heartbeats`, label: "Heartbeats", icon: Heartbeat, count: counts.heartbeats, server: true },
+        { to: `${base}/monitors`, label: "Monitors", icon: Activity, count: counts.monitors },
+        { to: `${base}/heartbeats`, label: "Heartbeats", icon: Heartbeat, count: counts.heartbeats },
         { to: `${base}/incidents`, label: "Incidents", icon: AlertTriangle, count: counts.incidents, server: true },
         { to: `${base}/tickets`, label: "Tickets", icon: Ticket, count: counts.tickets, server: true },
         { to: `${base}/settings`, label: "Settings", icon: Settings, match: [`${base}/alerts`] },

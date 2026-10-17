@@ -1,5 +1,5 @@
-//! Charts for the monitor and heartbeat pages, drawn on the server as SVG: no script, nothing the
-//! CSP blocks. Inputs are per-bucket aggregates, so a chart never holds more than one range's
+//! Charts for the monitor and heartbeat pages. The server lays out the geometry and the page draws
+//! it as SVG, so no chart library is needed. Inputs are per-bucket aggregates, so a chart never holds more than one range's
 //! buckets (168 at most), whatever the check interval.
 
 use crate::platform::time;
@@ -88,6 +88,7 @@ pub struct Bucket {
 }
 
 /// A rectangle across the plot, with the hover text it carries.
+#[derive(serde::Serialize)]
 pub struct Mark {
     pub x: f64,
     pub w: f64,
@@ -98,12 +99,14 @@ pub struct Mark {
 
 const FULL: (f64, f64) = (TOP, BOTTOM - TOP);
 
+#[derive(serde::Serialize)]
 pub struct Tick {
     pub at: f64,
     pub label: String,
 }
 
-/// What `checks/insight.html` draws. Coordinates are in a 960 x 240 view box.
+/// What the page draws. Coordinates are in a 960 x 240 view box.
+#[derive(serde::Serialize)]
 pub struct Chart {
     pub line: String,
     pub area: String,

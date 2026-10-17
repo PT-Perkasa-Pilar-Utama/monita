@@ -6,7 +6,13 @@ import { SettingsLayout } from "@/layouts/SettingsLayout";
 import { Alerts } from "@/pages/project/Alerts";
 import { Allowlist } from "@/pages/project/Allowlist";
 import { General } from "@/pages/project/General";
+import { Heartbeat } from "@/pages/project/Heartbeat";
+import { HeartbeatForm } from "@/pages/project/HeartbeatForm";
+import { Heartbeats } from "@/pages/project/Heartbeats";
 import { Keys } from "@/pages/project/Keys";
+import { Monitor } from "@/pages/project/Monitor";
+import { MonitorForm } from "@/pages/project/MonitorForm";
+import { Monitors } from "@/pages/project/Monitors";
 import { Overview } from "@/pages/project/Overview";
 import { Invite } from "@/pages/Invite";
 import { Login } from "@/pages/Login";
@@ -24,6 +30,14 @@ export default function App(): ReactElement {
       </Route>
       <Route path="/projects/:slug" element={<ProjectLayout />}>
         <Route index element={<Overview />} />
+        <Route path="monitors" element={<Monitors />} />
+        <Route path="monitors/new" element={<MonitorForm key="new" />} />
+        <Route path="monitors/:id" element={<Monitor />} />
+        <Route path="monitors/:id/edit" element={<MonitorForm key="edit" />} />
+        <Route path="heartbeats" element={<Heartbeats />} />
+        <Route path="heartbeats/new" element={<HeartbeatForm key="new" />} />
+        <Route path="heartbeats/:id" element={<Heartbeat />} />
+        <Route path="heartbeats/:id/edit" element={<HeartbeatForm key="edit" />} />
         <Route element={<SettingsLayout />}>
           <Route path="settings" element={<General />} />
           <Route path="settings/keys" element={<Keys />} />

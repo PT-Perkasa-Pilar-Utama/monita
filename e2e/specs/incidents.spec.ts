@@ -63,7 +63,7 @@ test("@US-20 TL reports an incident by hand and resolves it", async ({ page }) =
   await expect(page.getByRole("heading", { name: "Slow settlement reports" })).toBeVisible();
 
   await page.goto(`/projects/${slug}/heartbeats`);
-  await expect(page.locator("tbody .state")).toHaveText("Issue");
+  await expect(page.locator("tbody").getByText("Issue", { exact: true })).toBeVisible();
 
   await page.goto(`/projects/${slug}/incidents`);
   await page.getByRole("link", { name: "Slow settlement reports" }).click();

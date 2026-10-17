@@ -4,6 +4,7 @@
 use super::{ItemRef, store};
 use crate::platform::{db::Db, time};
 
+#[derive(serde::Serialize)]
 pub struct Period {
     pub label: &'static str,
     /// Percent up, or `None` when the item did not exist yet.

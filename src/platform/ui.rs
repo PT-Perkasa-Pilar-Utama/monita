@@ -24,6 +24,8 @@ pub enum UiError {
         message: String,
         fields: BTreeMap<String, String>,
     },
+    /// 413: a body over the 128 KiB limit (SEC-19).
+    TooLarge,
     Internal(anyhow::Error),
 }
 
@@ -73,7 +75,7 @@ impl From<PageError> for UiError {
 }
 
 #[derive(Serialize)]
-struct Body<'a> {
+struct ErrorBody<'a> {
     code: &'a str,
     message: String,
     #[serde(skip_serializing_if = "BTreeMap::is_empty")]
@@ -102,6 +104,12 @@ impl IntoResponse for UiError {
                 BTreeMap::new(),
             ),
             UiError::Gone(m) => (StatusCode::GONE, "gone", m, BTreeMap::new()),
+            UiError::TooLarge => (
+                StatusCode::PAYLOAD_TOO_LARGE,
+                "too_large",
+                "The request body is over 128 KiB.".to_string(),
+                BTreeMap::new(),
+            ),
             UiError::Invalid { message, fields } => (
                 StatusCode::UNPROCESSABLE_ENTITY,
                 "validation_failed",
@@ -118,7 +126,7 @@ impl IntoResponse for UiError {
                 )
             }
         };
-        let body = Body {
+        let body = ErrorBody {
             code,
             message,
             fields,
@@ -142,3 +150,26 @@ pub fn created<T: Serialize>(value: T) -> Response {
 }
 
 pub type UiResult = Result<Response, UiError>;
+
+/// A JSON body. A body that is not JSON, or not the expected shape, is a 422 in the envelope
+/// rather than axum's plain-text rejection.
+pub struct Body<T>(pub T);
+
+impl<S, T> axum::extract::FromRequest<S> for Body<T>
+where
+    T: serde::de::DeserializeOwned,
+    S: Send + Sync,
+{
+    type Rejection = UiError;
+
+    async fn from_request(req: axum::extract::Request, state: &S) -> Result<Self, Self::Rejection> {
+        match Json::<T>::from_request(req, state).await {
+            Ok(Json(v)) => Ok(Body(v)),
+            Err(e) if e.status() == StatusCode::PAYLOAD_TOO_LARGE => Err(UiError::TooLarge),
+            Err(e) => Err(UiError::invalid(format!(
+                "The request body is not what this form sends: {}",
+                e.body_text()
+            ))),
+        }
+    }
+}

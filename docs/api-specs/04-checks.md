@@ -30,23 +30,30 @@ curl -fsS -m 10 https://monita.company.co.id/ping/k3j9w2x7q4m8p6r1t5v0y2z8ab
 | Output | 200 `OK` |
 | Errors | Same as 4.1 |
 
-## 4.3 HTML routes
+## 4.3 Frontend routes
+
+The React pages under `/projects/{slug}/monitors` and `/projects/{slug}/heartbeats` call these routes (conventions 1.10). A project another tech lead owns is 404 on every route. Numbers in a create or update body are strings, so a blank or bad number comes back as that field's 422 error. Lists are capped (spec 08 section 8.2), so the page's search and its State and Severity selects filter in the browser.
 
 | Method | Path | Access | Input | Behavior | AC |
 | --- | --- | --- | --- | --- | --- |
-| GET | `/projects/{slug}/monitors` | owner, super_admin | `?q=` (name or URL), `?state=up\|down\|issue\|unknown`, `?severity=critical\|warning` | List with current state and last check. The filters narrow the list; a value no row has shows none. | |
-| GET | `/projects/{slug}/monitors/new` | owner, super_admin | | Form with defaults: 1m, 10 s, `2xx`, warning, hidden | AC-09.02 |
-| POST | `/projects/{slug}/monitors` | owner, super_admin | `name`, `url`, `interval_s`, `timeout_s` (stored as `timeout_ms`), `expected_status`, `keyword`, `skip_tls_verify`, `severity`, `is_public` | Validate. `next_check_at = now + 5 + rand(0..interval_s - 5)`. | AC-09.01, AC-11.01 |
-| GET | `/projects/{slug}/monitors/{id}` | owner, super_admin | `?range=hour\|day\|week\|month` (anything else is a day); `?before=<checked_at>.<id>`, the cursor the page links to | Up or down for how long, the last check, the mean response time, incidents in 30 days. A response-time chart for the range: hour, day and week from the raw checks, month from the daily rollup and today. Availability for today, 7, 30 and 365 days and all time, from automatic incidents. Checks of the last 7 days, 25 per page. | AC-10.01 |
-| POST | `/projects/{slug}/monitors/{id}` | owner, super_admin | same as create | Update | |
-| POST | `/projects/{slug}/monitors/{id}/delete` | owner, super_admin | | Delete with results | |
-| GET | `/projects/{slug}/heartbeats` | owner, super_admin | `?q=` (name), `?state=up\|down\|issue\|unknown`, `?severity=critical\|warning` | List with state, next deadline and last ping. The filters narrow the list. | |
-| POST | `/projects/{slug}/heartbeats` | owner, super_admin | `name`, `period_s`, `grace_s`, `severity`, `is_public` | Create token. `deadline_at = now + period_s + grace_s`. | AC-12.01, AC-12.02 |
-| GET | `/projects/{slug}/heartbeats/{id}` | owner, super_admin | `?range=` as the monitor page; `?before=<received_at>.<id>`, the cursor the page links to | Detail, ping URL, the same stats, chart and availability as the monitor page with pings per bucket, then pings of the last 7 days, 25 per page | AC-12.02 |
-| POST | `/projects/{slug}/heartbeats/{id}` | owner, super_admin | same as create | Update | |
-| POST | `/projects/{slug}/heartbeats/{id}/delete` | owner, super_admin | | Delete | |
+| GET | `/api/ui/check-options` | session | | `intervals` (30, 60, 180, 300 s with labels), `periods` and `graces` for heartbeats, and the defaults: a monitor checks every 1m with a 10 s timeout, expects `2xx` and is a warning; a heartbeat runs every day with 30 minutes grace and is a warning. | AC-09.02 |
+| GET | `/api/ui/projects/{slug}/monitors` | owner, super_admin | | `monitors`: each with its settings, `state` (`up`, `down`, `issue`, `unknown` before the first check), `last` check (time, ok, a summary such as `200 in 182ms`) and `day`, the last 24 hours as sparkline geometry, failed hours, uptime and mean response. `summary`: the worst state and one sentence. | AC-10.01 |
+| POST | `/api/ui/projects/{slug}/monitors` | owner, super_admin | `name`, `url`, `interval_s`, `timeout_s` (stored as `timeout_ms`), `expected_status`, `keyword`, `skip_tls_verify`, `severity`, `is_public` | Validate; 422 on each bad field. A full project is 422 on `name`. `next_check_at = now + 5 + rand(0..interval_s - 5)`. 201 `{id}`. | AC-09.01, AC-11.01 |
+| GET | `/api/ui/projects/{slug}/monitors/{id}` | owner, super_admin | `?range=hour\|day\|week\|month` (anything else is a day); `?before=<checked_at>.<id>`, the cursor from `older` | `monitor`; `stats`: up or down for how long, the last check, the mean response time, incidents in 30 days. `insight`: the response-time chart for the range as geometry in a 960 x 240 view box (hour, day and week from the raw checks, month from the daily rollup and today), and availability for today, 7, 30 and 365 days and all time, from automatic incidents. `checks`: the last 7 days, 25 per page; `older` is the next cursor or null. | AC-10.01 |
+| PUT | `/api/ui/projects/{slug}/monitors/{id}` | owner, super_admin | same as create | Validate and update, 204. | |
+| DELETE | `/api/ui/projects/{slug}/monitors/{id}` | owner, super_admin | | Delete with its results; an open incident on it closes. 204. | |
+| GET | `/api/ui/projects/{slug}/heartbeats` | owner, super_admin | | `heartbeats`: each with its settings, `state`, `last_ping_at`, `deadline_at` and `due` (how much of the wait has passed, and a sentence). `summary` as for monitors. | |
+| POST | `/api/ui/projects/{slug}/heartbeats` | owner, super_admin | `name`, `period_s`, `grace_s`, `severity`, `is_public` | Create the token. `deadline_at = now + period_s + grace_s`. 201 `{id}`; a full project is 422 on `name`. | AC-12.01, AC-12.02 |
+| GET | `/api/ui/projects/{slug}/heartbeats/{id}` | owner, super_admin | `?range=` as the monitor page; `?before=<received_at>.<id>` | `heartbeat`, `ping_url`, the same `stats` shape, `insight` with pings per bucket, then `pings` of the last 7 days, 25 per page, and `older`. | AC-12.02 |
+| PUT | `/api/ui/projects/{slug}/heartbeats/{id}` | owner, super_admin | same as create | Validate and update, 204. | |
+| DELETE | `/api/ui/projects/{slug}/heartbeats/{id}` | owner, super_admin | | Delete with its pings; its URL answers 404 from then on. 204. | |
+
+## 4.4 HTML routes
+
+| Method | Path | Access | Input | Behavior | AC |
+| --- | --- | --- | --- | --- | --- |
 | GET | `/admin/settings` | super_admin | `?sent=1` after a test email | The System page: email delivery (server and sender from config, never the password; email counts for 7 days; the newest error), the server's configuration, the limits, and the fixed caps with the project and account counts | AC-11.03, AC-31.03 |
 | POST | `/admin/settings/test-email` | super_admin | | Queue a test email to the signed-in admin through the outbox. Redirect to `?sent=1#email`. | |
 | POST | `/admin/settings` | super_admin | each `settings` key | Validate positive integers. Save. | AC-11.03, AC-31.03 |
 
-Validation: `interval_s` in {30, 60, 180, 300}. `timeout_s` 1 to 30. `expected_status` is a comma list of classes (`2xx`) or codes (`200`); spaces around commas are allowed, and `2xx,301` mixes both. `url` is `http` or `https`. A blank or non-numeric number re-renders the form with the field's error.
+Validation: `interval_s` in {30, 60, 180, 300}. `timeout_s` 1 to 30. `expected_status` is a comma list of classes (`2xx`) or codes (`200`); spaces around commas are allowed, and `2xx,301` mixes both. `url` is `http` or `https`. A blank or non-numeric number is a 422 on that field.

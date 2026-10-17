@@ -1,5 +1,5 @@
 //! What the monitor and heartbeat pages show above their tables: the streak, the chart for a
-//! range and availability over fixed periods. One view for both, in `checks/insight.html`.
+//! range and availability over fixed periods. One view for both, sent by `checks::api`.
 
 use super::{
     chart::Range,
@@ -8,7 +8,7 @@ use super::{
 use crate::{
     incidents::{
         ItemRef,
-        availability::{self, Period, Report},
+        availability::{self, Report},
     },
     platform::{db::Db, time},
 };
@@ -60,14 +60,6 @@ impl Insight {
         })
     }
 
-    pub fn ranges(&self) -> [Range; 4] {
-        Range::ALL
-    }
-
-    pub fn is_range(&self, r: &Range) -> bool {
-        *r == self.series.range
-    }
-
     /// ("Up for" or "Down for", how long).
     pub fn streak(&self) -> (&'static str, String) {
         let s = &self.report.streak;
@@ -81,34 +73,6 @@ impl Insight {
         } else {
             "up"
         }
-    }
-
-    pub fn pct(&self, p: &Period) -> String {
-        p.availability.map_or("–".into(), |a| format!("{a:.3}%"))
-    }
-
-    /// How the figure reads at a glance: three nines and up is good.
-    pub fn grade(&self, p: &Period) -> &'static str {
-        match p.availability {
-            None => "none",
-            Some(a) if a >= 99.9 => "good",
-            Some(a) if a >= 99.0 => "fair",
-            Some(_) => "poor",
-        }
-    }
-
-    /// The bar under the figure: 90 % and below is empty, so the last nines stay visible.
-    pub fn bar(&self, p: &Period) -> String {
-        let a = p.availability.unwrap_or(0.0);
-        format!("{:.1}", ((a - 90.0) * 10.0).clamp(0.0, 100.0))
-    }
-
-    pub fn dur(&self, s: &Option<i64>) -> String {
-        s.filter(|s| *s > 0).map_or("none".into(), time::duration)
-    }
-
-    pub fn downtime(&self, p: &Period) -> String {
-        self.dur(&Some(p.downtime_s))
     }
 
     pub fn mean(&self) -> String {
@@ -147,9 +111,5 @@ impl Insight {
 
     pub fn range_word(&self) -> String {
         format!("last {}", self.series.range.label().to_lowercase())
-    }
-
-    pub fn f(&self, v: &f64) -> String {
-        format!("{v:.1}")
     }
 }

@@ -1,7 +1,7 @@
 //! A project's alert routes as JSON. Contract: docs/api-specs/06-notify.md.
 
 use axum::{
-    Json, Router,
+    Router,
     extract::{Path, State},
     http::StatusCode,
     response::IntoResponse,
@@ -13,7 +13,7 @@ use super::RouteError;
 use crate::{
     accounts::CurrentUser,
     app::AppState,
-    platform::ui::{UiError, UiResult, data},
+    platform::ui::{Body, UiError, UiResult, data},
     projects,
 };
 
@@ -57,7 +57,7 @@ async fn save(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
     Path((slug, severity)): Path<(String, String)>,
-    Json(f): Json<RouteInput>,
+    Body(f): Body<RouteInput>,
 ) -> UiResult {
     severity_ok(&severity)?;
     let p = projects::find_for(&state.db, &user, &slug).await?;

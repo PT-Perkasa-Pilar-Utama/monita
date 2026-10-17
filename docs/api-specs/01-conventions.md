@@ -98,6 +98,7 @@ The app reads and writes through `/api/ui/...`:
 - Every write carries `Origin: MONITA_BASE_URL`, which a browser's `fetch` sends (SEC-03). Without it the answer is 403.
 - A refused form is 422 `validation_failed`. `error.message` is the first problem; `error.fields` maps a form field to its message, so the page marks that field.
 - A dead link or token is 410 `gone`.
+- A body over 128 KiB is 413 `too_large`.
 - A write that reveals a one-time secret (a new API key, an invite link) returns it in the 2xx body once. It is never in a URL.
 
 ## 1.11 HTML routes

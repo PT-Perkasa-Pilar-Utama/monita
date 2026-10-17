@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { FormEvent, ReactElement } from "react";
+import { useNavigate } from "react-router-dom";
 import { IconPicker } from "@/components/app/IconPicker";
 import { UserPicker } from "@/components/app/UserPicker";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -32,6 +33,7 @@ export function NewProjectDialog({
   owners: Owner[];
 }): ReactElement {
   const me = useMe();
+  const navigate = useNavigate();
   const [name, setName] = useState("");
   const [owner, setOwner] = useState(me.email);
   const [description, setDescription] = useState("");
@@ -46,8 +48,7 @@ export function NewProjectDialog({
     try {
       const p = await api<Project>("/projects", "POST", { name, owner_email: owner, description, icon });
       onOpenChange(false);
-      // ponytail: the monitors page is still a server page; switch to navigate() once it is React.
-      window.location.assign(`/projects/${p.slug}/monitors`);
+      navigate(`/projects/${p.slug}/monitors`);
     } catch (err) {
       setError(err instanceof ApiError ? err : new ApiError(0, "error", errorText(err)));
     } finally {

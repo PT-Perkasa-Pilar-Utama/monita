@@ -12,7 +12,7 @@ pub const W: f64 = 160.0;
 pub const H: f64 = 32.0;
 
 /// One monitor's last 24 hours.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, serde::Serialize)]
 pub struct Day {
     /// SVG path data; a gap where an hour had no checks.
     pub path: String,
@@ -124,6 +124,7 @@ pub fn summary(states: &[&str], noun: &str) -> (&'static str, String) {
 }
 
 /// How far a heartbeat is from its deadline: the share of the wait used, 0 to 100, and a sentence.
+#[derive(serde::Serialize)]
 pub struct Due {
     pub used: i64,
     pub late: bool,

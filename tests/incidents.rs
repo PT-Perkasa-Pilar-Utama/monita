@@ -16,7 +16,7 @@ use axum::{
     http::StatusCode,
     routing::{get, post},
 };
-use common::{RESET_TOKEN, TestApp, location};
+use common::{RESET_TOKEN, TestApp, json_of, location};
 use monita::{
     checks::{
         self, MonitorInput,
@@ -292,13 +292,12 @@ async fn two_failed_checks_open_one_incident_and_alert_then_a_pass_closes_it() {
                 .starts_with("[CRITICAL] Payments / API health is down")
         );
     }
-    let list = app
-        .get("/projects/payments/monitors", Some(&tl))
-        .await
-        .text()
-        .await
-        .unwrap();
-    assert!(list.contains("state state--down"));
+    let list = json_of(
+        app.api_get("/api/ui/projects/payments/monitors", Some(&tl))
+            .await,
+    )
+    .await;
+    assert_eq!(list["data"]["monitors"][0]["state"], "down");
 
     up.store(true, Ordering::SeqCst);
     check_once(&app).await;
@@ -642,13 +641,12 @@ async fn a_manual_incident_marks_its_items_and_closes_on_resolved() {
         1,
         "a repeated item is stored once"
     );
-    let list = app
-        .get("/projects/payments/monitors", Some(&tl))
-        .await
-        .text()
-        .await
-        .unwrap();
-    assert!(list.contains("state state--issue\">Issue"));
+    let list = json_of(
+        app.api_get("/api/ui/projects/payments/monitors", Some(&tl))
+            .await,
+    )
+    .await;
+    assert_eq!(list["data"]["monitors"][0]["state"], "issue");
 
     app.post_form(
         "/projects/payments/incidents/1/updates",
@@ -722,8 +720,15 @@ async fn deleting_a_monitor_closes_its_open_incident() {
     up.store(false, Ordering::SeqCst);
     check_once(&app).await;
     check_once(&app).await;
-    app.post_form("/projects/payments/monitors/1/delete", &[], Some(&tl))
+    let res = app
+        .api_send(
+            reqwest::Method::DELETE,
+            "/api/ui/projects/payments/monitors/1",
+            serde_json::json!({}),
+            Some(&tl),
+        )
         .await;
+    assert_eq!(res.status(), 204);
     assert_eq!(
         count(
             &app,
