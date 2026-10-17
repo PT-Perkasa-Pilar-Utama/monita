@@ -219,17 +219,6 @@ pub async fn find(
     Ok(Some((incident, items, updates)))
 }
 
-/// The word a status update label shows on the TL pages and the status page.
-pub fn label_title(label: &str) -> &'static str {
-    match label {
-        "investigating" => "Investigating",
-        "identified" => "Identified",
-        "monitoring" => "Monitoring",
-        "resolved" => "Resolved",
-        _ => "Update",
-    }
-}
-
 pub const LABELS: [&str; 4] = ["investigating", "identified", "monitoring", "resolved"];
 
 #[derive(Debug, thiserror::Error)]

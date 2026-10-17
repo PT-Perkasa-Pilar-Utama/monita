@@ -8,17 +8,9 @@ use crate::platform::{db::Db, now, settings, token};
 
 pub use store::{MyTicket, PublicTicket, TicketRow};
 
-pub const STAGES: [(&str, &str); 4] = [
-    ("triage", "Triage"),
-    ("backlog", "Backlog"),
-    ("in_progress", "In progress"),
-    ("done", "Done"),
-];
-pub const CLOSE_REASONS: [(&str, &str); 3] = [
-    ("fixed", "Fixed"),
-    ("wont_fix", "Won't fix"),
-    ("duplicate", "Duplicate"),
-];
+/// The board's columns in order. The page names them (web/src/lib/tickets.ts).
+pub const STAGES: [&str; 4] = ["triage", "backlog", "in_progress", "done"];
+pub const CLOSE_REASONS: [&str; 3] = ["fixed", "wont_fix", "duplicate"];
 
 /// Tickets not yet done, for the project's tab bar.
 pub async fn open_count(db: &Db, project_id: i64) -> anyhow::Result<i64> {
@@ -28,20 +20,6 @@ pub async fn open_count(db: &Db, project_id: i64) -> anyhow::Result<i64> {
 /// How many tickets sit in each stage; a stage with none is missing.
 pub async fn stage_counts(db: &Db, project_id: i64) -> anyhow::Result<Vec<(String, i64)>> {
     store::stage_counts(&db.read().await?, project_id).await
-}
-
-pub fn stage_label(s: &str) -> &'static str {
-    STAGES
-        .iter()
-        .find(|(k, _)| *k == s)
-        .map_or("Unknown", |(_, l)| l)
-}
-
-pub fn reason_label(s: &str) -> &'static str {
-    CLOSE_REASONS
-        .iter()
-        .find(|(k, _)| *k == s)
-        .map_or("", |(_, l)| l)
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -213,14 +191,14 @@ pub async fn move_stage(
     stage: &str,
     reason: Option<&str>,
 ) -> Result<bool, TicketError> {
-    if !STAGES.iter().any(|(k, _)| *k == stage) {
+    if !STAGES.contains(&stage) {
         return Err(TicketError::Invalid {
             field: "stage",
             message: "Pick a column.",
         });
     }
     let reason = if stage == "done" {
-        match reason.filter(|r| CLOSE_REASONS.iter().any(|(k, _)| k == r)) {
+        match reason.filter(|r| CLOSE_REASONS.contains(r)) {
             Some(r) => Some(r),
             None => return Err(TicketError::NeedReason),
         }

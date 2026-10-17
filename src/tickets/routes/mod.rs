@@ -76,7 +76,7 @@ impl From<TicketError> for UiError {
 fn counts(rows: Vec<(String, i64)>) -> serde_json::Map<String, serde_json::Value> {
     crate::tickets::STAGES
         .iter()
-        .map(|(k, _)| {
+        .map(|k| {
             let n = rows.iter().find(|(s, _)| s == k).map_or(0, |(_, n)| *n);
             (k.to_string(), n.into())
         })
