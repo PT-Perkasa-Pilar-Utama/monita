@@ -76,18 +76,17 @@ pub async fn page(
     let stages = tickets::stage_counts(&state.db, project.id).await?;
     let stage = |s: &str| stages.iter().find(|(k, _)| k == s).map_or(0, |(_, n)| *n);
     let mut open = incidents::list(&state.db, project.id, true).await?;
-    let open_incidents = open.len() as i64;
     open.truncate(INCIDENTS);
     let keys = super::list_keys(&state.db, project.id).await?;
     let shell = super::shell(&state.db, &user, "overview", Some(&project)).await?;
     Ok(render(&Overview {
         open_tickets: shell.counts.tickets,
+        open_incidents: shell.counts.incidents,
         shell,
         monitors,
         heartbeats,
         triage: stage("triage"),
         incidents: open,
-        open_incidents,
         active_keys: keys.iter().filter(|k| k.revoked_at.is_none()).count(),
         project,
         now: now(),

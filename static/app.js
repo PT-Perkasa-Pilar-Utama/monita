@@ -41,14 +41,23 @@ document.addEventListener("change", (event) => {
   if (form && event.target.matches("select")) form.requestSubmit();
 });
 
+// showModal() would focus the close button first. Focus the first field instead, or Cancel when
+// there is none, so Enter never confirms a risky action by default.
+function openDialog(dialog) {
+  if (!dialog) return;
+  dialog.showModal();
+  const field = dialog.querySelector(".dialog__body :is(input, select, textarea)");
+  (field ?? dialog.querySelector(".dialog__foot [data-close]"))?.focus();
+}
+
 document.addEventListener("click", (event) => {
   const opener = event.target.closest("[data-dialog]");
-  if (opener) document.getElementById(opener.dataset.dialog)?.showModal();
+  if (opener) openDialog(document.getElementById(opener.dataset.dialog));
   if (event.target.closest("[data-close]")) event.target.closest("dialog")?.close();
   // A click on the backdrop lands on the dialog element itself.
   if (event.target.matches("dialog")) event.target.close();
 });
-for (const dialog of document.querySelectorAll("dialog[data-open]")) dialog.showModal();
+for (const dialog of document.querySelectorAll("dialog[data-open]")) openDialog(dialog);
 
 document.addEventListener("submit", (event) => {
   const form = event.target;
@@ -65,5 +74,5 @@ document.addEventListener("submit", (event) => {
     dialog.close();
     form.requestSubmit(button);
   };
-  dialog.showModal();
+  openDialog(dialog);
 });
