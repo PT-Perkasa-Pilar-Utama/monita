@@ -23,9 +23,9 @@
     {% call ui::dialog_head("new-project", "New project") %}{% endcall %}
     <div class="dialog__body">
       {% if !error.is_empty() %}{% call ui::notice("error", error) %}{% endcall %}{% endif %}
+      <p>The slug goes in the project's addresses, such as its status page at /status/ followed by the slug. Use lowercase letters, digits and dashes.</p>
       {% call ui::input("name", "name", "Name", "text", name, "") %}{% endcall %}
       {% call ui::input("slug", "slug", "Slug", "text", slug, "") %}{% endcall %}
-      <p class="help">Lowercase letters, digits and dashes. The status page lives at /status/ and then the slug.</p>
     </div>
     <div class="dialog__foot"><button class="btn btn--ghost" type="button" data-close>Cancel</button><button class="btn btn--primary" type="submit">Create project</button></div>
   </form>
