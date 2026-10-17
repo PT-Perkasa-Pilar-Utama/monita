@@ -114,10 +114,10 @@ Each module owns its tables (see [06](06-data-model.md)). Other modules use only
 
 ### 5.8.2 Reset state
 
-`POST /admin/reset-state`, body `{"seed": "dev" | "qa"}`.
+`POST /admin/reset-state`, body `{"seed": "dev" | "qa" | "demo"}`. Contract: [api-specs 09 section 9.2](../api-specs/09-system.md).
 
 - Registered only when `MONITA_ENV` is `dev` or `test`. In `prod` the route is never added to the router, so it returns 404.
-- Needs a super admin session, except in `test`, where it needs the header `X-Reset-Token` equal to `MONITA_RESET_TOKEN`. The e2e suite uses this.
+- Needs the header `X-Reset-Token` equal to `MONITA_RESET_TOKEN`. The e2e suite and the demo snapshot use it.
 - Runs synchronously: deletes every row in every table, re-runs migrations, loads `seeds/<seed>.sql`. Returns 204.
 
 ### 5.8.3 Peer ping

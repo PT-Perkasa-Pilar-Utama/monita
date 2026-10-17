@@ -140,24 +140,6 @@ impl TestApp {
             .await
     }
 
-    /// A browser form post: carries Monita's origin, as a same-site browser would.
-    pub async fn post_form(
-        &self,
-        path: &str,
-        form: &[(&str, &str)],
-        cookie: Option<&str>,
-    ) -> Response {
-        let mut req = self
-            .http
-            .post(self.url(path))
-            .header(header::ORIGIN, BASE_URL)
-            .form(form);
-        if let Some(c) = cookie {
-            req = req.header(header::COOKIE, c);
-        }
-        req.send().await.unwrap()
-    }
-
     pub async fn super_admin(&self, email: &str) -> String {
         monita::accounts::create_super_admin(&self.state.db, email, PASSWORD)
             .await
@@ -212,17 +194,10 @@ pub fn cookie_of(res: &Response) -> String {
         .to_string()
 }
 
-pub fn location(res: &Response) -> String {
-    res.headers()[header::LOCATION]
-        .to_str()
-        .unwrap()
-        .to_string()
-}
-
-/// The invite link a page shows, by the `/invite/` path it contains.
-pub fn invite_path(html: &str) -> String {
-    let start = html.find("/invite/").expect("no invite link on the page");
-    html[start..]
+/// The invite path (`/invite/<token>`) inside a response body, such as the admin invite JSON.
+pub fn invite_path(body: &str) -> String {
+    let start = body.find("/invite/").expect("no invite link in the body");
+    body[start..]
         .chars()
         .take_while(|c| c.is_ascii_alphanumeric() || *c == '/' || *c == '-' || *c == '_')
         .collect()

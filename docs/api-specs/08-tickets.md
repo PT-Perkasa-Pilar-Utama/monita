@@ -74,7 +74,7 @@ The reporter sees their original title. The description is not returned.
 
 ## 8.5 Frontend routes
 
-The React pages `/status/{slug}/report`, `/status/{slug}/mine` and `/status/{slug}/tickets` call the public routes below with no sign-in; the per-IP limit covers `/api/ui/public/` (SEC-12). The pages `/projects/{slug}/tickets` and `/projects/{slug}/tickets/{number}` call the tech lead's routes (conventions 1.10). A refused form is 422 with the error on its field: `ref_id`, `title`, `description`, `page_url`, `stage`, `close_reason` or `public_title`. SEC-14: no public route returns a description, a reporter, a close reason or a Triage ticket.
+The React pages `/status/{slug}/report`, `/status/{slug}/mine` and `/status/{slug}/tickets` call the public routes below with no sign-in; the per-IP limit covers `/api/ui/public/` (SEC-12). The pages `/projects/{slug}/tickets` and `/projects/{slug}/tickets/{number}` call the tech lead's routes (conventions 1.10). A refused form is 422 with the error on its field: `ref_id`, `title`, `description`, `page_url`, `stage`, `close_reason` or `public_title`. SEC-14: no public route returns a description or a reporter. Without a ref ID, no public route returns a close reason or a Triage ticket; `mine` returns both, but only for the tickets that ref ID reported (8.3).
 
 | Method | Path | Access | Input | Behavior | AC |
 | --- | --- | --- | --- | --- | --- |

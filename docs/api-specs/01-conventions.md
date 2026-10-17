@@ -43,13 +43,14 @@ JSON lists are capped, not paged. Each endpoint states its cap, for example the 
 | 200 | Read or action succeeded |
 | 201 | Created |
 | 204 | Done, no body |
-| 400 | Malformed JSON or failed validation |
+| 400 | Malformed JSON or failed validation on `/api/v1/` |
 | 401 | Missing or bad credential |
 | 403 | Credential valid, but not allowed (IP allowlist, Origin check) |
 | 404 | Unknown resource or token |
+| 410 | A link or token that worked once and no longer does (`/api/ui/`) |
 | 409 | Conflict with current state |
 | 413 | Request body over 128 KiB, except on the two ping routes (see Body limit) |
-| 422 | Valid JSON, but a business rule rejects it |
+| 422 | A business rule rejects the request; on `/api/ui/`, also bad JSON and failed validation |
 | 429 | Rate limit or daily cap |
 | 503 | Monita unhealthy (`/healthz` only) |
 
@@ -57,7 +58,10 @@ JSON lists are capped, not paged. Each endpoint states its cap, for example the 
 
 | code | status | condition |
 | --- | --- | --- |
-| `invalid_request` | 400 | Bad JSON or a field fails validation. `message` names the field. |
+| `invalid_request` | 400 | `/api/v1/`: bad JSON or a field fails validation. `message` names the field. |
+| `validation_failed` | 422 | `/api/ui/`: bad JSON or a refused form. `fields` maps each field to its message (1.10). |
+| `gone` | 410 | `/api/ui/`: a used or expired invite |
+| `too_large` | 413 | A body over 128 KiB |
 | `unauthorized` | 401 | No credential, or an unknown or revoked one |
 | `forbidden` | 403 | IP outside the allowlist, or a failed Origin check |
 | `not_found` | 404 | Unknown slug, token or resource |

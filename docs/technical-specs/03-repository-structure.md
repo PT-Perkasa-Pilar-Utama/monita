@@ -27,7 +27,7 @@ monita/
 │   │                          store/{monitors, heartbeats, rollup}
 │   ├── incidents/             mod.rs, engine.rs (pure), history.rs, manual.rs, availability.rs, api.rs,
 │   │                          store/{mod, reads}
-│   ├── notify/                mod.rs (send, outbox delivery), mailer.rs, digest.rs, api.rs, store.rs
+│   ├── notify/                mod.rs (send), delivery.rs (outbox loop), mailer.rs, digest.rs, api.rs, store.rs
 │   ├── status/                mod.rs (public wire types), routes.rs (public JSON)
 │   └── tickets/               mod.rs, store.rs, routes/{mod, api (/api/v1), public, board}
 ├── web/                       React app: src/{pages, layouts, components, lib}, build.ts; `make web` builds dist/

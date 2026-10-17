@@ -108,5 +108,5 @@ VISITOR
 2. Monita runs on a Linux VM in the company data center, behind the company reverse proxy or directly.
 3. A company SMTP relay exists.
 4. A second Monita runs at another site and watches the first through a heartbeat (peer watch).
-5. Turso is pre-1.0. Monita uses standard SQLite features only, so `rusqlite` can open the same file. See [04](04-tech-stack.md).
+5. Turso is pre-1.0. Monita uses standard SQLite features only, so the `sqlite3` tool and any SQLite library can open the same file. See [04](04-tech-stack.md).
 6. All times are stored in UTC.

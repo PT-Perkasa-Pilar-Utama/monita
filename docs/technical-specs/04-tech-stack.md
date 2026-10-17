@@ -42,7 +42,6 @@ Every row was confirmed in the design grill on 2026-10-16.
 | --- | --- | --- |
 | Database | turso 0.8 (SQLite file format) | User choice. Standard SQLite features only. |
 | Migrations | `platform::migrate`, numbered `.sql` files embedded with `include_str!` | No sqlx. See [06 section 6.6](06-data-model.md#66-migrations-and-seeding). |
-| Fallback | rusqlite (bundled) | Opens the same file if Turso fails. |
 
 ## 4.5 Testing and CI
 
@@ -70,8 +69,9 @@ Every row was confirmed in the design grill on 2026-10-16.
 | --- | --- |
 | sqlx | No Turso support. Third-party `sqlx-turso` is alpha. |
 | ORMs (Diesel, SeaORM) | Plain SQL is enough for 15 tables. |
-| Leptos, Dioxus, React | A WASM or JS build for four pages. |
-| Tailwind, Pico CSS | A build step, and Pico is archived. |
+| Leptos, Dioxus | WASM UI frameworks. React has the shadcn components and the Beaverflow base (4.3). |
+| Pico CSS | Archived. Tailwind 4 with Monita's tokens replaces hand-written CSS. |
+| A JS chart library | The server lays out chart geometry; React draws SVG. |
 | apalis, tokio-cron-scheduler | One DB-driven loop covers every job. See [13](13-check-scheduler.md). |
 | axum-login, tower-sessions | One sessions table and one extractor cover it. |
 | governor, tower_governor | A fixed-window counter is about 30 lines. |
