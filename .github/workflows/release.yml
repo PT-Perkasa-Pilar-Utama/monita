@@ -48,12 +48,12 @@ jobs:
           echo "::error::the release binary did not answer /healthz"
           exit 1
       - name: package
-        env:
-          TAG: ${{ github.ref_name }}
         run: |
           mkdir dist
-          tar -czf "dist/monita_${TAG}_linux_amd64.tar.gz" -C target/x86_64-unknown-linux-musl/release monita \
-            -C "$GITHUB_WORKSPACE" LICENSE deploy/monita.service deploy/monita.env.example
+          # No version in the name, so releases/latest/download/monita_linux_amd64.tar.gz always works.
+          # The fonts are embedded in the binary; their licences ship beside it.
+          tar -czf dist/monita_linux_amd64.tar.gz -C target/x86_64-unknown-linux-musl/release monita \
+            -C "$GITHUB_WORKSPACE" LICENSE licenses deploy/monita.service deploy/monita.env.example
           (cd dist && sha256sum ./*.tar.gz > checksums.txt)
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:

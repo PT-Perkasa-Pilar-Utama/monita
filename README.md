@@ -122,3 +122,5 @@ make e2e      # run the browser tests on port 18080
 ## License
 
 Monita is released under the MIT license. Copyright PT. Perkasa Pilar Utama.
+
+The binary embeds the Inter and Geist Mono fonts, which are under the SIL Open Font License 1.1. Their licences are in [licenses/](licenses/) and in every release archive.
