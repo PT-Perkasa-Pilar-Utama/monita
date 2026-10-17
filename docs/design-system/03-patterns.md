@@ -4,7 +4,7 @@
 
 | Shell | Template | Structure |
 | --- | --- | --- |
-| Admin | `templates/layout/app.html` | `.app` > `.sidebar` (brand, project switcher, nav, user footer) + `.main` > `.toolbar` (crumbs, actions) + `.content`. The brand row and the toolbar are both `--bar-h` (60 px, the docs top bar), so their borders form one line. The current nav item takes `--nav-current`, the brand tint the docs sidebar uses. The sidebar is 256 px and collapses to a 68 px rail; each nav link carries a `title` so the rail still names it. The user menu sits at the foot, and on phones its avatar sits at the end of the top bar. |
+| Admin | `templates/layout/app.html` | `.app` > `.appbar-band` (top bar: brand, project, Docs, Admin menu, account menu; then the project `.tabbar`) + `.content` (`.content--side` with a `.sidenav` for Settings and Admin) > `.pagebar` (crumbs, actions) + the page. Structure follows Beaverflow; colours, type and the magenta underline are Monita's own. |
 | Public | `templates/layout/public.html` | `.public` column, 760 px, 15 px body, footer with quiet links |
 | Bare | `templates/layout/bare.html` | Sign-in and invite pages: one `.panel` centered, 400 px |
 
@@ -12,7 +12,7 @@ Under 820 px the sidebar turns into a top bar with a horizontal nav. The switche
 
 ## 3.2 Navigation
 
-Project menu, in this order: Monitors, Heartbeats, Incidents, Tickets, Alerts, Settings, Status page. "Status page" leaves the app for the public `/status/{slug}`. Super admins also see an "Admin" group: Users, System (email delivery, server configuration, limits, fixed caps). Counts on the right in `.nav__count`; a down count uses `.nav__count--alert`.
+Project tabs, in this order: Monitors, Heartbeats, Incidents, Tickets, Settings, then Status page at the right end, which leaves the app for the public `/status/{slug}`. Settings holds General, Alerts, API keys and Allowlist in its side navigation. Super admins also get an Admin menu: Users and System (email delivery, server configuration, limits, fixed caps).
 
 ## 3.3 Page recipes
 

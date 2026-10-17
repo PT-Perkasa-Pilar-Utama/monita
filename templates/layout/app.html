@@ -2,44 +2,63 @@
 {% import "ui/macros.html" as ui %}
 {% block body %}
 <div class="app">
-  <aside class="sidebar" id="sidebar">
-    <a class="brand" href="/">{% include "ui/mark.html" %}<span>Monita</span></a>
-    {% if let Some(p) = shell.project %}
-    <a class="switcher" href="/" title="All projects"><span class="switcher__badge">{{ p.initial() }}</span><span class="switcher__name">{{ p.name }}</span>{% call ui::icon("chevron") %}{% endcall %}</a>
-    {% endif %}
-    <nav class="nav" aria-label="Main">
+  <header class="appbar-band">
+    <div class="appbar">
+      <a class="appbar__brand" href="/" aria-label="Monita, all projects">{% include "ui/mark.html" %}<span>Monita</span></a>
       {% if let Some(p) = shell.project %}
-      <a href="/projects/{{ p.slug }}/monitors" title="Monitors"{% if shell.active == "monitors" %} aria-current="page"{% endif %}>{% call ui::icon("monitor") %}{% endcall %}<span>Monitors</span></a>
-      <a href="/projects/{{ p.slug }}/heartbeats" title="Heartbeats"{% if shell.active == "heartbeats" %} aria-current="page"{% endif %}>{% call ui::icon("heartbeat") %}{% endcall %}<span>Heartbeats</span></a>
-      <a href="/projects/{{ p.slug }}/incidents" title="Incidents"{% if shell.active == "incidents" %} aria-current="page"{% endif %}>{% call ui::icon("incident") %}{% endcall %}<span>Incidents</span></a>
-      <a href="/projects/{{ p.slug }}/tickets" title="Tickets"{% if shell.active == "tickets" %} aria-current="page"{% endif %}>{% call ui::icon("ticket") %}{% endcall %}<span>Tickets</span></a>
-      <a href="/projects/{{ p.slug }}/alerts" title="Alerts"{% if shell.active == "alerts" %} aria-current="page"{% endif %}>{% call ui::icon("bell") %}{% endcall %}<span>Alerts</span></a>
-      <a href="/projects/{{ p.slug }}/settings" title="Settings"{% if shell.active == "settings" %} aria-current="page"{% endif %}>{% call ui::icon("settings") %}{% endcall %}<span>Settings</span></a>
-      <a href="/status/{{ p.slug }}" title="Status page">{% call ui::icon("globe") %}{% endcall %}<span>Status page</span></a>
-      {% else %}
-      <a href="/" title="Projects"{% if shell.active == "projects" %} aria-current="page"{% endif %}>{% call ui::icon("monitor") %}{% endcall %}<span>Projects</span></a>
+      <span class="appbar__sep" aria-hidden="true">/</span>
+      <a class="appbar__project" href="/projects/{{ p.slug }}/monitors"><span class="switcher__badge">{{ p.initial() }}</span><span>{{ p.name }}</span></a>
+      {% else if shell.area() == "admin" %}
+      <span class="appbar__sep" aria-hidden="true">/</span><span class="appbar__project">Admin</span>
       {% endif %}
-      {% if shell.is_admin %}
-      <div class="nav__group cap"><span>Admin</span></div>
-      <a href="/admin/users" title="Users"{% if shell.active == "users" %} aria-current="page"{% endif %}>{% call ui::icon("users") %}{% endcall %}<span>Users</span></a>
-      <a href="/admin/settings" title="System"{% if shell.active == "limits" %} aria-current="page"{% endif %}>{% call ui::icon("settings") %}{% endcall %}<span>System</span></a>
-      {% endif %}
-    </nav>
-    <button class="user" type="button" popovertarget="user-menu" title="{{ shell.email }}"><span class="user__avatar">{{ shell.initial() }}</span><span class="user__text">{% let parts = shell.email_parts() %}<span class="user__email">{{ parts.0 }}<wbr>{{ parts.1 }}</span><span class="user__role">{{ shell.role() }}</span></span>{% call ui::icon("updown") %}{% endcall %}</button>
-    <div class="menu" id="user-menu" popover>
-      <div class="menu__who"><span class="user__avatar">{{ shell.initial() }}</span><span class="user__text">{% let parts = shell.email_parts() %}<span class="user__email">{{ parts.0 }}<wbr>{{ parts.1 }}</span><span class="user__role">{{ shell.role() }}</span></span></div>
-      <button class="menu__item" type="button" data-theme-toggle>{% call ui::icon("theme") %}{% endcall %}Switch light or dark theme</button>
-      <hr class="menu__rule">
-      <form method="post" action="/logout"><button class="menu__item menu__item--danger" type="submit">{% call ui::icon("logout") %}{% endcall %}Sign out</button></form>
+      <nav class="appbar__end" aria-label="Account">
+        <a class="appbar__link hide-sm" href="https://pt-perkasa-pilar-utama.github.io/monita/docs/">Docs</a>
+        {% if shell.is_admin %}
+        <button class="appbar__link" type="button" popovertarget="admin-menu"{% if shell.area() == "admin" %} aria-current="true"{% endif %}>Admin{% call ui::icon("chevron") %}{% endcall %}</button>
+        <div class="menu menu--down" id="admin-menu" popover>
+          <a class="menu__item" href="/admin/users">{% call ui::icon("users") %}{% endcall %}Users</a>
+          <a class="menu__item" href="/admin/settings">{% call ui::icon("settings") %}{% endcall %}System</a>
+        </div>
+        {% endif %}
+        <button class="user" type="button" popovertarget="user-menu" aria-label="Account: {{ shell.email }}" title="{{ shell.email }}"><span class="user__avatar">{{ shell.initial() }}</span></button>
+        <div class="menu menu--down" id="user-menu" popover>
+          <div class="menu__who"><span class="user__avatar">{{ shell.initial() }}</span><span class="user__text">{% let parts = shell.email_parts() %}<span class="user__email">{{ parts.0 }}<wbr>{{ parts.1 }}</span><span class="user__role">{{ shell.role() }}</span></span></div>
+          <a class="menu__item" href="/">{% call ui::icon("monitor") %}{% endcall %}All projects</a>
+          <button class="menu__item" type="button" data-theme-toggle>{% call ui::icon("theme") %}{% endcall %}Switch light or dark theme</button>
+          <hr class="menu__rule">
+          <form method="post" action="/logout"><button class="menu__item menu__item--danger" type="submit">{% call ui::icon("logout") %}{% endcall %}Sign out</button></form>
+        </div>
+      </nav>
     </div>
-  </aside>
-  <div class="main">
-    <header class="toolbar">
-      <button class="btn btn--ghost btn--icon toolbar__toggle" type="button" data-sidebar-toggle aria-controls="sidebar" aria-label="Collapse or expand the sidebar" title="Collapse or expand the sidebar (Ctrl+B)">{% call ui::icon("sidebar") %}{% endcall %}</button>
-      <div class="crumbs">{% block crumbs %}{% endblock %}</div>
-      <div class="toolbar__end">{% block actions %}{% endblock %}</div>
-    </header>
-    <main class="content">{% block content %}{% endblock %}</main>
-  </div>
+    {% if let Some(p) = shell.project %}
+    <nav class="tabbar" aria-label="Project">
+      <a href="/projects/{{ p.slug }}/monitors"{% if shell.active == "monitors" %} aria-current="page"{% endif %}>{% call ui::icon("monitor") %}{% endcall %}Monitors</a>
+      <a href="/projects/{{ p.slug }}/heartbeats"{% if shell.active == "heartbeats" %} aria-current="page"{% endif %}>{% call ui::icon("heartbeat") %}{% endcall %}Heartbeats</a>
+      <a href="/projects/{{ p.slug }}/incidents"{% if shell.active == "incidents" %} aria-current="page"{% endif %}>{% call ui::icon("incident") %}{% endcall %}Incidents</a>
+      <a href="/projects/{{ p.slug }}/tickets"{% if shell.active == "tickets" %} aria-current="page"{% endif %}>{% call ui::icon("ticket") %}{% endcall %}Tickets</a>
+      <a href="/projects/{{ p.slug }}/settings"{% if shell.area() == "settings" %} aria-current="page"{% endif %}>{% call ui::icon("settings") %}{% endcall %}Settings</a>
+      <a class="tabbar__end" href="/status/{{ p.slug }}">{% call ui::icon("globe") %}{% endcall %}Status page</a>
+    </nav>
+    {% endif %}
+  </header>
+  <main class="content{% if !shell.area().is_empty() %} content--side{% endif %}">
+    {% if shell.area() == "settings" %}{% if let Some(p) = shell.project %}
+    <nav class="sidenav" aria-label="Settings">
+      <a href="/projects/{{ p.slug }}/settings"{% if shell.active == "settings" %} aria-current="page"{% endif %}>General</a>
+      <a href="/projects/{{ p.slug }}/alerts"{% if shell.active == "alerts" %} aria-current="page"{% endif %}>Alerts</a>
+      <a href="/projects/{{ p.slug }}/settings#keys">API keys</a>
+      <a href="/projects/{{ p.slug }}/settings#allowlist">Allowlist</a>
+    </nav>
+    {% endif %}{% else if shell.area() == "admin" %}
+    <nav class="sidenav" aria-label="Admin">
+      <a href="/admin/users"{% if shell.active == "users" %} aria-current="page"{% endif %}>Users</a>
+      <a href="/admin/settings"{% if shell.active == "limits" %} aria-current="page"{% endif %}>System</a>
+    </nav>
+    {% endif %}
+    <div class="content__main">
+      <div class="pagebar"><div class="crumbs">{% block crumbs %}{% endblock %}</div><div class="pagebar__actions">{% block actions %}{% endblock %}</div></div>
+      {% block content %}{% endblock %}
+    </div>
+  </main>
 </div>
 {% endblock %}

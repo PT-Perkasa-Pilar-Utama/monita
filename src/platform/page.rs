@@ -43,6 +43,15 @@ impl Shell {
             .split_at(self.email.find('@').unwrap_or(self.email.len()))
     }
 
+    /// The pages that share a left sidebar: a project's settings, or the admin pages.
+    pub fn area(&self) -> &'static str {
+        match self.active {
+            "settings" | "alerts" => "settings",
+            "users" | "limits" => "admin",
+            _ => "",
+        }
+    }
+
     pub fn role(&self) -> &'static str {
         if self.is_admin {
             "Super admin"

@@ -1,29 +1,5 @@
-// Copy buttons (<button data-copy="element-id">), the theme switch (<button data-theme-toggle>)
-// and the sidebar switch (<button data-sidebar-toggle>, or Ctrl+B / Cmd+B). theme.js applies the
-// saved theme and sidebar state before the first paint.
-const toggleSidebar = () => {
-  const root = document.documentElement;
-  const collapsed = root.dataset.sidebar !== "collapsed";
-  if (collapsed) root.dataset.sidebar = "collapsed";
-  else delete root.dataset.sidebar;
-  document.querySelectorAll("[data-sidebar-toggle]").forEach((b) => b.setAttribute("aria-expanded", String(!collapsed)));
-  try {
-    localStorage.setItem("monita-sidebar", collapsed ? "collapsed" : "expanded");
-  } catch {}
-};
-document.addEventListener("click", (event) => {
-  if (event.target.closest("[data-sidebar-toggle]")) toggleSidebar();
-});
-document.addEventListener("keydown", (event) => {
-  if (event.key.toLowerCase() === "b" && (event.ctrlKey || event.metaKey) && !event.altKey && document.querySelector(".sidebar")) {
-    event.preventDefault();
-    toggleSidebar();
-  }
-});
-document.querySelectorAll("[data-sidebar-toggle]").forEach((b) =>
-  b.setAttribute("aria-expanded", String(document.documentElement.dataset.sidebar !== "collapsed")),
-);
-
+// Copy buttons (<button data-copy="element-id">) and the theme switch (<button data-theme-toggle>).
+// theme.js applies a saved theme before the first paint.
 document.addEventListener("click", (event) => {
   if (!event.target.closest("[data-theme-toggle]")) return;
   const root = document.documentElement;
