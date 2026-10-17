@@ -4,7 +4,7 @@
 
 | Shell | Template | Structure |
 | --- | --- | --- |
-| Admin | `templates/layout/app.html` | `.app` > `.sidebar` (brand, project switcher, nav, user footer) + `.main` > `.toolbar` (crumbs, actions) + `.content`. The brand row and the toolbar are both `--bar-h` (60 px, the docs top bar), so their borders form one line. The current nav item takes `--nav-current`, the brand tint the docs sidebar uses. |
+| Admin | `templates/layout/app.html` | `.app` > `.sidebar` (brand, project switcher, nav, user footer) + `.main` > `.toolbar` (crumbs, actions) + `.content`. The brand row and the toolbar are both `--bar-h` (60 px, the docs top bar), so their borders form one line. The current nav item takes `--nav-current`, the brand tint the docs sidebar uses. The sidebar is 256 px and collapses to a 68 px rail; each nav link carries a `title` so the rail still names it. The user menu sits at the foot, and on phones its avatar sits at the end of the top bar. |
 | Public | `templates/layout/public.html` | `.public` column, 760 px, 15 px body, footer with quiet links |
 | Bare | `templates/layout/bare.html` | Sign-in and invite pages: one `.panel` centered, 400 px |
 

@@ -19,7 +19,7 @@ test.describe("as the super admin", () => {
     await tlPage.getByLabel("Repeat password").fill("a-long-enough-password");
     await tlPage.getByRole("button", { name: "Save password" }).click();
     await expect(tlPage.getByRole("heading", { name: "Projects", exact: true })).toBeVisible({ timeout: 10_000 });
-    await expect(tlPage.getByText(email)).toBeVisible();
+    await expect(tlPage.getByRole("button", { name: email })).toBeVisible();
 
     await tlPage.goto(link);
     await expect(tlPage.getByRole("heading", { name: "Link not valid" })).toBeVisible();

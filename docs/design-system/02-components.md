@@ -18,6 +18,8 @@ Templates call the macros in `templates/ui/macros.html`. They never repeat the m
 | Overall line | `.overall` + `--down`, `--issue`, `--unknown` | none | One sentence above a list that sums up its state: "1 of 4 monitors is down." |
 | Sparkline | `svg.spark` > `.spark__line`, `.spark__fail` | none | The monitors list: 24 hourly mean response times from `checks::overview`, with failed hours shaded red. |
 | Deadline bar | `svg.due` > `.due__track`, `.due__fill`, `.due--late` | none | The heartbeats list: the share of the wait before the deadline that has passed. |
+| User menu | `button.user` (`popovertarget`) > `.user__avatar`, `.user__text` (`.user__email`, `.user__role`); `.menu[popover]` > `.menu__who`, `.menu__item`, `.menu__item--danger`, `.menu__rule` | none | The sidebar foot. The menu holds the theme switch and Sign out, so signing out takes two clicks. A native popover: Esc and a click outside close it. The email wraps only before its `@`. |
+| Sidebar toggle | `button[data-sidebar-toggle]` in the toolbar; `:root[data-sidebar="collapsed"]` | none | Collapses the sidebar to a 68 px rail of icons; Ctrl+B or Cmd+B too. `theme.js` restores the choice before the first paint. Hidden on phones, where the sidebar is a top bar. |
 | Panels | `.panels` > `.panel`, `.panel--wide` | none | Two panels side by side from 1180 px; a wide panel takes the row. Settings, alerts and System. |
 | Tally | `.tally` > `.tally__cell` + `--wait`, `--bad`, `.tally__n` | none | Three counts side by side, such as emails sent, waiting and failed. |
 | Range | `svg.range` > `.range__track`, `.range__fill`, `.range__default` | none | Where a limit sits between 1 and its maximum on a log scale, with a mark at the default; or a cap's use. |

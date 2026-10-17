@@ -28,6 +28,29 @@ impl Shell {
         }
     }
 
+    /// The first letter of the email, for the avatar in the user menu.
+    pub fn initial(&self) -> String {
+        self.email
+            .chars()
+            .next()
+            .map(|c| c.to_uppercase().to_string())
+            .unwrap_or_default()
+    }
+
+    /// The email split before its `@`, so a narrow sidebar wraps it there and not mid-word.
+    pub fn email_parts(&self) -> (&str, &str) {
+        self.email
+            .split_at(self.email.find('@').unwrap_or(self.email.len()))
+    }
+
+    pub fn role(&self) -> &'static str {
+        if self.is_admin {
+            "Super admin"
+        } else {
+            "Tech lead"
+        }
+    }
+
     pub fn in_project(mut self, name: &str, slug: &str) -> Self {
         self.project = Some(ProjectNav {
             name: name.to_string(),

@@ -36,7 +36,7 @@
             {% else %}<span class="cap">No checks in the last 24 hours</span>{% endif %}
           </td>
           <td class="hide-sm t-right mono">{% if let Some(d) = self.day(m) %}{% if let Some(u) = d.uptime %}{{ u }}{% endif %}{% endif %}</td>
-          <td class="t-right"><span class="mono">{{ self.last(m) }}</span><div class="cap">{{ self.ago(m) }}</div></td>
+          <td class="t-right"><span class="mono" title="{{ self.last(m) }}">{{ self.last(m) }}</span><div class="cap">{{ self.ago(m) }}</div></td>
         </tr>
       {% endfor %}
       </tbody>
