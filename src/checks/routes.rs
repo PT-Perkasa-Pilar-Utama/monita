@@ -15,6 +15,7 @@ use super::{
     CheckRow, FieldErrors, INTERVALS_S, Monitor, MonitorInput,
     chart::Range,
     insight::{Insight, Stat},
+    overview::{self, Day},
 };
 use crate::{
     accounts::CurrentUser,
@@ -66,10 +67,18 @@ struct ListPage {
     project: Project,
     monitors: Vec<Monitor>,
     states: HashMap<(SourceKind, i64), ItemState>,
+    days: HashMap<i64, Day>,
     now: i64,
 }
 
 impl ListPage {
+    fn day(&self, m: &Monitor) -> Option<&Day> {
+        self.days.get(&m.id)
+    }
+    fn summary(&self) -> (&'static str, String) {
+        let states: Vec<_> = self.monitors.iter().map(|m| self.state(m).0).collect();
+        overview::summary(&states, "monitor")
+    }
     fn state(&self, m: &Monitor) -> (&'static str, &'static str) {
         super::item_state(
             m.last.is_some(),
@@ -101,12 +110,15 @@ async fn list(
     let project = projects::find_for(&state.db, &user, &slug).await?;
     let monitors = super::list_monitors(&state.db, project.id).await?;
     let states = incidents::states_for(&state.db, project.id).await?;
+    let now = now();
+    let days = overview::last_day(&state.db, project.id, now).await?;
     Ok(render(&ListPage {
         shell: projects::shell(&user, "monitors", Some(&project)),
         project,
         monitors,
         states,
-        now: now(),
+        days,
+        now,
     }))
 }
 

@@ -4,7 +4,7 @@
 {% block crumbs %}<strong>Projects</strong>{% endblock %}
 {% block content %}
 <div class="page-head"><div class="page-title"><h1>Projects</h1><span class="count">{{ projects.len() }}</span></div></div>
-<div class="stack stack--lg">
+<div class="split">
   <section class="panel">
     {% if projects.is_empty() %}
       {% call ui::empty("Create your first project", "A project groups the monitors, heartbeats and tickets of one system. Create the first one below.") %}{% endcall %}

@@ -6,6 +6,7 @@ pub mod chart;
 pub mod heartbeat;
 pub mod heartbeat_routes;
 mod insight;
+pub(crate) mod overview;
 pub mod ping_routes;
 mod probe;
 pub mod retention;

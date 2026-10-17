@@ -6,7 +6,7 @@
 <div class="page-head"><div><h1>Settings</h1></div>
   <nav class="tabs" aria-label="Settings sections"><a href="#general">General</a><a href="#keys">API keys</a><a href="#allowlist">Allowlist</a></nav>
 </div>
-<div class="stack stack--lg">
+<div class="panels">
   <section class="panel" id="general">
     <div class="panel__head"><h2>General</h2></div>
     <div class="panel__body stack">
@@ -24,7 +24,7 @@
     </div>
   </section>
 
-  <section class="panel" id="keys">
+  <section class="panel panel--wide" id="keys">
     <div class="panel__head"><h2>API keys</h2></div>
     <div class="panel__body stack">
       {% if let Some(key) = new_key %}

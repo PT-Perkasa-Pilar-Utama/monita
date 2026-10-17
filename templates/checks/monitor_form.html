@@ -3,7 +3,8 @@
 {% block title %}{% if id.is_some() %}Edit{% else %}New{% endif %} monitor · {{ project.name }} · Monita{% endblock %}
 {% block crumbs %}<span>{{ project.name }}</span><span class="subtle">/</span><a class="link-quiet" href="/projects/{{ project.slug }}/monitors">Monitors</a><span class="subtle">/</span><strong>{% if id.is_some() %}Edit{% else %}New{% endif %}</strong>{% endblock %}
 {% block content %}
-<section class="panel">
+<div class="form-page">
+<section class="panel panel--form">
   <div class="panel__head"><h2>{% if id.is_some() %}Edit monitor{% else %}New monitor{% endif %}</h2></div>
   <form class="panel__body form" method="post" action="{{ self.action() }}">
     {% if !errors.is_empty() %}{% call ui::notice("error", "Fix the fields marked below.") %}{% endcall %}{% endif %}
@@ -22,7 +23,7 @@
     {% call ui::input("keyword", "keyword", "Keyword (optional)", "text", self.keyword(), self.err("keyword")) %}{% endcall %}
     <fieldset class="field fieldset">
       <legend class="label">Severity</legend>
-      <div class="choices">
+      <div class="choices choices--cards">
         <label class="check" for="sev-critical"><input type="radio" id="sev-critical" name="severity" value="critical"{% if input.severity == "critical" %} checked{% endif %}><span><strong>Critical</strong> <span class="muted">email and chat</span></span></label>
         <label class="check" for="sev-warning"><input type="radio" id="sev-warning" name="severity" value="warning"{% if input.severity != "critical" %} checked{% endif %}><span><strong>Warning</strong> <span class="muted">email only</span></span></label>
       </div>
@@ -35,4 +36,15 @@
   <form class="panel__body" method="post" action="/projects/{{ project.slug }}/monitors/{{ id }}/delete"><button class="btn btn--danger btn--sm" type="submit">Delete monitor and its checks</button></form>
   {% endif %}
 </section>
+<aside class="form-aside">
+  <h2>How Monita checks this URL</h2>
+  <ol class="steps">
+    <li>Monita sends a GET request to the URL at the interval you choose.</li>
+    <li>A check passes when the status matches the expected status within the timeout. If you set a keyword, the body must also contain it.</li>
+    <li>Two failed checks in a row open an incident. The first passing check closes it.</li>
+    <li>A critical monitor alerts by email and webhook. A warning monitor alerts by email only.</li>
+  </ol>
+  <p class="cap">Monita keeps single checks for 7 days and daily summaries for good.</p>
+</aside>
+</div>
 {% endblock %}

@@ -3,7 +3,8 @@
 {% block title %}{% if id.is_some() %}Edit{% else %}New{% endif %} heartbeat · {{ project.name }} · Monita{% endblock %}
 {% block crumbs %}<span>{{ project.name }}</span><span class="subtle">/</span><a class="link-quiet" href="/projects/{{ project.slug }}/heartbeats">Heartbeats</a><span class="subtle">/</span><strong>{% if id.is_some() %}Edit{% else %}New{% endif %}</strong>{% endblock %}
 {% block content %}
-<section class="panel">
+<div class="form-page">
+<section class="panel panel--form">
   <div class="panel__head"><h2>{% if id.is_some() %}Edit heartbeat{% else %}New heartbeat{% endif %}</h2></div>
   <form class="panel__body form" method="post" action="{{ self.action() }}">
     {% if !errors.is_empty() %}{% call ui::notice("error", "Fix the fields marked below.") %}{% endcall %}{% endif %}
@@ -18,7 +19,7 @@
     </div>
     <fieldset class="field fieldset">
       <legend class="label">Severity</legend>
-      <div class="choices">
+      <div class="choices choices--cards">
         <label class="check" for="sev-critical"><input type="radio" id="sev-critical" name="severity" value="critical"{% if input.severity == "critical" %} checked{% endif %}><span><strong>Critical</strong> <span class="muted">email and chat</span></span></label>
         <label class="check" for="sev-warning"><input type="radio" id="sev-warning" name="severity" value="warning"{% if input.severity != "critical" %} checked{% endif %}><span><strong>Warning</strong> <span class="muted">email only</span></span></label>
       </div>
@@ -30,4 +31,15 @@
   <form class="panel__body" method="post" action="/projects/{{ project.slug }}/heartbeats/{{ id }}/delete"><button class="btn btn--danger btn--sm" type="submit">Delete heartbeat and its pings</button></form>
   {% endif %}
 </section>
+<aside class="form-aside">
+  <h2>How a heartbeat works</h2>
+  <ol class="steps">
+    <li>After you save, Monita gives the heartbeat a secret ping URL.</li>
+    <li>Your job calls that URL when it finishes. Each call moves the deadline to the time of the call plus the period and the grace time.</li>
+    <li>If no call arrives by the deadline, Monita opens an incident. The next call closes it.</li>
+    <li>A call to the URL with <code>/fail</code> at the end opens an incident at once.</li>
+  </ol>
+  <p class="cap">The first deadline is the period plus the grace time from the moment you save.</p>
+</aside>
+</div>
 {% endblock %}

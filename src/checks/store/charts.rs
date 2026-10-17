@@ -74,3 +74,36 @@ pub async fn daily(
     )
     .await
 }
+
+/// Checks per bucket for every monitor of a project, as (monitor id, bucket). One row per monitor
+/// and bucket, so at most `MONITORS_PER_PROJECT * buckets` rows.
+pub async fn project_buckets(
+    c: &Connection,
+    project_id: i64,
+    from: i64,
+    step: i64,
+    buckets: usize,
+) -> anyhow::Result<Vec<(i64, Bucket)>> {
+    let until = from + step * buckets as i64;
+    let limit = crate::platform::caps::MONITORS_PER_PROJECT * buckets as i64;
+    crate::platform::db::query_all(
+        c,
+        "SELECT r.monitor_id, (r.checked_at - ?2) / ?3 AS b, count(*), sum(r.ok), CAST(avg(r.latency_ms) AS INTEGER)
+         FROM check_results r JOIN monitors m ON m.id = r.monitor_id
+         WHERE m.project_id = ?1 AND r.checked_at >= ?2 AND r.checked_at < ?4
+         GROUP BY r.monitor_id, b ORDER BY r.monitor_id, b LIMIT ?5",
+        (project_id, from, step, until, limit),
+        |r| {
+            Ok((
+                r.get(0)?,
+                Bucket {
+                    index: r.get::<i64>(1)? as usize,
+                    total: r.get(2)?,
+                    ok: r.get(3)?,
+                    avg_ms: r.get(4)?,
+                },
+            ))
+        },
+    )
+    .await
+}

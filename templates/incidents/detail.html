@@ -6,7 +6,7 @@
 <div class="page-head"><div class="page-title"><h1>{{ incident.title }}</h1><span class="count">INC-{{ incident.id }}</span></div>
   <span class="row">{% if incident.resolved_at.is_some() %}{% call ui::state("up", "Resolved") %}{% endcall %}{% else %}{% call ui::state("down", "Open") %}{% endcall %}{% endif %}{% if incident.severity == "critical" %}{% call ui::chip("critical", "Critical") %}{% endcall %}{% else %}{% call ui::chip("warning", "Warning") %}{% endcall %}{% endif %}</span>
 </div>
-<div class="cols">
+<div class="split split--aside">
   <section class="panel">
     <div class="panel__head"><h2>Facts</h2></div>
     <div class="panel__body">
@@ -21,15 +21,16 @@
     </div>
   </section>
   <section class="panel">
-    <div class="panel__head"><h2>Timeline</h2></div>
-    <div class="panel__body stack">
-      <form class="form" method="post" action="/projects/{{ project.slug }}/incidents/{{ incident.id }}/updates">
+    <div class="panel__head"><h2>Timeline</h2><span class="cap">Updates appear on the status page without the author's name.</span></div>
+    <div class="panel__body stack stack--lg">
+      <form class="form form--composer" method="post" action="/projects/{{ project.slug }}/incidents/{{ incident.id }}/updates">
         {% if !error.is_empty() %}{% call ui::notice("error", error) %}{% endcall %}{% endif %}
-        <div class="field"><label class="label" for="label">Label</label>
-          <select class="select" id="label" name="label">{% for l in self.labels() %}<option value="{{ l }}"{% if *l == label %} selected{% endif %}>{{ self.title(l) }}</option>{% endfor %}</select>
-        </div>
         <div class="field"><label class="label" for="message">Message</label><textarea class="textarea" id="message" name="message" placeholder="What changed, and what happens next.">{{ message }}</textarea></div>
-        <div class="form__actions"><button class="btn btn--primary" type="submit">Post update</button></div>
+        <div class="form__actions">
+          <label class="visually-hidden" for="label">Label</label>
+          <select class="select select--inline" id="label" name="label">{% for l in self.labels() %}<option value="{{ l }}"{% if *l == label %} selected{% endif %}>{{ self.title(l) }}</option>{% endfor %}</select>
+          <button class="btn btn--primary" type="submit">Post update</button>
+        </div>
       </form>
       <ol class="timeline">
       {% for u in updates %}

@@ -5,22 +5,29 @@
 {% block actions %}<a class="btn btn--primary btn--sm" href="/projects/{{ project.slug }}/heartbeats/new">{% call ui::icon("plus") %}{% endcall %}New heartbeat</a>{% endblock %}
 {% block content %}
 <div class="page-head"><div class="page-title"><h1>Heartbeats</h1><span class="count">{{ heartbeats.len() }}</span></div></div>
+{% if !heartbeats.is_empty() %}{% let sum = self.summary() %}<p class="overall overall--{{ sum.0 }}">{{ sum.1 }}</p>{% endif %}
 <section class="panel">
   {% if heartbeats.is_empty() %}
     {% call ui::empty("Watch your first cron job", "A heartbeat tells you when a cron job stops running. Create one and add its URL to the end of the job.") %}{% endcall %}
   {% else %}
   <div class="table-wrap">
-    <table class="table">
-      <thead><tr><th>Heartbeat</th><th>State</th><th>Severity</th><th class="hide-sm">Runs every</th><th class="t-right">Last ping</th></tr></thead>
+    <table class="table table--rich">
+      <thead><tr><th>Heartbeat</th><th>State</th><th class="hide-sm">Next deadline</th><th class="t-right">Last ping</th></tr></thead>
       <tbody>
       {% for h in heartbeats %}
         {% let st = self.state(h) %}
+        {% let d = self.due(h) %}
         <tr>
-          <td><a class="table__title" href="/projects/{{ project.slug }}/heartbeats/{{ h.id }}">{{ h.name }}</a></td>
+          <td>
+            <a class="table__title" href="/projects/{{ project.slug }}/heartbeats/{{ h.id }}">{{ h.name }}</a>
+            <div class="table__tags">{% if h.severity == "critical" %}{% call ui::chip("critical", "Critical") %}{% endcall %}{% else %}{% call ui::chip("warning", "Warning") %}{% endcall %}{% endif %}<span class="tag">Runs every {{ self.every(h) }}</span></div>
+          </td>
           <td>{% call ui::state(st.0, st.1) %}{% endcall %}</td>
-          <td>{% if h.severity == "critical" %}{% call ui::chip("critical", "Critical") %}{% endcall %}{% else %}{% call ui::chip("warning", "Warning") %}{% endcall %}{% endif %}</td>
-          <td class="hide-sm">{{ self.every(h) }}</td>
-          <td class="t-right cap">{{ self.last(h) }}</td>
+          <td class="hide-sm">
+            <svg class="due{% if d.late %} due--late{% endif %}" viewBox="0 0 100 6" preserveAspectRatio="none" aria-hidden="true"><rect class="due__track" width="100" height="6" rx="3"></rect><rect class="due__fill" width="{{ d.used }}" height="6" rx="3"></rect></svg>
+            <div class="cap{% if d.late %} due__late{% endif %}">{{ d.text }}</div>
+          </td>
+          <td class="t-right"><span class="mono">{{ self.last(h) }}</span></td>
         </tr>
       {% endfor %}
       </tbody>

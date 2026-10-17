@@ -4,7 +4,7 @@
 
 | Shell | Template | Structure |
 | --- | --- | --- |
-| Admin | `templates/layout/app.html` | `.app` > `.sidebar` (brand, project switcher, nav, user footer) + `.main` > `.toolbar` (crumbs, actions) + `.content` |
+| Admin | `templates/layout/app.html` | `.app` > `.sidebar` (brand, project switcher, nav, user footer) + `.main` > `.toolbar` (crumbs, actions) + `.content`. The brand row and the toolbar are both `--bar-h` (60 px, the docs top bar), so their borders form one line. The current nav item takes `--nav-current`, the brand tint the docs sidebar uses. |
 | Public | `templates/layout/public.html` | `.public` column, 760 px, 15 px body, footer with quiet links |
 | Bare | `templates/layout/bare.html` | Sign-in and invite pages: one `.panel` centered, 400 px |
 
@@ -18,10 +18,11 @@ Project menu, in this order: Monitors, Heartbeats, Incidents, Tickets, Alerts, S
 
 | Page | Recipe |
 | --- | --- |
-| List (monitors, heartbeats, incidents) | `.page-head` (caption + h1) → `.panel` with `.table`. Empty: `.empty` in the panel. Primary action in the toolbar. |
-| Detail (monitor, incident) | `.page-head` → `.cols`: facts panel (`.kv`) + activity panel (`.timeline` or checks table) |
-| Form (create, edit) | `.panel` > `.panel__head` + `.panel__body` > `.form` |
-| Settings | `.tabs` (General, API keys, Alerts, Allowlist) → one panel per tab |
+| List (monitors, heartbeats, incidents) | `.page-head` (h1 with `.count`) → `.overall` → `.panel` with `.table.table--rich`: each monitor row carries a sparkline and 24-hour uptime, each heartbeat row a deadline bar. Empty: `.empty` in the panel. Primary action in the toolbar. |
+| Detail (incident) | `.page-head` → `.split.split--aside`: the facts panel (`.kv`) comes first in the markup and sits in the narrow right column on wide screens; the timeline with its compact composer takes the wide column. |
+| Form (create, edit) | `.form-page`: `.panel.panel--form` > `.form`, and a `.form-aside` that explains the rules |
+| Projects, users | `.split`: the list in the wide column, the create or invite form in the narrow one |
+| Settings, alerts | `.panels`: panels side by side; the API keys table is `.panel--wide` |
 | Kanban | `.page-head` with `.tabs` → `.board` |
 | Status page | h1 → `.headline` (state, systems up) → `.sp` grid: `.sp__systems` (problems first, bars for the first 12, the rest in `.sp__more`) beside `.sp__active` and `.sp__past` (`.inc` cards, folded when resolved) → footer links. History: `.inc` cards under month headings. |
 

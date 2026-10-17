@@ -5,27 +5,43 @@
 {% block actions %}<a class="btn btn--primary btn--sm" href="/projects/{{ project.slug }}/monitors/new">{% call ui::icon("plus") %}{% endcall %}New monitor</a>{% endblock %}
 {% block content %}
 <div class="page-head"><div class="page-title"><h1>Monitors</h1><span class="count">{{ monitors.len() }}</span></div></div>
+{% if monitors.is_empty() %}
 <section class="panel">
-  {% if monitors.is_empty() %}
-    {% call ui::empty("Add your first monitor", "A monitor checks a URL on an interval and tells you when it stops answering. Add the health endpoint of your service first.") %}{% endcall %}
-  {% else %}
+  {% call ui::empty("Add your first monitor", "A monitor checks a URL on an interval and tells you when it stops answering. Add the health endpoint of your service first.") %}{% endcall %}
+</section>
+{% else %}
+{% let sum = self.summary() %}
+<p class="overall overall--{{ sum.0 }}">{{ sum.1 }}</p>
+<section class="panel">
   <div class="table-wrap">
-    <table class="table">
-      <thead><tr><th>Monitor</th><th>State</th><th>Severity</th><th class="hide-sm">Every</th><th class="t-right">Last check</th></tr></thead>
+    <table class="table table--rich">
+      <thead><tr><th>Monitor</th><th>State</th><th class="hide-sm">Last 24 hours</th><th class="hide-sm t-right">Uptime</th><th class="t-right">Last check</th></tr></thead>
       <tbody>
       {% for m in monitors %}
         {% let st = self.state(m) %}
         <tr>
-          <td><a class="table__title" href="/projects/{{ project.slug }}/monitors/{{ m.id }}">{{ m.name }}</a><div class="table__sub">{{ m.url }}</div></td>
+          <td>
+            <a class="table__title" href="/projects/{{ project.slug }}/monitors/{{ m.id }}">{{ m.name }}</a>
+            <div class="table__sub">{{ m.url }}</div>
+            <div class="table__tags">{% if m.severity == "critical" %}{% call ui::chip("critical", "Critical") %}{% endcall %}{% else %}{% call ui::chip("warning", "Warning") %}{% endcall %}{% endif %}<span class="tag">Every {{ self.every(m) }}</span></div>
+          </td>
           <td>{% call ui::state(st.0, st.1) %}{% endcall %}</td>
-          <td>{% if m.severity == "critical" %}{% call ui::chip("critical", "Critical") %}{% endcall %}{% else %}{% call ui::chip("warning", "Warning") %}{% endcall %}{% endif %}</td>
-          <td class="hide-sm mono">{{ self.every(m) }}</td>
+          <td class="hide-sm">
+            {% if let Some(d) = self.day(m) %}
+            <svg class="spark" viewBox="0 0 160 32" preserveAspectRatio="none" role="img" aria-label="Response time over the last 24 hours, mean {% if let Some(ms) = d.mean_ms %}{{ ms }} ms{% else %}unknown{% endif %}">
+              {% for x in d.fails %}<rect class="spark__fail" x="{{ x }}" y="0" width="3" height="32"></rect>{% endfor %}
+              <path class="spark__line" d="{{ d.path }}"></path>
+            </svg>
+            {% if let Some(ms) = d.mean_ms %}<div class="cap">Mean {{ ms }} ms</div>{% endif %}
+            {% else %}<span class="cap">No checks in the last 24 hours</span>{% endif %}
+          </td>
+          <td class="hide-sm t-right mono">{% if let Some(d) = self.day(m) %}{% if let Some(u) = d.uptime %}{{ u }}{% endif %}{% endif %}</td>
           <td class="t-right"><span class="mono">{{ self.last(m) }}</span><div class="cap">{{ self.ago(m) }}</div></td>
         </tr>
       {% endfor %}
       </tbody>
     </table>
   </div>
-  {% endif %}
 </section>
+{% endif %}
 {% endblock %}

@@ -4,7 +4,7 @@
 {% block crumbs %}<span>Admin</span><span class="subtle">/</span><strong>Limits</strong>{% endblock %}
 {% block content %}
 <div class="page-head"><div><h1>Limits</h1></div></div>
-<section class="panel">
+<section class="panel panel--form">
   <form class="panel__body form" method="post" action="/admin/settings">
     {% if !error.is_empty() %}{% call ui::notice("error", error) %}{% endcall %}{% endif %}
     {% for (key, label, value) in rows %}

@@ -19,5 +19,5 @@ Flavor: Lunear ([source](source-lunear.md)), adapted for an ops tool. Code: `sta
 | --- | --- | --- |
 | Inter and Geist Mono from Google Fonts | Embedded woff2 in the binary (78 KB) | The data center may block CDNs. |
 | Dark only | Dark first, plus a Daylight scheme from the OS setting | The public status page serves everyone. |
-| Marketing layout (160 px sections, hero glow) | App layout (sidebar, 44 px toolbar, 13 px UI) | Monita is the app, not a page about it. |
+| Marketing layout (160 px sections, hero glow) | App layout (sidebar, 60 px toolbar, 14 px UI), sized like the docs | Monita is the app, not a page about it. |
 | Green, red and yellow inside mocks only | Same colors carry monitor state and incident labels | "Colour is data" already says this. |

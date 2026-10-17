@@ -3,7 +3,7 @@
 {% block body %}
 <div class="app">
   <aside class="sidebar">
-    <a class="brand" href="/">{% include "ui/mark.html" %}<span>monita</span></a>
+    <a class="brand" href="/">{% include "ui/mark.html" %}<span>Monita</span></a>
     {% if let Some(p) = shell.project %}
     <a class="switcher" href="/" title="All projects"><span class="switcher__badge">{{ p.initial() }}</span>{{ p.name }}{% call ui::icon("chevron") %}{% endcall %}</a>
     {% endif %}

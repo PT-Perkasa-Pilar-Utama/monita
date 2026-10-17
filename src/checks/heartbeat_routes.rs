@@ -64,6 +64,13 @@ impl ListPage {
             .map(|t| time::ago(t, self.now))
             .unwrap_or_else(|| "never".into())
     }
+    fn due(&self, h: &Heartbeat) -> super::overview::Due {
+        super::overview::due(h, self.now)
+    }
+    fn summary(&self) -> (&'static str, String) {
+        let states: Vec<_> = self.heartbeats.iter().map(|h| self.state(h).0).collect();
+        super::overview::summary(&states, "heartbeat")
+    }
 }
 
 async fn list(
