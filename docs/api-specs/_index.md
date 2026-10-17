@@ -24,6 +24,7 @@ Legend: `OK` implemented and tested, `WIP` in progress, `TODO` not started, `SCA
 | `GET, HEAD, POST /ping/{token}/fail` | [04](04-checks.md#42-get-head-post-pingtokenfail) | OK |
 | `GET /healthz` | [09](09-system.md#91-get-healthz) | OK |
 | `POST /admin/reset-state` | [09](09-system.md#92-post-adminreset-state) | OK (header token in dev and test; the session option is not built) |
+| `monita setup`, `service`, `whereis`, `--env-file` | [10](10-cli.md) | OK |
 
 ### HTML routes
 
@@ -50,6 +51,7 @@ Legend: `OK` implemented and tested, `WIP` in progress, `TODO` not started, `SCA
 | [07-status.md](07-status.md) | Public status JSON and page |
 | [08-tickets.md](08-tickets.md) | Ref IDs, tickets |
 | [09-system.md](09-system.md) | Health, reset-state |
+| [10-cli.md](10-cli.md) | The `monita` command line: setup, service, whereis, the env file |
 
 ## Companion Documents
 

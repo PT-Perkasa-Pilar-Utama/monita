@@ -4,6 +4,7 @@
 pub mod accounts;
 pub mod app;
 pub mod checks;
+pub mod cli;
 pub mod incidents;
 pub mod notify;
 pub mod platform;

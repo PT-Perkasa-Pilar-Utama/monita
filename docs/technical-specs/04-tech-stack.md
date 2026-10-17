@@ -23,7 +23,7 @@ Every row was confirmed in the design grill on 2026-10-16.
 | Password hash | argon2 0.6 | Default Argon2id parameters. |
 | Random tokens | rand 0.9 | Tokens, offsets. |
 | Hashing | sha2 0.10 | API key, invite, session and ref ID hashes. |
-| CLI | clap 4 (`derive`) | `serve`, `admin create`. |
+| CLI | clap 4 (`derive`) | `serve`, `migrate`, `setup`, `service`, `whereis`, `admin` ([api-specs 10](../api-specs/10-cli.md)). |
 | Logs | tracing 0.1, tracing-subscriber 0.3 | JSON in prod, pretty in dev. |
 | Errors | thiserror 2, anyhow 1 | `thiserror` in modules, `anyhow` in `main`. |
 

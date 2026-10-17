@@ -150,6 +150,27 @@ jobs:
           path: .e2e-pass
           key: ${{ steps.key.outputs.key }}
 
+  # `monita setup` and `monita service` as root on a real systemd host, which `cargo test` lacks.
+  cli:
+    name: service install smoke
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [check, changes]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: monita-debug
+          path: target/debug
+      - run: shellcheck -s sh scripts/*.sh
+      - run: sudo sh scripts/smoke-cli.sh target/debug/monita
+      - name: service log
+        if: failure()
+        run: sudo journalctl -u monita --no-pager -n 200
+
   # A branch rule can require this one name; the shards answer through it. A skipped e2e passes
   # only when nothing but docs changed and the check job passed; a failed check also skips e2e.
   e2e-result:

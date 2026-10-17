@@ -29,7 +29,7 @@ This file restates rules tersely. The docs win on any conflict; fix this file wh
 | Tests | `cargo test` (temp-file DB), Playwright 1.63 on Bun with system Chrome |
 
 ```text
-src/lib.rs            module tree        src/main.rs   CLI: serve, migrate
+src/lib.rs            module tree        src/cli/      serve, migrate, setup, service, whereis, admin
 src/app.rs            AppState, router, build_with(), serve()
 src/platform/         config, db, migrate, render, assets, headers, health, reset_state
 src/<module>/         mod.rs (interface) routes.rs store.rs + logic files

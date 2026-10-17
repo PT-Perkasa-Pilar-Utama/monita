@@ -13,7 +13,8 @@ monita/
 ├── seeds/                     dev.sql and qa.sql, loaded by reset-state
 ├── src/
 │   ├── lib.rs                 module tree; integration tests link against it
-│   ├── main.rs                CLI: `serve`, `migrate`, `admin create`
+│   ├── main.rs                calls cli::run
+│   ├── cli/                   mod.rs (commands, env file loading), setup.rs, service.rs, envfile.rs
 │   ├── app.rs                 AppState, router assembly, background loop start
 │   ├── platform/              config, db, migrate, render, page, assets, headers, health,
 │   │                          rate_limit, limits, settings, jobs, backup, time, token, reset_state

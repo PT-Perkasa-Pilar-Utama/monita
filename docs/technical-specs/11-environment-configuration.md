@@ -1,6 +1,6 @@
 # 11. Environment Configuration
 
-Monita reads its configuration from environment variables at start. systemd loads them from `/etc/monita/monita.env`. Runtime limits live in the `settings` table, not here.
+Monita reads its configuration from environment variables at start. systemd loads them from `/etc/monita/monita.env`, which `monita setup` writes. A command run by hand reads the same file when `MONITA_ENV` is unset ([api-specs 10.1](../api-specs/10-cli.md#101-the-env-file)). Runtime limits live in the `settings` table, not here.
 
 | Variable | Meaning | dev | test (e2e) | prod |
 | --- | --- | --- | --- | --- |
@@ -22,3 +22,5 @@ Monita reads its configuration from environment variables at start. systemd load
 Reset-state exists only where `MONITA_ENV` is `dev` or `test`. In prod, `MONITA_RESET_TOKEN` is absent and the route is never registered.
 
 Monita refuses to start when `MONITA_ENV=prod` and `MONITA_BASE_URL` is not `https://`.
+
+`monita setup --yes` also reads `MONITA_ADMIN_EMAIL` and `MONITA_ADMIN_PASSWORD` for the first super admin. It never writes them to the file, and `serve` ignores them.

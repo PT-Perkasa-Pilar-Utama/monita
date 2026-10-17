@@ -101,29 +101,26 @@ Monita runs as one systemd service on a Linux VM. These steps assume Ubuntu or D
    ```sh
    tar -xzf monita_v0.1.0_linux_amd64.tar.gz
    install -m 0755 monita /usr/local/bin/monita
-   useradd --system --home /var/lib/monita --shell /usr/sbin/nologin monita
-   install -d -o monita -g monita -m 0700 /var/lib/monita /var/backups/monita
    ```
 
-2. Write the configuration. Every variable is described in [docs/technical-specs/11-environment-configuration.md](docs/technical-specs/11-environment-configuration.md).
+2. Answer the setup questions. It writes `/etc/monita/monita.env` (mode 0600) and creates the first super admin:
 
    ```sh
-   install -d -m 0755 /etc/monita
-   install -m 0600 -o monita deploy/monita.env.example /etc/monita/monita.env
-   ${EDITOR:-vi} /etc/monita/monita.env      # set MONITA_BASE_URL, MONITA_SMTP_URL, MONITA_PING_URL
+   sudo monita setup
    ```
 
-3. Create the first super admin, then start the service:
+   Every variable is described in [docs/technical-specs/11-environment-configuration.md](docs/technical-specs/11-environment-configuration.md). For a scripted install, `monita setup --yes` takes the answers from `MONITA_*` variables ([docs/api-specs/10-cli.md](docs/api-specs/10-cli.md)).
+
+3. Install and start the service. It creates the `monita` user and the folders, writes the systemd unit, and waits for `/healthz`:
 
    ```sh
-   set -a; . /etc/monita/monita.env; set +a
-   sudo -u monita -E monita admin create --email you@company.co.id
-   install -m 0644 deploy/monita.service /etc/systemd/system/monita.service
-   systemctl daemon-reload && systemctl enable --now monita
-   curl -s http://127.0.0.1:8080/healthz
+   sudo monita service install
+   monita whereis               # env file, database, backups, unit, logs
    ```
 
-4. Put the company reverse proxy in front for HTTPS, and set `MONITA_TRUST_PROXY=true` so rate limits see the real client IP. Keep `MONITA_BIND=127.0.0.1:8080`: if other hosts can reach the port, they can forge `X-Forwarded-For`.
+4. Put the company reverse proxy in front for HTTPS. Setup's defaults, `MONITA_TRUST_PROXY=true` and `MONITA_BIND=127.0.0.1:8080`, assume one. If other hosts can reach the port, they can forge `X-Forwarded-For`.
+
+`monita service status`, `monita service logs -f` and `monita service uninstall` cover the rest. The manual unit is [deploy/monita.service](deploy/monita.service), and `service install` writes the same file.
 
 ### Backups and restore
 
@@ -153,12 +150,11 @@ If one site loses power, the other sends "monita-a missed its heartbeat". A free
 
 ```sh
 systemctl stop monita        # the running service locks the database file
-set -a; . /etc/monita/monita.env; set +a
-sudo -u monita -E monita admin reset-password --email you@company.co.id
+sudo monita admin reset-password --email you@company.co.id
 systemctl start monita
 ```
 
-The command reads the new password from stdin and signs the admin out everywhere. A TL gets a new invite from a super admin instead.
+The command asks for the new password without echo (or reads stdin in a script) and signs the admin out everywhere. A TL gets a new invite from a super admin instead.
 
 ### Upgrade
 

@@ -244,6 +244,7 @@ Rule: migrations are numbered files in `migrations/`, embedded at compile time w
 | --- | --- |
 | `monita serve` | Runs pending migrations, then starts. |
 | `monita migrate` | Runs pending migrations and exits. |
+| `monita setup` | Writes the env file and creates the first super admin ([api-specs 10.2](../api-specs/10-cli.md#102-monita-setup)). |
 | `monita admin create --email` | Creates a super admin. Reads the password from stdin. |
 | `monita admin reset-password --email` | Sets a new password for an existing super admin and signs them out. A TL resets through a new invite. |
 | `POST /admin/reset-state {"seed":"dev"}` | Dev and test only. Wipes, migrates, loads `seeds/dev.sql` or `seeds/qa.sql`. |
