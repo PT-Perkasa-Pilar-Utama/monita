@@ -6,6 +6,7 @@
  *
  * Markdown goes through Bun.markdown; nothing is installed.
  */
+import { createHash } from "node:crypto";
 import { copyFileSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 
@@ -214,6 +215,15 @@ function save(file: string, body: string | Buffer): void {
   writeFileSync(file, body);
 }
 
+// Pages lets browsers cache every file for 10 minutes. A content hash in each asset URL stops a
+// new page from loading the old CSS or JS, as platform::assets::url does for the app.
+function versioned(html: string, assets: string): string {
+  return html.replace(/assets\/([\w.-]+\.(?:css|js|svg|png))"/g, (_, f: string) => {
+    const hash = createHash("sha256").update(readFileSync(join(assets, f))).digest("hex").slice(0, 8);
+    return `assets/${f}?v=${hash}"`;
+  });
+}
+
 function main(): void {
   const files = readdirSync(GUIDE).filter((f) => f.endsWith(".md")).map((f) => f.slice(0, -3));
   const listed = new Set(GROUPS.flatMap((g) => g.pages));
@@ -221,10 +231,6 @@ function main(): void {
   if (missing.length > 0) throw new Error(`docs/guide pages in no sidebar group: ${missing.join(", ")}`);
 
   rmSync(OUT, { recursive: true, force: true });
-  const pages = new Map([...listed].map((slug) => [slug, load(slug)]));
-  for (const p of pages.values()) save(join(OUT, "docs", p.slug, "index.html"), pageHtml(pages, p));
-  save(join(OUT, "docs", "index.html"), overview(pages));
-
   const assets = join(OUT, "assets");
   save(join(assets, "app.css"), readFileSync(join(ROOT, "static/app.css"), "utf8").replaceAll('url("/static/', 'url("./'));
   for (const f of readdirSync(join(ROOT, "static/fonts"))) save(join(assets, "fonts", f), readFileSync(join(ROOT, "static/fonts", f)));
@@ -232,7 +238,12 @@ function main(): void {
   for (const f of ["site.css", "docs.js", "landing.js"]) copyFileSync(join(import.meta.dir, f), join(assets, f));
   copyFileSync(join(ROOT, "docs/assets/logo.svg"), join(assets, "logo.svg"));
   for (const f of readdirSync(join(ROOT, "docs/assets/screens"))) copyFileSync(join(ROOT, "docs/assets/screens", f), join(assets, f));
-  save(join(OUT, "index.html"), readFileSync(join(import.meta.dir, "index.html"), "utf8").replace("<!-- topbar -->", topbar("", "home")));
+
+  const page = (file: string, html: string) => save(file, versioned(html, assets));
+  const pages = new Map([...listed].map((slug) => [slug, load(slug)]));
+  for (const p of pages.values()) page(join(OUT, "docs", p.slug, "index.html"), pageHtml(pages, p));
+  page(join(OUT, "docs", "index.html"), overview(pages));
+  page(join(OUT, "index.html"), readFileSync(join(import.meta.dir, "index.html"), "utf8").replace("<!-- topbar -->", topbar("", "home")));
   console.log(`site: ${pages.size} guide pages in ${OUT}`);
 }
 
