@@ -4,18 +4,25 @@ Monita is a self-hosted uptime and incident service for the projects of one IT d
 
 It ships as one Rust binary with one SQLite-format database file. The motto: easy to integrate, simple, lightweight, fast, reliable.
 
-## Status
+## What it does
 
-All four v1 sprints are built. Seeded dev accounts are listed in [seeds/README.md](seeds/README.md).
+| Feature | How it works |
+| --- | --- |
+| HTTP monitors | Monita requests a URL every 30 s to 5 min and checks the status code, an optional keyword, and the timeout. |
+| Heartbeats | A cron job calls `/ping/{token}` after each run. A missed ping, or a call to `/ping/{token}/fail`, opens an incident. |
+| Incidents | Two failed checks in a row open an incident. The first pass closes it. A tech lead can also open a manual incident and post updates: investigating, identified, monitoring, resolved. |
+| Alerts | Email and webhook, per project and severity. Delivery goes through an outbox, so a slow SMTP server never delays a check. |
+| Status page | Each project gets `/status/{slug}` and a public JSON at `/api/v1/public/status/{slug}`, with 90 days of uptime. |
+| Bug tickets | The project's backend issues a ref ID with its API key. A user sends a ticket with that ref ID through the status page or the API. The tech lead moves it on a kanban; a public board shows the accepted ones. |
 
-| Sprint | Delivers | State |
-| --- | --- | --- |
-| 1. Checks run | Accounts and invites, projects, API keys, HTTP monitors, heartbeats | Done |
-| 2. Incidents and alerts | Automatic incidents, status updates, email and webhook alerts | Done |
-| 3. Public status | Status page, public JSON, rate limits, retention, backup | Done |
-| 4. Tickets | Ref IDs, bug tickets, kanban, public board | Done |
+Two roles: a super admin invites tech leads, and each tech lead manages only the projects they own. User stories and acceptance criteria are in [docs/business/](docs/business/).
 
-Stories and acceptance criteria: [docs/business/](docs/business/).
+Integrate a cron job in one line:
+
+```sh
+if backup.sh; then curl -fsS -m 10 https://monita.example.com/ping/<token>
+else curl -fsS -m 10 https://monita.example.com/ping/<token>/fail; fi
+```
 
 ## Stack
 
@@ -34,6 +41,14 @@ Prerequisites: Rust (the toolchain in `rust-toolchain.toml` installs itself thro
 ```sh
 make setup          # enable the git hooks, install the e2e packages
 make run            # serve on http://127.0.0.1:8080 with ./data/monita.db
+```
+
+To load the demo project and the dev accounts in [seeds/README.md](seeds/README.md), start with a reset token and reset once:
+
+```sh
+MONITA_RESET_TOKEN=dev make run
+curl -s -X POST http://127.0.0.1:8080/admin/reset-state -H 'x-reset-token: dev' \
+  -H 'content-type: application/json' -d '{"seed":"dev"}'
 ```
 
 Check that it runs:
