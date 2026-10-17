@@ -19,16 +19,13 @@
   </section>
 </div>
 {% if shell.is_admin %}
-<dialog class="dialog" id="reassign" aria-labelledby="reassign-title">
+<dialog class="dialog" id="reassign" aria-labelledby="reassign-title"{% if !error.is_empty() %} data-open{% endif %}>
   <form method="post" action="/projects/{{ project.slug }}/owner">
     {% call ui::dialog_head("reassign", "Reassign this project") %}{% endcall %}
     <div class="dialog__body">
       <p>The new owner gets the project with its monitors, keys and tickets. The old owner loses access to it.</p>
-      <div class="field"><label class="label" for="owner_id">New owner</label>
-        <select class="select" id="owner_id" name="owner_id">
-          {% for u in owners %}<option value="{{ u.id }}"{% if u.id == project.owner_id %} selected{% endif %}>{{ u.email }}</option>{% endfor %}
-        </select>
-      </div>
+      {% if !error.is_empty() %}{% call ui::notice("error", error) %}{% endcall %}{% endif %}
+      {% include "projects/owner_field.html" %}
     </div>
     <div class="dialog__foot"><button class="btn btn--ghost" type="button" data-close>Cancel</button><button class="btn btn--primary" type="submit">Reassign project</button></div>
   </form>

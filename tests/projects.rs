@@ -145,18 +145,11 @@ async fn super_admin_reassigns_a_project_and_its_keys_stay() {
     let budi = app.tl("budi@x.co").await;
     project(&app, &rina, "Payments", "payments").await;
     let key = new_key(&app, &rina, "payments").await;
-    let budi_id = monita::accounts::list_users(&app.state.db)
-        .await
-        .unwrap()
-        .into_iter()
-        .find(|u| u.email == "budi@x.co")
-        .unwrap()
-        .id;
 
     let res = app
         .post_form(
             "/projects/payments/owner",
-            &[("owner_id", &budi_id.to_string())],
+            &[("owner_email", " Budi@X.co ")],
             Some(&admin),
         )
         .await;
@@ -197,15 +190,18 @@ async fn a_project_goes_only_to_an_active_tl() {
     monita::accounts::disable(&app.state.db, budi_id)
         .await
         .unwrap();
-    for owner in [budi_id.to_string(), "999".to_string()] {
+    for owner in ["budi@x.co", "nobody@x.co", ""] {
         let res = app
             .post_form(
                 "/projects/payments/owner",
-                &[("owner_id", &owner)],
+                &[("owner_email", owner)],
                 Some(&admin),
             )
             .await;
-        assert_eq!(res.status(), 404, "owner {owner}");
+        assert_eq!(res.status(), 422, "owner {owner}");
+        let html = res.text().await.unwrap();
+        assert!(html.contains("Pick the owner from the list"));
+        assert!(html.contains(r#"id="reassign" aria-labelledby="reassign-title" data-open"#));
     }
     assert_eq!(
         app.get("/projects/payments/settings", Some(&rina))
@@ -229,12 +225,49 @@ async fn the_owner_list_offers_the_admin_and_marks_the_current_owner() {
         .await
         .unwrap();
     let admin_at = html
-        .find(">admin@x.co</option>")
+        .find(r#"<option value="admin@x.co">"#)
         .expect("the admin is offered");
     let rina_at = html
-        .find(" selected>rina@x.co</option>")
-        .expect("the owner is selected");
+        .find(r#"<option value="rina@x.co">"#)
+        .expect("the tech lead is offered");
     assert!(admin_at < rina_at, "the admin comes first");
+    assert!(
+        html.contains(r#"name="owner_email" type="email" list="owners" value="rina@x.co""#),
+        "the field starts at the current owner"
+    );
+}
+
+#[tokio::test]
+async fn a_super_admin_names_the_owner_and_a_tl_always_owns_what_they_create() {
+    let app = TestApp::spawn("test").await;
+    let admin = app.super_admin("admin@x.co").await;
+    let rina = app.tl("rina@x.co").await;
+    let budi = app.tl("budi@x.co").await;
+    let created = |cookie: &str, name: &'static str, owner: &'static str| {
+        let (app, cookie) = (&app, cookie.to_string());
+        async move {
+            let form = [("name", name), ("owner_email", owner)];
+            app.post_form("/projects", &form, Some(&cookie)).await
+        }
+    };
+    let res = created(&admin, "Payments", "rina@x.co").await;
+    assert_eq!(res.status(), 303);
+    assert_eq!(app.get(&location(&res), Some(&rina)).await.status(), 200);
+
+    let res = created(&budi, "Shop", "rina@x.co").await;
+    assert_eq!(res.status(), 303);
+    let shop = location(&res);
+    assert_eq!(app.get(&shop, Some(&budi)).await.status(), 200);
+    assert_eq!(app.get(&shop, Some(&rina)).await.status(), 404);
+
+    let res = created(&admin, "Ghost", "nobody@x.co").await;
+    assert_eq!(res.status(), 422);
+    assert!(
+        res.text()
+            .await
+            .unwrap()
+            .contains("Pick the owner from the list")
+    );
 }
 
 #[tokio::test]
@@ -245,7 +278,7 @@ async fn a_tl_cannot_reassign() {
     let res = app
         .post_form(
             "/projects/payments/owner",
-            &[("owner_id", "1")],
+            &[("owner_email", "rina@x.co")],
             Some(&rina),
         )
         .await;

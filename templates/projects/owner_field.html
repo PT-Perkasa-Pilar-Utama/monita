@@ -1,0 +1,7 @@
+{# A super admin's owner picker: free text with the eligible owners as suggestions.
+   Needs `owners`, and `owner_value()` for the starting value. #}
+<div class="field">
+  <label class="label" for="owner_email">Owner</label>
+  <input class="input" id="owner_email" name="owner_email" type="email" list="owners" value="{{ self.owner_value() }}" autocomplete="off" placeholder="Search by email">
+  <datalist id="owners">{% for u in owners %}<option value="{{ u.email }}">{% if u.role == "super_admin" %}You{% else %}Tech lead{% endif %}</option>{% endfor %}</datalist>
+</div>

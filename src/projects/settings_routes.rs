@@ -41,12 +41,40 @@ struct General {
     project: Project,
     /// Who `reassign` accepts: the acting super admin first, then every active TL.
     owners: Vec<UserRow>,
+    /// The Reassign dialog's field after a rejected try; the current owner before.
+    owner_email: String,
+    error: String,
 }
 
 impl General {
     fn utc(&self, ts: &i64) -> String {
         time::utc(*ts)
     }
+    fn owner_value(&self) -> &str {
+        match self.owner_email.trim() {
+            "" => &self.project.owner_email,
+            v => v,
+        }
+    }
+}
+
+async fn general_view(
+    state: &AppState,
+    user: &User,
+    project: Project,
+) -> Result<General, PageError> {
+    let owners = if user.is_admin() {
+        super::eligible_owners(&state.db, user).await?
+    } else {
+        Vec::new()
+    };
+    Ok(General {
+        shell: super::shell(&state.db, user, "settings", Some(&project)).await?,
+        project,
+        owners,
+        owner_email: String::new(),
+        error: String::new(),
+    })
 }
 
 async fn general(
@@ -55,22 +83,13 @@ async fn general(
     Path(slug): Path<String>,
 ) -> Result<Response, PageError> {
     let project = super::find_for(&state.db, &user, &slug).await?;
-    let owners = if user.is_admin() {
-        super::eligible_owners(&state.db, &user).await?
-    } else {
-        Vec::new()
-    };
-    Ok(render(&General {
-        shell: super::shell(&state.db, &user, "settings", Some(&project)).await?,
-        project,
-        owners,
-    }))
+    Ok(render(&general_view(&state, &user, project).await?))
 }
 
 #[derive(Deserialize, Default)]
 #[serde(default)]
 struct OwnerForm {
-    owner_id: String,
+    owner_email: String,
 }
 
 async fn reassign(
@@ -80,8 +99,12 @@ async fn reassign(
     Form(f): Form<OwnerForm>,
 ) -> Result<Response, PageError> {
     let p = super::find_for(&state.db, &admin, &slug).await?;
-    // No user has id 0, so a blank or bad value is the same 404 as an unknown one.
-    let owner_id = f.owner_id.trim().parse().unwrap_or(0);
+    let Some(owner_id) = super::find_owner(&state.db, &admin, &f.owner_email).await? else {
+        let mut page = general_view(&state, &admin, p).await?;
+        page.owner_email = f.owner_email;
+        page.error = ProjectError::UnknownOwner.to_string();
+        return Ok((StatusCode::UNPROCESSABLE_ENTITY, render(&page)).into_response());
+    };
     super::reassign(&state.db, p.id, owner_id, &admin).await?;
     Ok(Redirect::to(&format!("/projects/{slug}/settings")).into_response())
 }

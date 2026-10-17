@@ -1,0 +1,117 @@
+//! A project's own fields: its name, owner and slug at creation.
+
+use serde::Deserialize;
+
+use super::{Project, ProjectError, eligible_owners, store};
+use crate::{
+    accounts::User,
+    platform::{caps, db::Db, token},
+};
+
+/// The random part of a generated slug: 6 base32 characters, about a billion values.
+const SUFFIX: usize = 6;
+/// The longest slug the data model allows (technical-specs 06).
+const SLUG_MAX: usize = 40;
+
+/// The New project form. `owner_email` counts only when a super admin sends it.
+#[derive(Debug, Default, Deserialize)]
+#[serde(default)]
+pub struct ProjectInput {
+    pub name: String,
+    pub owner_email: String,
+}
+
+/// US-06: the name in lowercase letters, digits and dashes, cut to fit, then `-` and the suffix.
+/// A name with none of those characters becomes `project`.
+pub fn slug_for(name: &str, suffix: &str) -> String {
+    let mut base = String::new();
+    for c in name.to_lowercase().chars() {
+        if c.is_ascii_alphanumeric() {
+            base.push(c);
+        } else if !base.is_empty() && !base.ends_with('-') {
+            base.push('-');
+        }
+    }
+    let base: String = base.chars().take(SLUG_MAX - 1 - suffix.len()).collect();
+    let base = match base.trim_end_matches('-') {
+        "" => "project",
+        b => b,
+    };
+    format!("{base}-{suffix}")
+}
+
+/// The user a super admin names by email: the admin or an active tech lead. Case is ignored.
+pub async fn find_owner(db: &Db, acting: &User, email: &str) -> anyhow::Result<Option<i64>> {
+    let email = email.trim();
+    Ok(eligible_owners(db, acting)
+        .await?
+        .into_iter()
+        .find(|u| u.email.eq_ignore_ascii_case(email))
+        .map(|u| u.id))
+}
+
+/// US-06: creates the project, plus its two alert routes. A tech lead owns what they create; a
+/// super admin owns it too unless the form names another owner.
+pub async fn create(db: &Db, acting: &User, input: &ProjectInput) -> Result<Project, ProjectError> {
+    let name = input.name.trim();
+    if name.is_empty() || name.chars().count() > 80 {
+        return Err(ProjectError::InvalidName);
+    }
+    let owner = if acting.is_admin() && !input.owner_email.trim().is_empty() {
+        find_owner(db, acting, &input.owner_email)
+            .await?
+            .ok_or(ProjectError::UnknownOwner)?
+    } else {
+        acting.id
+    };
+    let slug = db
+        .write(async |c| {
+            if owner != acting.id && !crate::accounts::is_active_tl(c, owner).await? {
+                return Ok(Err(ProjectError::UnknownOwner));
+            }
+            if store::count_projects(c).await? >= caps::PROJECTS {
+                return Ok(Err(ProjectError::Full(format!(
+                    "This Monita holds {} projects, its limit.",
+                    caps::PROJECTS
+                ))));
+            }
+            // A taken slug needs the same name and the same suffix; three draws in a row is not
+            // a real case, so it is an error rather than a loop.
+            for _ in 0..3 {
+                let slug = slug_for(name, &token::random_token()[..SUFFIX]);
+                if store::find_by_slug(c, &slug).await?.is_none() {
+                    let id = store::insert(c, owner, name, &slug).await?;
+                    crate::notify::create_routes(c, id).await?;
+                    return Ok(Ok(slug));
+                }
+            }
+            Err(anyhow::anyhow!(
+                "three random slugs for {name:?} were taken"
+            ))
+        })
+        .await??;
+    store::find_by_slug(&db.read().await?, &slug)
+        .await?
+        .ok_or_else(|| ProjectError::Other(anyhow::anyhow!("project {slug} vanished after insert")))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::slug_for;
+
+    #[test]
+    fn a_slug_is_the_name_in_lowercase_with_dashes_then_the_suffix() {
+        assert_eq!(
+            slug_for("  Customer Portal (EU)! ", "ab2cd3"),
+            "customer-portal-eu-ab2cd3"
+        );
+        assert_eq!(slug_for("Kasir ☕ Toko", "ab2cd3"), "kasir-toko-ab2cd3");
+    }
+
+    #[test]
+    fn a_long_name_is_cut_to_fit_and_a_name_without_letters_becomes_project() {
+        let slug = slug_for(&"a-".repeat(40), "ab2cd3");
+        assert!(slug.len() <= 40 && !slug.contains("--"), "{slug}");
+        assert_eq!(slug_for("☕☕", "ab2cd3"), "project-ab2cd3");
+    }
+}

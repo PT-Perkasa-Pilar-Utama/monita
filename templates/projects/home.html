@@ -23,7 +23,8 @@
     {% call ui::dialog_head("new-project", "New project") %}{% endcall %}
     <div class="dialog__body">
       {% if !error.is_empty() %}{% call ui::notice("error", error) %}{% endcall %}{% endif %}
-      {% call ui::input("name", "name", "Name", "text", name, "") %}{% endcall %}
+      {% call ui::input("name", "name", "Name", "text", input.name, "") %}{% endcall %}
+      {% if shell.is_admin %}{% include "projects/owner_field.html" %}{% endif %}
     </div>
     <div class="dialog__foot"><button class="btn btn--ghost" type="button" data-close>Cancel</button><button class="btn btn--primary" type="submit">Create project</button></div>
   </form>
