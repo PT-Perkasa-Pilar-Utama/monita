@@ -215,7 +215,8 @@ export type TicketBoard = { tickets: TicketRow[]; counts: StageCounts };
 /** SEC-14: what a visitor may see of a ticket. */
 export type PublicTicket = { number: number; title: string; stage: Stage; created_at: number; updated_at: number };
 
-export type PublicBoard = { tickets: PublicTicket[]; counts: StageCounts };
+/** The public board has no Triage column, not even a count (SEC-14). */
+export type PublicBoard = { tickets: PublicTicket[]; counts: Omit<StageCounts, "triage"> };
 
 export type MyTicket = { number: number; title: string; stage: Stage; close_reason: CloseReason | null; created_at: number; updated_at: number };
 

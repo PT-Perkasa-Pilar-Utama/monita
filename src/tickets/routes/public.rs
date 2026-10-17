@@ -21,8 +21,12 @@ pub(super) async fn public_board(
     Path(slug): Path<String>,
 ) -> UiResult {
     let p = public_project(&state, &slug).await?;
-    let (tickets, rows) = crate::tickets::public_board(&state.db, p.id).await?;
-    let body = serde_json::json!({ "tickets": tickets, "counts": counts(rows) });
+    let (mut tickets, rows) = crate::tickets::public_board(&state.db, p.id).await?;
+    // SEC-14, second layer: the SQL leaves Triage out, and so does this, count included.
+    tickets.retain(|t| t.stage != "triage");
+    let mut counts = counts(rows);
+    counts.remove("triage");
+    let body = serde_json::json!({ "tickets": tickets, "counts": counts });
     Ok(crate::platform::ui::public_cache(data(body)))
 }
 

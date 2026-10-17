@@ -31,14 +31,14 @@ export function TicketBoard<T extends { number: number; stage: Stage }>({
 }: {
   stages: Stage[];
   tickets: T[];
-  counts: StageCounts;
+  counts: Partial<StageCounts>;
   card: (t: T) => ReactNode;
 }): ReactElement {
   return (
     <div className="grid gap-4 md:grid-cols-2 xl:auto-cols-fr xl:grid-flow-col">
       {stages.map((s) => {
         const cards = tickets.filter((t) => t.stage === s);
-        const total = counts[s];
+        const total = counts[s] ?? 0;
         return (
           <section key={s} aria-labelledby={`col-${s}`} className="flex min-w-0 flex-col gap-2 rounded-xl border bg-paper p-2">
             <h2 id={`col-${s}`} className="flex items-center gap-2 px-2 py-1.5 text-[13px] font-semibold">

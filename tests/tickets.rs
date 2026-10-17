@@ -232,7 +232,9 @@ async fn the_public_board_hides_triage_descriptions_and_reporters() {
     submit(&app, &rid, "Still in triage").await;
     let res = app.api_get(PUBLIC_BOARD, None).await;
     assert_eq!(res.headers()["cache-control"], "public, max-age=30");
-    let board = read(&app, PUBLIC_BOARD, None).await.to_string();
+    let board = read(&app, PUBLIC_BOARD, None).await;
+    assert!(board["counts"].get("triage").is_none(), "not even a count");
+    let board = board.to_string();
     assert!(
         !board.contains("Budi Santoso") && !board.contains("Still in triage"),
         "Triage is private"
