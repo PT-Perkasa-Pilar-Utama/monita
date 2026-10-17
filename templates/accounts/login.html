@@ -2,13 +2,14 @@
 {% import "ui/macros.html" as ui %}
 {% block title %}Sign in · Monita{% endblock %}
 {% block content %}
-<section class="panel">
-  <div class="panel__head"><h1 class="h-panel">Sign in</h1></div>
-  <form class="panel__body form" method="post" action="/login">
+<section class="auth">
+  <h1>Sign in</h1>
+  <form class="form" method="post" action="/login">
     {% if let Some(error) = error %}{% call ui::notice("error", error) %}{% endcall %}{% endif %}
-    {% call ui::input("email", "email", "Email", "email", email, "") %}{% endcall %}
-    {% call ui::input("password", "password", "Password", "password", "", "") %}{% endcall %}
-    <div class="form__actions"><button class="btn btn--primary" type="submit">Sign in</button></div>
+    <div class="field"><label class="label" for="email">Email</label><input class="input" id="email" name="email" type="email" value="{{ email }}" autocomplete="username" required autofocus></div>
+    <div class="field"><label class="label" for="password">Password</label><input class="input" id="password" name="password" type="password" autocomplete="current-password" required></div>
+    <button class="btn btn--primary btn--lg btn--block" type="submit">Sign in</button>
   </form>
+  <p class="auth__note">Forgot your password? Ask your Monita admin to send you a new invite link.</p>
 </section>
 {% endblock %}

@@ -467,13 +467,28 @@ strong { color: var(--fg); font-weight: 590; }
 
 /* ---------- Bare shell (sign-in, invite) ---------- */
 .bare {
+  position: relative;
   min-height: 100vh;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--s5);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--s3);
   padding-block: var(--s7);
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
 }
-.bare > .panel { width: min(400px, 100%); }
+.bare { font-size: var(--t-14); }
+.bare__theme { position: absolute; top: var(--s4); right: var(--s4); }
+.bare__brand { display: flex; flex-direction: column; align-items: center; gap: var(--s3); color: var(--fg); font-size: var(--t-32); font-weight: 650; letter-spacing: -0.03em; }
+.bare__brand .brand__mark { width: 52px; height: 52px; color: var(--accent); }
+.bare__tag { margin-bottom: var(--s5); color: var(--fg-muted); font-size: var(--t-15); text-align: center; }
+.auth { width: min(420px, 100%); display: flex; flex-direction: column; gap: var(--s5); padding: var(--s6); border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--bg-2); box-shadow: var(--shadow); }
+.auth h1 { font-size: var(--t-24); }
+.auth .form { gap: var(--s4); }
+.auth .input { height: 44px; font-size: var(--t-15); }
+.auth__note { color: var(--fg-muted); font-size: var(--t-13); line-height: 1.5; }
+.btn--block { width: 100%; }
+.bare__foot { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--s2) var(--s4); margin-top: var(--s5); color: var(--fg-3); font-size: var(--t-13); }
+.bare__foot span { flex-basis: 100%; text-align: center; }
+.bare__foot a { color: var(--fg-muted); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--border-input); }
+.bare__foot a:hover { color: var(--fg); }
 .h-panel { font-size: var(--t-15); font-weight: 590; letter-spacing: -0.011em; }
 
 /* ---------- Detail pages: hero, stats, chart, availability ---------- */

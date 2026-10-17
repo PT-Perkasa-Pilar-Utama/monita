@@ -1,8 +1,9 @@
 {% extends "layout/bare.html" %}
 {% block title %}{{ title }} · Monita{% endblock %}
 {% block content %}
-<section class="panel">
-  <div class="panel__head"><h1 class="h-panel">{{ title }}</h1></div>
-  <div class="panel__body stack"><p>{{ text }}</p><a class="link-quiet" href="/">Go to your projects →</a></div>
+<section class="auth">
+  <h1>{{ title }}</h1>
+  <p>{{ text }}</p>
+  <a class="btn btn--block" href="/">Go to your projects</a>
 </section>
 {% endblock %}
