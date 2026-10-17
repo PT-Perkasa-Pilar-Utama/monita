@@ -7,14 +7,11 @@ use axum::{
 };
 use serde::Serialize;
 
-use super::{Project, ProjectError, ProjectInput};
+use super::{Project, ProjectError, ProjectInput, TabCounts};
 use crate::{
     accounts::CurrentUser,
     app::AppState,
-    platform::{
-        page::TabCounts,
-        ui::{Body, UiError, UiResult, created, data},
-    },
+    platform::ui::{Body, UiError, UiResult, created, data},
 };
 
 pub fn router() -> Router<AppState> {

@@ -1,5 +1,7 @@
-/* Monita design system, Lunear flavor. Spec: docs/design-system/. One file, no build step.
-   The app, the docs and the landing page share these tokens; site/site.css adds the site layouts.
+/* The landing and docs site's base: tokens, fonts and shared components; site/site.css adds the
+   site layouts. The app has its own styles in web/src/index.css.
+   ponytail: this file still carries the old server pages' component rules; trim it to what
+   site/ uses when the site is next redesigned. */
    Layout: admin = a 56px top bar and a 44px project tab bar in one sticky band, then the page.
    Dark first. Light ("Daylight") follows the OS or data-theme="light". */
 

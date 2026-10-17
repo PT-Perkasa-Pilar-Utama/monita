@@ -1,105 +1,8 @@
-//! Shared pieces of HTML pages: the app shell data and the page error type.
+//! The error type of domain functions that a page or route turns into a status.
 
-use askama::Template;
-use axum::{
-    http::StatusCode,
-    response::{IntoResponse, Response},
-};
+use axum::response::{IntoResponse, Response};
 
-use super::render::render;
-
-/// What `templates/layout/app.html` needs: who is signed in and where they are.
-pub struct Shell {
-    pub email: String,
-    pub is_admin: bool,
-    /// Nav key of the current page: `monitors`, `heartbeats`, `settings`, `users`, `limits`, `projects`.
-    pub active: &'static str,
-    pub project: Option<ProjectNav>,
-    pub counts: TabCounts,
-}
-
-/// The numbers beside the project tabs: monitors, heartbeats, open incidents, open tickets.
-#[derive(Default, serde::Serialize)]
-pub struct TabCounts {
-    pub monitors: i64,
-    pub heartbeats: i64,
-    pub incidents: i64,
-    pub tickets: i64,
-}
-
-impl Shell {
-    /// A page outside any project, such as Users or Limits.
-    pub fn plain(email: &str, is_admin: bool, active: &'static str) -> Self {
-        Shell {
-            email: email.to_string(),
-            is_admin,
-            active,
-            project: None,
-            counts: TabCounts::default(),
-        }
-    }
-
-    pub fn with_counts(mut self, counts: TabCounts) -> Self {
-        self.counts = counts;
-        self
-    }
-
-    /// The first letter of the email, for the avatar in the user menu.
-    pub fn initial(&self) -> String {
-        self.email
-            .chars()
-            .next()
-            .map(|c| c.to_uppercase().to_string())
-            .unwrap_or_default()
-    }
-
-    /// The email split before its `@`, so a narrow sidebar wraps it there and not mid-word.
-    pub fn email_parts(&self) -> (&str, &str) {
-        self.email
-            .split_at(self.email.find('@').unwrap_or(self.email.len()))
-    }
-
-    /// The pages that share a left sidebar: a project's settings, or the admin pages.
-    pub fn area(&self) -> &'static str {
-        match self.active {
-            "settings" | "keys" | "allowlist" | "alerts" => "settings",
-            "users" | "limits" => "admin",
-            _ => "",
-        }
-    }
-
-    pub fn role(&self) -> &'static str {
-        if self.is_admin {
-            "Super admin"
-        } else {
-            "Tech lead"
-        }
-    }
-
-    pub fn in_project(mut self, name: &str, slug: &str, icon_at: Option<i64>) -> Self {
-        self.project = Some(ProjectNav {
-            name: name.to_string(),
-            slug: slug.to_string(),
-            icon_at,
-        });
-        self
-    }
-}
-
-pub struct ProjectNav {
-    pub name: String,
-    pub slug: String,
-    /// Versions the icon's URL; `None` shows the first letter instead.
-    pub icon_at: Option<i64>,
-}
-
-impl ProjectNav {
-    pub fn initial(&self) -> char {
-        self.name.chars().next().unwrap_or('?').to_ascii_uppercase()
-    }
-}
-
-/// Error for HTML handlers: 404 hides what exists, everything else is logged as a 500.
+/// 404 hides what exists, 403 refuses, everything else is logged as a 500.
 #[derive(Debug)]
 pub enum PageError {
     NotFound,
@@ -113,35 +16,9 @@ impl<E: Into<anyhow::Error>> From<E> for PageError {
     }
 }
 
-#[derive(Template)]
-#[template(path = "error.html")]
-struct ErrorPage<'a> {
-    title: &'a str,
-    text: &'a str,
-}
-
+/// The api-specs 01 envelope, as `UiError` writes it.
 impl IntoResponse for PageError {
     fn into_response(self) -> Response {
-        let (status, title, text) = match self {
-            PageError::NotFound => (
-                StatusCode::NOT_FOUND,
-                "Not found",
-                "This page does not exist, or you cannot open it.",
-            ),
-            PageError::Forbidden => (
-                StatusCode::FORBIDDEN,
-                "Not allowed",
-                "Your account cannot open this page.",
-            ),
-            PageError::Internal(e) => {
-                tracing::error!(error = %e, "page failed");
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "Something broke",
-                    "The error is in the server log. Try again in a moment.",
-                )
-            }
-        };
-        (status, render(&ErrorPage { title, text })).into_response()
+        super::ui::UiError::from(self).into_response()
     }
 }

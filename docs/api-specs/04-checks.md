@@ -48,12 +48,14 @@ The React pages under `/projects/{slug}/monitors` and `/projects/{slug}/heartbea
 | PUT | `/api/ui/projects/{slug}/heartbeats/{id}` | owner, super_admin | same as create | Validate and update, 204. | |
 | DELETE | `/api/ui/projects/{slug}/heartbeats/{id}` | owner, super_admin | | Delete with its pings; its URL answers 404 from then on. 204. | |
 
-## 4.4 HTML routes
+## 4.4 System page
+
+The React page `/admin/settings` calls these routes. A tech lead gets 403 on each.
 
 | Method | Path | Access | Input | Behavior | AC |
 | --- | --- | --- | --- | --- | --- |
-| GET | `/admin/settings` | super_admin | `?sent=1` after a test email | The System page: email delivery (server and sender from config, never the password; email counts for 7 days; the newest error), the server's configuration, the limits, and the fixed caps with the project and account counts | AC-11.03, AC-31.03 |
-| POST | `/admin/settings/test-email` | super_admin | | Queue a test email to the signed-in admin through the outbox. Redirect to `?sent=1#email`. | |
-| POST | `/admin/settings` | super_admin | each `settings` key | Validate positive integers. Save. | AC-11.03, AC-31.03 |
+| GET | `/api/ui/admin/system` | super_admin | | `mail` (server and sender from config, never the password), `email` (counts for 7 days and the newest error), `server` (the configuration as label and value), `limits` (each runtime limit with its group, help, value, default, maximum and log-scale positions), and `caps` (the fixed caps, with the project and account counts). | AC-11.03, AC-31.03 |
+| POST | `/api/ui/admin/test-email` | super_admin | | Queue a test email to the signed-in admin through the outbox. `{sent_to}`. | |
+| PUT | `/api/ui/admin/limits` | super_admin | each `settings` key, a number or a numeric string | Every key must be a whole number from 1 to its maximum, or nothing is saved and each bad key is 422 on that key. 204. | AC-11.03, AC-31.03 |
 
 Validation: `interval_s` in {30, 60, 180, 300}. `timeout_s` 1 to 30. `expected_status` is a comma list of classes (`2xx`) or codes (`200`); spaces around commas are allowed, and `2xx,301` mixes both. `url` is `http` or `https`. A blank or non-numeric number is a 422 on that field.

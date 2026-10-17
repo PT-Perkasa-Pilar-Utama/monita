@@ -265,7 +265,7 @@ pub async fn send_test(
 }
 
 /// How email delivery went since `since`, for the system page.
-#[derive(Debug, Default, PartialEq, Eq)]
+#[derive(Debug, Default, PartialEq, Eq, serde::Serialize)]
 pub struct EmailHealth {
     pub sent: i64,
     pub failed: i64,

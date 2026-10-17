@@ -244,3 +244,19 @@ export type PublicStatus = {
 };
 
 export type PublicHistory = { project: PublicProject; incidents: PublicIncident[]; older: string | null };
+
+export type AdminUserRow = { id: number; email: string; role: "super_admin" | "tl"; status: "active" | "invited" | "disabled"; created_at: number };
+
+export type Invited = { email: string; link: string };
+
+export type LimitRow = { key: string; label: string; group: string; help: string; value: number; default: number; max: number; at: number; default_at: number };
+
+export type SystemView = {
+  limits: LimitRow[];
+  groups: string[];
+  mail: { server: string | null; user: string | null; from: string };
+  email: { sent: number; failed: number; waiting: number; last_sent_at: number | null; last_error: [string, number] | null };
+  email_days: number;
+  server: [string, string][];
+  caps: { label: string; max: number; used: number | null }[];
+};

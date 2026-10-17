@@ -100,7 +100,5 @@ The app reads and writes through `/api/ui/...`:
 - A dead link or token is 410 `gone`.
 - A body over 128 KiB is 413 `too_large`.
 - A write that reveals a one-time secret (a new API key, an invite link) returns it in the 2xx body once. It is never in a URL.
-
-## 1.11 HTML routes
-
-Pages not yet moved to the React app return a full page. Form posts use `application/x-www-form-urlencoded`. A validation failure re-renders the form with status 422. A success on a form post redirects with 303. Exception: a post that reveals a one-time secret renders it with 200, because the secret must not travel in a URL.
+- A public read (status, history, the public ticket board) carries `Cache-Control: public, max-age=30`; a refused one carries no cache header.
+- A daily ticket cap is 429 `daily_cap_reached`.

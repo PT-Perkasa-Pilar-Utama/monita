@@ -1,5 +1,6 @@
 import type { ReactElement } from "react";
 import { Route, Routes } from "react-router-dom";
+import { AdminLayout } from "@/layouts/AdminLayout";
 import { AppLayout } from "@/layouts/AppLayout";
 import { ProjectLayout } from "@/layouts/ProjectLayout";
 import { PublicLayout } from "@/layouts/PublicLayout";
@@ -25,6 +26,8 @@ import { KnownIssues } from "@/pages/public/KnownIssues";
 import { Mine } from "@/pages/public/Mine";
 import { Report } from "@/pages/public/Report";
 import { Status } from "@/pages/public/Status";
+import { System } from "@/pages/admin/System";
+import { Users } from "@/pages/admin/Users";
 import { Invite } from "@/pages/Invite";
 import { Login } from "@/pages/Login";
 import { NotFound } from "@/pages/NotFound";
@@ -38,6 +41,10 @@ export default function App(): ReactElement {
       <Route path="/invite/:token" element={<Invite />} />
       <Route element={<AppLayout />}>
         <Route path="/" element={<Projects />} />
+        <Route element={<AdminLayout />}>
+          <Route path="/admin/users" element={<Users />} />
+          <Route path="/admin/settings" element={<System />} />
+        </Route>
       </Route>
       <Route path="/projects/:slug" element={<ProjectLayout />}>
         <Route index element={<Overview />} />

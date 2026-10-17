@@ -23,11 +23,13 @@ The pages `/login` and `/invite/{token}` are React pages; they call these JSON r
 | GET | `/api/ui/invites/{token}` | public | | 200 `{usable: true}` while the invite is unused and unexpired; 410 otherwise. | AC-03.01, AC-03.03, AC-02.02 |
 | POST | `/api/ui/invites/{token}` | public, 60/min per IP | `password`, `password_confirm` | Check the invite first: unknown, used, expired or disabled user is 410 before any hashing. A mismatch is 422 on `password_confirm`; a short password is 422 on `password`. Then hash, mark used, delete older sessions, create a session, set the cookie, 204. | AC-03.02, AC-04.01 |
 
-## 2.3 Admin pages (server-rendered until R6)
+## 2.3 Admin users
+
+The React page `/admin/users` calls these routes (conventions 1.10). A tech lead gets 403 on each.
 
 | Method | Path | Access | Input | Behavior | AC |
 | --- | --- | --- | --- | --- | --- |
-| GET | `/admin/users` | super_admin | | List TLs with status | |
-| POST | `/admin/users` | super_admin | `email` | Create TL, send invite | AC-02.01 |
-| POST | `/admin/users/{id}/invite` | super_admin | | New invite for an active TL; any other target is 404. Older invites and the user's sessions are deleted. | AC-04.01, AC-04.02 |
-| POST | `/admin/users/{id}/disable` | super_admin | | Active TL only; any other target is 404. Set `disabled_at`, delete sessions and invites. Disabling is final in v1. | |
+| GET | `/api/ui/admin/users` | super_admin | | Every account: `id`, `email`, `role`, `status` (`active`, `invited` before a password is set, `disabled`) and `created_at`. Never a password hash. | |
+| POST | `/api/ui/admin/users` | super_admin | `email` | Create a TL and queue the invite email. 201 `{email, link}`: the link is shown this once; only its hash is stored. A bad or taken email is 422 on `email`. | AC-02.01 |
+| POST | `/api/ui/admin/users/{id}/invite` | super_admin | | New invite for an active TL, `{email, link}`; any other target is 404. Older invites and the user's sessions are deleted. | AC-04.01, AC-04.02 |
+| POST | `/api/ui/admin/users/{id}/disable` | super_admin | | Active TL only; any other target is 404. Set `disabled_at`, delete sessions and invites, 204. Disabling is final in v1. | |

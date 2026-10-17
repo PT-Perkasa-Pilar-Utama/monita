@@ -26,14 +26,14 @@ Legend: `OK` implemented and tested, `WIP` in progress, `TODO` not started, `SCA
 | `POST /admin/reset-state` | [09](09-system.md#92-post-adminreset-state) | OK (header token in dev and test; the session option is not built) |
 | `monita setup`, `service`, `whereis`, `--env-file` | [10](10-cli.md) | OK |
 
-### HTML routes
+### Frontend routes (`/api/ui/`)
 
 | Group | File | Status |
 | --- | --- | --- |
 | Sign-in, invites, TL management | [02](02-authentication.md) | OK |
 | Projects, API keys | [03](03-projects.md) | OK |
 | Monitors, heartbeats | [04](04-checks.md#43-frontend-routes) | OK |
-| System settings page | [04](04-checks.md#44-html-routes) | OK |
+| System page | [04](04-checks.md#44-system-page) | OK |
 | Incidents | [05](05-incidents.md) | OK |
 | Alert routes | [06](06-notify.md) | OK |
 | Status page | [07](07-status.md#72-frontend-routes) | OK |

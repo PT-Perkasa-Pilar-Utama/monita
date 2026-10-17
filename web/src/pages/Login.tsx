@@ -10,9 +10,15 @@ import { BareLayout } from "@/layouts/BareLayout";
 import { api, errorText } from "@/lib/api";
 
 /** Where to go after signing in: a path on this site only. */
-function nextPath(): string {
-  const next = new URLSearchParams(window.location.search).get("next") ?? "/";
-  return next.startsWith("/") && !next.startsWith("//") ? next : "/";
+/** Where to go after sign-in: `?next=` only when it stays on this site. */
+export function nextPath(next: string | null, origin: string): string {
+  if (!next?.startsWith("/")) return "/";
+  try {
+    const url = new URL(next, origin);
+    return url.origin === origin ? url.pathname + url.search + url.hash : "/";
+  } catch {
+    return "/";
+  }
 }
 
 export function Login(): ReactElement {
@@ -27,7 +33,7 @@ export function Login(): ReactElement {
     setError("");
     try {
       await api("/login", "POST", { email, password });
-      window.location.assign(nextPath());
+      window.location.assign(nextPath(new URLSearchParams(window.location.search).get("next"), window.location.origin));
     } catch (err) {
       setError(errorText(err));
       setBusy(false);

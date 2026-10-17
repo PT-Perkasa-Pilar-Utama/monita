@@ -58,37 +58,24 @@ pub async fn all(db: &Db) -> anyhow::Result<Vec<Project>> {
     store::list_all(&db.read().await?).await
 }
 
+/// The numbers beside the project tabs: monitors, heartbeats, open incidents, open tickets.
+#[derive(Default, serde::Serialize)]
+pub struct TabCounts {
+    pub monitors: i64,
+    pub heartbeats: i64,
+    pub incidents: i64,
+    pub tickets: i64,
+}
+
 /// The numbers beside a project's tabs, each read through its module's interface.
-pub async fn tab_counts(
-    db: &Db,
-    project_id: i64,
-) -> anyhow::Result<crate::platform::page::TabCounts> {
+pub async fn tab_counts(db: &Db, project_id: i64) -> anyhow::Result<TabCounts> {
     let (monitors, heartbeats) = crate::checks::counts(db, project_id).await?;
-    Ok(crate::platform::page::TabCounts {
+    Ok(TabCounts {
         monitors,
         heartbeats,
         incidents: crate::incidents::open_count(db, project_id).await?,
         tickets: crate::tickets::open_count(db, project_id).await?,
     })
-}
-
-/// The page frame for a signed-in user: who they are, the active nav item, the project in view.
-/// The page shell. Inside a project it carries the tab bar's counts, each read through its
-/// module's interface.
-pub async fn shell(
-    db: &Db,
-    user: &User,
-    active: &'static str,
-    project: Option<&Project>,
-) -> anyhow::Result<crate::platform::page::Shell> {
-    let shell = crate::platform::page::Shell::plain(&user.email, user.is_admin(), active);
-    let Some(p) = project else {
-        return Ok(shell);
-    };
-    let counts = tab_counts(db, p.id).await?;
-    Ok(shell
-        .in_project(&p.name, &p.slug, p.icon_at)
-        .with_counts(counts))
 }
 
 /// Who `reassign` accepts, for the owner list: the acting super admin first, then active TLs.

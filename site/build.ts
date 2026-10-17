@@ -261,9 +261,10 @@ function main(): void {
 
   rmSync(OUT, { recursive: true, force: true });
   const assets = join(OUT, "assets");
-  save(join(assets, "app.css"), readFileSync(join(ROOT, "static/app.css"), "utf8").replaceAll('url("/static/', 'url("./'));
+  save(join(assets, "app.css"), readFileSync(join(ROOT, "site/app.css"), "utf8").replaceAll('url("/static/', 'url("./'));
   for (const f of readdirSync(join(ROOT, "static/fonts"))) save(join(assets, "fonts", f), readFileSync(join(ROOT, "static/fonts", f)));
-  for (const f of ["app.js", "theme.js", "favicon.svg"]) copyFileSync(join(ROOT, "static", f), join(assets, f));
+  copyFileSync(join(ROOT, "site/app.js"), join(assets, "app.js"));
+  for (const f of ["theme.js", "favicon.svg"]) copyFileSync(join(ROOT, "static", f), join(assets, f));
   for (const f of ["site.css", "docs.js", "landing.js"]) copyFileSync(join(import.meta.dir, f), join(assets, f));
   copyFileSync(join(ROOT, "docs/assets/logo.svg"), join(assets, "logo.svg"));
   for (const f of readdirSync(join(ROOT, "docs/assets/screens"))) copyFileSync(join(ROOT, "docs/assets/screens", f), join(assets, f));

@@ -48,7 +48,7 @@ async fn json(
         }
     };
     let mut res = match super::load(&state.db, &slug, days).await {
-        Ok(Some(status)) => crate::platform::render::public_cache(
+        Ok(Some(status)) => crate::platform::ui::public_cache(
             Json(serde_json::json!({ "data": status })).into_response(),
         ),
         Ok(None) => api_error(
@@ -79,7 +79,7 @@ async fn page(State(state): State<AppState>, Path(slug): Path<String>) -> UiResu
         .await?
         .ok_or(UiError::NotFound)?;
     let body = serde_json::json!({ "status": d.status, "recent": d.recent });
-    Ok(crate::platform::render::public_cache(data(body)))
+    Ok(crate::platform::ui::public_cache(data(body)))
 }
 
 #[derive(Deserialize)]
@@ -108,5 +108,5 @@ async fn history(
         })
         .flatten();
     let body = serde_json::json!({ "project": project, "incidents": incidents, "older": older });
-    Ok(crate::platform::render::public_cache(data(body)))
+    Ok(crate::platform::ui::public_cache(data(body)))
 }

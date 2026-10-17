@@ -1,10 +1,10 @@
 //! accounts module: users, invites, sessions.
 //! Spec: docs/technical-specs/05-module-definitions.md section 5.1 and 09.
 
+pub mod admin_api;
 pub mod api;
 mod auth;
 mod password;
-pub mod routes;
 mod store;
 
 use crate::platform::{db::Db, now, page::PageError, token};

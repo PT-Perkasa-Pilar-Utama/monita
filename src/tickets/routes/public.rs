@@ -23,7 +23,7 @@ pub(super) async fn public_board(
     let p = public_project(&state, &slug).await?;
     let (tickets, rows) = crate::tickets::public_board(&state.db, p.id).await?;
     let body = serde_json::json!({ "tickets": tickets, "counts": counts(rows) });
-    Ok(crate::platform::render::public_cache(data(body)))
+    Ok(crate::platform::ui::public_cache(data(body)))
 }
 
 #[derive(Deserialize, Default)]

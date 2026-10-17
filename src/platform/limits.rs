@@ -1,24 +1,21 @@
 //! `/admin/settings`, the System page: email delivery, the server's configuration, the runtime
 //! limits a super admin can change (AC-11.03, AC-31.03), and the fixed caps with their use.
 
-use askama::Template;
 use axum::{
-    Form, Router,
-    extract::{Query, State},
+    Router,
+    extract::State,
     http::StatusCode,
-    response::{IntoResponse, Redirect, Response},
-    routing::{get, post},
+    response::IntoResponse,
+    routing::{get, post, put},
 };
-use serde::Deserialize;
+use serde::Serialize;
 use std::collections::HashMap;
 
 use super::{
     caps,
     config::{Config, Env},
-    now,
-    page::{PageError, Shell},
-    render::render,
-    settings, time,
+    now, settings,
+    ui::{Body, UiError, UiResult, data},
 };
 use crate::{
     accounts::{self, AdminUser},
@@ -30,8 +27,9 @@ use crate::{
 
 pub fn router() -> Router<AppState> {
     Router::new()
-        .route("/admin/settings", get(page).post(save))
-        .route("/admin/settings/test-email", post(test_email))
+        .route("/api/ui/admin/system", get(page))
+        .route("/api/ui/admin/limits", put(save))
+        .route("/api/ui/admin/test-email", post(test_email))
 }
 
 /// Each limit's group, what it does, and its value in `0001_init.sql`.
@@ -77,12 +75,13 @@ const META: &[(&str, &str, &str, i64)] = &[
 /// The window the email counts cover.
 const EMAIL_DAYS: i64 = 7;
 
+#[derive(Serialize)]
 pub struct Limit {
     pub key: &'static str,
     pub label: &'static str,
     pub group: &'static str,
     pub help: &'static str,
-    pub value: String,
+    pub value: i64,
     pub default: i64,
     pub max: i64,
     /// Where the value and the default sit on a log scale from 1 to `max`, 0 to 100.
@@ -91,13 +90,14 @@ pub struct Limit {
 }
 
 /// The mail server as the page shows it. The password never leaves `smtp_view`.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Serialize)]
 pub struct Mail {
     pub server: Option<String>,
     pub user: Option<String>,
     pub from: String,
 }
 
+#[derive(Serialize)]
 pub struct Cap {
     pub label: &'static str,
     pub max: i64,
@@ -105,10 +105,9 @@ pub struct Cap {
     pub used: Option<i64>,
 }
 
-#[derive(Template)]
-#[template(path = "platform/limits.html")]
-struct SystemPage {
-    shell: Shell,
+/// Everything the System page shows.
+#[derive(Serialize)]
+struct SystemView {
     limits: Vec<Limit>,
     groups: [&'static str; 3],
     mail: Mail,
@@ -116,19 +115,6 @@ struct SystemPage {
     email_days: i64,
     server: Vec<(&'static str, String)>,
     caps: Vec<Cap>,
-    error: String,
-    sent_to: String,
-    now: i64,
-}
-
-impl SystemPage {
-    fn ago(&self, ts: &i64) -> String {
-        time::ago(*ts, self.now)
-    }
-    fn used_pct(&self, cap: &Cap) -> i64 {
-        cap.used
-            .map_or(0, |u| (u * 100 / cap.max.max(1)).clamp(0, 100))
-    }
 }
 
 /// A log scale, so 1, 60 and 1 000 000 all land somewhere visible on one bar.
@@ -194,13 +180,7 @@ fn server_rows(c: &Config) -> Vec<(&'static str, String)> {
     ]
 }
 
-async fn view(
-    state: &AppState,
-    email: String,
-    error: String,
-    posted: Option<&HashMap<String, String>>,
-    sent_to: String,
-) -> Result<SystemPage, PageError> {
+async fn view(state: &AppState) -> anyhow::Result<SystemView> {
     let current = settings::all(&state.db.read().await?).await?;
     let limits = META
         .iter()
@@ -209,18 +189,17 @@ async fn view(
                 .iter()
                 .find(|(k, _)| *k == key)
                 .map_or(key, |(_, l)| *l);
-            let saved = current.iter().find(|(k, _)| k == key).map(|(_, v)| *v);
-            let value = posted
-                .and_then(|p| p.get(key).cloned())
-                .or_else(|| saved.map(|v| v.to_string()))
-                .unwrap_or_default();
+            let value = current
+                .iter()
+                .find(|(k, _)| k == key)
+                .map_or(default, |(_, v)| *v);
             let max = settings::max_for(key);
             Limit {
                 key,
                 label,
                 group,
                 help,
-                at: position(saved.unwrap_or(default), max),
+                at: position(value, max),
                 default_at: position(default, max),
                 value,
                 default,
@@ -274,8 +253,7 @@ async fn view(
         },
     ];
     let config = &state.config;
-    Ok(SystemPage {
-        shell: Shell::plain(&email, true, "limits"),
+    Ok(SystemView {
         limits,
         groups: ["Checks", "Rate limits", "Tickets"],
         mail: smtp_view(config.smtp_url.as_deref(), &config.mail_from),
@@ -283,34 +261,15 @@ async fn view(
         email_days: EMAIL_DAYS,
         server: server_rows(config),
         caps,
-        error,
-        sent_to,
-        now,
     })
 }
 
-#[derive(Deserialize)]
-struct PageQuery {
-    #[serde(default)]
-    sent: Option<String>,
-}
-
-async fn page(
-    State(state): State<AppState>,
-    AdminUser(admin): AdminUser,
-    Query(q): Query<PageQuery>,
-) -> Result<Response, PageError> {
-    let sent_to = q.sent.map(|_| admin.email.clone()).unwrap_or_default();
-    Ok(render(
-        &view(&state, admin.email, String::new(), None, sent_to).await?,
-    ))
+async fn page(State(state): State<AppState>, _: AdminUser) -> UiResult {
+    Ok(data(view(&state).await?))
 }
 
 /// Queues a test email to the signed-in admin through the outbox, like any alert.
-async fn test_email(
-    State(state): State<AppState>,
-    AdminUser(admin): AdminUser,
-) -> Result<Response, PageError> {
+async fn test_email(State(state): State<AppState>, AdminUser(admin): AdminUser) -> UiResult {
     let to = admin.email.clone();
     let body = format!(
         "This is a test email from Monita at {}. If you can read it, email alerts reach you.",
@@ -321,37 +280,37 @@ async fn test_email(
         .db
         .write(async |c| notify::queue_email(c, &to, "Monita test email", &body, at).await)
         .await?;
-    Ok(Redirect::to("/admin/settings?sent=1#email").into_response())
+    Ok(data(serde_json::json!({ "sent_to": to })))
 }
 
+/// AC-11.03, AC-31.03. Every limit must be a whole number from 1 to its maximum, or nothing is
+/// saved and each bad one is 422 on its key.
 async fn save(
     State(state): State<AppState>,
-    AdminUser(admin): AdminUser,
-    Form(form): Form<HashMap<String, String>>,
-) -> Result<Response, PageError> {
+    _: AdminUser,
+    Body(form): Body<HashMap<String, serde_json::Value>>,
+) -> UiResult {
     let mut parsed = Vec::new();
+    let mut errors = std::collections::BTreeMap::new();
     for (key, label) in settings::KEYS {
-        match form
-            .get(*key)
-            .and_then(|v| v.trim().parse::<i64>().ok())
-            .filter(|v| (1..=settings::max_for(key)).contains(v))
-        {
+        let max = settings::max_for(key);
+        let value = form.get(*key).and_then(|v| match v {
+            serde_json::Value::Number(n) => n.as_i64(),
+            serde_json::Value::String(s) => s.trim().parse().ok(),
+            _ => None,
+        });
+        match value.filter(|v| (1..=max).contains(v)) {
             Some(v) => parsed.push((*key, v)),
             None => {
-                let page = view(
-                    &state,
-                    admin.email,
-                    format!(
-                        "{label}: enter a whole number from 1 to {}.",
-                        settings::max_for(key)
-                    ),
-                    Some(&form),
-                    String::new(),
-                )
-                .await?;
-                return Ok((StatusCode::UNPROCESSABLE_ENTITY, render(&page)).into_response());
+                errors.insert(
+                    key.to_string(),
+                    format!("{label}: enter a whole number from 1 to {max}."),
+                );
             }
         }
+    }
+    if !errors.is_empty() {
+        return Err(UiError::fields(errors));
     }
     state
         .db
@@ -362,7 +321,7 @@ async fn save(
             Ok(())
         })
         .await?;
-    Ok(Redirect::to("/admin/settings").into_response())
+    Ok(StatusCode::NO_CONTENT.into_response())
 }
 
 #[cfg(test)]

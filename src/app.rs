@@ -66,7 +66,7 @@ pub fn router(state: AppState) -> Router {
         .route("/assets/{*path}", get(crate::platform::spa::asset))
         .merge(crate::accounts::api::router())
         .merge(crate::projects::api::router())
-        .merge(crate::accounts::routes::router())
+        .merge(crate::accounts::admin_api::router())
         .merge(crate::projects::routes::router())
         .merge(crate::tickets::routes::router())
         .merge(crate::checks::api::router())

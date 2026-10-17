@@ -97,18 +97,18 @@ async fn pages_carry_security_headers_and_assets_load() {
             .contains("default-src 'self'")
     );
     assert_eq!(res.headers()["x-content-type-options"], "nosniff");
-    let css = app
+    let script = app
         .http
-        .get(app.url("/static/app.css"))
+        .get(app.url("/static/theme.js"))
         .send()
         .await
         .unwrap();
-    assert_eq!(css.status(), 200);
+    assert_eq!(script.status(), 200);
     assert!(
-        css.headers()["content-type"]
+        script.headers()["content-type"]
             .to_str()
             .unwrap()
-            .starts_with("text/css")
+            .starts_with("text/javascript")
     );
     let missing = app
         .http

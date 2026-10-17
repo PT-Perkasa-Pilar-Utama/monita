@@ -371,23 +371,26 @@ async fn new_monitors_start_at_random_offsets_inside_their_interval() {
     assert!(min >= before && max < before + 301);
 }
 
+/// Every runtime limit set to `n`, as the System page's Save sends it.
+fn limits(n: i64) -> serde_json::Value {
+    monita::platform::settings::KEYS
+        .iter()
+        .map(|(k, _)| (k.to_string(), json!(n)))
+        .collect::<serde_json::Map<_, _>>()
+        .into()
+}
+
 #[tokio::test]
 async fn no_more_checks_run_at_once_than_the_cap() {
     // AC-11.02
     let app = TestApp::spawn("test").await;
     let admin = app.super_admin("admin@x.co").await;
-    let mut form: Vec<(&str, &str)> = monita::platform::settings::KEYS
-        .iter()
-        .map(|(k, _)| (*k, "50"))
-        .collect();
-    form.retain(|(k, _)| *k != "check_concurrency");
-    form.push(("check_concurrency", "2"));
-    assert_eq!(
-        app.post_form("/admin/settings", &form, Some(&admin))
-            .await
-            .status(),
-        303
-    );
+    let mut form = limits(50);
+    form["check_concurrency"] = json!(2);
+    let res = app
+        .api_send(Method::PUT, "/api/ui/admin/limits", form, Some(&admin))
+        .await;
+    assert_eq!(res.status(), 204);
     // The scheduler re-reads the cap on every tick.
     tokio::time::sleep(Duration::from_millis(1_500)).await;
 
@@ -416,29 +419,31 @@ async fn limits_page_is_for_super_admins_and_rejects_bad_values() {
     let app = TestApp::spawn("test").await;
     let admin = app.super_admin("admin@x.co").await;
     let tl = app.tl("rina@x.co").await;
-    assert_eq!(app.get("/admin/settings", Some(&tl)).await.status(), 403);
-    let html = app
-        .get("/admin/settings", Some(&admin))
-        .await
-        .text()
-        .await
-        .unwrap();
-    assert!(html.contains("name=\"check_concurrency\"") && html.contains("value=\"50\""));
-    let bad = app
-        .post_form(
-            "/admin/settings",
-            &[("check_concurrency", "0")],
-            Some(&admin),
-        )
-        .await;
-    assert_eq!(bad.status(), 422);
-    let mut huge: Vec<(&str, &str)> = monita::platform::settings::KEYS
+    assert_eq!(
+        app.get("/api/ui/admin/system", Some(&tl)).await.status(),
+        403
+    );
+    let system = json_of(app.get("/api/ui/admin/system", Some(&admin)).await).await;
+    let concurrency = system["data"]["limits"]
+        .as_array()
+        .unwrap()
         .iter()
-        .map(|(k, _)| (*k, "50"))
-        .collect();
-    huge.retain(|(k, _)| *k != "rl_ip_per_min");
-    huge.push(("rl_ip_per_min", "4294967296"));
-    let res = app.post_form("/admin/settings", &huge, Some(&admin)).await;
+        .find(|l| l["key"] == "check_concurrency")
+        .unwrap();
+    assert_eq!(concurrency["value"], 50);
+    let mut bad = limits(50);
+    bad["check_concurrency"] = json!(0);
+    let res = app
+        .api_send(Method::PUT, "/api/ui/admin/limits", bad, Some(&admin))
+        .await;
+    assert_eq!(res.status(), 422);
+    let fields = &json_of(res).await["error"]["fields"];
+    assert!(fields["check_concurrency"].is_string() && fields.as_object().unwrap().len() == 1);
+    let mut huge = limits(50);
+    huge["rl_ip_per_min"] = json!("4294967296");
+    let res = app
+        .api_send(Method::PUT, "/api/ui/admin/limits", huge, Some(&admin))
+        .await;
     assert_eq!(res.status(), 422, "a value that would wrap a u32");
     let set = app
         .state
@@ -453,15 +458,15 @@ async fn the_system_page_queues_a_test_email_to_the_signed_in_admin_only() {
     let app = TestApp::spawn("test").await;
     let admin = app.super_admin("admin@x.co").await;
     let tl = app.tl("rina@x.co").await;
-    let none: &[(&str, &str)] = &[];
     let refused = app
-        .post_form("/admin/settings/test-email", none, Some(&tl))
+        .api_post("/api/ui/admin/test-email", json!({}), Some(&tl))
         .await;
     assert_eq!(refused.status(), 403);
     let res = app
-        .post_form("/admin/settings/test-email", none, Some(&admin))
+        .api_post("/api/ui/admin/test-email", json!({}), Some(&admin))
         .await;
-    assert_eq!(res.status(), 303);
+    assert_eq!(res.status(), 200);
+    assert_eq!(json_of(res).await["data"]["sent_to"], "admin@x.co");
     let queued = monita::platform::db::query_i64(
         &app.state.db.read().await.unwrap(),
         "SELECT count(*) FROM outbox WHERE channel = 'email' AND recipient = 'admin@x.co' AND subject = 'Monita test email'",
@@ -470,13 +475,6 @@ async fn the_system_page_queues_a_test_email_to_the_signed_in_admin_only() {
     .await
     .unwrap();
     assert_eq!(queued, Some(1));
-    let html = app
-        .get("/admin/settings?sent=1", Some(&admin))
-        .await
-        .text()
-        .await
-        .unwrap();
-    assert!(html.contains("Test email queued for admin@x.co"));
 }
 
 #[tokio::test]

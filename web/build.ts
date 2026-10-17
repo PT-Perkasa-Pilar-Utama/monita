@@ -34,7 +34,10 @@ if (!entry) {
   process.exit(1);
 }
 
-// theme.js runs before the first paint, so the page never flashes the wrong theme.
+// theme.js runs before the first paint, so the page never flashes the wrong theme. Its URL
+// carries a content hash: /static files are cached for a year in a release build.
+const themeText = await Bun.file("../static/theme.js").text();
+const themeHash = new Bun.CryptoHasher("sha256").update(themeText).digest("hex").slice(0, 8);
 const html = `<!doctype html>
 <html lang="en">
 <head>
@@ -43,7 +46,7 @@ const html = `<!doctype html>
 <title>Monita</title>
 <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 <link rel="preload" href="/static/fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<script src="/static/theme.js"></script>
+<script src="/static/theme.js?v=${themeHash}"></script>
 ${css.map((c) => `<link rel="stylesheet" href="${rel(c.path)}">`).join("\n")}
 <script type="module" src="${rel(entry.path)}"></script>
 </head>

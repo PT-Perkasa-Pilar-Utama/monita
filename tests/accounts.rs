@@ -57,7 +57,10 @@ async fn pages_need_a_session_and_admin_pages_need_a_super_admin() {
     assert_eq!(anon.status(), 401);
     assert_eq!(json_of(anon).await["error"]["code"], "unauthorized");
     let tl = app.tl("tl@x.co").await;
-    assert_eq!(app.get("/admin/users", Some(&tl)).await.status(), 403);
+    assert_eq!(
+        app.get("/api/ui/admin/users", Some(&tl)).await.status(),
+        403
+    );
 }
 
 #[tokio::test]
@@ -66,10 +69,26 @@ async fn super_admin_invites_a_tl_and_the_email_goes_out() {
     let app = TestApp::spawn("test").await;
     let admin = app.super_admin("admin@x.co").await;
     let res = app
-        .post_form("/admin/users", &[("email", "rina@x.co")], Some(&admin))
+        .api_post(
+            "/api/ui/admin/users",
+            json!({ "email": "rina@x.co" }),
+            Some(&admin),
+        )
         .await;
-    assert_eq!(res.status(), 200);
+    assert_eq!(res.status(), 201);
     let path = invite_path(&res.text().await.unwrap());
+    let list = json_of(app.get("/api/ui/admin/users", Some(&admin)).await).await;
+    let rina = list["data"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|u| u["email"] == "rina@x.co")
+        .unwrap();
+    assert_eq!(rina["status"], "invited");
+    assert!(
+        !list.to_string().contains("password_hash"),
+        "no hash leaves the server"
+    );
     // The scheduler delivers too, so wait until the row is marked sent rather than count one pass:
     // the body is cleared in that same mark.
     monita::notify::deliver_due(&app.state).await.unwrap();
@@ -148,7 +167,11 @@ async fn new_invite_replaces_the_password_and_kills_old_links_and_sessions() {
     let users = accounts::list_users(&app.state.db).await.unwrap();
     let rina = users.iter().find(|u| u.email == "rina@x.co").unwrap().id;
     let res = app
-        .post_form(&format!("/admin/users/{rina}/invite"), &[], Some(&admin))
+        .api_post(
+            &format!("/api/ui/admin/users/{rina}/invite"),
+            json!({}),
+            Some(&admin),
+        )
         .await;
     let new_path = invite_path(&res.text().await.unwrap());
 
@@ -244,8 +267,12 @@ async fn disabled_tl_is_signed_out_and_cannot_sign_in() {
         .find(|u| u.email == "rina@x.co")
         .unwrap()
         .id;
-    app.post_form(&format!("/admin/users/{id}/disable"), &[], Some(&admin))
-        .await;
+    app.api_post(
+        &format!("/api/ui/admin/users/{id}/disable"),
+        json!({}),
+        Some(&admin),
+    )
+    .await;
     assert_eq!(app.get("/api/ui/me", Some(&tl)).await.status(), 401);
     let res = app
         .api_post(
@@ -276,8 +303,12 @@ async fn disabling_a_tl_kills_their_pending_invite() {
         .unwrap();
     let path = link.strip_prefix(BASE_URL).unwrap();
     let id = user_id(&app, "rina@x.co").await;
-    app.post_form(&format!("/admin/users/{id}/disable"), &[], Some(&admin))
-        .await;
+    app.api_post(
+        &format!("/api/ui/admin/users/{id}/disable"),
+        json!({}),
+        Some(&admin),
+    )
+    .await;
     assert_eq!(app.get(&api_invite(path), None).await.status(), 410);
     let res = app
         .api_post(
@@ -305,18 +336,26 @@ async fn reinvite_and_disable_refuse_anyone_but_an_active_tl() {
     let tl_id = user_id(&app, "rina@x.co").await;
     for action in ["invite", "disable"] {
         let res = app
-            .post_form(
-                &format!("/admin/users/{admin_id}/{action}"),
-                &[],
+            .api_post(
+                &format!("/api/ui/admin/users/{admin_id}/{action}"),
+                json!({}),
                 Some(&admin),
             )
             .await;
         assert_eq!(res.status(), 404, "{action} on a super admin");
     }
-    app.post_form(&format!("/admin/users/{tl_id}/disable"), &[], Some(&admin))
-        .await;
+    app.api_post(
+        &format!("/api/ui/admin/users/{tl_id}/disable"),
+        json!({}),
+        Some(&admin),
+    )
+    .await;
     let res = app
-        .post_form(&format!("/admin/users/{tl_id}/invite"), &[], Some(&admin))
+        .api_post(
+            &format!("/api/ui/admin/users/{tl_id}/invite"),
+            json!({}),
+            Some(&admin),
+        )
         .await;
     assert_eq!(res.status(), 404, "a disabled TL gets no new invite");
 }

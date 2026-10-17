@@ -159,6 +159,18 @@ pub fn created<T: Serialize>(value: T) -> Response {
 
 pub type UiResult = Result<Response, UiError>;
 
+/// Public reads may be cached for 30 s by browsers and proxies. Only a success is: a cached 500
+/// would outlive its cause.
+pub fn public_cache(mut res: Response) -> Response {
+    if res.status().is_success() {
+        res.headers_mut().insert(
+            axum::http::header::CACHE_CONTROL,
+            axum::http::HeaderValue::from_static("public, max-age=30"),
+        );
+    }
+    res
+}
+
 /// A JSON body. A body that is not JSON, or not the expected shape, is a 422 in the envelope
 /// rather than axum's plain-text rejection.
 pub struct Body<T>(pub T);
@@ -179,5 +191,18 @@ where
                 e.body_text()
             ))),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn only_a_success_is_publicly_cached() {
+        let ok = public_cache(StatusCode::OK.into_response());
+        assert_eq!(ok.headers()["cache-control"], "public, max-age=30");
+        let failed = public_cache(StatusCode::INTERNAL_SERVER_ERROR.into_response());
+        assert!(failed.headers().get("cache-control").is_none());
     }
 }

@@ -13,7 +13,6 @@ pub mod limits;
 pub mod migrate;
 pub mod page;
 pub mod rate_limit;
-pub mod render;
 pub mod reset_state;
 pub mod settings;
 pub mod spa;
