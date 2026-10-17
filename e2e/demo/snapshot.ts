@@ -2,8 +2,9 @@
  * Builds the static demo for GitHub Pages: boots the real binary on seeds/demo.sql, crawls every
  * page a super admin and the public can GET, and saves them with relative links under
  * target/site/demo. Forms and filtered lists point at "#demo-off", which demo.js answers.
+ * Run site/build.ts first: it writes the rest of target/site, and this checks every link in it.
  *
- *   bun demo/snapshot.ts                  # build target/site, then check every link in it
+ *   bun demo/snapshot.ts                  # build target/site/demo, then check every link
  *   bun demo/snapshot.ts --screens <dir>  # also save the README screenshots there
  *
  * Env: DEMO_BIN (default ../target/debug/monita), DEMO_OUT (default ../target/site).
@@ -110,7 +111,8 @@ const BANNER = `<aside class="demo-banner" role="note"><strong>Demo</strong> A r
 <a href="https://github.com/PT-Perkasa-Pilar-Utama/monita#install">Install it</a> to add monitors and post updates.</aside>`;
 
 async function write(pages: Map<string, string>): Promise<void> {
-  rmSync(OUT, { recursive: true, force: true });
+  // site/build.ts owns the rest of OUT; the demo replaces only its own folder.
+  rmSync(SITE, { recursive: true, force: true });
   const paths = new Set(pages.keys());
   const assets = new Set<string>();
   for (const [path, html] of pages) {
@@ -127,8 +129,6 @@ async function write(pages: Map<string, string>): Promise<void> {
     mkdirSync(join(SITE, "_demo"), { recursive: true });
     copyFileSync(join(import.meta.dir, f), join(SITE, "_demo", f));
   }
-  // The site root sends visitors to the demo until the project has a home page there.
-  save(join(OUT, "index.html"), '<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=demo/"><title>Monita</title><a href="demo/">Monita demo</a>\n');
 }
 
 function save(file: string, body: string | Uint8Array): void {
@@ -155,7 +155,8 @@ function check(dir: string): string[] {
     readdirSync(d).flatMap((n) => (statSync(join(d, n)).isDirectory() ? walk(join(d, n)) : [join(d, n)]));
   for (const file of walk(dir).filter((f) => f.endsWith(".html"))) {
     const html = readFileSync(file, "utf8");
-    if (html.includes("127.0.0.1")) broken.push(`${file}: names the local server`);
+    // The docs explain local runs; only a crawled page must not leak the snapshot server.
+    if (file.startsWith(SITE) && html.includes(LOCAL)) broken.push(`${file}: names the local server`);
     for (const [, url] of html.matchAll(/\b(?:href|src|action)="([^"]*)"/g)) {
       if (url === OFF || url!.startsWith("#") || /^[a-z]+:/i.test(url!)) continue;
       if (url!.startsWith("/")) {
@@ -182,12 +183,13 @@ async function screenshots(cookie: string, dir: string): Promise<void> {
   const { chromium } = await import("@playwright/test");
   const browser = await chromium.launch({ channel: "chrome" });
   try {
-    const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2 });
+    const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, colorScheme: "light", deviceScaleFactor: 2 });
     const [name, value] = cookie.split("=") as [string, string];
     await context.addCookies([{ name, value, domain: "127.0.0.1", path: "/" }]);
     const page = await context.newPage();
     mkdirSync(dir, { recursive: true });
     for (const [file, path] of [
+      ["monitor.png", "/projects/portal/monitors/2"],
       ["status.png", "/status/payments"],
       ["monitors.png", "/projects/portal/monitors"],
       ["tickets.png", "/projects/portal/tickets"],

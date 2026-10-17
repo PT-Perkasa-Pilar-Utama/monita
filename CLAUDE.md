@@ -22,7 +22,7 @@ This file restates rules tersely. The docs win on any conflict; fix this file wh
 | --- | --- |
 | Language | Rust 1.97.1, edition 2024 (`rust-toolchain.toml`) |
 | HTTP | axum 0.8, tokio 1.53 |
-| HTML | askama 0.16 templates in `templates/`, plain forms, `static/app.js` for copy buttons only |
+| HTML | askama 0.16 templates in `templates/`, plain forms, `static/app.js` for copy buttons and the theme switch, `static/theme.js` applies the saved theme before paint |
 | CSS | `static/app.css` (Lunear flavor), `static/icons.svg`, embedded fonts. All embedded by rust-embed. |
 | Database | turso 0.8.3, standard SQLite features only |
 | Outbound (later sprints) | reqwest 0.13 rustls, lettre 0.11 |
@@ -35,7 +35,8 @@ src/platform/         config, db, migrate, render, assets, headers, health, rese
 src/<module>/         mod.rs (interface) routes.rs store.rs + logic files
 templates/layout/     base, app (sidebar), public, bare     templates/ui/ macros.html, mark.html
 migrations/           0001_init.sql, append only            seeds/ dev, qa, demo .sql
-tests/                integration, tests/common::TestApp    e2e/ specs, lib, global-setup.ts
+tests/                integration, tests/common::TestApp    e2e/ specs, lib, demo/ (static demo)
+site/                 landing page and docs site builder    docs/guide/ user docs, published by site/build.ts
 ```
 
 ## Boundaries
