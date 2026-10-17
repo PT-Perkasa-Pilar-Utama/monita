@@ -10,7 +10,7 @@
   <section class="panel" id="general">
     <div class="panel__head"><h2>General</h2></div>
     <div class="panel__body stack">
-      <dl class="kv"><dt>Name</dt><dd>{{ project.name }}</dd><dt>Status page</dt><dd class="mono">/status/{{ project.slug }}</dd><dt>Owner</dt><dd>{{ project.owner_email }}</dd><dt>Created</dt><dd>{{ self.utc(project.created_at) }}</dd></dl>
+      <dl class="kv"><dt>Name</dt><dd>{{ project.name }}</dd><dt>Status page</dt><dd class="mono"><a class="link-quiet" href="/status/{{ project.slug }}">/status/{{ project.slug }}</a></dd><dt>Owner</dt><dd>{{ project.owner_email }}</dd><dt>Created</dt><dd>{{ self.utc(project.created_at) }}</dd></dl>
       {% if shell.is_admin %}
       <form class="form" method="post" action="/projects/{{ project.slug }}/owner">
         <div class="field"><label class="label" for="owner_id">Reassign to</label>

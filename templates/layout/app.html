@@ -15,6 +15,7 @@
       <a href="/projects/{{ p.slug }}/tickets"{% if shell.active == "tickets" %} aria-current="page"{% endif %}>{% call ui::icon("ticket") %}{% endcall %}Tickets</a>
       <a href="/projects/{{ p.slug }}/alerts"{% if shell.active == "alerts" %} aria-current="page"{% endif %}>{% call ui::icon("bell") %}{% endcall %}Alerts</a>
       <a href="/projects/{{ p.slug }}/settings"{% if shell.active == "settings" %} aria-current="page"{% endif %}>{% call ui::icon("settings") %}{% endcall %}Settings</a>
+      <a href="/status/{{ p.slug }}">{% call ui::icon("globe") %}{% endcall %}Status page</a>
       {% else %}
       <a href="/"{% if shell.active == "projects" %} aria-current="page"{% endif %}>{% call ui::icon("monitor") %}{% endcall %}Projects</a>
       {% endif %}

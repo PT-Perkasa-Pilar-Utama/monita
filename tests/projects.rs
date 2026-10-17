@@ -54,6 +54,22 @@ async fn tl_creates_a_project_and_owns_it() {
 }
 
 #[tokio::test]
+async fn every_project_page_links_to_its_public_status_page() {
+    let app = TestApp::spawn("test").await;
+    let tl = app.tl("rina@x.co").await;
+    project(&app, &tl, "Payments", "payments").await;
+    for page in ["monitors", "incidents", "settings"] {
+        let html = app
+            .get(&format!("/projects/payments/{page}"), Some(&tl))
+            .await
+            .text()
+            .await
+            .unwrap();
+        assert!(html.contains(r#"href="/status/payments""#), "{page}");
+    }
+}
+
+#[tokio::test]
 async fn a_slug_is_unique_and_well_formed() {
     // AC-06.02
     let app = TestApp::spawn("test").await;
