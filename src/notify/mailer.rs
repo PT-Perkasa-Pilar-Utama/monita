@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 
 use lettre::{AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor, message::Mailbox};
 
-use super::SEND_TIMEOUT;
+use super::delivery::SEND_TIMEOUT;
 use crate::platform::config::Config;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
