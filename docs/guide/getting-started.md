@@ -23,10 +23,10 @@ cd monita
 MONITA_RESET_TOKEN=dev make run
 ```
 
-Monita serves on <http://127.0.0.1:8080> with its database in `./data/monita.db`. In a second terminal, load the sample accounts:
+Monita serves on <http://127.0.0.1:7466> with its database in `./data/monita.db`. In a second terminal, load the sample accounts:
 
 ```sh
-curl -s -X POST http://127.0.0.1:8080/admin/reset-state -H 'x-reset-token: dev' \
+curl -s -X POST http://127.0.0.1:7466/admin/reset-state -H 'x-reset-token: dev' \
   -H 'content-type: application/json' -d '{"seed":"dev"}'
 ```
 

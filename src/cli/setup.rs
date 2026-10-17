@@ -37,7 +37,7 @@ const QUESTIONS: [(&str, &str); 7] = [
 /// The production value of spec 11, or empty where it has none.
 fn default(key: &str, base_url: &str) -> String {
     match key {
-        "MONITA_BIND" => "127.0.0.1:8080".into(),
+        "MONITA_BIND" => "127.0.0.1:7466".into(),
         "MONITA_TRUST_PROXY" => "true".into(),
         "MONITA_DB_PATH" => "/var/lib/monita/monita.db".into(),
         "MONITA_BACKUP_DIR" => "/var/backups/monita".into(),

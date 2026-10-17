@@ -27,7 +27,7 @@ Monita runs as one systemd service on a Linux VM. These steps assume Ubuntu or D
    monita whereis               # env file, database, backups, unit, logs
    ```
 
-4. Put the company reverse proxy in front for HTTPS. Setup's defaults, `MONITA_TRUST_PROXY=true` and `MONITA_BIND=127.0.0.1:8080`, assume one. If other hosts can reach the port, they can forge `X-Forwarded-For`.
+4. Put the company reverse proxy in front for HTTPS. Setup's defaults, `MONITA_TRUST_PROXY=true` and `MONITA_BIND=127.0.0.1:7466`, assume one. If other hosts can reach the port, they can forge `X-Forwarded-For`.
 
 `monita service status`, `monita service logs -f` and `monita service uninstall` cover the rest. `service install` writes the same unit as [deploy/monita.service](../../deploy/monita.service), with this host's paths.
 

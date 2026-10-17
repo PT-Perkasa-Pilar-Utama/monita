@@ -62,7 +62,7 @@ impl Config {
             Some(other) => bail!("MONITA_ENV must be dev, test or prod, got {other:?}"),
         };
         let bind = var("MONITA_BIND")
-            .unwrap_or_else(|| "127.0.0.1:8080".into())
+            .unwrap_or_else(|| "127.0.0.1:7466".into())
             .parse()
             .context("MONITA_BIND must be host:port")?;
         let raw_base = var("MONITA_BASE_URL")
@@ -146,7 +146,7 @@ mod tests {
     fn refuses_to_start_without_an_env() {
         assert!(cfg(&[]).is_err());
         let c = cfg(&[("MONITA_ENV", "dev")]).unwrap();
-        assert_eq!(c.base_url, "http://localhost:8080");
+        assert_eq!(c.base_url, "http://localhost:7466");
     }
 
     #[test]

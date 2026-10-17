@@ -72,7 +72,7 @@ sudo monita service install
 `monita setup` asks for the public URL, the mail server and the first super admin.
 `monita service install` makes Monita start now and after every reboot.
 
-Monita listens on `127.0.0.1:8080`. Put a web server that handles HTTPS, such as Caddy or nginx, in
+Monita listens on `127.0.0.1:7466`. Put a web server that handles HTTPS, such as Caddy or nginx, in
 front of it. The [install guide](https://pt-perkasa-pilar-utama.github.io/monita/docs/install/)
 explains these steps. The [operations guide](https://pt-perkasa-pilar-utama.github.io/monita/docs/operations/)
 explains backups, restores and upgrades.
@@ -111,7 +111,7 @@ You need Rust, Bun 1.4 and Google Chrome. The Rust version in `rust-toolchain.to
 
 ```sh
 make setup    # install the git hooks and the browser-test packages
-make run      # start Monita on http://127.0.0.1:8080
+make run      # start Monita on http://127.0.0.1:7466
 make check    # check formatting and lints, then run the Rust tests
 make e2e      # run the browser tests on port 18080
 ```

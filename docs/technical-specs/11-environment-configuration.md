@@ -5,8 +5,8 @@ Monita reads its configuration from environment variables at start. systemd load
 | Variable | Meaning | dev | test (e2e) | prod |
 | --- | --- | --- | --- | --- |
 | `MONITA_ENV` | `dev`, `test` or `prod`. Gates reset-state. Required: Monita refuses to start without it. | `dev` | `test` | `prod` |
-| `MONITA_BIND` | Listen address | `127.0.0.1:8080` | `127.0.0.1:18080` | `127.0.0.1:8080` behind the reverse proxy. With `MONITA_TRUST_PROXY=true`, a port others can reach lets them forge `X-Forwarded-For`. |
-| `MONITA_BASE_URL` | Public URL, for links and the Origin check | `http://localhost:8080` | `http://127.0.0.1:18080` | `https://monita.company.co.id` |
+| `MONITA_BIND` | Listen address | `127.0.0.1:7466` | `127.0.0.1:18080` | `127.0.0.1:7466` behind the reverse proxy. With `MONITA_TRUST_PROXY=true`, a port others can reach lets them forge `X-Forwarded-For`. |
+| `MONITA_BASE_URL` | Public URL, for links and the Origin check | `http://localhost:7466` | `http://127.0.0.1:18080` | `https://monita.company.co.id` |
 | `MONITA_DB_PATH` | Database file | `./data/monita.db` | `./data/e2e.db` | `/var/lib/monita/monita.db` |
 | `MONITA_BACKUP_DIR` | Backup folder. Empty disables backup. | empty | empty | `/var/backups/monita` |
 | `MONITA_BACKUP_KEEP` | Backups kept | 7 | 7 | 7 |

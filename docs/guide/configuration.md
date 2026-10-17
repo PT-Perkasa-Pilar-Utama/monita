@@ -5,7 +5,7 @@ Monita reads `MONITA_*` environment variables at start. `monita setup` writes th
 | Variable | Means | Production value |
 | --- | --- | --- |
 | `MONITA_ENV` | `dev`, `test` or `prod`. Required. | `prod` |
-| `MONITA_BIND` | Listen address | `127.0.0.1:8080`, behind the reverse proxy |
+| `MONITA_BIND` | Listen address | `127.0.0.1:7466`, behind the reverse proxy |
 | `MONITA_BASE_URL` | Public URL, for links and the origin check. `https://` in prod. | `https://monita.example.com` |
 | `MONITA_DB_PATH` | Database file | `/var/lib/monita/monita.db` |
 | `MONITA_BACKUP_DIR` | Daily backup folder; empty turns backups off | `/var/backups/monita` |

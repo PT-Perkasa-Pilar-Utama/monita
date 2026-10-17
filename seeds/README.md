@@ -6,7 +6,7 @@ Load one into a dev server: start it with a reset token, then reset once.
 
 ```sh
 MONITA_RESET_TOKEN=dev make run
-curl -s -X POST http://127.0.0.1:8080/admin/reset-state -H 'x-reset-token: dev' \
+curl -s -X POST http://127.0.0.1:7466/admin/reset-state -H 'x-reset-token: dev' \
   -H 'content-type: application/json' -d '{"seed":"dev"}'
 ```
 

@@ -187,7 +187,7 @@ async fn setup_asks_each_value_and_takes_the_default_on_enter() {
     let file = host.file();
     for line in [
         "MONITA_BASE_URL=https://status.example.org",
-        "MONITA_BIND=127.0.0.1:8080",
+        "MONITA_BIND=127.0.0.1:7466",
         "MONITA_TRUST_PROXY=false",
         "MONITA_BACKUP_DIR=",
         "MONITA_MAIL_FROM='Monita <monita@status.example.org>'",
