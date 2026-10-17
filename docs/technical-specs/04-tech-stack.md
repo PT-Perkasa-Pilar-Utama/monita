@@ -49,7 +49,7 @@ Every row was confirmed in the design grill on 2026-10-16.
 | Component | Technology | Justification |
 | --- | --- | --- |
 | Unit and integration | `cargo test` | Tests use a temp-file database (`tempfile`) and fake adapters. nextest saves seconds at this size, so it is not used. |
-| E2E | Playwright 1.63 on Bun, system Chrome | Drives the real debug binary on port 18080. Resets state through `/admin/reset-state`. |
+| E2E | Playwright 1.64 on Bun, system Chrome | Drives the real debug binary on port 18080. Resets state through `/admin/reset-state`. |
 | Lint and format | clippy (`-D warnings`), rustfmt | Pre-commit and CI. |
 | Supply chain | cargo-deny | Licenses and advisories. |
 | Task runner | `Makefile` | `check-fast`, `check` (local gate), `release-check` (adds the LTO build), `e2e`, `e2e-full`, `release`. 4 rustc jobs at `nice 10` by default. |

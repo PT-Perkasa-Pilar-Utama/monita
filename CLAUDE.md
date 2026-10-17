@@ -26,7 +26,7 @@ This file restates rules tersely. The docs win on any conflict; fix this file wh
 | CSS | `static/app.css` (Lunear flavor), `static/icons.svg`, embedded fonts. All embedded by rust-embed. |
 | Database | turso 0.8.3, standard SQLite features only |
 | Outbound (later sprints) | reqwest 0.13 rustls, lettre 0.11 |
-| Tests | `cargo test` (temp-file DB), Playwright 1.63 on Bun with system Chrome |
+| Tests | `cargo test` (temp-file DB), Playwright 1.64 on Bun with system Chrome |
 
 ```text
 src/lib.rs            module tree        src/cli/      serve, migrate, setup, service, whereis, admin
