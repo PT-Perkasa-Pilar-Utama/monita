@@ -24,7 +24,7 @@ check-fast:
 check: check-fast
 	$(CARGO) test --tests
 
-# Optimized build with LTO: about 5 minutes. CI runs it; run it locally only before a release.
+# Size-optimised build with fat LTO: about 6 minutes. CI runs it; run it locally only before a release.
 release-check: check
 	$(CARGO) build --release
 

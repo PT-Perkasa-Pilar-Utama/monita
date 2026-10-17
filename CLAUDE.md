@@ -88,7 +88,7 @@ make check      # cargo fmt --check, clippy -D warnings, cargo test --lib, cargo
 make e2e        # when a page or API changed: debug build, Playwright, server stopped at the end
 ```
 
-`make release-check` adds the 5-minute LTO build. CI (`.github/workflows/ci.yml`, testate's pattern) runs `make check` once, cargo-deny beside it, then the e2e shards from `e2e/lib/shards.ts` on the debug binary that `check` built. A shard skips itself only when a pass on the same inputs is recorded in the cache. The required check `browser end-to-end` passes a skipped e2e only when nothing but docs changed and `check` passed. `release.yml` runs only on a `v*` tag push and opens a draft release.
+`make release-check` adds the 6-minute release build (fat LTO, `opt-level = "s"`). CI (`.github/workflows/ci.yml`, testate's pattern) runs `make check` once, cargo-deny beside it, then the e2e shards from `e2e/lib/shards.ts` on the debug binary that `check` built. A shard skips itself only when a pass on the same inputs is recorded in the cache. The required check `browser end-to-end` passes a skipped e2e only when nothing but docs changed and `check` passed. `release.yml` runs only on a `v*` tag push and opens a draft release.
 
 A new e2e spec file must match a project in `e2e/lib/shards.ts`; `bun test lib` in `e2e/` fails otherwise.
 
@@ -155,6 +155,7 @@ Each line was argued in review and decided. Do not reopen one without a new fact
 - The accent is magenta and means the brand: the mark, the accent button, focus, links, the chart line. It never marks a state; green, red and yellow do, and a finished stage uses `--neutral-strong`.
 - Charts are SVG drawn on the server from bucketed aggregates (`checks::chart`), not a JS chart library: no script for CSP to allow, and no unbounded rows reach the page.
 - Availability and the chart's down bands count automatic incidents only, as the status page does. An open manual incident shows its items as Issue, never as downtime.
+- The release profile trades speed for size: fat LTO and `opt-level = "s"` (NFR-07, under 30 MB). v0.1.0 used thin LTO at the default level and was 31.5 MB on Linux. On macOS the change took the binary from 25.8 MB to 19.4 MB and an Argon2 sign-in hash from 16 ms to 20 ms. Keeping argon2 and blake2 at `opt-level = 3` saved only 1 ms, so the profile has no per-crate overrides.
 
 ## Context recovery checklist
 
