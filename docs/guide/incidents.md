@@ -37,7 +37,7 @@ Each project has two routes, one per severity. Open **Settings**, then **Alerts*
 | Critical | Email and webhook | Incidents of critical monitors and heartbeats |
 | Warning | Email only | Incidents of warning items, and new tickets when its webhook is on |
 
-A route takes up to 20 email addresses and one webhook URL. **Send test** checks both.
+A route takes up to 20 email addresses and one webhook URL. **Send a test** checks both.
 
 Alerts leave through an outbox: a slow mail server never delays a check, and a failed delivery is tried again.
 

@@ -8,5 +8,5 @@ export async function createProject(page: Page, name: string): Promise<string> {
   await dialog.getByLabel("Name").fill(name);
   await dialog.getByRole("button", { name: "Create project" }).click();
   await expect(page).toHaveURL(/\/projects\/[a-z0-9-]+-[a-z2-7]{6}\/monitors$/);
-  return new URL(page.url()).pathname.split("/")[2];
+  return new URL(page.url()).pathname.split("/")[2]!;
 }

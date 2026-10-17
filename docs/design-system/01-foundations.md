@@ -1,85 +1,102 @@
 # 1. Foundations
 
-All values live as tokens on `:root` in `static/app.css`. No color literal appears outside `:root`. Tints are `color-mix()` from tokens.
+All tokens live in `web/src/index.css`. Light values sit in `:root`. Dark values sit in `.dark`. Tailwind reads them through `@theme inline`, so `bg-primary`, `text-down` and `fill-up` work. A component never holds a hex value.
 
-## 1.1 Schemes
+## 1.1 Themes
 
-| Scheme | When | Base values |
+| Theme | Class on `<html>` | When |
 | --- | --- | --- |
-| Dark (default) | OS dark, or no preference | bg `#08090a`, bg-2 `#0f1011`, fg `#f7f8f8`, fg-muted `#8a8f98` |
-| Daylight | OS light, or `data-theme="light"` | bg `#f7f8f8`, bg-2 `#ffffff`, fg `#16171a`, fg-muted `#676b73` |
+| Light | `light` | Saved choice, or OS light |
+| Dark | `dark` | Saved choice, or OS dark |
 
-Only the base tokens change per scheme. Every derived token follows by itself.
+- `static/theme.js` adds the class before the first paint. It reads `localStorage` key `monita-theme`, then `prefers-color-scheme`.
+- `ThemeProvider` (`components/layout/ThemeProvider.tsx`) keeps the class in sync. No saved choice means the OS setting.
+- The app has a theme switch in the account menu. Public and sign-in pages have `ThemeToggle`.
+- Both themes keep body and muted text readable. Muted text never fades into the background.
 
 ## 1.2 Color tokens
 
 | Token | Use |
 | --- | --- |
-| `--bg` | Page, top band |
-| `--bg-2` | Panels, cards, inputs, dialogs |
-| `--bg-3` | Secondary buttons, code fields |
-| `--fg` | Titles, active nav, values |
-| `--fg-2` | Body text |
-| `--fg-muted` | Nav links, labels in key-value lists, help |
-| `--fg-3` | Captions, IDs, timestamps, table headers |
-| `--border` | Every hairline (8 % fg; 10 % in Daylight) |
-| `--border-input` | Input borders (12 % fg) |
-| `--rule` | Opaque section dividers |
-| `--f2`, `--f4`, `--f6` | Row hover, nav hover, active nav |
-| `--accent` | Magenta: `#f25cbf` dark, `#c4258f` light. The brand: the mark, the accent button, focus, links, the chart line. Never a state. |
-| `--neutral-strong` | A finished stage and the Monitoring label: states, so not the accent |
+| `--background` | Page, top band |
+| `--foreground` | Titles and body text |
+| `--card`, `--card-foreground` | Cards, inputs, dialogs |
+| `--popover` | Menus and popovers |
+| `--paper` | Table bands, aside cards, board columns, code fields |
+| `--secondary` | Secondary buttons |
+| `--muted`, `--muted-foreground` | Tracks, hover rows, captions, table heads, labels |
+| `--accent` | A neutral hover fill. It is not the brand color. |
+| `--border` | Every hairline |
+| `--input` | Input borders and the chart axis |
+| `--ring` | Focus ring (brand magenta at 45 %) |
+| `--primary`, `--primary-foreground` | The brand: magenta `#c4258f` light, `#f25cbf` dark |
+| `--link` | Link text: `#a61f79` light, `#f25cbf` dark |
+| `--destructive` | Destructive button, required asterisk, field errors |
 
-## 1.3 Status colors
+The magenta accent means the brand only: the mark, the primary button, focus, links and the chart line. It never marks a state.
 
-Colour is data. These are the only colors outside the neutrals and the accent.
+## 1.3 State colors
 
-| Token | Value (dark) | Means |
+State colors carry data. They are the only colors outside the neutrals and the brand.
+
+| Token | Dark | Means |
 | --- | --- | --- |
-| `--up` | `#4cb782` green | Monitor up, heartbeat on time, Resolved |
-| `--down` | `#eb5757` red | Down, missed, Critical, Investigating |
-| `--issue` | `#f2c94c` yellow | Open manual incident, Warning, Identified, In progress |
-| `--unknown` | `--fg-3` | No data yet |
+| `--up` | `#4cb782` | Monitor up, heartbeat on time, Resolved, Ping received |
+| `--down` | `#eb5757` | Down, missed, Critical, Investigating, Failed |
+| `--issue` | `#f2c94c` | Open manual incident, Warning, Identified, In progress |
+| `--unknown` | `#8a8f98` | No data yet, Waiting, Revoked |
+| `--neutral-strong` | `#a9aeb6` | A finished stage (Done) and the Monitoring label |
 
-Rule: color sits in the icon or the dot. The word next to it stays neutral, except a down state, whose word turns red so a scan finds it.
+Light values are darker so text keeps its contrast: `--up` `#23784e`, `--issue` `#8a6300`.
 
 ## 1.4 Type
 
-| Role | Font | Size / weight |
+| Role | Font | Size and weight |
 | --- | --- | --- |
-| UI (admin) | Inter | 14 px / 400, labels and nav 510, panel titles 15 px / 590 |
-| Page title | Inter | 32 px / 650, tracking -0.03em, the count beside it at 24 px / 400 |
-| Docs title | Inter | 40 px / 650 |
-| Public and docs body | Inter | 15 px / 400, line height 1.6 to 1.7 |
-| Public title | Inter | 32 px / 650 |
-| Table head | Inter | 13 px / 510, sentence case |
-| Caption | Inter | 12 to 13 px / 400, sentence case |
-| URLs, tokens, codes, times in lists | Geist Mono | 12 to 13 px |
+| Body | Inter | 14 px, line height 1.5 |
+| Page title (`PageHeader`) | Inter | 24 px, 32 px from `sm`, bold, tight tracking |
+| Card title | Inter | 15 px, semibold |
+| Status headline (public) | Inter | 20 px, semibold |
+| Table head | Inter | 13 px, medium, `--muted-foreground` |
+| Table band title | Inter | 13 px, semibold |
+| Caption | Inter | 12 px, `--muted-foreground` |
+| URLs, tokens, codes, times, counts | Geist Mono (`font-mono`) | 12 to 13 px |
 
-Scale: 11, 12, 13, 14, 15, 20, 24, 32, 40. Titles use 650, as the docs and the landing page do. Other text stays at 600 or below. Never uppercase a heading.
+- Fonts load from `static/fonts/` through `@font-face` in `index.css`.
+- Numbers in tables use `tabular-nums`.
+- No heading is uppercase. No label sits above a title as an eyebrow.
 
-## 1.5 Space
+## 1.5 Space and layout
 
-Base unit 4 px. Tokens `--s1` to `--s8`: 4, 8, 12, 16, 24, 32, 48, 72. Use `gap` on flex and grid parents, not margins on children.
+- Tailwind's 4 px scale. Use `gap` on flex and grid parents.
+- `PageFrame` pads the page at 16, 32 and 48 px (`px-4`, `sm:px-8`, `lg:px-12`) and caps the column at `max-w-app` (1440 px).
+- `--bar-h` is the height of the sticky top band: 57 px, or 101 px when the header has tabs. Sticky side panels use `top-[calc(var(--bar-h)+24px)]`.
+- Wide pages split at `xl` into `minmax(0,2fr)` and `minmax(280px,1fr)`.
 
 ## 1.6 Shape
 
-| Radius | Token | Used on |
-| --- | --- | --- |
-| 9999 px | `--r-pill` | Buttons, chips, tabs |
-| 12 px | `--r-lg` | Panels, dialogs, status headline |
-| 9 px | literal in `.comment` | Comment cards |
-| 8 px | `--r` | Inputs, cards, code fields |
-| 6 px | `--r-row` | Table rows |
-| 4 px | `--r-sm` | Inline code, project badge |
+| Radius | Used on |
+| --- | --- |
+| Full | Buttons, count pills, tab count |
+| `rounded-xl` (12 px) | Cards, dialogs, board columns, status headline |
+| `rounded-lg` (8 px) | Inputs, selects, menu rows in the nav, ticket cards, copy field |
+| `rounded-md` (6 px) | Badges, project badge |
 
 ## 1.7 Elevation
 
-Depth is one surface step plus a hairline. Only floating things (dialogs, `.panel--float`) get `--shadow`. The sticky top band is opaque. No other blur, glow or gradient.
+Depth is one surface step plus a hairline. Cards have no shadow. Floating things (dialogs, menus, popovers) take their shadow from the shadcn component. A raised nav item uses `shadow-xs` and `ring-1 ring-border`. The top band is opaque. No glow, no gradient except the chart fill.
 
 ## 1.8 Motion
 
-Color and background fades only: 160 ms, `cubic-bezier(.25,.46,.45,.94)`. Nothing moves on scroll. No pulsing dots. `prefers-reduced-motion: reduce` removes every transition.
+- Buttons, tabs and nav links fade color in 150 ms (`transition-colors duration-150`).
+- Dialogs and menus use the shadcn enter and exit animation from `tw-animate-css`.
+- Nothing moves on scroll. No pulsing dots.
+- `prefers-reduced-motion: reduce` cuts every animation and transition to nothing (`web/src/index.css`).
 
 ## 1.9 Icons
 
-`static/icons.svg`, 16 px, 1.5 px stroke, `currentColor`. Use `<svg class="icon"><use href="/static/icons.svg#i-monitor"/></svg>`. Icons: monitor, heartbeat, incident, ticket, settings, bell, key, globe, users, plus, copy, chevron. Add a new symbol in the same style instead of pulling an icon library.
+- Phosphor, through the barrel `web/src/components/icons/index.ts`. Never import `@phosphor-icons/react` or another icon pack anywhere else.
+- The barrel re-exports icons under the names code already uses, for example `Activity` for Phosphor `Pulse`. To swap the pack, change the barrel only.
+- An icon in a button carries `data-icon="inline-start"` or `data-icon="inline-end"`. The button sizes it and spaces it.
+- An icon-only button has an `aria-label`.
+- The brand mark is `components/brand/Mark.tsx`. It takes its color from `currentColor`.

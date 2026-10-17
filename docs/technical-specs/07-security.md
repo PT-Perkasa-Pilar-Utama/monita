@@ -23,7 +23,7 @@
 | SEC-01 | Session cookie | `monita_session`: 128 random bits (26 base32 chars), `HttpOnly`, `Secure` when `MONITA_BASE_URL` is `https://`, `SameSite=Lax`, `Path=/`. Only the SHA-256 hash is stored. |
 | SEC-02 | Session revocation | A new invite, a disabled user, or sign-out deletes the session rows. Sessions expire after 14 days. |
 | SEC-03 | CSRF | Every non-GET request outside `/api/v1/`, `/ping/` and reset-state must carry an `Origin` header equal to `MONITA_BASE_URL`. Otherwise 403. This covers the frontend's session-cookie calls under `/api/ui/`. |
-| SEC-04 | Output escaping | askama escapes HTML by default. `|safe` is forbidden outside `templates/ui/` icons. |
+| SEC-04 | Output escaping | React escapes text by default. `dangerouslySetInnerHTML` is forbidden. The server sends JSON only, never HTML built from data. |
 | SEC-05 | Content Security Policy | `default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'`. Inline styles are allowed because Radix places popovers and dialogs with a `style` attribute; scripts stay limited to Monita's own files. Plus `X-Content-Type-Options: nosniff` and `Referrer-Policy: same-origin`. |
 | SEC-06 | Password storage | Argon2id with the crate defaults. Minimum length 12. |
 | SEC-07 | API key storage | Keys are `mk_` + 26 base32 chars (128 random bits). Only the hash is stored. Shown once. |
@@ -31,7 +31,7 @@
 | SEC-09 | Token entropy | Session, invite, API key, ref ID and heartbeat tokens: 128 bits from the OS (`getrandom`). |
 | SEC-10 | Constant-time compare | Token lookups go through the hash index, so no secret is compared byte by byte in code. |
 | SEC-11 | Invite expiry | 72 h, single use. |
-| SEC-12 | Rate limits | Fixed window, in memory: 60/min per IP on public pages, the ticket form, `POST /login` and `POST /invite/*` (an IPv6 caller is limited per /64); 120/min per API key; 1/s per heartbeat. Over the limit returns 429 with `Retry-After`. |
+| SEC-12 | Rate limits | Fixed window, in memory: 60/min per IP on public pages and their JSON (`/status/`, `/api/ui/public/`, `/api/v1/public/`, `/api/v1/tickets`), `POST /api/ui/login` and `POST /api/ui/invites/*` (an IPv6 caller is limited per /64); 120/min per API key; 1/s per heartbeat. Over the limit returns 429 with `Retry-After`. |
 | SEC-13 | Ticket caps | 5 per ref ID per day, 100 per project per day. |
 | SEC-14 | Ticket privacy | Triage is never public. Public views show only the title (or the public title), stage and dates. The description and the reporter are never public. |
 | SEC-15 | Outbound targets | Monitors and webhooks may target internal addresses. Only the owner of a project or a super admin can set them. Probe bodies are capped at 1 MB. Redirects are followed up to 5 times. |

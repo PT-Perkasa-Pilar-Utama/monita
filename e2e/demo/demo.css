@@ -1,31 +1,31 @@
-/* The static demo's banner and notice. Colors come from the app's tokens in app.css. */
+/* The static demo's banner and notice. Colors come from the app's tokens in web/src/index.css. */
 .demo-banner {
   position: fixed;
   z-index: 50;
   left: 50%;
-  bottom: var(--s4);
+  bottom: 16px;
   transform: translateX(-50%);
-  max-width: calc(100vw - 2 * var(--s4));
-  padding: var(--s2) var(--s4);
+  max-width: calc(100vw - 32px);
+  padding: 8px 16px;
   border: 1px solid var(--border);
   border-radius: 999px;
-  background: var(--bg-3);
-  box-shadow: var(--shadow);
-  color: var(--fg-2);
-  font-size: var(--t-13);
+  background: var(--card);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.12);
+  color: var(--muted-foreground);
+  font-size: 13px;
   line-height: 1.4;
   text-align: center;
 }
 .demo-banner strong {
-  margin-right: var(--s2);
-  color: var(--accent);
+  margin-right: 8px;
+  color: var(--primary);
 }
 .demo-banner a {
-  color: var(--fg);
+  color: var(--foreground);
 }
 .demo-banner.is-flash {
-  border-color: var(--accent);
-  color: var(--fg);
+  border-color: var(--primary);
+  color: var(--foreground);
 }
 
 /* Room under the page so the banner never covers its footer. */

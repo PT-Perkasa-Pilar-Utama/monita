@@ -31,3 +31,20 @@ A finding is one of:
 - a doc screenshot of the old UI.
 
 Cosmetic preferences are not findings.
+
+## Outcome
+
+| Round | Pages | Commit |
+| --- | --- | --- |
+| R0 | Sign-in, invite, projects | d02eef7 |
+| R1 | Project overview, settings, keys, allowlist, alerts | 32cff53 |
+| R2 | Monitors and heartbeats | d30ea8c |
+| R3 | Incidents | d7fc918 |
+| R4 | Ticket board, ticket page, public report, known issues, my tickets | e4c94a3 |
+| R5 | Public status page and history | 0c4afde |
+| R6 | Admin users and system; askama, `templates/` and the old static CSS removed | 1121e90 |
+
+Two changes follow from the move:
+
+- The public JSON lives under `/api/ui/public/`, inside the per-IP limit. The public board drops Triage tickets and the Triage count in its route, the second SEC-14 layer the template used to be.
+- The static demo renders each page in headless Chrome and saves the DOM without the app's script (`e2e/demo/snapshot.ts`).

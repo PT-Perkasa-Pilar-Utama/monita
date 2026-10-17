@@ -1,7 +1,8 @@
 /**
- * Builds the static demo for GitHub Pages: boots the real binary on seeds/demo.sql, crawls every
- * page a super admin and the public can GET, and saves them with relative links under
- * target/site/demo. Forms and filtered lists point at "#demo-off", which demo.js answers.
+ * Builds the static demo for GitHub Pages: boots the real binary on seeds/demo.sql, opens every
+ * page a super admin and the public can reach in headless Chrome, and saves each rendered page,
+ * without the app's script, with relative links under target/site/demo. Forms, buttons and
+ * filtered lists point at "#demo-off" or do nothing, and demo.js says so.
  * Run site/build.ts first: it writes the rest of target/site, and this checks every link in it.
  *
  *   bun demo/snapshot.ts                  # build target/site/demo, then check every link
@@ -12,7 +13,8 @@
 import { copyFileSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import { DEMO_ORIGIN, OFF, assetLinks, fileFor, pageLinks, relative, rewrite } from "../lib/demo-site";
+import type { Browser, BrowserContext } from "@playwright/test";
+import { DEMO_ORIGIN, OFF, assetLinks, fileFor, pageLinks, relative, relativeFonts, rewrite } from "../lib/demo-site";
 
 const ROOT = resolve(import.meta.dir, "../..");
 const BIN = process.env["DEMO_BIN"] ?? join(ROOT, "target/debug/monita");
@@ -49,9 +51,15 @@ async function main(): Promise<void> {
     });
     if (reset.status !== 204) throw new Error(`reset-state returned ${reset.status}`);
     const cookie = await signIn();
-    const pages = await crawl(cookie);
-    await write(pages);
-    if (screens !== -1) await screenshots(cookie, process.argv[screens + 1] ?? "screens");
+    const { chromium } = await import("@playwright/test");
+    const browser = await chromium.launch({ channel: "chrome" });
+    try {
+      const pages = await crawl(await signedIn(browser, cookie, 1));
+      await write(pages, cookie);
+      if (screens !== -1) await screenshots(browser, cookie, process.argv[screens + 1] ?? "screens");
+    } finally {
+      await browser.close();
+    }
   } finally {
     server.kill();
     await server.exited;
@@ -74,27 +82,48 @@ async function waitHealthy(): Promise<void> {
 }
 
 async function signIn(): Promise<string> {
-  const res = await fetch(`${LOCAL}/login`, {
+  const res = await fetch(`${LOCAL}/api/ui/login`, {
     method: "POST",
-    redirect: "manual",
-    headers: { "content-type": "application/x-www-form-urlencoded", origin: DEMO_ORIGIN },
-    body: new URLSearchParams({ email: "admin@monita.test", password: "monita-dev-password" }),
+    headers: { "content-type": "application/json", origin: DEMO_ORIGIN },
+    body: JSON.stringify({ email: "admin@monita.test", password: "monita-dev-password" }),
   });
   const set = res.headers.getSetCookie().find((c) => c.startsWith("monita_session="));
-  if (res.status !== 303 || set === undefined) throw new Error(`sign-in returned ${res.status}`);
+  if (res.status !== 204 || set === undefined) throw new Error(`sign-in returned ${res.status}`);
   return set.split(";")[0]!;
 }
 
-/** Every page reachable by GET from START, as path -> HTML. */
-async function crawl(cookie: string): Promise<Map<string, string>> {
+/** A light-scheme browser context with the super admin's session. */
+async function signedIn(browser: Browser, cookie: string, scale: number): Promise<BrowserContext> {
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, colorScheme: "light", deviceScaleFactor: scale });
+  const [name, value] = cookie.split("=") as [string, string];
+  await context.addCookies([{ name, value, domain: "127.0.0.1", path: "/" }]);
+  return context;
+}
+
+/** The page at `path` once its data has loaded, without the app's script and theme class. */
+async function render(page: import("@playwright/test").Page, path: string): Promise<string | null> {
+  await page.goto(LOCAL + path);
+  await page.waitForLoadState("networkidle");
+  await page.waitForFunction(() => !document.querySelector('[data-slot="skeleton"]'), null, { timeout: 10_000 });
+  if (await page.getByRole("heading", { name: "Not found", exact: true }).count()) return null;
+  return page.evaluate(() => {
+    const root = document.documentElement.cloneNode(true) as HTMLElement;
+    root.removeAttribute("class");
+    for (const s of root.querySelectorAll('script[type="module"], [data-sonner-toaster]')) s.remove();
+    return `<!doctype html>\n${root.outerHTML}`;
+  });
+}
+
+/** Every page reachable by a link from START, as path -> rendered HTML. */
+async function crawl(context: BrowserContext): Promise<Map<string, string>> {
+  const page = await context.newPage();
   const pages = new Map<string, string>();
   const queue = [...START];
   const seen = new Set(queue);
   while (queue.length > 0) {
     const path = queue.shift()!;
-    const res = await fetch(LOCAL + path, { redirect: "manual", headers: { cookie } });
-    if (res.status !== 200 || !(res.headers.get("content-type") ?? "").startsWith("text/html")) continue;
-    const html = await res.text();
+    const html = await render(page, path);
+    if (html === null) continue;
     pages.set(path, html);
     if (pages.size > MAX_PAGES) throw new Error(`more than ${MAX_PAGES} pages; is a link looping?`);
     for (const link of pageLinks(html)) {
@@ -110,7 +139,7 @@ async function crawl(cookie: string): Promise<Map<string, string>> {
 const BANNER = `<aside class="demo-banner" role="note"><strong>Demo</strong> A read-only snapshot of Monita on sample data.
 <a href="https://github.com/PT-Perkasa-Pilar-Utama/monita#install">Install it</a> to add monitors and post updates.</aside>`;
 
-async function write(pages: Map<string, string>): Promise<void> {
+async function write(pages: Map<string, string>, cookie: string): Promise<void> {
   // site/build.ts owns the rest of OUT; the demo replaces only its own folder.
   rmSync(SITE, { recursive: true, force: true });
   const paths = new Set(pages.keys());
@@ -124,7 +153,7 @@ async function write(pages: Map<string, string>): Promise<void> {
       .replace("</body>", `<script src="${up}_demo/demo.js" defer></script>\n</body>`);
     save(join(SITE, fileFor(path)), page);
   }
-  for (const a of assets) await saveAsset(a);
+  for (const a of assets) await saveAsset(a, cookie);
   for (const f of ["demo.css", "demo.js"]) {
     mkdirSync(join(SITE, "_demo"), { recursive: true });
     copyFileSync(join(import.meta.dir, f), join(SITE, "_demo", f));
@@ -136,13 +165,13 @@ function save(file: string, body: string | Uint8Array): void {
   writeFileSync(file, body);
 }
 
-async function saveAsset(path: string): Promise<void> {
-  const res = await fetch(LOCAL + path);
+async function saveAsset(path: string, cookie: string): Promise<void> {
+  const res = await fetch(LOCAL + path, { headers: { cookie } });
   if (!res.ok) throw new Error(`${path} returned ${res.status}`);
   if (path.endsWith(".css")) {
     const css = await res.text();
-    for (const [, font] of css.matchAll(/url\("(\/static\/[^"]+)"\)/g)) await saveAsset(font!);
-    save(join(SITE, path), css.replaceAll('url("/static/', 'url("./'));
+    for (const [, font] of css.matchAll(/url\("?(\/static\/[^")]+)"?\)/g)) await saveAsset(font!, cookie);
+    save(join(SITE, path), relativeFonts(css));
   } else {
     save(join(SITE, path), new Uint8Array(await res.arrayBuffer()));
   }
@@ -179,35 +208,27 @@ function check(dir: string): string[] {
 }
 
 /** The README and landing-page screenshots, from the live server so they match the demo, and the share image. */
-async function screenshots(cookie: string, dir: string): Promise<void> {
-  const { chromium } = await import("@playwright/test");
-  const browser = await chromium.launch({ channel: "chrome" });
-  try {
-    const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, colorScheme: "light", deviceScaleFactor: 2 });
-    const [name, value] = cookie.split("=") as [string, string];
-    await context.addCookies([{ name, value, domain: "127.0.0.1", path: "/" }]);
-    const page = await context.newPage();
-    mkdirSync(dir, { recursive: true });
-    for (const [file, path] of [
-      ["monitor.png", "/projects/portal/monitors/2"],
-      ["status.png", "/status/payments"],
-      ["monitors.png", "/projects/portal/monitors"],
-      ["tickets.png", "/projects/portal/tickets"],
-      ["incident.png", "/projects/payments/incidents/6"],
-      ["heartbeat.png", "/projects/portal/heartbeats/1"],
-      ["history.png", "/status/payments/history"],
-    ] as const) {
-      await page.goto(LOCAL + path);
-      await page.screenshot({ path: join(dir, file) });
-    }
-    // The 1200x630 link-preview image, drawn from site/og.html and the monitors screenshot above.
-    const og = await browser.newPage({ viewport: { width: 1200, height: 630 }, deviceScaleFactor: 1, colorScheme: "light" });
-    await og.goto(`file://${join(ROOT, "site/og.html")}`);
-    await og.waitForLoadState("networkidle");
-    await og.screenshot({ path: join(dir, "og.png") });
-  } finally {
-    await browser.close();
+async function screenshots(browser: Browser, cookie: string, dir: string): Promise<void> {
+  const context = await signedIn(browser, cookie, 2);
+  const page = await context.newPage();
+  mkdirSync(dir, { recursive: true });
+  for (const [file, path] of [
+    ["monitor.png", "/projects/portal/monitors/2"],
+    ["status.png", "/status/payments"],
+    ["monitors.png", "/projects/portal/monitors"],
+    ["tickets.png", "/projects/portal/tickets"],
+    ["incident.png", "/projects/payments/incidents/6"],
+    ["heartbeat.png", "/projects/portal/heartbeats/1"],
+    ["history.png", "/status/payments/history"],
+  ] as const) {
+    await render(page, path);
+    await page.screenshot({ path: join(dir, file) });
   }
+  // The 1200x630 link-preview image, drawn from site/og.html and the monitors screenshot above.
+  const og = await browser.newPage({ viewport: { width: 1200, height: 630 }, deviceScaleFactor: 1, colorScheme: "light" });
+  await og.goto(`file://${join(ROOT, "site/og.html")}`);
+  await og.waitForLoadState("networkidle");
+  await og.screenshot({ path: join(dir, "og.png") });
 }
 
 await main();

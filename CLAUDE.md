@@ -22,8 +22,8 @@ This file restates rules tersely. The docs win on any conflict; fix this file wh
 | --- | --- |
 | Language | Rust 1.97.1, edition 2024 (`rust-toolchain.toml`) |
 | HTTP | axum 0.8, tokio 1.53 |
-| Frontend | React 19, TypeScript, Tailwind 4 and shadcn/ui (new-york, Radix, Phosphor icons) in `web/`, built from Beaverflow's components with Monita's tokens. `make web` builds it with Bun into `web/dist`, which rust-embed puts in the binary. It calls JSON under `/api/ui/`. Migration plan and status: `docs/decisions/2026-10-17-react-ui-migration.md`. |
-| HTML (migrating) | askama 0.16 templates in `templates/` for pages not yet moved to React; `static/app.css`, `static/app.js`, `static/icons.svg`. `static/theme.js` applies the saved theme before paint for both. |
+| Frontend | React 19, TypeScript, Tailwind 4 and shadcn/ui (new-york, Radix, Phosphor icons) in `web/`, built from Beaverflow's components with Monita's tokens. Every page is this app. `make web` builds it with Bun into `web/dist`, which rust-embed puts in the binary. It calls JSON under `/api/ui/`. Decision: `docs/decisions/2026-10-17-react-ui-migration.md`. |
+| Static files | `static/theme.js` (sets the theme before paint), `static/favicon.svg`, `static/fonts/`, embedded by rust-embed |
 | Database | turso 0.8.3, standard SQLite features only |
 | Outbound (later sprints) | reqwest 0.13 rustls, lettre 0.11 |
 | Tests | `cargo test` (temp-file DB), Playwright 1.64 on Bun with system Chrome |
@@ -31,9 +31,9 @@ This file restates rules tersely. The docs win on any conflict; fix this file wh
 ```text
 src/lib.rs            module tree        src/cli/      serve, migrate, setup, service, whereis, admin
 src/app.rs            AppState, router, build_with(), serve()
-src/platform/         config, db, migrate, render, assets, headers, health, reset_state
-src/<module>/         mod.rs (interface) routes.rs store.rs + logic files
-templates/layout/     base, app (sidebar), public, bare     templates/ui/ macros.html, mark.html
+src/platform/         config, db, migrate, ui (JSON envelope), spa, assets, headers, health, reset_state
+src/<module>/         mod.rs (interface) api.rs (JSON) store.rs + logic files
+web/src/              pages/, layouts/, components/{ui,app,layout,list}, lib/ (api, types, pure helpers + tests)
 migrations/           0001_init.sql, append only            seeds/ dev, qa, demo .sql
 tests/                integration, tests/common::TestApp    e2e/ specs, lib, demo/ (static demo)
 site/                 landing page and docs site builder    docs/guide/ user docs, published by site/build.ts
@@ -50,27 +50,27 @@ site/                 landing page and docs site builder    docs/guide/ user doc
 | notify | alert_routes, outbox | `send(Event)`: inserts outbox rows, never blocks; `create_routes`, `purge_delivered` |
 | status | none | public page and JSON |
 | tickets | ref_ids, tickets | `issue_ref_id`, `submit` |
-| platform | settings, schema_migrations | `Db`, `render`, `now`, config |
+| platform | settings, schema_migrations | `Db`, `ui` (envelope, `Body`, `public_cache`), `now`, config |
 
 Roles: `super_admin`, `tl`. A TL manages only projects they own; a non-owner gets 404. Matrix: technical-specs 09 section 9.3.
 
 ## Work model
 
-Two builders (the user and Claude), 2 days, sprints 1 to 4 in `docs/business/sprint-breakdown.md`. Build one story end to end: migration if needed, store, logic, route, template, tests. Then set its rows in `docs/api-specs/_index.md` to `OK`. Sprint 4 (tickets) is the first cut if time runs short.
+Two builders (the user and Claude), 2 days, sprints 1 to 4 in `docs/business/sprint-breakdown.md`. Build one story end to end: migration if needed, store, logic, JSON route, React page, tests. Then set its rows in `docs/api-specs/_index.md` to `OK`. Sprint 4 (tickets) is the first cut if time runs short.
 
 ## Architecture laws
 
 - A module writes only its own tables. A read-only `JOIN users` for an email or name is allowed. Cross-module calls go through `pub` items in `mod.rs`. Never import another module's `store` or `engine`.
-- Handlers in `routes.rs` parse, call, render. No SQL and no business rules in handlers.
+- Handlers in `api.rs` (or `routes.rs` for the ping and `/api/v1` routes) parse, call, answer. No SQL and no business rules in handlers.
 - SQL lives in `store.rs`. Rules live in `mod.rs` or a named logic file (`engine.rs`, `probe.rs`).
 - Every write goes through `Db::write` (one writer connection, `BEGIN IMMEDIATE`). Reads use `Db::read()`. Never open a writing connection elsewhere.
 - No unbounded list. Every multi-row query has a `LIMIT` from `platform::caps`, a keyset page, or a `GROUP BY` with a fixed number of groups. A list people add to is capped at insert with the same number, so a page never hides a row. Every job reads and deletes in batches and loops until a batch comes back short.
 - `Db::write_without_fk` exists for `platform::migrate` and reset-state only.
 - No transaction stays open across a network call.
-- Frontend pages call `/api/ui/` through `web/src/lib/api.ts`. Each module's JSON lives in its `api.rs` and calls the module's interface, as `routes.rs` handlers did. A refused form is 422 with `error.fields`.
+- Frontend pages call `/api/ui/` through `web/src/lib/api.ts`. Each module's JSON lives in its `api.rs` and calls the module's interface. A refused form is 422 with `error.fields`. Public JSON lives under `/api/ui/public/`, which the per-IP limit covers.
 - Components come from `web/src/components/ui` (shadcn) before custom markup. Colours are the tokens in `web/src/index.css`; no hex values in components. CSP allows inline styles (Radix needs them); scripts stay `'self'`.
-- Remaining askama templates use `templates/ui/macros.html`. No color literal outside `:root` in `app.css`.
-- File cap: 400 lines per `.rs`, 200 per template. Past it, turn the file into a folder module and keep `mod.rs` as the interface. The cap applies to `src/`. A test file is a flat list of scenarios and may run to 800 lines.
+- A rule a page applies in the browser (a filter, a headline, which systems get bars) is a pure function in `web/src/lib/` with a `bun test` beside it.
+- File cap: 400 lines per `.rs`, 300 per `.tsx`. Past it, turn the file into a folder module and keep `mod.rs` as the interface. The cap applies to `src/`. A test file is a flat list of scenarios and may run to 800 lines.
 
 ## Runtime do and don't
 
@@ -78,7 +78,6 @@ Two builders (the user and Claude), 2 days, sprints 1 to 4 in `docs/business/spr
 | --- | --- |
 | `make` targets, `cargo` | nextest, cargo-watch, bacon (not installed, not needed) |
 | `conn.query(...)` for any statement that returns rows | `conn.execute(...)` on a SELECT or a row-returning PRAGMA: turso errors "unexpected row" |
-| `{% call ui::x(...) %}{% endcall %}` | `{% call %}` without `{% endcall %}`: askama 0.16 fails to compile |
 | `Db::write(async \|c\| { ... })` | Many connections writing: turso returns busy instead of waiting |
 | `bun` in `e2e/` and `web/` | npm, npx, `playwright install` (system Chrome is used) |
 | `make web` before a build that must serve pages | Expecting pages from a binary built without `web/dist`: every page answers 503 |
@@ -99,7 +98,7 @@ A new e2e spec file must match a project in `e2e/lib/shards.ts`; `bun test lib` 
 
 1. Read the story's AC in `docs/business/acceptance-criteria-breakdown/` and its contract in `docs/api-specs/`.
 2. Read the module's `mod.rs` and a sibling module that already does something similar.
-3. Reuse `platform` helpers (`query_i64`, `render`, `now`) and `ui` macros before writing new ones.
+3. Reuse `platform` helpers (`query_i64`, `ui::data`, `now`) and the components in `web/src/components` before writing new ones.
 
 ## Naming
 
@@ -110,13 +109,14 @@ A new e2e spec file must match a project in `e2e/lib/shards.ts`; `bun test lib` 
 | Enum value in DB | lowercase snake | `in_progress`, `super_admin` |
 | Route | kebab path, slug not id for projects | `/projects/{slug}/monitors/{id}` |
 | JSON API | `/api/v1/...`, snake_case fields | `single_use` |
-| Template | `templates/<module>/<page>.html` | `templates/checks/monitors.html` |
+| Page | `web/src/pages/<area>/<Page>.tsx` | `web/src/pages/project/Monitors.tsx` |
+| UI JSON | `/api/ui/...`, snake_case fields | `/api/ui/projects/{slug}/monitors` |
 | Test | behavior sentence | `reset_state_does_not_exist_in_prod` |
 | e2e test | `@US-xx` tag in the title | `@US-09 TL creates a monitor` |
 
 ## Types, errors, tests, database
 
-- Validate input at the boundary (form, JSON, path). Return 422 with the form re-rendered, or the JSON error envelope in api-specs 01 section 1.2.
+- Validate input at the boundary (JSON, path). Return the JSON error envelope in api-specs 01 section 1.2; a refused form names its fields.
 - `anyhow` in app code paths, `thiserror` for errors a caller branches on. Never swallow an error: log it with `tracing` and return a status.
 - Every rule with a branch gets a test at the module interface. The incident engine (`step`) is pure and fully branch-tested.
 - Migrations are append only. A new change is `migrations/000N_<what>.sql` plus one line in `platform/migrate.rs`.

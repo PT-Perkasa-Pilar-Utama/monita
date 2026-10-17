@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { OFF, assetLinks, fileFor, pageLinks, relative, rewrite } from "./demo-site";
+import { OFF, assetLinks, fileFor, pageLinks, relative, relativeFonts, rewrite } from "./demo-site";
 
 test("a page is saved as its folder's index.html", () => {
   expect(fileFor("/")).toBe("index.html");
@@ -27,4 +27,15 @@ test("a rewrite keeps crawled pages and assets and turns everything else off", (
   const got = rewrite(html, "/status/portal", new Set(["/projects/portal/monitors", "/a"]));
   expect(got).toBe(`<a href="../../projects/portal/monitors/">m</a><a href="${OFF}">x</a><a href="${OFF}">q</a>
     <form action="${OFF}"></form><use href="../../static/icons.svg?v=9#i-users"/><a href="https://other.example.com/">o</a>`);
+});
+
+test("the app's built files and image sources are assets, never pages", () => {
+  const html = `<link href="/assets/app-1a2b.css"><img src="/projects/portal/icon?v=7"><a href="/assets/x.js">x</a>`;
+  expect(pageLinks(html)).toEqual([]);
+  expect(assetLinks(html).sort()).toEqual(["/assets/app-1a2b.css", "/assets/x.js", "/projects/portal/icon"]);
+  expect(rewrite(`<img src="/projects/portal/icon?v=7">`, "/projects/portal", new Set())).toBe(`<img src="../../projects/portal/icon?v=7">`);
+});
+
+test("a built stylesheet finds its fonts one folder up", () => {
+  expect(relativeFonts(`src:url("/static/fonts/a.woff2") url(/static/fonts/b.woff2)`)).toBe(`src:url("../static/fonts/a.woff2") url(../static/fonts/b.woff2)`);
 });

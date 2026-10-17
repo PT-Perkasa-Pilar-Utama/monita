@@ -16,7 +16,7 @@ Modular monolith in one process. The HTTP server and the background loops run in
 
 ```mermaid
 graph LR
-  Browser -->|HTML forms| HTTP[axum router]
+  Browser -->|React app, JSON under /api/ui| HTTP[axum router]
   ProjectBackend[Project backend] -->|JSON + API key| HTTP
   Job[Project job] -->|/ping| HTTP
   HTTP --> accounts & projects & checks & incidents & status & tickets & notify
@@ -39,12 +39,12 @@ sequenceDiagram
   participant L as layers (trace, rate limit, session)
   participant H as handler
   participant D as monita.db
-  B->>R: POST /monitors (form)
+  B->>R: POST /api/ui/projects/{slug}/monitors (JSON)
   R->>L: request
   L->>L: rate limit, load session, Origin check
-  L->>H: CurrentUser + form
+  L->>H: CurrentUser + body
   H->>D: insert monitor
-  H-->>B: 303 to the monitor, or the form again with 422
+  H-->>B: 201 with the id, or 422 with the field errors
 ```
 
 A check runs outside any request:
@@ -98,6 +98,6 @@ Not in v1: remote probes, hot standby, and shared databases. The check runner si
 | notify | alert_routes, outbox | `send`, `create_routes`, `purge_delivered` |
 | status | none | none |
 | tickets | ref_ids, tickets | none |
-| platform | settings, schema_migrations | `settings`, rate limit layer, `render` |
+| platform | settings, schema_migrations | `settings`, rate limit layer, `ui` (JSON envelope), `spa` (serves the React app) |
 
 Rule: a module writes only its own tables and reads only its own, except a read-only `JOIN users` for an email or name. It calls another module through that module's `pub` functions in `mod.rs`. It never imports another module's `store` or `engine` files.

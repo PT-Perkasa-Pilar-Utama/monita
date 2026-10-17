@@ -16,8 +16,7 @@ Every row was confirmed in the design grill on 2026-10-16.
 | HTTP framework | axum 0.8 | Maintained by the tokio team. Most used Rust web framework. |
 | Cookies | axum-extra 0.12 (`cookie` feature) | Session cookie handling. |
 | Forms and JSON | serde 1, serde_json 1 | Standard. |
-| Templates | askama 0.16 | Compile-time templates. A broken template fails the build. Rendered by a 5-line helper in `platform::render`. |
-| Static assets | rust-embed 8 | CSS, the copy-button script, fonts and icons live inside the binary. |
+| Embedded files | rust-embed 8 | The built React app (`web/dist`), the theme script, the favicon and the fonts live inside the binary. |
 | HTTP client | reqwest 0.13, `rustls` | Probes and webhooks. No OpenSSL. |
 | Email | lettre 0.11, `tokio1-rustls` | SMTP. |
 | Password hash | argon2 0.6 | Default Argon2id parameters. |
@@ -31,10 +30,11 @@ Every row was confirmed in the design grill on 2026-10-16.
 
 | Component | Technology | Justification |
 | --- | --- | --- |
-| Rendering | Server-side HTML | No build step. |
-| Interactivity | Plain HTML forms and one small script for copy buttons | htmx was vendored and removed unused on 2026-10-17 (footprint). Add it back if a page needs partial swaps. |
-| Styling | Hand-written CSS with tokens | See [design system](../design-system/). Pico CSS is archived. |
-| Charts | Inline SVG from templates | Uptime bars only. |
+| UI | React 19, TypeScript, react-router 7 | One single-page app for every page, signed-in and public. Decision: [react-ui-migration](../decisions/2026-10-17-react-ui-migration.md). |
+| Components | shadcn/ui (new-york, Radix), Phosphor icons, sonner | Copied as source into `web/src/components/ui` and restyled. See [design system](../design-system/). |
+| Styling | Tailwind 4 with the tokens in `web/src/index.css` | No hex values in components. |
+| Build | Bun (`web/build.ts`) | Hashed files under `web/dist/assets/`; `index.html` names them. No dev server in the e2e suite. |
+| Charts | SVG drawn by React from server geometry (`checks::chart`) | No chart library; no unbounded rows reach the page. |
 
 ## 4.4 Datastore
 

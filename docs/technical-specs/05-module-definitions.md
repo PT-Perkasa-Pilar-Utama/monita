@@ -10,7 +10,7 @@ Each module owns its tables (see [06](06-data-model.md)). Other modules use only
 
 | Item | Contract |
 | --- | --- |
-| `CurrentUser` extractor | Reads the `monita_session` cookie, looks up the hash in `sessions`, rejects expired or disabled users. Redirects to `/login` for HTML, returns 401 for JSON. |
+| `CurrentUser` extractor | Reads the `monita_session` cookie, looks up the hash in `sessions`, rejects expired or disabled users. Returns 401 under `/api/`; any other path redirects to `/login`. |
 | `AdminUser` extractor | `CurrentUser` that is a super admin. Others get 403. |
 | `is_active_tl(c, user_id) -> bool` | Used by `projects::reassign`. |
 | `purge_expired(c, now)` | Retention: expired sessions and invites, and invites used more than 7 days ago. |
@@ -28,7 +28,7 @@ Each module owns its tables (see [06](06-data-model.md)). Other modules use only
 | `ApiProject` extractor | Reads `Authorization: Bearer mk_...`, hashes it, finds a live key, checks the allowlist against the client IP. 401 for a missing or bad key, 403 for an IP outside the list. Updates `last_used_at` at most once per minute. |
 | `find_for(db, user, slug) -> Project` | The project a user may manage, or 404 so other projects' names do not leak. |
 | `can_manage(user, project) -> bool` | True for the owner and for every super admin. |
-| `shell(user, active, project)` | The page frame every signed-in page renders. |
+| `tab_counts(db, project_id)` | The numbers beside the project tabs, each read through its module. |
 | `create(db, acting, input)` | US-06. Makes the slug from the name. A TL owns what they create; a super admin owns it unless `owner_email` names an eligible owner. An unknown owner, a description over 280 characters or a bad icon is a form error. |
 | `eligible_owners(db, acting)` | The owners a super admin may pick: the acting super admin first, then active TLs. |
 | `find_owner(db, acting, email)` | The eligible owner with that email, case ignored, or none. |
@@ -63,7 +63,7 @@ Each module owns its tables (see [06](06-data-model.md)). Other modules use only
 
 ## 5.5 notify
 
-**Responsibility:** alert routes, the outbox, delivery, the ticket digest. Serves US-15, US-16 and US-30. A project whose owner is disabled gets no digest; its Triage tickets wait on the kanban for the new owner, and the digest watermark moves past them.
+**Responsibility:** alert routes, the outbox, delivery, the ticket digest. Serves US-15, US-16 and US-30. A project whose owner is disabled gets no digest; its Triage tickets wait on the ticket board for the new owner, and the digest watermark moves past them.
 
 | Item | Contract |
 | --- | --- |
@@ -80,12 +80,12 @@ Each module owns its tables (see [06](06-data-model.md)). Other modules use only
 
 | Route | Output |
 | --- | --- |
-| `GET /status/{slug}` | HTML |
+| `GET /api/ui/public/{slug}/status` and `/history` | JSON for the React status pages |
 | `GET /api/v1/public/status/{slug}` | JSON with the same data |
 
 ## 5.7 tickets
 
-**Responsibility:** ref IDs, tickets, kanban, the public board, the reporter view. Serves US-23 to US-29. Calls `notify::send_ticket` inside the submit transaction for the webhook. The digest reads tickets through `tickets::new_in_triage_after(project, ticket_id)`. Ticket numbers are `max + 1` per project inside the writer transaction. The public board filters Triage in SQL and again in the template (SEC-14, two layers on purpose).
+**Responsibility:** ref IDs, tickets, the ticket board, the public board, the reporter view. Serves US-23 to US-29. Calls `notify::send_ticket` inside the submit transaction for the webhook. The digest reads tickets through `tickets::new_in_triage_after(project, ticket_id)`. Ticket numbers are `max + 1` per project inside the writer transaction. The public board filters Triage in SQL and again in its route, count included (SEC-14, two layers on purpose).
 
 | Item | Contract |
 | --- | --- |
@@ -94,7 +94,7 @@ Each module owns its tables (see [06](06-data-model.md)). Other modules use only
 
 ## 5.8 platform
 
-**Responsibility:** configuration, database handle, migrations, rendering, assets, settings, rate limits, health, backup, peer ping, reset-state.
+**Responsibility:** configuration, database handle, migrations, the JSON envelope, the React app and static files, settings, rate limits, health, backup, peer ping, reset-state.
 
 ### 5.8.1 Health monitor
 

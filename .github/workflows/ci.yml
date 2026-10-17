@@ -177,7 +177,7 @@ jobs:
         run: sudo journalctl -u monita --no-pager -n 200
 
   # The project site on GitHub Pages: the landing page and docs (site/build.ts), and the demo,
-  # the debug binary on seeds/demo.sql crawled to HTML (e2e/demo/snapshot.ts). Built here,
+  # the debug binary on seeds/demo.sql rendered to static HTML (e2e/demo/snapshot.ts). Built here,
   # never committed. Main only.
   demo:
     name: publish the site
@@ -207,7 +207,9 @@ jobs:
           name: monita-debug
           path: target/debug
       - run: chmod +x target/debug/monita
-      # No `bun install`: neither script needs a package; only --screens loads Playwright.
+      # The snapshot renders each page in the runner's Chrome, so it needs Playwright.
+      - run: bun install --frozen-lockfile
+        working-directory: e2e
       - run: bun test ./site/highlight.test.ts
       - run: bun site/build.ts
       - run: bun e2e/demo/snapshot.ts

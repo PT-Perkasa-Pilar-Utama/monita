@@ -2,52 +2,98 @@
 
 ## 3.1 Shells
 
-| Shell | Template | Structure |
+| Shell | File | Structure |
 | --- | --- | --- |
-| Admin | `templates/layout/app.html` | `.app` > `.appbar-band` (top bar: brand, project, Projects, Admin menu, Docs, account menu; then the project `.tabbar`) + `.content` (`.content--side` with a `.sidenav` for Settings and Admin) > `nav.crumbs` (detail pages only) + the page, which opens with `.page-head` or `.hero`. The shared `#confirm` dialog closes the layout. Structure follows Beaverflow; colours, type and the magenta underline are Monita's own. |
-| Public | `templates/layout/public.html` | `.public` column, 760 px, 15 px body, footer with quiet links |
-| Bare | `templates/layout/bare.html` | Sign-in and invite pages: one `.panel` centered, 400 px |
+| Project | `layouts/ProjectLayout.tsx` | `TopBar` (project crumb, `PageTabs`) then `PageFrame` then the page |
+| App | `layouts/AppLayout.tsx` | `TopBar` then `PageFrame`. Projects and Admin pages. |
+| Admin | `layouts/AdminLayout.tsx` | `SidebarFrame` with `SideNav` (Users, System). A non-admin gets the not-found page. |
+| Settings | `layouts/SettingsLayout.tsx` | `SidebarFrame` with `SideNav` (General, Alerts, API keys, Allowlist) |
+| Public | `layouts/PublicLayout.tsx` | Sticky header (project name, `ThemeToggle`, `PageTabs`), `PageFrame`, footer |
+| Bare | `layouts/BareLayout.tsx` | Sign-in and invite: the brand, one card (max 420 px), a footer, `ThemeToggle` |
 
-Under 820 px the side navigation turns into a row of links above the page, the area links show icons only, and the tab bar scrolls sideways.
+Under 768 px (`md`) a side navigation becomes one scrolling row. The tab bar scrolls sideways. Area links in the top bar show icons only.
 
 ## 3.2 Navigation
 
-Project tabs, in this order: Overview, Monitors, Heartbeats, Incidents, Tickets, Settings, then Status page at the right end, which leaves the app for the public `/status/{slug}`. Settings holds General, Alerts, API keys and Allowlist, each its own page in the side navigation. Super admins also get an Admin menu: Users and System (email delivery, server configuration, limits, fixed caps). Only Settings and Admin have a side navigation; every list stays full width.
+| Place | Items |
+| --- | --- |
+| Top bar | Mark and project crumb, Projects, Admin (super admin: Users, System), Docs, account menu |
+| Account menu | Who is signed in, All projects, theme switch, Sign out |
+| Project tabs | Overview, Monitors, Heartbeats, Incidents, Tickets, Settings. Status page sits at the right end and leaves the app for `/status/{slug}`. |
+| Settings side nav | General, Alerts, API keys, Allowlist |
+| Public tabs | Status (also History), Known issues, Report a bug, My tickets |
+
+Only Settings and Admin have a side navigation. Every list stays full width. Counts show beside Monitors, Heartbeats, Incidents and Tickets when above zero.
 
 ## 3.3 Page recipes
 
+All pages open with `PageHeader`. A detail or form page puts `Crumbs` above it.
+
 | Page | Recipe |
 | --- | --- |
-| Overview | `.hero` (project badge, name, New monitor and Report incident) → `.split.split--about`: `.tiles` and the open incidents panel with an "All incidents" button in its `.tablebar`, beside `aside.about`, which sticks on wide screens and follows the page on a phone. |
-| List (monitors, heartbeats, incidents) | `.page-head` (h1, primary action) → `.overall` → `.panel` with `.tablebar` (count, search, State and Severity) and `.table.table--rich`: each monitor row carries a sparkline and 24-hour uptime, each heartbeat row a deadline bar. Empty: `.empty` in the panel; a filter that hides every row says so and offers Clear the filters. |
-| Detail (monitor, heartbeat, incident, ticket) | `nav.crumbs` → `.hero` (title, state and tags, `.page-actions`) → the page. Incident: `.split.split--aside` with the facts panel (`.kv`) first in the markup, in the narrow right column on wide screens; Post update opens a dialog. |
-| Form (create, edit) | `nav.crumbs` → `.page-head` (h1) → `.form-page`: `.panel.panel--form` > `.form`, and a `.form-aside` that explains the rules |
-| Projects | `.page-head` (search, New project) → `.pcards`; New project is a dialog with Name, Owner (super admin), Description and Icon |
-| Users | `.page-head` (Invite tech lead) → `.panel` with `.tablebar` and the table; Invite is a dialog, Disable asks to confirm |
-| Settings (General, Alerts, API keys, Allowlist) | Side navigation → `.page-head` → `.panels` (General, Alerts) or one table panel (API keys, with New API key as a dialog) or one form panel (Allowlist) |
-| Ticket board | `.page-head` (Public board) → `.board` |
-| Status page | h1 → `.headline` (state, systems up) → `.sp` grid: `.sp__systems` (problems first, bars for the first 12, the rest in `.sp__more`) beside `.sp__active` and `.sp__past` (`.inc` cards, folded when resolved) → footer links. History: `.inc` cards under month headings. |
+| Projects | `PageHeader` (`PageSearch`, New project) then a grid of project cards. New project opens `NewProjectDialog`. |
+| Overview | `PageHeader` (`ProjectBadge` lead, New monitor, Report incident) then two columns: area tiles and an Open incidents `TableCard`, beside a sticky About `aside`. |
+| List (monitors, heartbeats, incidents) | `PageHeader` (title, primary action) then `Overall`, then `TableCard` (count and `ListFilters`) holding a `Table`. Monitor rows carry a `Sparkline`. Heartbeat rows carry a `DueBar`. |
+| Detail (monitor, heartbeat) | `Crumbs`, `PageHeader` (title, `meta` badges, Edit), `StatCards`, `ChartCard`, then `AvailabilityCard` beside a Settings card of `Facts`, then a checks `TableCard` with `HistoryPager`. |
+| Detail (incident) | `Crumbs`, `PageHeader` (Post update dialog), a Facts card at left and a Timeline `TableCard` at right. |
+| Form with aside | `Crumbs`, `PageHeader`, then a `Card` form and `FormAside` in a grid. Footer: Delete (edit only) at the left; Cancel and Save at the right. |
+| Settings page | `SidebarFrame`, `PageHeader`, then one or more `Card`s (General, Alerts, Allowlist) or one `TableCard` (API keys, with New API key as a `Dialog`). |
+| Admin Users | `PageHeader` (Invite tech lead) then a `TableCard`. Invite is a `Dialog`. Disable goes through `ConfirmDialog`. |
+| System | `PageHeader` then cards: email, server, limits (one `Field` per limit), fixed caps. |
+| Ticket board | `PageHeader` (Public board) then `TicketBoard` with Triage, Backlog, In progress and Done. |
+| Ticket detail | `Crumbs`, `PageHeader`, then stage and close reason in `ToggleGroup`s. |
+| Public status | `PageHeader`, a headline sentence with a tone border, then a grid: `SystemRow`s at left; Active incidents and Past 7 days (`IncidentCard`) at right. History shows `IncidentCard`s under month headings. |
+| Public known issues | `PageHeader`, then `TicketBoard` with Backlog, In progress and Done. A card shows title and number only. |
+| Report a bug | `Card` form with a required ref ID. |
+| Sign-in, invite | `BareLayout` and one `Card`. |
 
-## 3.4 Copy rules
+## 3.4 Forms
 
-- Name things by what a TL knows: "Ping URL", not "heartbeat token endpoint".
-- Buttons say what happens: "Save heartbeat", "Revoke key", "Post update".
-- Errors say what to do: "Enter a name, for example nightly-settlement."
-- Times: relative in lists ("6m ago"), absolute in UTC on detail pages ("2026-10-16 14:02 UTC").
-- Write whole sentences. Do not stack short fragments: "No X, no Y", "Nothing ...", "One X, one Y", or a word, a comma or a period, then another word. An empty state names what will appear or what to do: "Waiting for the first check", not "No checks yet".
-- Say what is true and literal. No metaphors: "users see the updates you post", not "keeps the status page honest".
-- Durations: `6m 18s`, `2h 4m`, `3d 2h`. Latency: `182ms`. Uptime: two decimals on the status page (`99.91%`), three in the availability table (`99.987%`).
+- Build with `FieldGroup`, `Field`, `FieldLabel`, `FieldError`. Wrap a related set in `FieldSet` and `FieldLegend`.
+- Put `data-invalid` on `Field` and `aria-invalid` on the control when a field has an error.
+- A required field uses `<FieldLabel required>` and `aria-required` on the control. There are no "(optional)" labels. An unmarked field is optional.
+- A needed hint goes in the label text. A field has no subtitle and no `FieldDescription`.
+- A refused form returns 422 with `error.fields`. The page reads `ApiError.fields[name]` (`lib/api.ts`) and shows it in `FieldError` under that field. A message with no field shows in an `Alert` or a toast.
+- An option set of 2 to 7 uses `ToggleGroup` or `RadioGroup` cards. A longer set uses `Select`.
+- A form that can save keeps one primary `Button` in the footer. A busy button is disabled and shows a `Spinner`.
+- Forms use `noValidate`. The server validates.
 
-## 3.5 Do and don't
+## 3.5 States
+
+| Case | Component | Text |
+| --- | --- | --- |
+| Loading | `Skeleton` | None |
+| Nothing yet | `TableEmpty` with `title` and at most one sentence in `description` | "Add your first monitor." plus one sentence on what a monitor does |
+| A filter hides every row | `TableEmpty filtered noun="monitors" onClear` | "No monitors match these filters." and a Clear filters button |
+| Risky action | `ConfirmDialog` | Title asks the question. Description says what is lost. The button repeats the action. |
+| Result of an action | `toast.success` or `toast.error` | One sentence |
+| A secret shown once | `Alert` with `CopyField` | "Key created. Copy it now: Monita shows it only once." |
+
+`TableEmpty` sits inside the list's `TableCard` or `Card`. It replaces the table.
+
+## 3.6 Copy rules
+
+- Write whole sentences. Do not stack fragments such as "No X, no Y" or "One X, one Y".
+- State what is true and literal. Use no metaphors.
+- Say "tech lead", not "TL". Say "ticket board", not "kanban".
+- Name things by what a tech lead knows: "Ping URL", not "heartbeat token endpoint".
+- A button says what happens: "Save heartbeat", "Revoke key", "Post update".
+- An error says what to do: "Enter a name, for example nightly-settlement."
+- Use no eyebrow label, no uppercase label and no dot separator between facts. Separate facts with spacing or a comma.
+- Times in lists are relative ("6m ago"). Times on detail pages are absolute UTC.
+- Durations: `6m 18s`, `2h 4m`, `3d 2h`. Latency: `182 ms`. Uptime: two decimals on the status page (`99.91%`).
+
+## 3.7 Do and don't
 
 | Do | Don't |
 | --- | --- |
-| Put state colour in a tone pill: tinted fill, coloured word | Decorative dots, pulsing orbs, dots before labels |
-| Put a list's count in its table bar: "4 monitors" | An uppercase label above a title |
-| Put a needed hint in the field's label | A subtitle under a form field |
-| Separate facts with spacing or a comma | `·` between facts |
-| Use one `--primary` button per view | Put two light pills side by side |
-| Separate groups with hairlines | Add shadows to flat panels |
-| Fade colors on hover in 160 ms | Pulse, bounce or animate on scroll |
-| Write tokens on `:root` | Write a hex value in a template or a component rule |
-| Keep secondary text at 4.5:1 or more in both themes | Grey text that fades into the dark background |
+| Put state color in a `Badge` tone pill | Put a decorative dot or a dot before a label |
+| Put a list's count in its `TableCard` band | Put an uppercase label above a title |
+| Use the brand color for the mark, the primary button, focus, links and the chart line | Use the brand color to mark a state |
+| Use `--neutral-strong` for a finished stage | Use green for a finished stage |
+| Import icons from `components/icons` | Import an icon pack directly |
+| Use tokens (`bg-primary`, `text-down`) | Write a hex value in a component |
+| Use one `default` button per view | Put two brand buttons side by side |
+| Separate groups with hairlines | Add a shadow to a flat card |
+| Draw charts as SVG from `checks::chart` | Add a chart library |
+| Keep muted text readable in both themes | Use grey text that fades into the background |

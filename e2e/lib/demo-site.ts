@@ -31,22 +31,27 @@ function split(url: string): { path: string; query: string; hash: string } {
   return { path: m[1] || "/", query: m[2] ?? "", hash: m[3] ?? "" };
 }
 
-/** Same-site links in `html` the crawler may follow: GET hrefs with no query, outside /static. */
+/** A file the page loads rather than a page: the app's built files, /static, or any `src`. */
+function isAsset(attr: string, path: string): boolean {
+  return attr === "src" || path.startsWith("/static/") || path.startsWith("/assets/");
+}
+
+/** Same-site links in `html` the crawler may follow: GET hrefs with no query that are pages. */
 export function pageLinks(html: string): string[] {
   const out = new Set<string>();
   for (const [, attr, url] of html.matchAll(ATTR)) {
     const { path, query } = split(url!);
-    if (attr === "href" && query === "" && !path.startsWith("/static/")) out.add(path.replace(/\/+$/, "") || "/");
+    if (attr === "href" && query === "" && !isAsset(attr, path)) out.add(path.replace(/\/+$/, "") || "/");
   }
   return [...out];
 }
 
-/** The /static files `html` uses, without their cache-busting query. */
+/** The files `html` loads, without their cache-busting query. */
 export function assetLinks(html: string): string[] {
   const out = new Set<string>();
-  for (const [, , url] of html.matchAll(ATTR)) {
+  for (const [, attr, url] of html.matchAll(ATTR)) {
     const { path } = split(url!);
-    if (path.startsWith("/static/")) out.add(path);
+    if (isAsset(attr!, path)) out.add(path);
   }
   return [...out];
 }
@@ -57,9 +62,14 @@ export function rewrite(html: string, from: string, pages: Set<string>): string 
     const { path, query, hash } = split(url);
     const page = path.replace(/\/+$/, "") || "/";
     let to: string;
-    if (path.startsWith("/static/")) to = relative(from, path, false) + query + hash;
+    if (isAsset(attr, path)) to = relative(from, path, false) + query + hash;
     else if (attr !== "action" && query === "" && pages.has(page)) to = relative(from, page, true) + hash;
     else to = OFF;
     return `${attr}="${to}"`;
   });
+}
+
+/** A built stylesheet under /assets/ with its /static font URLs made relative to it. */
+export function relativeFonts(css: string): string {
+  return css.replace(/url\(("?)\/static\//g, "url($1../static/");
 }

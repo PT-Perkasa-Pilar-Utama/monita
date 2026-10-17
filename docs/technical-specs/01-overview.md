@@ -43,7 +43,7 @@ Monita is a self-hosted uptime and incident service for every project in the IT 
 - Public status page and public JSON (US-21, US-22).
 
 ### 1.2.7 tickets
-- Ref IDs, ticket submission, kanban, public board, reporter view (US-23 to US-29).
+- Ref IDs, ticket submission, ticket board, public board, reporter view (US-23 to US-29).
 
 ### 1.2.8 platform
 - Rate limits (US-31), nightly backup (US-33), `/healthz` and the peer ping (US-34), settings, database and migrations.
@@ -99,7 +99,7 @@ REPORTER
 
 VISITOR
   /status/<slug>           status page
-  /status/<slug>/tickets   public kanban
+  /status/<slug>/tickets   public ticket board
 ```
 
 ## 1.5 Assumptions and known constraints

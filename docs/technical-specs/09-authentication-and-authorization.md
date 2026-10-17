@@ -15,9 +15,9 @@
 ```text
 first install:  monita admin create --email a@x  -> prompt password -> users(role=super_admin)
 invite:         super admin -> invite_tl(email) -> email link /invite/<token>
-accept:         GET /invite/<token> -> form -> POST password -> hash, mark used, create session
-sign-in:        POST /login -> argon2 verify -> create session -> redirect /
-sign-out:       POST /logout -> delete session row
+accept:         page /invite/<token> -> GET /api/ui/invites/<token> -> POST password -> hash, mark used, create session
+sign-in:        POST /api/ui/login -> argon2 verify -> create session -> 204 with the cookie; the page goes to ?next= on this site, or /
+sign-out:       POST /api/ui/logout -> delete session row
 reset:          super admin -> new invite -> old invites and sessions deleted
 ```
 
@@ -35,6 +35,6 @@ reset:          super admin -> new invite -> old invites and sessions deleted
 | Issue ref ID | no | no | no | yes (own project) | no |
 | Submit ticket | no | no | no | yes | with a ref ID |
 | Ping heartbeat | no | no | no | no | with the token |
-| View status page, public kanban, public JSON | yes | yes | yes | yes | yes |
+| View status page, public ticket board, public JSON | yes | yes | yes | yes | yes |
 
 A TL who is not the owner gets 404 on another project's admin pages, so project names do not leak.
