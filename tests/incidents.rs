@@ -137,12 +137,7 @@ async fn check_once(app: &TestApp) {
 
 async fn setup(app: &TestApp) -> String {
     let tl = app.tl("rina@x.co").await;
-    app.post_form(
-        "/projects",
-        &[("name", "Payments"), ("slug", "payments")],
-        Some(&tl),
-    )
-    .await;
+    app.project(&tl, "Payments", "payments").await;
     tl
 }
 

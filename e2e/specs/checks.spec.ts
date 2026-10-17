@@ -5,8 +5,7 @@ import { authFile } from "../lib/roles";
 test.use({ storageState: authFile("tl") });
 
 async function newProject(page: import("@playwright/test").Page): Promise<string> {
-  const slug = `c-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-  await createProject(page, "Checks", slug);
+  const slug = await createProject(page, "Checks");
   return slug;
 }
 

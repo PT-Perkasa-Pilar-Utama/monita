@@ -19,12 +19,7 @@ async fn count(app: &TestApp, sql: &str) -> i64 {
 
 async fn setup(app: &TestApp) -> (String, String) {
     let tl = app.tl("rina@x.co").await;
-    app.post_form(
-        "/projects",
-        &[("name", "Payments"), ("slug", "payments")],
-        Some(&tl),
-    )
-    .await;
+    app.project(&tl, "Payments", "payments").await;
     let id = heartbeat::create(
         &app.state.db,
         1,
@@ -72,12 +67,7 @@ async fn tl_creates_a_heartbeat_and_sees_its_ping_url() {
     // AC-12.01, AC-12.02
     let app = TestApp::spawn("test").await;
     let tl = app.tl("rina@x.co").await;
-    app.post_form(
-        "/projects",
-        &[("name", "Payments"), ("slug", "payments")],
-        Some(&tl),
-    )
-    .await;
+    app.project(&tl, "Payments", "payments").await;
     let form = app
         .get("/projects/payments/heartbeats/new", Some(&tl))
         .await
@@ -480,12 +470,7 @@ async fn an_unknown_token_gets_404() {
 async fn bad_period_is_refused() {
     let app = TestApp::spawn("test").await;
     let tl = app.tl("rina@x.co").await;
-    app.post_form(
-        "/projects",
-        &[("name", "Payments"), ("slug", "payments")],
-        Some(&tl),
-    )
-    .await;
+    app.project(&tl, "Payments", "payments").await;
     let res = app
         .post_form(
             "/projects/payments/heartbeats",

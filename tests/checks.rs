@@ -92,12 +92,7 @@ async fn wait_for(app: &TestApp, sql: &str, at_least: i64) -> i64 {
 
 async fn tl_project(app: &TestApp) -> String {
     let tl = app.tl("rina@x.co").await;
-    app.post_form(
-        "/projects",
-        &[("name", "Payments"), ("slug", "payments")],
-        Some(&tl),
-    )
-    .await;
+    app.project(&tl, "Payments", "payments").await;
     tl
 }
 
@@ -571,12 +566,7 @@ async fn another_project_cannot_open_a_monitor_by_id() {
         .await
         .unwrap();
     let budi = app.tl("budi@x.co").await;
-    app.post_form(
-        "/projects",
-        &[("name", "Other"), ("slug", "other")],
-        Some(&budi),
-    )
-    .await;
+    app.project(&budi, "Other", "other").await;
     assert_eq!(
         app.get("/projects/other/monitors/1", Some(&budi))
             .await

@@ -13,12 +13,7 @@ use serde_json::Value;
 /// Monita detected (cause names an internal host) and the TL updated.
 async fn setup(app: &TestApp) -> String {
     let tl = app.tl("rina@x.co").await;
-    app.post_form(
-        "/projects",
-        &[("name", "Payments"), ("slug", "payments")],
-        Some(&tl),
-    )
-    .await;
+    app.project(&tl, "Payments", "payments").await;
     let public = MonitorInput {
         name: "Checkout".into(),
         url: "https://x.invalid/".into(),
@@ -124,8 +119,7 @@ async fn public_json_matches_the_page_and_allows_any_origin() {
 async fn days_before_an_item_existed_are_null() {
     let app = TestApp::spawn("test").await;
     let tl = app.tl("rina@x.co").await;
-    app.post_form("/projects", &[("name", "New"), ("slug", "new")], Some(&tl))
-        .await;
+    app.project(&tl, "New", "new").await;
     let m = MonitorInput {
         name: "API".into(),
         url: "https://x.invalid/".into(),

@@ -19,12 +19,7 @@ struct Setup {
 
 async fn setup(app: &TestApp) -> Setup {
     let tl = app.tl("rina@x.co").await;
-    app.post_form(
-        "/projects",
-        &[("name", "Payments"), ("slug", "payments")],
-        Some(&tl),
-    )
-    .await;
+    app.project(&tl, "Payments", "payments").await;
     let key = monita::projects::create_key(&app.state.db, 1, "backend")
         .await
         .unwrap();
@@ -119,12 +114,7 @@ async fn bad_ref_ids_are_refused_before_the_caps_are_counted() {
     );
 
     let other_tl = app.tl("budi@x.co").await;
-    app.post_form(
-        "/projects",
-        &[("name", "Other"), ("slug", "other")],
-        Some(&other_tl),
-    )
-    .await;
+    app.project(&other_tl, "Other", "other").await;
     let rid = ref_id(&app, &s.key, false).await;
     let wrong_project = app
         .post_form(
@@ -373,12 +363,7 @@ async fn the_digest_lists_new_triage_tickets_once_and_skips_quiet_projects() {
     let app = TestApp::spawn("test").await;
     let s = setup(&app).await;
     let quiet = app.tl("budi@x.co").await;
-    app.post_form(
-        "/projects",
-        &[("name", "Quiet"), ("slug", "quiet")],
-        Some(&quiet),
-    )
-    .await;
+    app.project(&quiet, "Quiet", "quiet").await;
     let rid = ref_id(&app, &s.key, false).await;
     submit(&app, &rid, "Checkout broken").await;
     submit(&app, &rid, "Receipt wrong").await;

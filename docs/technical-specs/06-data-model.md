@@ -76,7 +76,7 @@ erDiagram
 | id | INTEGER | no | | PK | |
 | owner_id | INTEGER | no | | FK users | |
 | name | TEXT | no | | | `Payments` |
-| slug | TEXT | no | | UNIQUE | `^[a-z0-9-]{2,40}$`. `payments` |
+| slug | TEXT | no | | UNIQUE | `^[a-z0-9-]{2,40}$`. Made at create: the name in lowercase letters, digits and dashes, cut to 33 characters, then `-` and 6 random base32 characters. `payments-k3x9qa` |
 | ip_allowlist | TEXT | yes | | | Comma-separated CIDRs. NULL means off. |
 | created_at, updated_at | INTEGER | no | | | |
 

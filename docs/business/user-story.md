@@ -47,7 +47,7 @@ Source: [decision log 2026-10-16](../decisions/2026-10-16-monita-v1-scope.md).
 ### US-06: Create a project
 
 - **Persona:** TL
-- **Action:** Create a project with a name and a slug.
+- **Action:** Create a project with a name. Monita makes its slug.
 - **Business value:** Monitors, heartbeats and tickets are grouped per project.
 
 ### US-07: Manage API keys

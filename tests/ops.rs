@@ -63,8 +63,7 @@ async fn an_api_key_is_limited_per_minute() {
     // AC-31.02
     let app = TestApp::spawn("test").await;
     let tl = app.tl("rina@x.co").await;
-    app.post_form("/projects", &[("name", "P"), ("slug", "pp")], Some(&tl))
-        .await;
+    app.project(&tl, "P", "pp").await;
     let key = monita::projects::create_key(&app.state.db, 1, "k")
         .await
         .unwrap();
@@ -95,8 +94,7 @@ async fn rollup_summarizes_old_days_before_the_sweep_deletes_raw_rows() {
     // AC-32.01, AC-32.02
     let app = TestApp::spawn("test").await;
     let tl = app.tl("rina@x.co").await;
-    app.post_form("/projects", &[("name", "P"), ("slug", "pp")], Some(&tl))
-        .await;
+    app.project(&tl, "P", "pp").await;
     let t = now();
     let today = t - t.rem_euclid(86_400);
     let old_day = today - 8 * 86_400;
@@ -171,8 +169,7 @@ async fn rollup_summarizes_old_days_before_the_sweep_deletes_raw_rows() {
 async fn the_sweep_deletes_more_than_one_chunk_of_old_rows() {
     let app = TestApp::spawn("test").await;
     let tl = app.tl("rina@x.co").await;
-    app.post_form("/projects", &[("name", "P"), ("slug", "pp")], Some(&tl))
-        .await;
+    app.project(&tl, "P", "pp").await;
     let t = now();
     app.state
         .db

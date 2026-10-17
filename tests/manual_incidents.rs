@@ -7,13 +7,7 @@ use monita::checks::{self, MonitorInput};
 
 async fn setup(app: &TestApp) -> String {
     let tl = app.tl("rina@x.co").await;
-    let res = app
-        .post_form(
-            "/projects",
-            &[("name", "Payments"), ("slug", "payments")],
-            Some(&tl),
-        )
-        .await;
+    let res = app.project(&tl, "Payments", "payments").await;
     assert_eq!(res.status(), 303, "the project exists");
     let m = MonitorInput {
         name: "API".into(),

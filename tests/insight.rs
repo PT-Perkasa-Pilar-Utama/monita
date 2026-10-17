@@ -24,12 +24,7 @@ async fn sql(app: &TestApp, sql: &str) {
 /// A TL, project 1 and monitor 1 created `age` seconds ago.
 async fn monitor(app: &TestApp, age: i64) -> i64 {
     let tl = app.tl("rina@x.co").await;
-    app.post_form(
-        "/projects",
-        &[("name", "Payments"), ("slug", "payments")],
-        Some(&tl),
-    )
-    .await;
+    app.project(&tl, "Payments", "payments").await;
     let t = now();
     sql(app, &format!("INSERT INTO monitors (id, project_id, name, url, next_check_at, created_at) VALUES (1, 1, 'API', 'https://x.co', 9999999999, {});", t - age)).await;
     t

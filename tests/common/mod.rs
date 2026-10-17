@@ -80,6 +80,35 @@ impl TestApp {
         req.send().await.unwrap()
     }
 
+    /// Creates a project through the New project form. Monita makes the slug from the name plus a
+    /// random suffix; the test then sets `slug` so its URLs stay readable. The response is the
+    /// form's own: 303 to the monitors page, or the 422 page.
+    pub async fn project(&self, cookie: &str, name: &str, slug: &str) -> Response {
+        let res = self
+            .post_form("/projects", &[("name", name)], Some(cookie))
+            .await;
+        if res.status() == 303 {
+            let made = location(&res)
+                .trim_start_matches("/projects/")
+                .trim_end_matches("/monitors")
+                .to_string();
+            let slug = slug.to_string();
+            self.state
+                .db
+                .write(async |c| {
+                    c.execute(
+                        "UPDATE projects SET slug = ?1 WHERE slug = ?2",
+                        (slug, made),
+                    )
+                    .await?;
+                    Ok(())
+                })
+                .await
+                .unwrap();
+        }
+        res
+    }
+
     /// A browser form post: carries Monita's origin, as a same-site browser would.
     pub async fn post_form(
         &self,

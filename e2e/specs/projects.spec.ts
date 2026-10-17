@@ -5,8 +5,7 @@ import { authFile } from "../lib/roles";
 test.use({ storageState: authFile("tl") });
 
 test("@US-06 @US-07 TL creates a project and a key that is shown once", async ({ page }) => {
-  const slug = `p-${Date.now()}`;
-  await createProject(page, "Payments", slug);
+  const slug = await createProject(page, "Payments");
   await expect(page).toHaveURL(new RegExp(`/projects/${slug}/monitors$`));
   await expect(page.getByRole("heading", { name: "Add your first monitor" })).toBeVisible();
 

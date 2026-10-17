@@ -6,8 +6,7 @@ use common::{TestApp, location};
 use serde_json::Value;
 
 async fn project(app: &TestApp, cookie: &str, name: &str, slug: &str) -> reqwest::Response {
-    app.post_form("/projects", &[("name", name), ("slug", slug)], Some(cookie))
-        .await
+    app.project(cookie, name, slug).await
 }
 
 /// Creates a key on the settings page and reads it back from the one-time notice.
@@ -43,7 +42,7 @@ async fn tl_creates_a_project_and_owns_it() {
     let tl = app.tl("rina@x.co").await;
     let res = project(&app, &tl, "Payments", "payments").await;
     assert_eq!(res.status(), 303);
-    assert_eq!(location(&res), "/projects/payments/monitors");
+    assert!(location(&res).starts_with("/projects/payments-"));
     let settings = app
         .get("/projects/payments/settings", Some(&tl))
         .await
@@ -70,16 +69,32 @@ async fn every_project_page_links_to_its_public_status_page() {
 }
 
 #[tokio::test]
-async fn a_slug_is_unique_and_well_formed() {
+async fn monita_makes_a_unique_slug_from_the_name() {
     // AC-06.02
     let app = TestApp::spawn("test").await;
     let tl = app.tl("rina@x.co").await;
-    project(&app, &tl, "Payments", "payments").await;
-    assert_eq!(
-        project(&app, &tl, "Payments 2", "payments").await.status(),
-        422
-    );
-    assert_eq!(project(&app, &tl, "Bad", "Has Spaces").await.status(), 422);
+    let mut slugs = Vec::new();
+    for _ in 0..2 {
+        let res = app
+            .post_form("/projects", &[("name", "Customer Portal")], Some(&tl))
+            .await;
+        assert_eq!(res.status(), 303);
+        let slug = location(&res)
+            .trim_start_matches("/projects/")
+            .trim_end_matches("/monitors")
+            .to_string();
+        let (base, suffix) = slug.rsplit_once('-').unwrap();
+        assert_eq!(base, "customer-portal");
+        assert_eq!(suffix.len(), 6);
+        let status = app.get(&format!("/status/{slug}"), None).await.status();
+        assert_eq!(status, 200, "AC-06.03");
+        slugs.push(slug);
+    }
+    assert_ne!(slugs[0], slugs[1]);
+    let blank = app
+        .post_form("/projects", &[("name", "  ")], Some(&tl))
+        .await;
+    assert_eq!(blank.status(), 422);
 }
 
 #[tokio::test]

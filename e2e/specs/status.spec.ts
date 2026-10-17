@@ -6,8 +6,7 @@ test.describe("as the TL", () => {
   test.use({ storageState: authFile("tl") });
 
   test("@US-21 @US-22 a visitor sees public items only, with 90 day bars, and the same data as JSON", async ({ page, browser }) => {
-    const slug = `s-${Date.now()}`;
-    await createProject(page, "Storefront", slug);
+    const slug = await createProject(page, "Storefront");
 
     await page.goto(`/projects/${slug}/monitors/new`);
     await page.getByLabel("Name").fill("Checkout");

@@ -134,17 +134,18 @@ Then the monitors, incidents and tickets do not change
 
 ```gherkin
 Given the TL is signed in
-When the TL creates a project with a name and a slug
+When the TL creates a project with a name
 Then Monita creates the project
   And the TL is the owner
+  And the slug is the name in lowercase letters, digits and dashes, then a dash and 6 random characters
 ```
 
 ### AC-06.02: The slug is unique
 
 ```gherkin
-Given a project with the slug exists
-When the TL creates a project with the same slug
-Then Monita rejects the project
+Given a project named "Customer Portal" exists
+When the TL creates a second project named "Customer Portal"
+Then Monita creates it with a different slug
 ```
 
 ### AC-06.03: The slug forms the status page URL

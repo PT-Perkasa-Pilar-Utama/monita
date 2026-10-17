@@ -34,7 +34,6 @@ struct Home {
     shell: Shell,
     projects: Vec<Project>,
     name: String,
-    slug: String,
     error: String,
 }
 
@@ -48,14 +47,12 @@ async fn home_view(
     state: &AppState,
     user: &User,
     name: String,
-    slug: String,
     error: String,
 ) -> Result<Home, PageError> {
     Ok(Home {
         shell: super::shell(&state.db, user, "projects", None).await?,
         projects: super::list_for(&state.db, user).await?,
         name,
-        slug,
         error,
     })
 }
@@ -65,14 +62,13 @@ async fn home(
     CurrentUser(user): CurrentUser,
 ) -> Result<Response, PageError> {
     Ok(render(
-        &home_view(&state, &user, String::new(), String::new(), String::new()).await?,
+        &home_view(&state, &user, String::new(), String::new()).await?,
     ))
 }
 
 #[derive(Deserialize)]
 struct NewProject {
     name: String,
-    slug: String,
 }
 
 async fn create(
@@ -80,11 +76,11 @@ async fn create(
     CurrentUser(user): CurrentUser,
     Form(f): Form<NewProject>,
 ) -> Result<Response, PageError> {
-    match super::create(&state.db, &user, &f.name, &f.slug).await {
+    match super::create(&state.db, &user, &f.name).await {
         Ok(p) => Ok(Redirect::to(&format!("/projects/{}/monitors", p.slug)).into_response()),
         Err(ProjectError::Other(e)) => Err(e.into()),
         Err(e) => {
-            let page = home_view(&state, &user, f.name, f.slug, e.to_string()).await?;
+            let page = home_view(&state, &user, f.name, e.to_string()).await?;
             Ok((StatusCode::UNPROCESSABLE_ENTITY, render(&page)).into_response())
         }
     }

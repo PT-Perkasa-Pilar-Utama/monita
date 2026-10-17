@@ -5,8 +5,7 @@ import { authFile } from "../lib/roles";
 test.use({ storageState: authFile("tl") });
 
 async function projectWithHeartbeat(page: Page): Promise<{ slug: string; pingUrl: string }> {
-  const slug = `i-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-  await createProject(page, "Incidents", slug);
+  const slug = await createProject(page, "Incidents");
   await page.goto(`/projects/${slug}/heartbeats/new`);
   await page.getByLabel("Name").fill("nightly-settlement");
   await page.getByRole("button", { name: "Save heartbeat" }).click();

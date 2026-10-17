@@ -38,13 +38,7 @@ fn upto(n: i64) -> String {
 /// A TL with the project `payments`. Returns the TL's cookie.
 async fn tl_with_project(app: &TestApp) -> String {
     let tl = app.tl("rina@x.co").await;
-    let res = app
-        .post_form(
-            "/projects",
-            &[("name", "Payments"), ("slug", "payments")],
-            Some(&tl),
-        )
-        .await;
+    let res = app.project(&tl, "Payments", "payments").await;
     assert_eq!(res.status(), 303);
     tl
 }
@@ -62,13 +56,7 @@ async fn a_full_instance_refuses_another_project() {
         ),
     )
     .await;
-    let res = app
-        .post_form(
-            "/projects",
-            &[("name", "One more"), ("slug", "one-more")],
-            Some(&tl),
-        )
-        .await;
+    let res = app.project(&tl, "One more", "one-more").await;
     assert_eq!(res.status(), 422);
     assert!(res.text().await.unwrap().contains("200 projects"));
     assert_eq!(

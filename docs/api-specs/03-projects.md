@@ -7,7 +7,7 @@ Fields: [../technical-specs/06-data-model.md sections 6.3.4 and 6.3.5](../techni
 | Method | Path | Access | Input | Behavior | AC |
 | --- | --- | --- | --- | --- | --- |
 | GET | `/` | session | | Project list: own projects for a TL, all for a super admin | |
-| POST | `/projects` | session | `name`, `slug` | Create, owner = caller. Taken slug: 422 "Slug already used". Seeds two `alert_routes` rows. | AC-06.01, AC-06.02 |
+| POST | `/projects` | session | `name` | Create, owner = caller. The slug is made from the name plus 6 random characters; a taken draw is drawn again. A blank name: 422. Seeds two `alert_routes` rows. Redirects to the monitors page. | AC-06.01, AC-06.02 |
 | GET | `/projects/{slug}` | owner, super_admin | | Overview: a tile per area (monitors, heartbeats, tickets in Triage), the newest 5 open incidents, and the project's facts and counts. | |
 | GET | `/projects/{slug}/settings` | owner, super_admin | | General: name, slug, status page, created, owner. A super admin reassigns from a dialog here. | AC-05.01 |
 | GET | `/projects/{slug}/settings/keys` | owner, super_admin | | The key list (name, prefix, last used, revoked) and the New API key dialog. | AC-07.01, AC-07.02 |

@@ -25,10 +25,6 @@ pub use store::{ApiKeyRow, Project};
 pub enum ProjectError {
     #[error("Enter a name.")]
     InvalidName,
-    #[error("Use 2 to 40 lowercase letters, digits or dashes.")]
-    InvalidSlug,
-    #[error("Slug already used.")]
-    SlugTaken,
     #[error("Not a valid IP or CIDR: {0}")]
     InvalidCidr(String),
     /// A hard cap in `platform::caps` is reached.
@@ -38,43 +34,59 @@ pub enum ProjectError {
     Other(#[from] anyhow::Error),
 }
 
-pub fn valid_slug(slug: &str) -> bool {
-    (2..=40).contains(&slug.len())
-        && slug
-            .bytes()
-            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
+/// The random part of a generated slug: 6 base32 characters, about a billion values.
+const SUFFIX: usize = 6;
+/// The longest slug the data model allows (technical-specs 06).
+const SLUG_MAX: usize = 40;
+
+/// US-06: the name in lowercase letters, digits and dashes, cut to fit, then `-` and the suffix.
+/// A name with none of those characters becomes `project`.
+pub fn slug_for(name: &str, suffix: &str) -> String {
+    let mut base = String::new();
+    for c in name.to_lowercase().chars() {
+        if c.is_ascii_alphanumeric() {
+            base.push(c);
+        } else if !base.is_empty() && !base.ends_with('-') {
+            base.push('-');
+        }
+    }
+    let base: String = base.chars().take(SLUG_MAX - 1 - suffix.len()).collect();
+    let base = match base.trim_end_matches('-') {
+        "" => "project",
+        b => b,
+    };
+    format!("{base}-{suffix}")
 }
 
 /// US-06: creates the project with the caller as owner, plus its two alert routes.
-pub async fn create(
-    db: &Db,
-    owner: &User,
-    name: &str,
-    slug: &str,
-) -> Result<Project, ProjectError> {
+pub async fn create(db: &Db, owner: &User, name: &str) -> Result<Project, ProjectError> {
     let name = name.trim();
-    let slug = slug.trim().to_lowercase();
     if name.is_empty() || name.chars().count() > 80 {
         return Err(ProjectError::InvalidName);
     }
-    if !valid_slug(&slug) {
-        return Err(ProjectError::InvalidSlug);
-    }
-    db.write(async |c| {
-        if store::count_projects(c).await? >= caps::PROJECTS {
-            return Ok(Err(ProjectError::Full(format!(
-                "This Monita holds {} projects, its limit.",
-                caps::PROJECTS
-            ))));
-        }
-        if store::find_by_slug(c, &slug).await?.is_some() {
-            return Ok(Err(ProjectError::SlugTaken));
-        }
-        let id = store::insert(c, owner.id, name, &slug).await?;
-        crate::notify::create_routes(c, id).await?;
-        Ok(Ok(()))
-    })
-    .await??;
+    let slug = db
+        .write(async |c| {
+            if store::count_projects(c).await? >= caps::PROJECTS {
+                return Ok(Err(ProjectError::Full(format!(
+                    "This Monita holds {} projects, its limit.",
+                    caps::PROJECTS
+                ))));
+            }
+            // A taken slug needs the same name and the same suffix; three draws in a row is not
+            // a real case, so it is an error rather than a loop.
+            for _ in 0..3 {
+                let slug = slug_for(name, &token::random_token()[..SUFFIX]);
+                if store::find_by_slug(c, &slug).await?.is_none() {
+                    let id = store::insert(c, owner.id, name, &slug).await?;
+                    crate::notify::create_routes(c, id).await?;
+                    return Ok(Ok(slug));
+                }
+            }
+            Err(anyhow::anyhow!(
+                "three random slugs for {name:?} were taken"
+            ))
+        })
+        .await??;
     store::find_by_slug(&db.read().await?, &slug)
         .await?
         .ok_or_else(|| ProjectError::Other(anyhow::anyhow!("project {slug} vanished after insert")))
@@ -294,5 +306,26 @@ impl FromRequestParts<AppState> for ApiProject {
             tracing::warn!(key_id, error = %e, "could not record the key's last use");
         }
         Ok(ApiProject(project))
+    }
+}
+
+#[cfg(test)]
+mod slug_tests {
+    use super::slug_for;
+
+    #[test]
+    fn a_slug_is_the_name_in_lowercase_with_dashes_then_the_suffix() {
+        assert_eq!(
+            slug_for("  Customer Portal (EU)! ", "ab2cd3"),
+            "customer-portal-eu-ab2cd3"
+        );
+        assert_eq!(slug_for("Kasir ☕ Toko", "ab2cd3"), "kasir-toko-ab2cd3");
+    }
+
+    #[test]
+    fn a_long_name_is_cut_to_fit_and_a_name_without_letters_becomes_project() {
+        let slug = slug_for(&"a-".repeat(40), "ab2cd3");
+        assert!(slug.len() <= 40 && !slug.contains("--"), "{slug}");
+        assert_eq!(slug_for("☕☕", "ab2cd3"), "project-ab2cd3");
     }
 }

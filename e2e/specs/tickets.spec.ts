@@ -5,8 +5,7 @@ import { authFile } from "../lib/roles";
 test.use({ storageState: authFile("tl") });
 
 test("@US-23 @US-24 @US-25 @US-26 @US-28 @US-29 a reported bug goes public only after the TL triages it", async ({ page, browser }) => {
-  const slug = `t-${Date.now()}`;
-  await createProject(page, "Shop", slug);
+  const slug = await createProject(page, "Shop");
   await page.goto(`/projects/${slug}/settings/keys`);
   await page.getByRole("button", { name: "New API key" }).click();
   await page.getByLabel("Key name").fill("backend");
