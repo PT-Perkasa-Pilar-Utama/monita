@@ -2,11 +2,8 @@
 {% import "ui/macros.html" as ui %}
 {% block title %}{{ status.project.name }} status{% endblock %}
 {% block content %}
-<header class="stack stack--sm">
-  <span class="cap">Status</span>
-  <h1>{{ status.project.name }}</h1>
-</header>
-<div class="headline">{% call ui::st(status.overall) %}{% endcall %}{{ self.headline() }}</div>
+<h1>{{ status.project.name }} status</h1>
+<div class="headline headline--{{ status.overall }}">{{ self.headline() }}</div>
 
 {% if status.items.is_empty() %}
   <p class="muted">This project has no public monitors yet.</p>
@@ -31,10 +28,10 @@
   {% endif %}
   {% for inc in status.incidents %}
   <article class="stack stack--sm">
-    <div class="stack stack--sm"><strong>{{ inc.title }}</strong><span class="cap">{{ self.when(inc) }} · {{ inc.items.join(", ") }}</span></div>
+    <div class="stack stack--sm"><strong>{{ inc.title }}</strong><span class="subtle">{{ self.when(inc) }}. Affects {{ inc.items.join(", ") }}.</span></div>
     <ol class="timeline">
       {% for u in inc.updates %}
-      <li class="timeline__item"><span class="st st--{% if u.label == "resolved" %}up{% else if u.label == "investigating" %}down{% else if u.label == "identified" %}progress{% else %}done{% endif %} timeline__mark"></span>
+      <li class="timeline__item">
         <div class="timeline__body"><div class="timeline__meta">{% call ui::chip(u.label, self.label(u.label)) %}{% endcall %}<span class="cap">{{ self.hhmm(u.at) }}</span></div><span class="timeline__text">{{ u.message }}</span></div>
       </li>
       {% endfor %}

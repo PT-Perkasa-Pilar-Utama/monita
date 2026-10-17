@@ -3,7 +3,7 @@
 {% block title %}Projects · Monita{% endblock %}
 {% block crumbs %}<strong>Projects</strong>{% endblock %}
 {% block content %}
-<div class="page-head"><div><span class="cap">{{ projects.len() }} projects</span><h1>Projects</h1></div></div>
+<div class="page-head"><div class="page-title"><h1>Projects</h1><span class="count">{{ projects.len() }}</span></div></div>
 <div class="stack stack--lg">
   <section class="panel">
     {% if projects.is_empty() %}
@@ -30,8 +30,8 @@
     <form class="panel__body form" method="post" action="/projects">
       {% if !error.is_empty() %}{% call ui::notice("error", error) %}{% endcall %}{% endif %}
       <div class="field__row">
-        {% call ui::input("name", "name", "Name", "text", name, "", "For example Payments.") %}{% endcall %}
-        {% call ui::input("slug", "slug", "Slug", "text", slug, "", "Lowercase, used in the status page URL.") %}{% endcall %}
+        {% call ui::input("name", "name", "Name", "text", name, "") %}{% endcall %}
+        {% call ui::input("slug", "slug", "Slug", "text", slug, "") %}{% endcall %}
       </div>
       <div class="form__actions"><button class="btn btn--primary" type="submit">Create project</button></div>
     </form>

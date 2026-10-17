@@ -293,7 +293,7 @@ async fn the_ping_list_pages_with_an_older_link() {
         "the last page has no Older link"
     );
     // Each ping row carries an OK state; nothing else on the page does.
-    let rows = |html: &str| html.matches("</span>OK</span>").count();
+    let rows = |html: &str| html.matches("state--up\">OK</span>").count();
     assert_eq!(
         rows(&first) as i64 + rows(&second) as i64,
         caps::PINGS_PAGE + 1

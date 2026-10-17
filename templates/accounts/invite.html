@@ -7,8 +7,8 @@
   {% if usable %}
   <form class="panel__body form" method="post">
     {% if let Some(error) = error %}{% call ui::notice("error", error) %}{% endcall %}{% endif %}
-    {% call ui::input("password", "password", "New password", "password", "", "", "Use at least 12 characters.") %}{% endcall %}
-    {% call ui::input("password_confirm", "password_confirm", "Repeat password", "password", "", "", "") %}{% endcall %}
+    {% call ui::input("password", "password", "New password", "password", "", "") %}{% endcall %}
+    {% call ui::input("password_confirm", "password_confirm", "Repeat password", "password", "", "") %}{% endcall %}
     <div class="form__actions"><button class="btn btn--primary" type="submit">Save password</button></div>
   </form>
   {% else %}

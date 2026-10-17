@@ -3,7 +3,7 @@
 {% block title %}Alerts · {{ project.name }} · Monita{% endblock %}
 {% block crumbs %}<span>{{ project.name }}</span><span class="subtle">/</span><strong>Alerts</strong>{% endblock %}
 {% block content %}
-<div class="page-head"><div><span class="cap">Who hears about incidents</span><h1>Alerts</h1></div></div>
+<div class="page-head"><div><h1>Alerts</h1></div></div>
 <div class="stack stack--lg">
 {% for r in routes %}
   <section class="panel" id="{{ r.severity }}">
@@ -15,14 +15,12 @@
       {% if focus == r.severity && !error.is_empty() %}{% call ui::notice("error", error) %}{% endcall %}{% endif %}
       {% if focus == r.severity && !notice.is_empty() %}{% call ui::notice("ok", notice) %}{% endcall %}{% endif %}
       <div class="field">
-        <label class="label" for="emails-{{ r.severity }}">Email addresses</label>
+        <label class="label" for="emails-{{ r.severity }}">Email addresses, one per line</label>
         <textarea class="textarea" id="emails-{{ r.severity }}" name="emails" placeholder="oncall@company.co.id">{{ self.emails(r) }}</textarea>
-        <span class="help">One per line. Each gets an email when an incident opens and when it closes.</span>
       </div>
       <div class="field">
         <label class="label" for="webhook-{{ r.severity }}">Webhook URL</label>
         <input class="input mono" id="webhook-{{ r.severity }}" name="webhook_url" type="url" value="{{ self.webhook(r) }}" placeholder="https://hooks.slack.com/services/…">
-        <span class="help">Monita posts JSON with a <code>text</code> field, so Slack and Teams incoming webhooks work as-is.</span>
       </div>
       <label class="check" for="use-{{ r.severity }}"><input type="checkbox" id="use-{{ r.severity }}" name="use_webhook" value="on"{% if r.use_webhook %} checked{% endif %}><span>Send {{ r.severity }} alerts to the webhook</span></label>
       <div class="form__actions"><button class="btn btn--primary" type="submit">Save {{ r.severity }} alerts</button></div>

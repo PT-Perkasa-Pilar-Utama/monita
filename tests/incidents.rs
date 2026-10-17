@@ -642,7 +642,7 @@ async fn a_manual_incident_marks_its_items_and_closes_on_resolved() {
         .text()
         .await
         .unwrap();
-    assert!(list.contains("state\"><span class=\"st st--issue\"></span>Issue"));
+    assert!(list.contains("state state--issue\">Issue"));
 
     app.post_form(
         "/projects/payments/incidents/1/updates",

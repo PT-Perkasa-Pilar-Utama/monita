@@ -49,7 +49,7 @@ test("@US-14 @US-17 @US-18 @US-19 a failing job opens an incident, the TL update
   expect((await page.request.get(pingUrl)).status()).toBe(200);
   await page.reload();
   await expect(page.getByText(/Recovered after/)).toBeVisible();
-  await expect(page.locator(".page-head .cap")).toContainText("resolved");
+  await expect(page.locator(".page-head .state")).toContainText("Resolved");
 });
 
 test("@US-20 TL reports an incident by hand and resolves it", async ({ page }) => {
@@ -71,5 +71,5 @@ test("@US-20 TL reports an incident by hand and resolves it", async ({ page }) =
   await page.getByLabel("Label").selectOption("resolved");
   await page.getByLabel("Message").fill("Index added. Reports take 90 seconds.");
   await page.getByRole("button", { name: "Post update" }).click();
-  await expect(page.locator(".page-head .cap")).toContainText("resolved");
+  await expect(page.locator(".page-head .state")).toContainText("Resolved");
 });

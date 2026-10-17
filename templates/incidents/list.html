@@ -4,7 +4,7 @@
 {% block crumbs %}<span>{{ project.name }}</span><span class="subtle">/</span><strong>Incidents</strong>{% endblock %}
 {% block actions %}<a class="btn btn--primary btn--sm" href="/projects/{{ project.slug }}/incidents/new">{% call ui::icon("plus") %}{% endcall %}Report incident</a>{% endblock %}
 {% block content %}
-<div class="page-head"><div><span class="cap">{{ open.len() }} open</span><h1>Incidents</h1></div>
+<div class="page-head"><div class="page-title"><h1>Incidents</h1><span class="count">{{ open.len() }} open</span></div>
   <nav class="tabs" aria-label="Incident view"><a href="/projects/{{ project.slug }}/incidents"{% if !show_resolved %} aria-current="page"{% endif %}>Open</a><a href="/projects/{{ project.slug }}/incidents?state=resolved"{% if show_resolved %} aria-current="page"{% endif %}>Resolved</a></nav>
 </div>
 <section class="panel">
@@ -18,7 +18,7 @@
       <tbody>
       {% for i in rows %}
         <tr>
-          <td><a class="table__title" href="/projects/{{ project.slug }}/incidents/{{ i.id }}">{{ i.title }}</a><div class="cap">INC-{{ i.id }} · {% if i.origin == "auto" %}detected{% else %}reported{% endif %}</div></td>
+          <td><a class="table__title" href="/projects/{{ project.slug }}/incidents/{{ i.id }}">{{ i.title }}</a><div class="table__sub">INC-{{ i.id }} {% if i.origin == "auto" %}detected by Monita{% else %}reported by hand{% endif %}</div></td>
           <td>{% if i.severity == "critical" %}{% call ui::chip("critical", "Critical") %}{% endcall %}{% else %}{% call ui::chip("warning", "Warning") %}{% endcall %}{% endif %}</td>
           <td>{% if let Some(l) = i.last_label %}{% call ui::chip(l, self.label(i)) %}{% endcall %}{% endif %}</td>
           <td class="hide-sm mono">{{ self.started(i) }}</td>

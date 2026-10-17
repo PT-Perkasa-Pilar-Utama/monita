@@ -7,25 +7,23 @@
 {% let st = self.state() %}
 <div class="detail">
 <header class="hero">
-  <span class="orb orb--{{ st.0 }}" aria-hidden="true"></span>
   <div class="hero__body">
     <h1>{{ hb.name }}</h1>
-    <p class="hero__meta"><span class="hero__state hero__state--{{ st.0 }}">{{ st.1 }}</span><span>Expected every {{ self.period() }}</span><span>Grace {{ self.grace() }}</span></p>
+    <p class="hero__meta"><span class="hero__state state state--{{ st.0 }}">{{ st.1 }}</span><span>Expected every {{ self.period() }}</span><span>Grace {{ self.grace() }}</span></p>
   </div>
   <div class="hero__tags">{% if hb.severity == "critical" %}{% call ui::chip("critical", "Critical") %}{% endcall %}{% else %}{% call ui::chip("warning", "Warning") %}{% endcall %}{% endif %}<span class="tag">{% if hb.is_public %}On the status page{% else %}Hidden{% endif %}</span></div>
 </header>
 <section class="panel ping-url">
   <div class="panel__body stack stack--sm">
-    <div class="row row--between"><span class="cap">Call this URL with GET, HEAD or POST when the job succeeds</span><span class="cap">{% if let Some(d) = hb.deadline_at %}Next deadline {{ self.utc(d) }}{% else %}Missed. The next ping resets it.{% endif %}</span></div>
     {% call ui::secret("ping-url", ping_url) %}{% endcall %}
-    <p class="help">Add <code>/fail</code> to report a failure at once. Its request body, up to 1 KB, becomes the incident's cause.</p>
+    <p class="muted">Call it with GET, HEAD or POST when the job succeeds. Add <code>/fail</code> to report a failure; the first 1 KB of the body becomes the cause. {% if let Some(d) = hb.deadline_at %}Next deadline {{ self.utc(d) }}.{% else %}The deadline was missed; the next ping resets it.{% endif %}</p>
   </div>
 </section>
 {% let stats = self.stats() %}
 {% include "checks/insight.html" %}
 {% include "checks/availability.html" %}
 <section class="panel">
-  <div class="panel__head"><h2>Pings, last 7 days</h2><span class="cap">{{ pings.len() }} shown, newest first</span></div>
+  <div class="panel__head"><h2>Pings, last 7 days</h2></div>
   {% if pings.is_empty() %}
     {% call ui::empty("No pings yet", "The first ping arrives when the job next runs.") %}{% endcall %}
   {% else %}

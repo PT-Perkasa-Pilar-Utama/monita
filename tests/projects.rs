@@ -282,7 +282,7 @@ async fn the_allowlist_is_off_by_default_and_blocks_other_ips() {
         .text()
         .await
         .unwrap();
-    assert!(settings.contains("IP allowlist</h2><span class=\"cap\">Off"));
+    assert!(settings.contains("IP allowlist</h2><span class=\"tag\">Off"));
     assert_eq!(ref_id(&app, Some(&key), Value::Null).await.status(), 201);
 
     let res = app

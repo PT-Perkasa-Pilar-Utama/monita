@@ -7,14 +7,13 @@
   <div class="panel__head"><h2>{% if id.is_some() %}Edit heartbeat{% else %}New heartbeat{% endif %}</h2></div>
   <form class="panel__body form" method="post" action="{{ self.action() }}">
     {% if !errors.is_empty() %}{% call ui::notice("error", "Fix the fields marked below.") %}{% endcall %}{% endif %}
-    {% call ui::input("name", "name", "Name", "text", input.name, self.err("name"), "For example nightly-settlement.") %}{% endcall %}
+    {% call ui::input("name", "name", "Name", "text", input.name, self.err("name")) %}{% endcall %}
     <div class="field__row">
       <div class="field"><label class="label" for="period_s">Runs every</label>
         <select class="select" id="period_s" name="period_s">{% for (v, l) in self.periods() %}<option value="{{ v }}"{% if *v == input.period_s %} selected{% endif %}>{{ l }}</option>{% endfor %}</select>
       </div>
       <div class="field"><label class="label" for="grace_s">Grace time</label>
         <select class="select" id="grace_s" name="grace_s">{% for (v, l) in self.graces() %}<option value="{{ v }}"{% if *v == input.grace_s %} selected{% endif %}>{{ l }}</option>{% endfor %}</select>
-        <span class="help">How late a ping may arrive before Monita calls it missed.</span>
       </div>
     </div>
     <fieldset class="field fieldset">

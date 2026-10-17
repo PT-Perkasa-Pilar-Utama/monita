@@ -53,7 +53,7 @@ fn interval_label(s: i64) -> &'static str {
 fn check_summary(c: &CheckRow) -> String {
     let latency = c.latency_ms.map(|l| format!("{l}ms")).unwrap_or_default();
     match (c.status_code, &c.error) {
-        (Some(code), _) => format!("{code} · {latency}"),
+        (Some(code), _) => format!("{code} in {latency}"),
         (None, Some(e)) => e.chars().take(60).collect(),
         (None, None) => latency,
     }
@@ -303,7 +303,7 @@ impl DetailPage {
             Some(c) => (
                 "Last check",
                 time::ago(c.checked_at, i.now),
-                format!("{} · {}", self.code(c), self.latency(c)),
+                format!("{} in {}", self.code(c), self.latency(c)),
                 if c.ok { "up" } else { "down" },
             ),
             None => (

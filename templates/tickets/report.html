@@ -2,16 +2,16 @@
 {% import "ui/macros.html" as ui %}
 {% block title %}Report a bug · {{ project.name }}{% endblock %}
 {% block content %}
-<header class="stack stack--sm"><span class="cap">{{ project.name }}</span><h1>Report a bug</h1></header>
+<header class="stack stack--sm"><h1>Report a bug in {{ project.name }}</h1></header>
 {% if let Some(n) = created %}
   {% call ui::notice("ok", self.thanks(n)) %}{% endcall %}
 {% else %}
 <form class="form" method="post">
   {% if !error.is_empty() %}{% call ui::notice("error", error) %}{% endcall %}{% endif %}
-  {% call ui::input("ref_id", "ref_id", "Ref ID", "text", ref_id, "", self.ref_help()) %}{% endcall %}
-  {% call ui::input("title", "title", "What went wrong", "text", title, "", "3 to 120 characters.") %}{% endcall %}
+  {% call ui::input("ref_id", "ref_id", "Ref ID", "text", ref_id, "") %}{% endcall %}
+  {% call ui::input("title", "title", "What went wrong", "text", title, "") %}{% endcall %}
   <div class="field"><label class="label" for="description">Details</label><textarea class="textarea" id="description" name="description" placeholder="What you did, what you expected, what happened.">{{ description }}</textarea><span class="help">Only the team sees this. Do not include passwords.</span></div>
-  {% call ui::input("page_url", "page_url", "Page URL (optional)", "url", page_url, "", "") %}{% endcall %}
+  {% call ui::input("page_url", "page_url", "Page URL (optional)", "url", page_url, "") %}{% endcall %}
   <div class="form__actions"><button class="btn btn--primary" type="submit">Send report</button></div>
 </form>
 {% endif %}

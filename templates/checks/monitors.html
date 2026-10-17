@@ -4,7 +4,7 @@
 {% block crumbs %}<span>{{ project.name }}</span><span class="subtle">/</span><strong>Monitors</strong>{% endblock %}
 {% block actions %}<a class="btn btn--primary btn--sm" href="/projects/{{ project.slug }}/monitors/new">{% call ui::icon("plus") %}{% endcall %}New monitor</a>{% endblock %}
 {% block content %}
-<div class="page-head"><div><span class="cap">{{ monitors.len() }} monitors</span><h1>Monitors</h1></div></div>
+<div class="page-head"><div class="page-title"><h1>Monitors</h1><span class="count">{{ monitors.len() }}</span></div></div>
 <section class="panel">
   {% if monitors.is_empty() %}
     {% call ui::empty("No monitors yet", "A monitor checks a URL on an interval and tells you when it stops answering. Add the health endpoint of your service first.") %}{% endcall %}

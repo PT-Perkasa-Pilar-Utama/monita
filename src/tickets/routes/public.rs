@@ -21,9 +21,6 @@ struct ReportPage {
 }
 
 impl ReportPage {
-    fn ref_help(&self) -> String {
-        format!("Your account page in {} shows it.", self.project.name)
-    }
     fn thanks(&self, n: &i64) -> String {
         format!(
             "Thanks. Your report is ticket #{n}. Track it with your ref ID on the My tickets page."

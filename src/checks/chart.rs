@@ -275,7 +275,7 @@ pub fn latency(
                 y: BOTTOM - 6.0,
                 h: 6.0,
                 title: format!(
-                    "{} · {} of {} checks failed",
+                    "{}: {} of {} checks failed",
                     when(w, b.index),
                     b.total - b.ok,
                     b.total
@@ -288,11 +288,11 @@ pub fn latency(
             y: FULL.0,
             h: FULL.1,
             title: format!(
-                "{} · {} checks{}",
+                "{}: {} checks{}",
                 when(w, b.index),
                 b.total,
                 b.avg_ms
-                    .map(|v| format!(" · mean {v} ms"))
+                    .map(|v| format!(", mean {v} ms"))
                     .unwrap_or_default()
             ),
         });
@@ -351,7 +351,7 @@ pub fn pings(
             y: BOTTOM - h,
             h,
             title: format!(
-                "{} · {} ok, {} failed",
+                "{}: {} ok, {} failed",
                 when(w, b.index),
                 b.ok,
                 b.total - b.ok

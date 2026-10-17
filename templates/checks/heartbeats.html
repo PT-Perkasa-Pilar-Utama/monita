@@ -4,7 +4,7 @@
 {% block crumbs %}<span>{{ project.name }}</span><span class="subtle">/</span><strong>Heartbeats</strong>{% endblock %}
 {% block actions %}<a class="btn btn--primary btn--sm" href="/projects/{{ project.slug }}/heartbeats/new">{% call ui::icon("plus") %}{% endcall %}New heartbeat</a>{% endblock %}
 {% block content %}
-<div class="page-head"><div><span class="cap">{{ heartbeats.len() }} heartbeats</span><h1>Heartbeats</h1></div></div>
+<div class="page-head"><div class="page-title"><h1>Heartbeats</h1><span class="count">{{ heartbeats.len() }}</span></div></div>
 <section class="panel">
   {% if heartbeats.is_empty() %}
     {% call ui::empty("No heartbeats yet", "A heartbeat tells you when a cron job stops running. Create one and add its URL to the end of the job.") %}{% endcall %}

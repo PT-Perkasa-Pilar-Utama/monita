@@ -498,7 +498,10 @@ async fn boards_show_the_newest_200_of_each_column() {
             "{path}: the oldest Done drops off"
         );
         assert!(html.contains(">Ticket 2<") && html.contains(">Ticket 301<"));
-        assert!(html.contains("each column shows its newest 200"));
+        assert!(
+            html.contains("Newest 200 of 201"),
+            "{path}: the cut column says so"
+        );
     }
 }
 

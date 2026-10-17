@@ -25,7 +25,7 @@
       <a href="/admin/settings"{% if shell.active == "limits" %} aria-current="page"{% endif %}>{% call ui::icon("settings") %}{% endcall %}Limits</a>
       {% endif %}
     </nav>
-    <div class="sidebar__foot"><span>{{ shell.email }}</span><form method="post" action="/logout"><button class="btn btn--ghost btn--sm" type="submit">Sign out</button></form></div>
+    <div class="sidebar__foot"><span>{{ shell.email }}</span><button class="btn btn--ghost btn--sm btn--icon" type="button" data-theme-toggle aria-label="Switch light or dark theme" title="Switch theme">{% call ui::icon("theme") %}{% endcall %}</button><form method="post" action="/logout"><button class="btn btn--ghost btn--sm" type="submit">Sign out</button></form></div>
   </aside>
   <div class="main">
     <header class="toolbar">

@@ -10,7 +10,7 @@
 
 <section class="panel chart-panel">
   <div class="chart-panel__head">
-    <div class="stack stack--sm"><h2>{{ insight.title }}</h2><span class="cap">{{ insight.series.total }} {% if insight.title == "Response time" %}checks · mean {{ insight.mean() }}{% else %}pings{% endif %}{% if insight.failed() > 0 %} · {{ insight.failed() }} failed{% endif %}</span></div>
+    <div class="stack stack--sm"><h2>{{ insight.title }}</h2><span class="subtle">{{ insight.series.total }} {% if insight.title == "Response time" %}checks, mean {{ insight.mean() }}{% else %}pings{% endif %}{% if insight.failed() > 0 %}, {{ insight.failed() }} failed{% endif %}</span></div>
     <nav class="seg" aria-label="Range">{% for r in insight.ranges() %}<a href="?range={{ r.key() }}"{% if insight.is_range(r) %} aria-current="page"{% endif %}>{{ r.label() }}</a>{% endfor %}</nav>
   </div>
   <svg class="chart" viewBox="0 0 960 240" role="img" aria-label="{{ insight.title }}, last {{ insight.series.range.label()|lower }}">

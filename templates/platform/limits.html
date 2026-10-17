@@ -3,12 +3,12 @@
 {% block title %}Limits · Monita{% endblock %}
 {% block crumbs %}<span>Admin</span><span class="subtle">/</span><strong>Limits</strong>{% endblock %}
 {% block content %}
-<div class="page-head"><div><span class="cap">Applies to every project</span><h1>Limits</h1></div></div>
+<div class="page-head"><div><h1>Limits</h1></div></div>
 <section class="panel">
   <form class="panel__body form" method="post" action="/admin/settings">
     {% if !error.is_empty() %}{% call ui::notice("error", error) %}{% endcall %}{% endif %}
     {% for (key, label, value) in rows %}
-      {% call ui::input(key, key, label, "number", value, "", "") %}{% endcall %}
+      {% call ui::input(key, key, label, "number", value, "") %}{% endcall %}
     {% endfor %}
     <div class="form__actions"><button class="btn btn--primary" type="submit">Save limits</button></div>
   </form>

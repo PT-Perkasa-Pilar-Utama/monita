@@ -7,8 +7,8 @@
   <div class="panel__head"><h2>{% if id.is_some() %}Edit monitor{% else %}New monitor{% endif %}</h2></div>
   <form class="panel__body form" method="post" action="{{ self.action() }}">
     {% if !errors.is_empty() %}{% call ui::notice("error", "Fix the fields marked below.") %}{% endcall %}{% endif %}
-    {% call ui::input("name", "name", "Name", "text", input.name, self.err("name"), "For example API health.") %}{% endcall %}
-    {% call ui::input("url", "url", "URL", "url", input.url, self.err("url"), "Monita sends GET to this URL. Internal addresses work.") %}{% endcall %}
+    {% call ui::input("name", "name", "Name", "text", input.name, self.err("name")) %}{% endcall %}
+    {% call ui::input("url", "url", "URL", "url", input.url, self.err("url")) %}{% endcall %}
     <div class="field__row">
       <div class="field{% if !self.err("interval_s").is_empty() %} field--error{% endif %}">
         <label class="label" for="interval_s">Check every</label>
@@ -16,10 +16,10 @@
           {% for (secs, label) in self.intervals() %}<option value="{{ secs }}"{% if secs == input.interval_s %} selected{% endif %}>{{ label }}</option>{% endfor %}
         </select>
       </div>
-      {% call ui::input("timeout_s", "timeout_s", "Timeout (seconds)", "number", self.timeout_s(), self.err("timeout_ms"), "1 to 30.") %}{% endcall %}
-      {% call ui::input("expected_status", "expected_status", "Expected status", "text", input.expected_status, self.err("expected_status"), "2xx, or codes like 200,204.") %}{% endcall %}
+      {% call ui::input("timeout_s", "timeout_s", "Timeout (seconds)", "number", self.timeout_s(), self.err("timeout_ms")) %}{% endcall %}
+      {% call ui::input("expected_status", "expected_status", "Expected status", "text", input.expected_status, self.err("expected_status")) %}{% endcall %}
     </div>
-    {% call ui::input("keyword", "keyword", "Keyword (optional)", "text", self.keyword(), self.err("keyword"), "The response body must contain this text.") %}{% endcall %}
+    {% call ui::input("keyword", "keyword", "Keyword (optional)", "text", self.keyword(), self.err("keyword")) %}{% endcall %}
     <fieldset class="field fieldset">
       <legend class="label">Severity</legend>
       <div class="choices">

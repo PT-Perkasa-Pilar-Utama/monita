@@ -3,7 +3,7 @@
 {% block title %}Users · Monita{% endblock %}
 {% block crumbs %}<span>Admin</span><span class="subtle">/</span><strong>Users</strong>{% endblock %}
 {% block content %}
-<div class="page-head"><div><span class="cap">{{ users.len() }} accounts</span><h1>Users</h1></div></div>
+<div class="page-head"><div class="page-title"><h1>Users</h1><span class="count">{{ users.len() }}</span></div></div>
 <div class="stack stack--lg">
   {% if let Some((email, link)) = invite %}
   <div class="stack stack--sm">
@@ -14,7 +14,7 @@
   <section class="panel">
     <div class="panel__head"><h2>Invite a tech lead</h2></div>
     <form class="panel__body form" method="post" action="/admin/users">
-      {% call ui::input("email", "email", "Email", "email", email, error, "Monita emails a link to set the password.") %}{% endcall %}
+      {% call ui::input("email", "email", "Email", "email", email, error) %}{% endcall %}
       <div class="form__actions"><button class="btn btn--primary" type="submit">Send invite</button></div>
     </form>
   </section>

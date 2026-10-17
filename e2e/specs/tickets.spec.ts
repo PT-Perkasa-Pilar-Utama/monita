@@ -31,7 +31,7 @@ test("@US-23 @US-24 @US-25 @US-26 @US-28 @US-29 a reported bug goes public only 
   await page.getByRole("link", { name: /Card of Budi declined/ }).click();
   await page.getByLabel("Public title").fill("A card is declined at checkout");
   await page.getByRole("button", { name: "Save public title" }).click();
-  await expect(page.getByText("Outside Triage the ticket is public as: A card is declined at checkout")).toBeVisible();
+  await expect(page.getByText("Outside Triage the public board shows it as A card is declined at checkout")).toBeVisible();
   await page.getByLabel("Column").selectOption("in_progress");
   await page.getByRole("button", { name: "Move ticket" }).click();
 

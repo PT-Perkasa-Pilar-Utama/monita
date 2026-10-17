@@ -123,11 +123,11 @@ impl Page {
     fn when(&self, i: &IncidentStatus) -> String {
         match i.resolved_at {
             Some(r) => format!(
-                "{} · resolved after {}",
+                "{}, resolved after {}",
                 time::utc(i.started_at),
                 time::duration(r - i.started_at)
             ),
-            None => format!("{} · ongoing", time::utc(i.started_at)),
+            None => format!("{}, ongoing", time::utc(i.started_at)),
         }
     }
     fn hhmm(&self, ts: &i64) -> String {

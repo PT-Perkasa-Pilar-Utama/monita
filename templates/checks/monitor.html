@@ -7,10 +7,9 @@
 {% let st = self.state() %}
 <div class="detail">
 <header class="hero">
-  <span class="orb orb--{{ st.0 }}" aria-hidden="true"></span>
   <div class="hero__body">
     <h1>{{ monitor.name }}</h1>
-    <p class="hero__meta"><span class="hero__state hero__state--{{ st.0 }}">{{ st.1 }}</span><span>Checked every {{ self.every() }}</span><a class="link-quiet mono" href="{{ monitor.url }}" rel="noreferrer noopener" target="_blank">{{ monitor.url }}</a></p>
+    <p class="hero__meta"><span class="hero__state state state--{{ st.0 }}">{{ st.1 }}</span><span>Checked every {{ self.every() }}</span><a class="link-quiet mono" href="{{ monitor.url }}" rel="noreferrer noopener" target="_blank">{{ monitor.url }}</a></p>
   </div>
   <div class="hero__tags">{% if monitor.severity == "critical" %}{% call ui::chip("critical", "Critical") %}{% endcall %}{% else %}{% call ui::chip("warning", "Warning") %}{% endcall %}{% endif %}<span class="tag mono">expects {{ monitor.expected_status }}</span><span class="tag">{% if monitor.is_public %}On the status page{% else %}Hidden{% endif %}</span></div>
 </header>
@@ -32,7 +31,7 @@
   </section>
 </div>
 <section class="panel">
-  <div class="panel__head"><h2>Checks, last 7 days</h2><span class="cap">{{ checks.len() }} shown, newest first</span></div>
+  <div class="panel__head"><h2>Checks, last 7 days</h2></div>
   {% if checks.is_empty() %}
     {% call ui::empty("No checks yet", "The first check runs within one interval of saving.") %}{% endcall %}
   {% else %}

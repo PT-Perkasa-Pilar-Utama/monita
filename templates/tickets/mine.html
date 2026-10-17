@@ -2,17 +2,17 @@
 {% import "ui/macros.html" as ui %}
 {% block title %}My tickets · {{ project.name }}{% endblock %}
 {% block content %}
-<header class="stack stack--sm"><span class="cap">{{ project.name }}</span><h1>My tickets</h1></header>
+<header class="stack stack--sm"><h1>Your tickets in {{ project.name }}</h1></header>
 <form class="form" method="post">
   {% if !error.is_empty() %}{% call ui::notice("error", error) %}{% endcall %}{% endif %}
-  {% call ui::input("ref_id", "ref_id", "Ref ID", "text", "", "", "") %}{% endcall %}
+  {% call ui::input("ref_id", "ref_id", "Ref ID", "text", "", "") %}{% endcall %}
   <div class="form__actions"><button class="btn btn--primary" type="submit">Show my tickets</button></div>
 </form>
 {% if let Some(list) = tickets %}
   {% if list.is_empty() %}<p class="muted">No tickets for this ref ID yet.</p>{% endif %}
   <div class="stack stack--sm">
   {% for t in list %}
-    <div class="card"><span class="cap">#{{ t.number }} · {{ self.stage(t.stage) }}{% if let Some(r) = t.close_reason %} · {{ self.reason(r) }}{% endif %}</span><span class="card__title">{{ t.title }}</span><span class="cap">updated {{ self.utc(t.updated_at) }}</span></div>
+    <div class="card"><span class="card__title">{{ t.title }}</span><div class="card__meta"><span class="row"><span class="mono subtle">#{{ t.number }}</span><span class="tag">{{ self.stage(t.stage) }}</span>{% if let Some(r) = t.close_reason %}<span class="tag">{{ self.reason(r) }}</span>{% endif %}</span><span class="subtle">Updated {{ self.utc(t.updated_at) }}</span></div></div>
   {% endfor %}
   </div>
 {% endif %}

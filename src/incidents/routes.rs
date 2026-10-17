@@ -124,14 +124,6 @@ impl DetailPage {
     fn labels(&self) -> &'static [&'static str] {
         super::allowed_labels(&self.incident.origin, self.incident.resolved_at.is_some())
     }
-    fn dot(&self, label: &str) -> &'static str {
-        match label {
-            "investigating" => "down",
-            "identified" => "progress",
-            "monitoring" => "done",
-            _ => "up",
-        }
-    }
 }
 
 async fn detail_page(

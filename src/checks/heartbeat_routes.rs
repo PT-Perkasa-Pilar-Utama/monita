@@ -281,7 +281,7 @@ impl DetailPage {
         let pings = (
             "Pings",
             i.series.total.to_string(),
-            format!("{failed} failed · {}", i.range_word()),
+            format!("{failed} failed, {}", i.range_word()),
             if failed > 0 { "down" } else { "plain" },
         );
         [i.streak_stat(seen), last, pings, i.incidents_stat()]
