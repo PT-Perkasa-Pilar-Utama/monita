@@ -6,6 +6,7 @@
 One self-hosted binary, one SQLite file.
 
 [![CI](https://github.com/PT-Perkasa-Pilar-Utama/monita/actions/workflows/ci.yml/badge.svg)](https://github.com/PT-Perkasa-Pilar-Utama/monita/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-5e6ad2)](LICENSE)
 
 **[Try the demo](https://pt-perkasa-pilar-utama.github.io/monita/demo/)** &nbsp;·&nbsp;
 **[Install](#install)** &nbsp;·&nbsp;
@@ -74,3 +75,7 @@ make e2e      # browser tests on port 18080
 ```
 
 [CLAUDE.md](CLAUDE.md) lists every rule and command. Seeded accounts: [seeds/README.md](seeds/README.md).
+
+## License
+
+MIT. Copyright PT. Perkasa Pilar Utama.
