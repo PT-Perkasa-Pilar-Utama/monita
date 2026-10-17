@@ -346,7 +346,7 @@ a.appbar__project:hover { background: var(--f4); }
 .tablebar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s2) var(--s3); min-height: 52px; padding: var(--s2) var(--s3) var(--s2) var(--s5); border-bottom: 1px solid var(--border); border-radius: var(--r-lg) var(--r-lg) 0 0; background: var(--f4); }
 .tablebar__count { color: var(--fg); font-size: var(--t-13); font-weight: 590; }
 .tablebar__tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
-.tablebar__search { width: 240px; }
+.tablebar__search, .page-search { width: 240px; }
 .tablebar + .table-wrap .table th { background: transparent; }
 .input--sm, .select--sm { height: 32px; font-size: var(--t-13); }
 .select--sm { width: auto; padding-right: var(--s5); }

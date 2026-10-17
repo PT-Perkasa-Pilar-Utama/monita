@@ -358,6 +358,43 @@ async fn the_edit_dialog_refuses_svg_and_long_text_and_removes_the_icon() {
 }
 
 #[tokio::test]
+async fn the_project_search_matches_name_owner_and_description_within_the_users_projects() {
+    let app = TestApp::spawn("test").await;
+    let admin = app.super_admin("admin@x.co").await;
+    let rina = app.tl("rina@x.co").await;
+    let budi = app.tl("budi@x.co").await;
+    for (cookie, name, description) in [
+        (&rina, "Payments", "Card payments"),
+        (&rina, "Warehouse", "Nightly stock sync"),
+        (&budi, "Shop", "Storefront"),
+    ] {
+        let form = [("name", name), ("description", description)];
+        app.post_form("/projects", &form, Some(cookie)).await;
+    }
+    let home = |cookie: &str, q: &'static str| {
+        let (app, cookie) = (&app, cookie.to_string());
+        async move {
+            app.get(&format!("/?q={q}"), Some(&cookie))
+                .await
+                .text()
+                .await
+                .unwrap()
+        }
+    };
+    let html = home(&rina, "stock").await;
+    assert!(
+        html.contains("<strong>Warehouse</strong>") && !html.contains("<strong>Payments</strong>")
+    );
+    let html = home(&admin, "BUDI@").await;
+    assert!(html.contains("<strong>Shop</strong>") && !html.contains("<strong>Warehouse</strong>"));
+    let html = home(&rina, "shop").await;
+    assert!(
+        html.contains("No project matches"),
+        "a TL never finds another TL's project"
+    );
+}
+
+#[tokio::test]
 async fn a_tl_cannot_reassign() {
     let app = TestApp::spawn("test").await;
     let rina = app.tl("rina@x.co").await;

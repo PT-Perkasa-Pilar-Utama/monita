@@ -2,14 +2,18 @@
 {% import "ui/macros.html" as ui %}
 {% block title %}Projects · Monita{% endblock %}
 {% block content %}
-<div class="page-head"><h1>Projects</h1><div class="page-actions"><button class="btn btn--primary btn--sm" type="button" data-dialog="new-project">{% call ui::icon("plus") %}{% endcall %}New project</button></div></div>
+<div class="page-head"><h1>Projects</h1><div class="page-actions">{% if !projects.is_empty() %}<form method="get" role="search" aria-label="Search projects"><input class="input input--sm page-search" type="search" name="q" value="{{ filter.q }}" maxlength="100" placeholder="Search projects" aria-label="Search projects"></form>{% endif %}<button class="btn btn--primary btn--sm" type="button" data-dialog="new-project">{% call ui::icon("plus") %}{% endcall %}New project</button></div></div>
 {% if projects.is_empty() %}
 <section class="panel">
   {% call ui::empty("Create your first project", "A project groups the monitors, heartbeats and tickets of one system, and gets its own status page.") %}{% endcall %}
 </section>
 {% else %}
+{% let rows = self.rows() %}
+{% if rows.is_empty() %}
+<section class="panel"><div class="empty"><h3>No project matches "{{ filter.q }}"</h3><a class="btn btn--sm" href="/">Clear the search</a></div></section>
+{% else %}
 <div class="pcards">
-  {% for p in projects %}
+  {% for p in rows %}
   <a class="pcard" href="/projects/{{ p.slug }}">
     <span class="pcard__top">{% call ui::badge(p.slug, p.icon_at, self.initial(p), "pcard__badge") %}{% endcall %}<span class="pcard__name"><strong>{{ p.name }}</strong><span class="mono">{{ p.slug }}</span></span></span>
     {% if let Some(d) = p.description %}<span class="pcard__desc">{{ d }}</span>{% endif %}
@@ -17,6 +21,7 @@
   </a>
   {% endfor %}
 </div>
+{% endif %}
 {% endif %}
 <dialog class="dialog" id="new-project" aria-labelledby="new-project-title"{% if !error.is_empty() %} data-open{% endif %}>
   <form method="post" action="/projects">
