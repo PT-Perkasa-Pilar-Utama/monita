@@ -68,7 +68,7 @@ JSON lists are capped, not paged. Each endpoint states its cap, for example the 
 | `ref_id_invalid` | 422 | Unknown, revoked or used-up ref ID |
 | `rate_limited` | 429 | Over a rate limit (SEC-12) |
 | `daily_cap_reached` | 429 | Over a ticket cap (SEC-13) |
-| `internal` | 500 | Unexpected failure. The cause is logged; the body says only "Unexpected failure." |
+| `internal` | 500 | Unexpected failure. The cause is logged. The body says only "Unexpected failure." on `/api/v1/`, and "The error is in the server log. Try again in a moment." on `/api/ui/`. |
 
 ## 1.6 Rate-limit headers
 
