@@ -8,7 +8,7 @@
     "test:unit": "bun test lib"
   },
   "devDependencies": {
-    "@playwright/test": "1.63.0",
+    "@playwright/test": "1.64.0",
     "@types/bun": "1.4.3"
   }
 }
