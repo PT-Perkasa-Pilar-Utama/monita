@@ -3,6 +3,7 @@
 use turso::Connection;
 
 use crate::checks::heartbeat::{Heartbeat, HeartbeatInput, PingKind, PingRow};
+use crate::platform::caps;
 
 const COLS: &str = "h.id, h.project_id, h.name, h.token, h.period_s, h.grace_s, h.severity, h.is_public, h.last_ping_at, h.deadline_at, h.created_at";
 
@@ -75,8 +76,8 @@ pub async fn delete(c: &Connection, project_id: i64, id: i64) -> anyhow::Result<
 pub async fn list(c: &Connection, project_id: i64) -> anyhow::Result<Vec<Heartbeat>> {
     many(
         c,
-        format!("SELECT {COLS} FROM heartbeats h WHERE h.project_id = ?1 ORDER BY h.name"),
-        [project_id],
+        format!("SELECT {COLS} FROM heartbeats h WHERE h.project_id = ?1 ORDER BY h.name LIMIT ?2"),
+        (project_id, caps::HEARTBEATS_PER_PROJECT),
     )
     .await
 }
@@ -101,17 +102,22 @@ pub async fn find_by_token(c: &Connection, tok: &str) -> anyhow::Result<Option<H
     .pop())
 }
 
+/// Up to `limit` pings since `since`, newest first, older than the `(received_at, id)` cursor.
 pub async fn recent_pings(
     c: &Connection,
     id: i64,
     since: i64,
+    before: Option<(i64, i64)>,
     limit: i64,
 ) -> anyhow::Result<Vec<PingRow>> {
-    crate::platform::db::query_all(c, "SELECT received_at, kind, source_ip FROM pings WHERE heartbeat_id = ?1 AND received_at >= ?2 ORDER BY received_at DESC, id DESC LIMIT ?3",
-            (id, since, limit), |r| Ok(PingRow {
-            received_at: r.get(0)?,
-            kind: r.get(1)?,
-            source_ip: r.get(2)?,
+    let (t, pid) = before.unwrap_or((i64::MAX, i64::MAX));
+    crate::platform::db::query_all(c, "SELECT id, received_at, kind, source_ip FROM pings WHERE heartbeat_id = ?1 AND received_at >= ?2
+            AND (received_at < ?3 OR (received_at = ?3 AND id < ?4)) ORDER BY received_at DESC, id DESC LIMIT ?5",
+            (id, since, t, pid, limit), |r| Ok(PingRow {
+            id: r.get(0)?,
+            received_at: r.get(1)?,
+            kind: r.get(2)?,
+            source_ip: r.get(3)?,
         })).await
 }
 
@@ -148,12 +154,13 @@ pub async fn any_missed(c: &Connection, at: i64) -> anyhow::Result<bool> {
     Ok(n == Some(1))
 }
 
-/// Returns the heartbeats past their deadline and clears those deadlines.
-pub async fn take_missed(c: &Connection, at: i64) -> anyhow::Result<Vec<Heartbeat>> {
+/// Returns up to `limit` heartbeats past their deadline, oldest deadline first, and clears
+/// those deadlines.
+pub async fn take_missed(c: &Connection, at: i64, limit: i64) -> anyhow::Result<Vec<Heartbeat>> {
     let missed = many(
         c,
-        format!("SELECT {COLS} FROM heartbeats h WHERE h.deadline_at <= ?1"),
-        [at],
+        format!("SELECT {COLS} FROM heartbeats h WHERE h.deadline_at <= ?1 ORDER BY h.deadline_at, h.id LIMIT ?2"),
+        (at, limit),
     )
     .await?;
     for hb in &missed {
@@ -164,4 +171,14 @@ pub async fn take_missed(c: &Connection, at: i64) -> anyhow::Result<Vec<Heartbea
         .await?;
     }
     Ok(missed)
+}
+
+pub async fn count(c: &Connection, project_id: i64) -> anyhow::Result<i64> {
+    Ok(crate::platform::db::query_i64(
+        c,
+        "SELECT count(*) FROM heartbeats WHERE project_id = ?1",
+        [project_id],
+    )
+    .await?
+    .unwrap_or(0))
 }

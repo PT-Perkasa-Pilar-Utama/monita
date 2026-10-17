@@ -39,7 +39,7 @@ fn route_row(r: &turso::Row) -> turso::Result<Route> {
 }
 
 pub async fn routes(c: &Connection, project_id: i64) -> anyhow::Result<Vec<Route>> {
-    crate::platform::db::query_all(c, "SELECT severity, emails, webhook_url, use_webhook FROM alert_routes WHERE project_id = ?1 ORDER BY severity", [project_id], route_row).await
+    crate::platform::db::query_all(c, "SELECT severity, emails, webhook_url, use_webhook FROM alert_routes WHERE project_id = ?1 ORDER BY severity LIMIT 2", [project_id], route_row).await
 }
 
 pub async fn route(
@@ -159,13 +159,13 @@ pub async fn create_routes(c: &Connection, project_id: i64) -> anyhow::Result<()
     Ok(())
 }
 
-pub async fn purge_delivered(c: &Connection, cutoff: i64) -> anyhow::Result<()> {
-    c.execute(
-        "DELETE FROM outbox WHERE created_at < ?1 AND (sent_at IS NOT NULL OR failed_at IS NOT NULL)",
-        [cutoff],
+/// Deletes up to `limit` finished rows older than `cutoff`; returns how many it deleted.
+pub async fn purge_delivered(c: &Connection, cutoff: i64, limit: i64) -> anyhow::Result<u64> {
+    Ok(c.execute(
+        "DELETE FROM outbox WHERE rowid IN (SELECT rowid FROM outbox WHERE created_at < ?1 AND (sent_at IS NOT NULL OR failed_at IS NOT NULL) LIMIT ?2)",
+        (cutoff, limit),
     )
-    .await?;
-    Ok(())
+    .await?)
 }
 
 /// A finished row loses its body: an invite email carries a live sign-up link (SEC-20).

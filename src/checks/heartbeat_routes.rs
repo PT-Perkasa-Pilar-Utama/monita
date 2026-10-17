@@ -3,7 +3,7 @@
 use askama::Template;
 use axum::{
     Form, Router,
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::StatusCode,
     response::{IntoResponse, Redirect, Response},
     routing::{get, post},
@@ -20,7 +20,7 @@ use crate::{
     app::AppState,
     incidents::{self, ItemState, SourceKind},
     platform::{
-        now,
+        caps, now,
         page::{PageError, Shell},
         render::render,
         time,
@@ -172,16 +172,24 @@ async fn create(
 ) -> Result<Response, PageError> {
     let project = projects::find_for(&state.db, &user, &slug).await?;
     let input = HeartbeatInput::from(f);
-    let errors = input.validate();
-    if !errors.is_empty() {
-        return Ok((
-            StatusCode::UNPROCESSABLE_ENTITY,
-            render(&form_page(&user, project, None, input, errors)),
-        )
-            .into_response());
+    let mut errors = input.validate();
+    if errors.is_empty() {
+        match heartbeat::create(&state.db, project.id, &input).await? {
+            Some(id) => {
+                return Ok(
+                    Redirect::to(&format!("/projects/{slug}/heartbeats/{id}")).into_response()
+                );
+            }
+            None => {
+                errors.insert("name", caps::HEARTBEATS_FULL);
+            }
+        }
     }
-    let id = heartbeat::create(&state.db, project.id, &input).await?;
-    Ok(Redirect::to(&format!("/projects/{slug}/heartbeats/{id}")).into_response())
+    Ok((
+        StatusCode::UNPROCESSABLE_ENTITY,
+        render(&form_page(&user, project, None, input, errors)),
+    )
+        .into_response())
 }
 
 async fn edit_form(
@@ -242,6 +250,7 @@ struct DetailPage {
     hb: Heartbeat,
     ping_url: String,
     pings: Vec<PingRow>,
+    older: Option<String>,
     incident: Option<ItemState>,
 }
 
@@ -264,12 +273,16 @@ async fn detail(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
     Path((slug, id)): Path<(String, i64)>,
+    Query(paging): Query<super::routes::Paging>,
 ) -> Result<Response, PageError> {
     let project = projects::find_for(&state.db, &user, &slug).await?;
     let hb = heartbeat::find(&state.db, project.id, id)
         .await?
         .ok_or(PageError::NotFound)?;
-    let pings = heartbeat::recent_pings(&state.db, id, 100).await?;
+    let pings = heartbeat::recent_pings(&state.db, id, paging.cursor()).await?;
+    let older = (pings.len() as i64 == caps::PINGS_PAGE)
+        .then(|| pings.last().map(|p| format!("{}.{}", p.received_at, p.id)))
+        .flatten();
     let incident = incidents::states_for(&state.db, project.id)
         .await?
         .get(&(SourceKind::Heartbeat, id))
@@ -280,6 +293,7 @@ async fn detail(
         project,
         hb,
         pings,
+        older,
         incident,
     }))
 }

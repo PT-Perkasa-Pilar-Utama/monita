@@ -3,6 +3,7 @@
 
 pub mod assets;
 pub mod backup;
+pub mod caps;
 pub mod config;
 pub mod db;
 pub mod headers;

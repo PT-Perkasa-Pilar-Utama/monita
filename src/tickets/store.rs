@@ -2,6 +2,8 @@
 
 use turso::Connection;
 
+use crate::platform::caps;
+
 use super::NewTicket;
 
 pub struct RefRow {
@@ -145,11 +147,23 @@ fn row(r: &turso::Row) -> turso::Result<TicketRow> {
     })
 }
 
-/// Every open ticket, and the newest 200 in Done: a board stays readable after years of fixes.
-const OPEN_OR_RECENT_DONE: &str = "(t.stage != 'done' OR t.id IN (SELECT id FROM tickets WHERE project_id = ?1 AND stage = 'done' ORDER BY updated_at DESC LIMIT 200))";
+/// The newest `caps::TICKETS_PER_COLUMN` tickets of each stage, as `t`: a board stays readable
+/// after years of tickets. `stage_counts` gives the column totals.
+const NEWEST_PER_STAGE: &str = "(SELECT *, row_number() OVER (PARTITION BY stage ORDER BY updated_at DESC, id DESC) AS rn FROM tickets WHERE project_id = ?1) t";
 
 pub async fn board(c: &Connection, project_id: i64) -> anyhow::Result<Vec<TicketRow>> {
-    crate::platform::db::query_all(c, format!("SELECT {COLS} FROM tickets t JOIN ref_ids r ON r.id = t.ref_id WHERE t.project_id = ?1 AND {OPEN_OR_RECENT_DONE} ORDER BY t.updated_at DESC"), [project_id], row).await
+    crate::platform::db::query_all(c, format!("SELECT {COLS} FROM {NEWEST_PER_STAGE} JOIN ref_ids r ON r.id = t.ref_id WHERE t.rn <= ?2 ORDER BY t.updated_at DESC"), (project_id, caps::TICKETS_PER_COLUMN), row).await
+}
+
+/// (stage, tickets in it) for the stages that have any.
+pub async fn stage_counts(c: &Connection, project_id: i64) -> anyhow::Result<Vec<(String, i64)>> {
+    crate::platform::db::query_all(
+        c,
+        "SELECT stage, count(*) FROM tickets WHERE project_id = ?1 GROUP BY stage",
+        [project_id],
+        |r| Ok((r.get(0)?, r.get(1)?)),
+    )
+    .await
 }
 
 pub async fn find(
@@ -169,9 +183,9 @@ pub async fn find(
 pub async fn public_board(c: &Connection, project_id: i64) -> anyhow::Result<Vec<PublicTicket>> {
     crate::platform::db::query_all(
         c,
-        format!("SELECT t.number, coalesce(t.public_title, t.title), t.stage, t.created_at, t.updated_at FROM tickets t
-         WHERE t.project_id = ?1 AND t.stage != 'triage' AND {OPEN_OR_RECENT_DONE} ORDER BY t.updated_at DESC"),
-        [project_id],
+        format!("SELECT t.number, coalesce(t.public_title, t.title), t.stage, t.created_at, t.updated_at FROM {NEWEST_PER_STAGE}
+         WHERE t.stage != 'triage' AND t.rn <= ?2 ORDER BY t.updated_at DESC"),
+        (project_id, caps::TICKETS_PER_COLUMN),
         |r| {
             Ok(PublicTicket {
                 number: r.get(0)?,
@@ -242,12 +256,21 @@ pub async fn revoke_ref_of(
     Ok(n > 0)
 }
 
+/// The first `caps::DIGEST_LINES` triage tickets after `after_id`, and how many there are in all.
 pub async fn new_in_triage_after(
     c: &Connection,
     project_id: i64,
     after_id: i64,
-) -> anyhow::Result<Vec<(i64, String)>> {
-    crate::platform::db::query_all(c, "SELECT number, title FROM tickets WHERE project_id = ?1 AND stage = 'triage' AND id > ?2 ORDER BY number", (project_id, after_id), |r| Ok((r.get(0)?, r.get(1)?))).await
+) -> anyhow::Result<(Vec<(i64, String)>, i64)> {
+    let rows = crate::platform::db::query_all(c, "SELECT number, title FROM tickets WHERE project_id = ?1 AND stage = 'triage' AND id > ?2 ORDER BY number LIMIT ?3", (project_id, after_id, caps::DIGEST_LINES), |r| Ok((r.get(0)?, r.get(1)?))).await?;
+    let total = crate::platform::db::query_i64(
+        c,
+        "SELECT count(*) FROM tickets WHERE project_id = ?1 AND stage = 'triage' AND id > ?2",
+        (project_id, after_id),
+    )
+    .await?
+    .unwrap_or(0);
+    Ok((rows, total))
 }
 
 pub async fn max_id(c: &Connection) -> anyhow::Result<i64> {

@@ -42,8 +42,9 @@ pub async fn create_routes(c: &Connection, project_id: i64) -> anyhow::Result<()
 }
 
 /// Retention (US-32): finished rows older than `cutoff`. Runs inside the caller's write.
-pub async fn purge_delivered(c: &Connection, cutoff: i64) -> anyhow::Result<()> {
-    store::purge_delivered(c, cutoff).await
+/// Deletes up to `limit` rows; returns how many. The caller loops until it gets fewer.
+pub async fn purge_delivered(c: &Connection, cutoff: i64, limit: i64) -> anyhow::Result<u64> {
+    store::purge_delivered(c, cutoff, limit).await
 }
 
 /// Queues one email. Call it inside `Db::write` with the change that caused it.
@@ -63,6 +64,11 @@ pub enum RouteError {
     BadEmail(String),
     #[error("The webhook URL must start with http:// or https://.")]
     BadWebhook,
+    #[error(
+        "A route takes {} addresses at most.",
+        crate::platform::caps::EMAILS_PER_ROUTE
+    )]
+    TooManyEmails,
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 }
@@ -92,6 +98,9 @@ pub async fn save_route(
         if !emails.contains(&email) {
             emails.push(email);
         }
+    }
+    if emails.len() > crate::platform::caps::EMAILS_PER_ROUTE {
+        return Err(RouteError::TooManyEmails);
     }
     let webhook = webhook_raw.trim();
     if !webhook.is_empty() && !crate::platform::valid_http_url(webhook) {

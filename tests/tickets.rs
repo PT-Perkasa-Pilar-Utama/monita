@@ -464,7 +464,7 @@ async fn each_new_ticket_calls_the_warning_webhook_when_it_is_on() {
 }
 
 #[tokio::test]
-async fn boards_show_every_open_ticket_and_the_newest_200_done() {
+async fn boards_show_the_newest_200_of_each_column() {
     let app = TestApp::spawn("test").await;
     let s = setup(&app).await;
     app.state
@@ -498,7 +498,7 @@ async fn boards_show_every_open_ticket_and_the_newest_200_done() {
             "{path}: the oldest Done drops off"
         );
         assert!(html.contains(">Ticket 2<") && html.contains(">Ticket 301<"));
-        assert!(html.contains("Done shows the newest 200"));
+        assert!(html.contains("each column shows its newest 200"));
     }
 }
 

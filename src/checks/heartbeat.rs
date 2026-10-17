@@ -2,6 +2,7 @@
 
 use super::{FieldErrors, store::heartbeats as store};
 use crate::platform::{
+    caps,
     db::Db,
     now,
     rate_limit::{self, Limiter, Verdict},
@@ -134,17 +135,30 @@ pub enum PingKind {
 }
 
 pub struct PingRow {
+    pub id: i64,
     pub received_at: i64,
     pub kind: String,
     pub source_ip: Option<String>,
 }
 
-/// AC-12.01: a heartbeat that never pings still misses its first deadline.
-pub async fn create(db: &Db, project_id: i64, input: &HeartbeatInput) -> anyhow::Result<i64> {
+/// AC-12.01: a heartbeat that never pings still misses its first deadline. `None` when the
+/// project already has `caps::HEARTBEATS_PER_PROJECT` heartbeats.
+pub async fn create(
+    db: &Db,
+    project_id: i64,
+    input: &HeartbeatInput,
+) -> anyhow::Result<Option<i64>> {
     let tok = token::random_token();
     let deadline = now() + input.period_s + input.grace_s;
-    db.write(async |c| store::insert(c, project_id, input, &tok, deadline).await)
-        .await
+    db.write(async |c| {
+        if store::count(c, project_id).await? >= caps::HEARTBEATS_PER_PROJECT {
+            return Ok(None);
+        }
+        store::insert(c, project_id, input, &tok, deadline)
+            .await
+            .map(Some)
+    })
+    .await
 }
 
 /// A pending deadline is recomputed from the last ping with the new period and grace.
@@ -180,8 +194,14 @@ pub async fn find(db: &Db, project_id: i64, id: i64) -> anyhow::Result<Option<He
     store::find(&db.read().await?, project_id, id).await
 }
 
-pub async fn recent_pings(db: &Db, id: i64, limit: i64) -> anyhow::Result<Vec<PingRow>> {
-    store::recent_pings(&db.read().await?, id, now() - 7 * 86_400, limit).await
+/// One page of the last 7 days' pings, newest first, older than `before`.
+pub async fn recent_pings(
+    db: &Db,
+    id: i64,
+    before: Option<(i64, i64)>,
+) -> anyhow::Result<Vec<PingRow>> {
+    let since = now() - 7 * 86_400;
+    store::recent_pings(&db.read().await?, id, since, before, caps::PINGS_PAGE).await
 }
 
 /// Proof that `admit` passed. Only `admit` makes one and only `record` takes it, so no caller can
@@ -292,16 +312,25 @@ pub async fn sweep_missed(
     if !store::any_missed(read, at).await? {
         return Ok(0);
     }
-    db.write(async |c| {
-        let missed = store::take_missed(c, at).await?;
-        for hb in &missed {
-            if let Some(ev) =
-                incidents::observe(c, &hb.source(), &Signal::HeartbeatMissed, at).await?
-            {
-                notify::send(c, &ev, base_url).await?;
-            }
+    // One write per batch: after an outage every heartbeat can be late at once.
+    let mut total = 0;
+    loop {
+        let n = db
+            .write(async |c| {
+                let missed = store::take_missed(c, at, caps::MISSED_BATCH).await?;
+                for hb in &missed {
+                    if let Some(ev) =
+                        incidents::observe(c, &hb.source(), &Signal::HeartbeatMissed, at).await?
+                    {
+                        notify::send(c, &ev, base_url).await?;
+                    }
+                }
+                Ok(missed.len())
+            })
+            .await?;
+        total += n;
+        if (n as i64) < caps::MISSED_BATCH {
+            return Ok(total);
         }
-        Ok(missed.len())
-    })
-    .await
+    }
 }

@@ -4,20 +4,18 @@ use turso::Connection;
 
 use crate::incidents::SourceKind;
 
-pub async fn all_sources(c: &Connection) -> anyhow::Result<Vec<(SourceKind, i64)>> {
-    let mut out = Vec::new();
-    let mut rows = c
-        .query(
-            "SELECT 'monitor', id FROM monitors UNION ALL SELECT 'heartbeat', id FROM heartbeats",
-            (),
-        )
-        .await?;
-    while let Some(r) = rows.next().await? {
-        if let Some(kind) = SourceKind::parse(&r.get::<String>(0)?) {
-            out.push((kind, r.get(1)?));
-        }
-    }
-    Ok(out)
+/// The next `limit` monitor or heartbeat ids above `after`, in id order.
+pub async fn source_ids(
+    c: &Connection,
+    kind: SourceKind,
+    after: i64,
+    limit: i64,
+) -> anyhow::Result<Vec<i64>> {
+    let sql = match kind {
+        SourceKind::Monitor => "SELECT id FROM monitors WHERE id > ?1 ORDER BY id LIMIT ?2",
+        SourceKind::Heartbeat => "SELECT id FROM heartbeats WHERE id > ?1 ORDER BY id LIMIT ?2",
+    };
+    crate::platform::db::query_all(c, sql, (after, limit), |r| r.get(0)).await
 }
 
 /// (total, ok, average latency) of a monitor's checks on the UTC day starting at `day`.

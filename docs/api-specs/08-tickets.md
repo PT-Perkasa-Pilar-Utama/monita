@@ -79,8 +79,8 @@ The reporter sees their original title. The description is not returned.
 | GET | `/status/{slug}/report` | public | | Ticket form | AC-24.01 |
 | POST | `/status/{slug}/report` | public, 60/min per IP | `ref_id`, `title`, `description`, `page_url` | Same rules as 8.2. The ref ID must belong to this project. | AC-24.01, AC-24.03 to AC-24.05 |
 | GET, POST | `/status/{slug}/mine` | public | GET shows the form; POST takes `ref_id` | Same data as 8.3. The ref ID must belong to this project. | AC-29.01 |
-| GET | `/status/{slug}/tickets` | public | | Public board: stages Backlog, In progress, Done. Fields: number, public title or title, stage, created, updated. Every open ticket; Done shows the newest 200, and the page says so. | AC-28.01, AC-28.02, AC-26.01 |
-| GET | `/projects/{slug}/tickets` | owner, super_admin | | Kanban: Triage, Backlog, In progress, Done. Every open ticket; Done shows the newest 200, and the page says so. | AC-25.01 |
+| GET | `/status/{slug}/tickets` | public | | Public board: stages Backlog, In progress, Done. Fields: number, public title or title, stage, created, updated. Each column shows its newest 200 and counts them all; the page says so. | AC-28.01, AC-28.02, AC-26.01 |
+| GET | `/projects/{slug}/tickets` | owner, super_admin | | Kanban: Triage, Backlog, In progress, Done. Each column shows its newest 200 and counts them all; the page says so. | AC-25.01 |
 | GET | `/projects/{slug}/tickets/{number}` | owner, super_admin | | Full ticket, including description and whether its ref ID is active or revoked. Only the ref ID's hash is stored, so no part of it can be shown. | |
 | POST | `/projects/{slug}/tickets/{number}/stage` | owner, super_admin | `stage`, `close_reason` (required for `done`) | Move. Missing reason for `done`: 422. Leaving `done` clears the reason. | AC-25.03 |
 | POST | `/projects/{slug}/tickets/{number}/public-title` | owner, super_admin | `public_title` (empty clears it) | Save | AC-26.01 |

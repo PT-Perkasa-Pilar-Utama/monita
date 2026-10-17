@@ -14,7 +14,7 @@ use axum::{
 use crate::{
     accounts::User,
     app::AppState,
-    platform::{api_error, db::Db, now, page::PageError, token},
+    platform::{api_error, caps, db::Db, now, page::PageError, token},
 };
 
 pub use store::{ApiKeyRow, Project};
@@ -29,6 +29,9 @@ pub enum ProjectError {
     SlugTaken,
     #[error("Not a valid IP or CIDR: {0}")]
     InvalidCidr(String),
+    /// A hard cap in `platform::caps` is reached.
+    #[error("{0}")]
+    Full(String),
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 }
@@ -55,19 +58,21 @@ pub async fn create(
     if !valid_slug(&slug) {
         return Err(ProjectError::InvalidSlug);
     }
-    let created = db
-        .write(async |c| {
-            if store::find_by_slug(c, &slug).await?.is_some() {
-                return Ok(false);
-            }
-            let id = store::insert(c, owner.id, name, &slug).await?;
-            crate::notify::create_routes(c, id).await?;
-            Ok(true)
-        })
-        .await?;
-    if !created {
-        return Err(ProjectError::SlugTaken);
-    }
+    db.write(async |c| {
+        if store::count_projects(c).await? >= caps::PROJECTS {
+            return Ok(Err(ProjectError::Full(format!(
+                "This Monita holds {} projects, its limit.",
+                caps::PROJECTS
+            ))));
+        }
+        if store::find_by_slug(c, &slug).await?.is_some() {
+            return Ok(Err(ProjectError::SlugTaken));
+        }
+        let id = store::insert(c, owner.id, name, &slug).await?;
+        crate::notify::create_routes(c, id).await?;
+        Ok(Ok(()))
+    })
+    .await??;
     store::find_by_slug(&db.read().await?, &slug)
         .await?
         .ok_or_else(|| ProjectError::Other(anyhow::anyhow!("project {slug} vanished after insert")))
@@ -169,8 +174,17 @@ pub async fn create_key(db: &Db, project_id: i64, name: &str) -> Result<String, 
     let raw = format!("mk_{}", token::random_token());
     let hash = token::hash(&raw);
     let prefix: String = raw.chars().take(9).collect();
-    db.write(async |c| store::insert_key(c, project_id, name, &hash, &prefix).await)
-        .await?;
+    db.write(async |c| {
+        if store::count_live_keys(c, project_id).await? >= caps::KEYS_PER_PROJECT {
+            return Ok(Err(ProjectError::Full(format!(
+                "A project holds {} live keys at most. Revoke one first.",
+                caps::KEYS_PER_PROJECT
+            ))));
+        }
+        store::insert_key(c, project_id, name, &hash, &prefix).await?;
+        Ok(Ok(()))
+    })
+    .await??;
     Ok(raw)
 }
 

@@ -8,10 +8,20 @@ struct KanbanPage {
     shell: Shell,
     project: Project,
     tickets: Vec<TicketRow>,
+    counts: Vec<(String, i64)>,
     now: i64,
 }
 
 impl KanbanPage {
+    fn count(&self, stage: &str) -> i64 {
+        self.counts
+            .iter()
+            .find(|(s, _)| s == stage)
+            .map_or(0, |(_, n)| *n)
+    }
+    fn total(&self) -> i64 {
+        self.counts.iter().map(|(_, n)| n).sum()
+    }
     fn column(&self, stage: &str) -> Vec<&TicketRow> {
         self.tickets.iter().filter(|t| t.stage == stage).collect()
     }
@@ -40,11 +50,12 @@ pub(super) async fn kanban(
     Path(slug): Path<String>,
 ) -> Result<Response, PageError> {
     let project = projects::find_for(&state.db, &user, &slug).await?;
-    let tickets = crate::tickets::board(&state.db, project.id).await?;
+    let (tickets, counts) = crate::tickets::board(&state.db, project.id).await?;
     Ok(render(&KanbanPage {
         shell: projects::shell(&user, "tickets", Some(&project)),
         project,
         tickets,
+        counts,
         now: crate::platform::now(),
     }))
 }

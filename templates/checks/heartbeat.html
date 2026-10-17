@@ -38,6 +38,7 @@
         </tbody>
       </table>
     </div>
+    {% if let Some(before) = older %}<div class="panel__body"><a class="link-quiet" href="?before={{ before }}">Older pings →</a></div>{% endif %}
     {% endif %}
   </section>
 </div>

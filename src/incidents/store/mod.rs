@@ -275,3 +275,24 @@ pub async fn find(c: &Connection, project_id: i64, id: i64) -> anyhow::Result<Op
         None => None,
     })
 }
+
+pub async fn count_updates(c: &Connection, incident_id: i64) -> anyhow::Result<i64> {
+    Ok(crate::platform::db::query_i64(
+        c,
+        "SELECT count(*) FROM status_updates WHERE incident_id = ?1",
+        [incident_id],
+    )
+    .await?
+    .unwrap_or(0))
+}
+
+/// True when the project has `caps::OPEN_MANUAL_PER_PROJECT` manual incidents open.
+pub async fn manual_full(c: &Connection, project_id: i64) -> anyhow::Result<bool> {
+    let open = crate::platform::db::query_i64(
+        c,
+        "SELECT count(*) FROM incidents WHERE project_id = ?1 AND origin = 'manual' AND resolved_at IS NULL",
+        [project_id],
+    )
+    .await?;
+    Ok(open.unwrap_or(0) >= crate::platform::caps::OPEN_MANUAL_PER_PROJECT)
+}

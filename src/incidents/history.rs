@@ -24,11 +24,27 @@ pub fn per_day(intervals: &[(i64, i64)], first_day: i64, days: usize) -> Vec<i64
         .collect()
 }
 
-/// Automatic-incident intervals per item since `since`, open ones ending at `now`. `None` reads
-/// every project.
+/// One item's automatic-incident intervals overlapping `[since, until)`, open ones ending at
+/// `now`, newest first. At most `caps::SPANS`.
+pub async fn spans(
+    c: &turso::Connection,
+    item: ItemRef,
+    since: i64,
+    until: i64,
+    now: i64,
+) -> anyhow::Result<Vec<(i64, i64)>> {
+    Ok(store::source_spans(c, item, since, until)
+        .await?
+        .into_iter()
+        .map(|(s, e)| (s, e.unwrap_or(now)))
+        .collect())
+}
+
+/// A project's automatic-incident intervals per item since `since`, open ones ending at `now`.
+/// At most `caps::SPANS`, newest first.
 pub async fn intervals(
     db: &Db,
-    project_id: Option<i64>,
+    project_id: i64,
     since: i64,
     now: i64,
 ) -> anyhow::Result<HashMap<(SourceKind, i64), Vec<(i64, i64)>>> {
@@ -71,7 +87,7 @@ pub async fn public(
     let rows = store::since_touching(&conn, project_id, since, public).await?;
     let ids: Vec<i64> = rows.iter().map(|r| r.id).collect();
     let mut items = store::items_of(&conn, &ids).await?;
-    let mut updates = store::updates_of(&conn, &ids).await?;
+    let mut updates = store::updates_of(&conn, &ids, crate::platform::caps::PUBLIC_UPDATES).await?;
     Ok(rows
         .into_iter()
         .map(|row| PublicIncident {

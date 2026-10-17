@@ -2,6 +2,8 @@
 
 use turso::Connection;
 
+use crate::platform::caps;
+
 use super::Role;
 
 pub struct UserRow {
@@ -38,16 +40,20 @@ pub async fn insert_user(
     email: &str,
     role: Role,
     password_hash: Option<&str>,
-) -> anyhow::Result<Option<i64>> {
+) -> anyhow::Result<Result<i64, super::AccountError>> {
     if find_user_by_email(c, email).await?.is_some() {
-        return Ok(None);
+        return Ok(Err(super::AccountError::EmailTaken));
+    }
+    let users = crate::platform::db::query_i64(c, "SELECT count(*) FROM users", ()).await?;
+    if users.unwrap_or(0) >= caps::USERS {
+        return Ok(Err(super::AccountError::Full));
     }
     c.execute(
         "INSERT INTO users (email, role, password_hash) VALUES (?1, ?2, ?3)",
         (email, role.as_str(), password_hash),
     )
     .await?;
-    Ok(Some(c.last_insert_rowid()))
+    Ok(Ok(c.last_insert_rowid()))
 }
 
 pub async fn find_user_by_email(c: &Connection, email: &str) -> anyhow::Result<Option<UserRow>> {
@@ -79,8 +85,8 @@ pub async fn active_tl_email(c: &Connection, user_id: i64) -> anyhow::Result<Opt
 pub async fn list_users(c: &Connection) -> anyhow::Result<Vec<UserRow>> {
     crate::platform::db::query_all(
         c,
-        format!("SELECT {USER_COLS} FROM users ORDER BY role DESC, email"),
-        (),
+        format!("SELECT {USER_COLS} FROM users ORDER BY role DESC, email LIMIT ?1"),
+        [caps::USERS],
         user_row,
     )
     .await
@@ -104,15 +110,21 @@ pub async fn disable_tl(c: &Connection, user_id: i64, at: i64) -> anyhow::Result
 }
 
 /// Expired sessions and invites, and invites used more than 7 days ago.
-pub async fn purge_expired(c: &Connection, now: i64) -> anyhow::Result<()> {
-    c.execute("DELETE FROM sessions WHERE expires_at < ?1", [now])
+/// Deletes up to `limit` of each; returns how many rows it deleted.
+pub async fn purge_expired(c: &Connection, now: i64, limit: i64) -> anyhow::Result<u64> {
+    let sessions = c
+        .execute(
+            "DELETE FROM sessions WHERE rowid IN (SELECT rowid FROM sessions WHERE expires_at < ?1 LIMIT ?2)",
+            (now, limit),
+        )
         .await?;
-    c.execute(
-        "DELETE FROM invites WHERE expires_at < ?1 OR (used_at IS NOT NULL AND used_at < ?2)",
-        (now, now - 7 * 86_400),
-    )
-    .await?;
-    Ok(())
+    let invites = c
+        .execute(
+            "DELETE FROM invites WHERE rowid IN (SELECT rowid FROM invites WHERE expires_at < ?1 OR (used_at IS NOT NULL AND used_at < ?2) LIMIT ?3)",
+            (now, now - 7 * 86_400, limit),
+        )
+        .await?;
+    Ok(sessions + invites)
 }
 
 /// Deletes the user's older invites and sessions, then stores the new invite.

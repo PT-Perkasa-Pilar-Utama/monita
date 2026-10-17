@@ -63,6 +63,7 @@ Two builders (the user and Claude), 2 days, sprints 1 to 4 in `docs/business/spr
 - Handlers in `routes.rs` parse, call, render. No SQL and no business rules in handlers.
 - SQL lives in `store.rs`. Rules live in `mod.rs` or a named logic file (`engine.rs`, `probe.rs`).
 - Every write goes through `Db::write` (one writer connection, `BEGIN IMMEDIATE`). Reads use `Db::read()`. Never open a writing connection elsewhere.
+- No unbounded list. Every multi-row query has a `LIMIT` from `platform::caps`, a keyset page, or a `GROUP BY` with a fixed number of groups. A list people add to is capped at insert with the same number, so a page never hides a row. Every job reads and deletes in batches and loops until a batch comes back short.
 - `Db::write_without_fk` exists for `platform::migrate` and reset-state only.
 - No transaction stays open across a network call.
 - Templates use `templates/ui/macros.html`. No inline `style=` (CSP blocks it). No color literal outside `:root` in `app.css`.

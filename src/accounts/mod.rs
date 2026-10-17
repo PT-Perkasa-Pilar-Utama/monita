@@ -67,6 +67,11 @@ pub enum AccountError {
     InviteInvalid,
     #[error("No super admin has this email.")]
     NoSuchAdmin,
+    #[error(
+        "This Monita holds {} accounts, its limit.",
+        crate::platform::caps::USERS
+    )]
+    Full,
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 }
@@ -104,8 +109,7 @@ pub async fn create_super_admin(
     let hash = hash_password(password).await?;
     let id = db
         .write(async |c| store::insert_user(c, &email, Role::SuperAdmin, Some(&hash)).await)
-        .await?
-        .ok_or(AccountError::EmailTaken)?;
+        .await??;
     Ok(User {
         id,
         email,
@@ -170,21 +174,17 @@ pub async fn invite_tl(db: &Db, base_url: &str, email: &str) -> Result<String, A
     let raw = token::random_token();
     let link = format!("{base_url}/invite/{raw}");
     let hash = token::hash(&raw);
-    let created = db
-        .write(async |c| {
-            let Some(id) = store::insert_user(c, &email, Role::Tl, None).await? else {
-                return Ok(false);
-            };
-            store::replace_invite(c, id, &hash, now() + INVITE_TTL_S).await?;
-            queue_invite_email(c, &email, &link).await?;
-            Ok(true)
-        })
-        .await?;
-    if created {
-        Ok(link)
-    } else {
-        Err(AccountError::EmailTaken)
-    }
+    db.write(async |c| {
+        let id = match store::insert_user(c, &email, Role::Tl, None).await? {
+            Ok(id) => id,
+            Err(e) => return Ok(Err(e)),
+        };
+        store::replace_invite(c, id, &hash, now() + INVITE_TTL_S).await?;
+        queue_invite_email(c, &email, &link).await?;
+        Ok(Ok(()))
+    })
+    .await??;
+    Ok(link)
 }
 
 /// US-04: a new invite for an existing user. Older invites and all sessions stop working.
@@ -260,8 +260,9 @@ pub async fn is_active_tl(c: &turso::Connection, user_id: i64) -> anyhow::Result
 }
 
 /// Retention (US-32): runs inside the caller's write.
-pub async fn purge_expired(c: &turso::Connection, now: i64) -> anyhow::Result<()> {
-    store::purge_expired(c, now).await
+/// Deletes up to `limit` sessions and `limit` invites; returns how many. The caller loops.
+pub async fn purge_expired(c: &turso::Connection, now: i64, limit: i64) -> anyhow::Result<u64> {
+    store::purge_expired(c, now, limit).await
 }
 
 /// Disabling is final: the user's invites go too, and only an active TL can be disabled.

@@ -17,7 +17,7 @@ use crate::{
     app::AppState,
     incidents::{self, ItemState, SourceKind},
     platform::{
-        now,
+        caps, now,
         page::{PageError, Shell},
         render::render,
         time,
@@ -203,19 +203,25 @@ async fn create(
 ) -> Result<Response, PageError> {
     let project = projects::find_for(&state.db, &user, &slug).await?;
     let input = MonitorInput::from(f);
-    let errors = input.validate();
-    if !errors.is_empty() {
-        let page = FormPage {
-            shell: projects::shell(&user, "monitors", Some(&project)),
-            project,
-            id: None,
-            input,
-            errors,
-        };
-        return Ok((StatusCode::UNPROCESSABLE_ENTITY, render(&page)).into_response());
+    let mut errors = input.validate();
+    if errors.is_empty() {
+        match super::create_monitor(&state.db, project.id, &input).await? {
+            Some(id) => {
+                return Ok(Redirect::to(&format!("/projects/{slug}/monitors/{id}")).into_response());
+            }
+            None => {
+                errors.insert("name", caps::MONITORS_FULL);
+            }
+        }
     }
-    let id = super::create_monitor(&state.db, project.id, &input).await?;
-    Ok(Redirect::to(&format!("/projects/{slug}/monitors/{id}")).into_response())
+    let page = FormPage {
+        shell: projects::shell(&user, "monitors", Some(&project)),
+        project,
+        id: None,
+        input,
+        errors,
+    };
+    Ok((StatusCode::UNPROCESSABLE_ENTITY, render(&page)).into_response())
 }
 
 async fn edit_form(
@@ -303,9 +309,17 @@ impl DetailPage {
 }
 
 #[derive(Deserialize)]
-struct Paging {
+pub(super) struct Paging {
     /// A cursor the page itself links to; a hand-edited bad value shows the first page.
     before: Option<String>,
+}
+
+impl Paging {
+    /// `<time>.<id>`: two rows can share a second, so the time alone would skip one.
+    pub(super) fn cursor(&self) -> Option<(i64, i64)> {
+        let (t, id) = self.before.as_deref()?.split_once('.')?;
+        Some((t.parse().ok()?, id.parse().ok()?))
+    }
 }
 
 async fn detail(
@@ -318,12 +332,7 @@ async fn detail(
     let monitor = super::find_monitor(&state.db, project.id, id)
         .await?
         .ok_or(PageError::NotFound)?;
-    // `checked_at.id`: two checks can share a second, so the time alone would skip one.
-    let before = paging.before.and_then(|b| {
-        let (t, id) = b.split_once('.')?;
-        Some((t.parse().ok()?, id.parse().ok()?))
-    });
-    let checks = super::recent_checks(&state.db, id, before, PAGE).await?;
+    let checks = super::recent_checks(&state.db, id, paging.cursor(), PAGE).await?;
     let older = (checks.len() as i64 == PAGE)
         .then(|| checks.last().map(|c| format!("{}.{}", c.checked_at, c.id)))
         .flatten();

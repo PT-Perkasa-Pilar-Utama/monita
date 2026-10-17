@@ -83,7 +83,7 @@ pub async fn load(db: &Db, slug: &str, days: usize) -> anyhow::Result<Option<Sta
     let first_day = crate::platform::time::day_start(t) - (days as i64 - 1) * 86_400;
     let public = checks::public_items(db, project.id).await?;
     let states = incidents::states_for(db, project.id).await?;
-    let intervals = history::intervals(db, Some(project.id), first_day, t).await?;
+    let intervals = history::intervals(db, project.id, first_day, t).await?;
 
     let items: Vec<ItemStatus> = public
         .iter()

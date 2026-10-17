@@ -10,6 +10,8 @@ fn id_list(ids: impl IntoIterator<Item = i64>) -> String {
         .join(",")
 }
 
+const PER_SOURCE_CAP: i64 = crate::platform::caps::SOURCES_PER_PROJECT;
+
 pub async fn items(c: &Connection, incident_id: i64) -> anyhow::Result<Vec<ItemRef>> {
     Ok(items_of(c, &[incident_id])
         .await?
@@ -24,10 +26,11 @@ pub async fn items_of(
     let mut rows = c
         .query(
             format!(
-                "SELECT incident_id, source_kind, source_id FROM incident_items WHERE incident_id IN ({})",
+                "SELECT incident_id, source_kind, source_id FROM (SELECT *, row_number() OVER (PARTITION BY incident_id) AS rn
+                 FROM incident_items WHERE incident_id IN ({})) WHERE rn <= ?1",
                 id_list(incident_ids.iter().copied())
             ),
-            (),
+            [PER_SOURCE_CAP],
         )
         .await?;
     let mut out: HashMap<i64, Vec<ItemRef>> = HashMap::new();
@@ -43,25 +46,31 @@ pub async fn items_of(
 }
 
 pub async fn updates(c: &Connection, incident_id: i64) -> anyhow::Result<Vec<UpdateRow>> {
-    Ok(updates_of(c, &[incident_id])
-        .await?
-        .remove(&incident_id)
-        .unwrap_or_default())
+    Ok(updates_of(
+        c,
+        &[incident_id],
+        crate::platform::caps::UPDATES_PER_INCIDENT,
+    )
+    .await?
+    .remove(&incident_id)
+    .unwrap_or_default())
 }
 
-/// Each incident's updates, newest first.
+/// Each incident's newest `per_incident` updates, newest first.
 pub async fn updates_of(
     c: &Connection,
     incident_ids: &[i64],
+    per_incident: i64,
 ) -> anyhow::Result<HashMap<i64, Vec<UpdateRow>>> {
     let mut rows = c
         .query(
             format!(
-                "SELECT s.incident_id, s.label, s.message, u.email, s.created_at FROM status_updates s LEFT JOIN users u ON u.id = s.author_id
-                 WHERE s.incident_id IN ({}) ORDER BY s.created_at DESC, s.id DESC",
+                "SELECT s.incident_id, s.label, s.message, u.email, s.created_at FROM (SELECT *, row_number() OVER (PARTITION BY incident_id ORDER BY created_at DESC, id DESC) AS rn
+                 FROM status_updates WHERE incident_id IN ({})) s LEFT JOIN users u ON u.id = s.author_id
+                 WHERE s.rn <= ?1 ORDER BY s.created_at DESC, s.id DESC",
                 id_list(incident_ids.iter().copied())
             ),
-            (),
+            [per_incident],
         )
         .await?;
     let mut out: HashMap<i64, Vec<UpdateRow>> = HashMap::new();
@@ -83,8 +92,8 @@ pub async fn states_for(
     let mut rows = c
         .query(
             "SELECT it.source_kind, it.source_id, i.origin FROM incidents i JOIN incident_items it ON it.incident_id = i.id
-             WHERE i.project_id = ?1 AND i.resolved_at IS NULL",
-            [project_id],
+             WHERE i.project_id = ?1 AND i.resolved_at IS NULL LIMIT ?2",
+            (project_id, crate::platform::caps::OPEN_ITEMS),
         )
         .await?;
     let mut out = HashMap::new();
@@ -105,17 +114,19 @@ pub async fn states_for(
     Ok(out)
 }
 
-/// (item, started_at, resolved_at) of automatic incidents still open or resolved after `since`.
+/// (item, started_at, resolved_at) of a project's automatic incidents still open or resolved
+/// after `since`, newest first, at most `caps::SPANS`.
 pub async fn auto_intervals(
     c: &Connection,
-    project_id: Option<i64>,
+    project_id: i64,
     since: i64,
 ) -> anyhow::Result<Vec<(ItemRef, i64, Option<i64>)>> {
     let mut rows = c
         .query(
             "SELECT it.source_kind, it.source_id, i.started_at, i.resolved_at FROM incidents i JOIN incident_items it ON it.incident_id = i.id
-             WHERE (?1 IS NULL OR i.project_id = ?1) AND i.origin = 'auto' AND (i.resolved_at IS NULL OR i.resolved_at >= ?2)",
-            (project_id, since),
+             WHERE i.project_id = ?1 AND i.origin = 'auto' AND (i.resolved_at IS NULL OR i.resolved_at >= ?2)
+             ORDER BY i.started_at DESC LIMIT ?3",
+            (project_id, since, crate::platform::caps::SPANS),
         )
         .await?;
     let mut out = Vec::new();
@@ -132,6 +143,26 @@ pub async fn auto_intervals(
         }
     }
     Ok(out)
+}
+
+/// (started_at, resolved_at) of one item's automatic incidents that overlap `[since, until)`,
+/// newest first, at most `caps::SPANS`.
+pub async fn source_spans(
+    c: &Connection,
+    item: ItemRef,
+    since: i64,
+    until: i64,
+) -> anyhow::Result<Vec<(i64, Option<i64>)>> {
+    crate::platform::db::query_all(
+        c,
+        "SELECT i.started_at, i.resolved_at FROM incidents i JOIN incident_items it ON it.incident_id = i.id
+         WHERE it.source_kind = ?1 AND it.source_id = ?2 AND i.origin = 'auto'
+           AND (i.resolved_at IS NULL OR i.resolved_at >= ?3) AND i.started_at < ?4
+         ORDER BY i.started_at DESC LIMIT ?5",
+        (item.kind.as_str(), item.id, since, until, crate::platform::caps::SPANS),
+        |r| Ok((r.get(0)?, r.get(1)?)),
+    )
+    .await
 }
 
 /// Incidents started since `since` or still open that name one of `items`, newest 200 first.

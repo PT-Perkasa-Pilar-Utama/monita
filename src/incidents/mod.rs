@@ -12,7 +12,7 @@ use std::collections::HashMap;
 
 use turso::Connection;
 
-use crate::platform::{db::Db, time};
+use crate::platform::{caps, db::Db, time};
 use engine::Effect;
 
 pub use store::{IncidentRow, ItemRef, UpdateRow};
@@ -248,6 +248,13 @@ pub enum UpdateError {
     AutoResolves,
     #[error("A closed incident takes only Resolved updates.")]
     Closed,
+    #[error("An incident takes {} updates at most.", caps::UPDATES_PER_INCIDENT)]
+    TooManyUpdates,
+    #[error(
+        "{} manual incidents are open, the limit. Resolve one first.",
+        caps::OPEN_MANUAL_PER_PROJECT
+    )]
+    TooManyOpen,
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 }
@@ -297,6 +304,9 @@ pub async fn post_update(
         else {
             return Ok(Ok(false));
         };
+        if store::count_updates(c, incident_id).await? >= caps::UPDATES_PER_INCIDENT {
+            return Ok(Err(UpdateError::TooManyUpdates));
+        }
         if !allowed_labels(&origin, resolved_at.is_some()).contains(&label) {
             return Ok(Err(if resolved_at.is_some() {
                 UpdateError::Closed
@@ -361,7 +371,13 @@ pub async fn open_manual(db: &Db, n: &NewIncident, now: i64) -> Result<i64, Upda
         return Err(UpdateError::BadSeverity);
     }
     check_message(&n.message)?;
+    if store::manual_full(&db.read().await?, n.project_id).await? {
+        return Err(UpdateError::TooManyOpen);
+    }
     db.write(async |c| {
+        if store::manual_full(c, n.project_id).await? {
+            return Ok(Err(UpdateError::TooManyOpen));
+        }
         let items = picked(&item_names_on(c, n.project_id).await?, n);
         if items.is_empty() {
             return Ok(Err(UpdateError::NoItems));

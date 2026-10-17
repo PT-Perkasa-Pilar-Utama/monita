@@ -14,7 +14,7 @@ mod store;
 
 use std::collections::BTreeMap;
 
-use crate::platform::{db::Db, now, token};
+use crate::platform::{caps, db::Db, now, token};
 
 pub use probe::{Clients, Target, probe, status_matches};
 pub use store::{CheckRow, Monitor};
@@ -140,10 +140,22 @@ fn first_check_offset(interval_s: i64) -> i64 {
 }
 
 /// AC-09.01, AC-11.01: the first check lands at a random point inside the interval.
-pub async fn create_monitor(db: &Db, project_id: i64, input: &MonitorInput) -> anyhow::Result<i64> {
+/// `None` when the project already has `caps::MONITORS_PER_PROJECT` monitors.
+pub async fn create_monitor(
+    db: &Db,
+    project_id: i64,
+    input: &MonitorInput,
+) -> anyhow::Result<Option<i64>> {
     let next = now() + first_check_offset(input.interval_s);
-    db.write(async |c| store::insert_monitor(c, project_id, input, next).await)
-        .await
+    db.write(async |c| {
+        if store::count_monitors(c, project_id).await? >= caps::MONITORS_PER_PROJECT {
+            return Ok(None);
+        }
+        store::insert_monitor(c, project_id, input, next)
+            .await
+            .map(Some)
+    })
+    .await
 }
 
 /// A changed interval gets a fresh random offset, so edits keep checks spread.

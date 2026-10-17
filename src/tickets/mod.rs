@@ -158,13 +158,28 @@ pub async fn mine(
     Ok(store::by_ref(&conn, r.id).await?)
 }
 
-pub async fn board(db: &Db, project_id: i64) -> anyhow::Result<Vec<TicketRow>> {
-    store::board(&db.read().await?, project_id).await
+/// The newest tickets of each stage, and every stage's total.
+pub async fn board(
+    db: &Db,
+    project_id: i64,
+) -> anyhow::Result<(Vec<TicketRow>, Vec<(String, i64)>)> {
+    let conn = db.read().await?;
+    Ok((
+        store::board(&conn, project_id).await?,
+        store::stage_counts(&conn, project_id).await?,
+    ))
 }
 
 /// US-28: tickets out of Triage, public fields only (SEC-14).
-pub async fn public_board(db: &Db, project_id: i64) -> anyhow::Result<Vec<PublicTicket>> {
-    store::public_board(&db.read().await?, project_id).await
+pub async fn public_board(
+    db: &Db,
+    project_id: i64,
+) -> anyhow::Result<(Vec<PublicTicket>, Vec<(String, i64)>)> {
+    let conn = db.read().await?;
+    Ok((
+        store::public_board(&conn, project_id).await?,
+        store::stage_counts(&conn, project_id).await?,
+    ))
 }
 
 pub async fn find(db: &Db, project_id: i64, number: i64) -> anyhow::Result<Option<TicketRow>> {
@@ -229,7 +244,7 @@ pub async fn new_in_triage_after(
     c: &turso::Connection,
     project_id: i64,
     after_id: i64,
-) -> anyhow::Result<Vec<(i64, String)>> {
+) -> anyhow::Result<(Vec<(i64, String)>, i64)> {
     store::new_in_triage_after(c, project_id, after_id).await
 }
 

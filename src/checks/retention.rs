@@ -2,7 +2,7 @@
 
 use crate::{
     incidents::{self, SourceKind},
-    platform::{db::Db, settings},
+    platform::{caps, db::Db, settings},
 };
 
 use super::store::rollup as store;
@@ -41,33 +41,50 @@ pub async fn run(db: &Db, now: i64) -> anyhow::Result<()> {
         .await?
         > 0
     {}
-    db.write(async |c| {
-        crate::notify::purge_delivered(c, outbox_cutoff).await?;
-        crate::accounts::purge_expired(c, now).await
-    })
-    .await
+    while db
+        .write(async |c| {
+            let outbox = crate::notify::purge_delivered(c, outbox_cutoff, caps::JOB_BATCH).await?;
+            Ok(outbox + crate::accounts::purge_expired(c, now, caps::JOB_BATCH).await?)
+        })
+        .await?
+        > 0
+    {}
+    Ok(())
 }
 
+/// Summarizes one day, `caps::JOB_BATCH` sources per read and per write.
 async fn rollup_day(db: &Db, day: i64, now: i64) -> anyhow::Result<()> {
-    let spans_of = incidents::history::intervals(db, None, day, now).await?;
-    let conn = db.read().await?;
-    let mut rows = Vec::new();
-    for (kind, id) in store::all_sources(&conn).await? {
-        let (total, ok, latency) = match kind {
-            SourceKind::Monitor => store::check_counts(&conn, id, day).await?,
-            SourceKind::Heartbeat => store::ping_counts(&conn, id, day).await?,
-        };
-        let spans = spans_of.get(&(kind, id)).map(Vec::as_slice).unwrap_or(&[]);
-        let down = incidents::history::per_day(spans, day, 1)[0];
-        rows.push((kind, id, total, ok, down, latency));
-    }
-    drop(conn);
     let label = crate::platform::time::day(day);
-    db.write(async |c| {
-        for (kind, id, total, ok, down, latency) in &rows {
-            store::upsert_summary(c, *kind, *id, &label, *total, *ok, *down, *latency).await?;
+    for kind in [SourceKind::Monitor, SourceKind::Heartbeat] {
+        let mut after = 0;
+        loop {
+            let conn = db.read().await?;
+            let ids = store::source_ids(&conn, kind, after, caps::JOB_BATCH).await?;
+            let mut rows = Vec::with_capacity(ids.len());
+            for &id in &ids {
+                let (total, ok, latency) = match kind {
+                    SourceKind::Monitor => store::check_counts(&conn, id, day).await?,
+                    SourceKind::Heartbeat => store::ping_counts(&conn, id, day).await?,
+                };
+                let item = incidents::ItemRef { kind, id };
+                let spans = incidents::history::spans(&conn, item, day, day + 86_400, now).await?;
+                let down = incidents::history::per_day(&spans, day, 1)[0];
+                rows.push((id, total, ok, down, latency));
+            }
+            drop(conn);
+            db.write(async |c| {
+                for (id, total, ok, down, latency) in &rows {
+                    store::upsert_summary(c, kind, *id, &label, *total, *ok, *down, *latency)
+                        .await?;
+                }
+                Ok(())
+            })
+            .await?;
+            match ids.last() {
+                Some(&last) if ids.len() as i64 == caps::JOB_BATCH => after = last,
+                _ => break,
+            }
         }
-        Ok(())
-    })
-    .await
+    }
+    Ok(())
 }

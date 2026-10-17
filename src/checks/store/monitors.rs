@@ -3,6 +3,7 @@
 use turso::Connection;
 
 use crate::checks::{CheckResult, MonitorInput};
+use crate::platform::caps;
 
 pub struct Monitor {
     pub id: i64,
@@ -179,8 +180,8 @@ async fn many(
 pub async fn list_monitors(c: &Connection, project_id: i64) -> anyhow::Result<Vec<Monitor>> {
     many(
         c,
-        format!("SELECT {COLS} {FROM} WHERE m.project_id = ?1 ORDER BY m.name"),
-        [project_id],
+        format!("SELECT {COLS} {FROM} WHERE m.project_id = ?1 ORDER BY m.name LIMIT ?2"),
+        (project_id, caps::MONITORS_PER_PROJECT),
     )
     .await
 }
@@ -218,8 +219,8 @@ pub async fn public_items(
          UNION ALL
          SELECT 'heartbeat', h.id, h.name, h.created_at, h.last_ping_at IS NOT NULL, 1
          FROM heartbeats h WHERE h.project_id = ?1 AND h.is_public = 1
-         ORDER BY 6, 3",
-        [project_id],
+         ORDER BY 6, 3 LIMIT ?2",
+        (project_id, caps::SOURCES_PER_PROJECT),
         |r| {
             Ok(crate::checks::PublicItem {
                 kind: kind_at(r, 0)?,
@@ -242,8 +243,8 @@ pub async fn source_names(
     crate::platform::db::query_all(
         c,
         "SELECT 'monitor', id, name, 0 FROM monitors WHERE project_id = ?1
-         UNION ALL SELECT 'heartbeat', id, name, 1 FROM heartbeats WHERE project_id = ?1 ORDER BY 4, 3",
-        [project_id],
+         UNION ALL SELECT 'heartbeat', id, name, 1 FROM heartbeats WHERE project_id = ?1 ORDER BY 4, 3 LIMIT ?2",
+        (project_id, caps::SOURCES_PER_PROJECT),
         |r| Ok((kind_at(r, 0)?, r.get(1)?, r.get(2)?)),
     )
     .await
@@ -314,4 +315,14 @@ pub async fn recent_checks(
         },
     )
     .await
+}
+
+pub async fn count_monitors(c: &Connection, project_id: i64) -> anyhow::Result<i64> {
+    Ok(crate::platform::db::query_i64(
+        c,
+        "SELECT count(*) FROM monitors WHERE project_id = ?1",
+        [project_id],
+    )
+    .await?
+    .unwrap_or(0))
 }

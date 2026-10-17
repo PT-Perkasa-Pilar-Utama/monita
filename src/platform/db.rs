@@ -184,7 +184,7 @@ impl Db {
     pub async fn drop_all_tables(&self) -> anyhow::Result<()> {
         let names = query_all(
             &self.read().await?,
-            "SELECT name FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%'",
+            "SELECT name FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%' LIMIT 100",
             (),
             |r| r.get::<String>(0),
         )

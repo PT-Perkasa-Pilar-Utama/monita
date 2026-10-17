@@ -42,7 +42,7 @@ curl -fsS -m 10 https://monita.company.co.id/ping/k3j9w2x7q4m8p6r1t5v0y2z8ab
 | POST | `/projects/{slug}/monitors/{id}/delete` | owner, super_admin | | Delete with results | |
 | GET | `/projects/{slug}/heartbeats` | owner, super_admin | | List with state, last ping, ping URL | |
 | POST | `/projects/{slug}/heartbeats` | owner, super_admin | `name`, `period_s`, `grace_s`, `severity`, `is_public` | Create token. `deadline_at = now + period_s + grace_s`. | AC-12.01, AC-12.02 |
-| GET | `/projects/{slug}/heartbeats/{id}` | owner, super_admin | | Detail, ping URL, recent pings | AC-12.02 |
+| GET | `/projects/{slug}/heartbeats/{id}` | owner, super_admin | `?before=<received_at>.<id>`, the cursor the page links to | Detail, ping URL, pings of the last 7 days, 100 per page | AC-12.02 |
 | POST | `/projects/{slug}/heartbeats/{id}` | owner, super_admin | same as create | Update | |
 | POST | `/projects/{slug}/heartbeats/{id}/delete` | owner, super_admin | | Delete | |
 | GET | `/admin/settings` | super_admin | | Limits and the check cap | AC-11.03, AC-31.03 |

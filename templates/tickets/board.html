@@ -2,12 +2,12 @@
 {% import "ui/macros.html" as ui %}
 {% block title %}Known issues · {{ project.name }}{% endblock %}
 {% block content %}
-<header class="stack stack--sm"><span class="cap">{{ project.name }} · Done shows the newest 200</span><h1>Known issues</h1></header>
+<header class="stack stack--sm"><span class="cap">{{ project.name }} · each column shows its newest 200</span><h1>Known issues</h1></header>
 <div class="board">
 {% for (key, label) in self.columns() %}
   {% let cards = self.column(key) %}
   <div class="board__col">
-    <div class="board__head">{% call ui::st(self.ring(key)) %}{% endcall %}{{ label }}<span class="board__count">{{ cards.len() }}</span></div>
+    <div class="board__head">{% call ui::st(self.ring(key)) %}{% endcall %}{{ label }}<span class="board__count">{{ self.count(key) }}</span></div>
     {% for t in cards %}
     <div class="card"><span class="cap">#{{ t.number }}</span><span class="card__title">{{ t.title }}</span><div class="card__meta"><span class="cap">opened {{ self.day(t.created_at) }}</span><span class="cap">updated {{ self.day(t.updated_at) }}</span></div></div>
     {% endfor %}

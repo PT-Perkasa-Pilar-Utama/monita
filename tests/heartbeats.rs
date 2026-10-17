@@ -34,6 +34,7 @@ async fn setup(app: &TestApp) -> (String, String) {
         },
     )
     .await
+    .unwrap()
     .unwrap();
     let token = heartbeat::find(&app.state.db, 1, id)
         .await
@@ -559,7 +560,10 @@ async fn a_ping_admitted_before_a_reset_never_lands_on_a_new_heartbeat() {
         name: "fresh".into(),
         ..HeartbeatInput::default()
     };
-    let id = heartbeat::create(&app.state.db, 1, &input).await.unwrap();
+    let id = heartbeat::create(&app.state.db, 1, &input)
+        .await
+        .unwrap()
+        .unwrap();
     let fresh = heartbeat::find(&app.state.db, 1, id)
         .await
         .unwrap()

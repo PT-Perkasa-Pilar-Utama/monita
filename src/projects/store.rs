@@ -2,6 +2,8 @@
 
 use turso::Connection;
 
+use crate::platform::caps;
+
 pub struct Project {
     pub id: i64,
     pub owner_id: i64,
@@ -83,8 +85,8 @@ pub async fn find_by_slug(c: &Connection, slug: &str) -> anyhow::Result<Option<P
 pub async fn list_all(c: &Connection) -> anyhow::Result<Vec<Project>> {
     many(
         c,
-        format!("SELECT {COLS} FROM projects p JOIN users u ON u.id = p.owner_id ORDER BY p.name"),
-        (),
+        format!("SELECT {COLS} FROM projects p JOIN users u ON u.id = p.owner_id ORDER BY p.name LIMIT ?1"),
+        [caps::PROJECTS],
     )
     .await
 }
@@ -92,8 +94,8 @@ pub async fn list_all(c: &Connection) -> anyhow::Result<Vec<Project>> {
 pub async fn list_owned(c: &Connection, owner_id: i64) -> anyhow::Result<Vec<Project>> {
     many(
         c,
-        format!("SELECT {COLS} FROM projects p JOIN users u ON u.id = p.owner_id WHERE p.owner_id = ?1 ORDER BY p.name"),
-        [owner_id],
+        format!("SELECT {COLS} FROM projects p JOIN users u ON u.id = p.owner_id WHERE p.owner_id = ?1 ORDER BY p.name LIMIT ?2"),
+        (owner_id, caps::PROJECTS),
     )
     .await
 }
@@ -142,8 +144,8 @@ pub async fn insert_key(
 }
 
 pub async fn list_keys(c: &Connection, project_id: i64) -> anyhow::Result<Vec<ApiKeyRow>> {
-    crate::platform::db::query_all(c, "SELECT id, name, key_prefix, last_used_at, revoked_at, created_at FROM api_keys WHERE project_id = ?1 ORDER BY revoked_at IS NOT NULL, created_at DESC",
-            [project_id], |r| Ok(ApiKeyRow {
+    crate::platform::db::query_all(c, "SELECT id, name, key_prefix, last_used_at, revoked_at, created_at FROM api_keys WHERE project_id = ?1 ORDER BY revoked_at IS NOT NULL, coalesce(revoked_at, created_at) DESC LIMIT ?2",
+            (project_id, 2 * caps::KEYS_PER_PROJECT), |r| Ok(ApiKeyRow {
             id: r.get(0)?,
             name: r.get(1)?,
             prefix: r.get(2)?,
@@ -195,4 +197,22 @@ pub async fn touch_key(c: &Connection, key_id: i64, at: i64) -> anyhow::Result<(
     )
     .await?;
     Ok(())
+}
+
+pub async fn count_projects(c: &Connection) -> anyhow::Result<i64> {
+    Ok(
+        crate::platform::db::query_i64(c, "SELECT count(*) FROM projects", ())
+            .await?
+            .unwrap_or(0),
+    )
+}
+
+pub async fn count_live_keys(c: &Connection, project_id: i64) -> anyhow::Result<i64> {
+    Ok(crate::platform::db::query_i64(
+        c,
+        "SELECT count(*) FROM api_keys WHERE project_id = ?1 AND revoked_at IS NULL",
+        [project_id],
+    )
+    .await?
+    .unwrap_or(0))
 }

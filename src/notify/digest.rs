@@ -17,12 +17,15 @@ pub async fn digest(db: &Db, base_url: &str, now: i64) -> anyhow::Result<usize> 
         let mut sent = 0;
         // A disabled owner has left; ticket titles must not reach their mailbox.
         for p in projects.iter().filter(|p| p.owner_active) {
-            let fresh = crate::tickets::new_in_triage_after(c, p.id, after).await?;
+            let (fresh, total) = crate::tickets::new_in_triage_after(c, p.id, after).await?;
             if fresh.is_empty() {
                 continue;
             }
-            let lines: Vec<String> = fresh.iter().map(|(n, t)| format!("#{n}  {t}\n     {base_url}/projects/{}/tickets/{n}", p.slug)).collect();
-            let subject = match fresh.len() {
+            let mut lines: Vec<String> = fresh.iter().map(|(n, t)| format!("#{n}  {t}\n     {base_url}/projects/{}/tickets/{n}", p.slug)).collect();
+            if total > fresh.len() as i64 {
+                lines.push(format!("…and {} more on the board.", total - fresh.len() as i64));
+            }
+            let subject = match total {
                 1 => format!("[Monita] {}: 1 new ticket", p.name),
                 n => format!("[Monita] {}: {n} new tickets", p.name),
             };

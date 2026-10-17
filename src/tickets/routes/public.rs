@@ -182,9 +182,16 @@ pub(super) async fn mine_lookup(
 struct BoardPage {
     project: Project,
     tickets: Vec<PublicTicket>,
+    counts: Vec<(String, i64)>,
 }
 
 impl BoardPage {
+    fn count(&self, stage: &str) -> i64 {
+        self.counts
+            .iter()
+            .find(|(s, _)| s == stage)
+            .map_or(0, |(_, n)| *n)
+    }
     fn ring(&self, stage: &str) -> &'static str {
         if stage == "backlog" {
             "backlog"
@@ -210,9 +217,10 @@ pub(super) async fn public_board(
     Path(slug): Path<String>,
 ) -> Result<Response, PageError> {
     let project = public_project(&state, &slug).await?;
-    let tickets = crate::tickets::public_board(&state.db, project.id).await?;
+    let (tickets, counts) = crate::tickets::public_board(&state.db, project.id).await?;
     Ok(crate::platform::render::public_cache(render(&BoardPage {
         project,
         tickets,
+        counts,
     })))
 }
