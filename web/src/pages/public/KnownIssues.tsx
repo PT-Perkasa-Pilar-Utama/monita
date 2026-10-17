@@ -21,7 +21,7 @@ export function KnownIssues(): ReactElement {
           stages={["backlog", "in_progress", "done"]}
           tickets={res.data.tickets}
           counts={res.data.counts}
-          card={(t) => <TicketCard title={t.title} number={t.number} aside={`Updated ${day(t.updated_at)}`} />}
+          card={(t) => <TicketCard title={t.title} number={t.number} meta={<span>Reported {day(t.created_at)}</span>} aside={`Updated ${day(t.updated_at)}`} />}
         />
       )}
     </>

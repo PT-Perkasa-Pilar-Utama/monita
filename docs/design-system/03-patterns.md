@@ -43,7 +43,7 @@ All pages open with `PageHeader`. A detail or form page puts `Crumbs` above it.
 | Ticket board | `PageHeader` (Public board) then `TicketBoard` with Triage, Backlog, In progress and Done. |
 | Ticket detail | `Crumbs`, `PageHeader`, then stage and close reason in `ToggleGroup`s. |
 | Public status | `PageHeader`, a headline sentence with a tone border, then a grid: `SystemRow`s at left; Active incidents and Past 7 days (`IncidentCard`) at right. History shows `IncidentCard`s under month headings. |
-| Public known issues | `PageHeader`, then `TicketBoard` with Backlog, In progress and Done. A card shows title and number only. |
+| Public known issues | `PageHeader`, then `TicketBoard` with Backlog, In progress and Done. A card shows the title, the number, the day it was reported and the day it last changed. |
 | Report a bug | `Card` form with a required ref ID. |
 | Sign-in, invite | `BareLayout` and one `Card`. |
 
