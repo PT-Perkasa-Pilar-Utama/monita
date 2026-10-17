@@ -203,7 +203,7 @@ jobs:
           path: target/debug
       - run: chmod +x target/debug/monita
       # No `bun install`: neither script needs a package; only --screens loads Playwright.
-      - run: bun test site
+      - run: bun test ./site/highlight.test.ts
       - run: bun site/build.ts
       - run: bun e2e/demo/snapshot.ts
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
