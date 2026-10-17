@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { Outlet, useParams } from "react-router-dom";
+import { Link, Outlet, useParams } from "react-router-dom";
 import { Mark } from "@/components/brand/Mark";
 import { Bug, Globe, ListChecks, Ticket } from "@/components/icons";
 import { PageFrame } from "@/components/layout/Page";
@@ -21,18 +21,17 @@ export function PublicLayout(): ReactElement | null {
       <header className="sticky top-0 z-40 border-b bg-background" data-has-tabs="">
         <div className="px-4 sm:px-8 lg:px-12">
           <div className="mx-auto flex h-14 max-w-app items-center gap-3">
-            {/* ponytail: the status page is a server page until R5. */}
-            <a href={base} className="flex min-w-0 items-center gap-2 text-lg font-semibold tracking-tight">
+            <Link to={base} className="flex min-w-0 items-center gap-2 text-lg font-semibold tracking-tight">
               <Mark className="size-[26px] shrink-0 text-primary" />
               <span className="truncate">{p.data.name}</span>
-            </a>
+            </Link>
             <ThemeToggle className="ml-auto" />
           </div>
         </div>
         <PageTabs
           label="Public pages"
           tabs={[
-            { to: base, label: "Status", icon: Globe, end: true, server: true },
+            { to: base, label: "Status", icon: Globe, end: true, match: [`${base}/history`] },
             { to: `${base}/tickets`, label: "Known issues", icon: ListChecks },
             { to: `${base}/report`, label: "Report a bug", icon: Bug },
             { to: `${base}/mine`, label: "My tickets", icon: Ticket },

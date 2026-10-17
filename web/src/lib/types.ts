@@ -220,3 +220,27 @@ export type PublicBoard = { tickets: PublicTicket[]; counts: StageCounts };
 export type MyTicket = { number: number; title: string; stage: Stage; close_reason: CloseReason | null; created_at: number; updated_at: number };
 
 export type PublicProject = { name: string; slug: string };
+
+/** SEC-21: an update on a public page has no author. */
+export type PublicUpdate = { label: UpdateLabel; message: string; at: number };
+
+export type PublicIncident = {
+  title: string;
+  origin: "auto" | "manual";
+  severity: Severity;
+  started_at: number;
+  resolved_at: number | null;
+  items: string[];
+  updates: PublicUpdate[];
+};
+
+export type UptimeDay = { day: string; uptime: number | null; downtime_s: number };
+
+export type PublicItem = { kind: "monitor" | "heartbeat"; name: string; state: StateKind; uptime_90d: number | null; days: UptimeDay[] };
+
+export type PublicStatus = {
+  status: { project: PublicProject; overall: StateKind; items: PublicItem[]; incidents: PublicIncident[] };
+  recent: PublicIncident[];
+};
+
+export type PublicHistory = { project: PublicProject; incidents: PublicIncident[]; older: string | null };

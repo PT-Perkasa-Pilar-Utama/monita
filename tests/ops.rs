@@ -37,7 +37,8 @@ async fn public_pages_are_limited_per_ip_and_health_is_not() {
     let app = TestApp::spawn("test").await;
     set(&app, "rl_ip_per_min", 3).await;
     for _ in 0..3 {
-        assert_eq!(app.get("/status/nope", None).await.status(), 404);
+        let res = app.get("/api/ui/public/nope/status", None).await;
+        assert_eq!(res.status(), 404);
     }
     let limited = app.get("/status/nope", None).await;
     assert_eq!(limited.status(), 429);

@@ -50,9 +50,11 @@ Output 200:
 | `overall` | `down` if any item is down, else `issue` if any has an issue, else `up` |
 | `days[].uptime` | `null` for a day before the item existed. The page renders a grey bar. |
 
-## 7.2 HTML routes
+## 7.2 Frontend routes
+
+The React pages `/status/{slug}` and `/status/{slug}/history` call these routes with no sign-in. Both carry the 7.1 wire types, so neither sends an author or Monita's cause text (SEC-21). Both are `Cache-Control: public, max-age=30`, and the per-IP limit covers `/api/ui/public/` and the pages under `/status/`.
 
 | Method | Path | Access | Behavior | AC |
 | --- | --- | --- | --- | --- |
-| GET | `/status/{slug}` | public, 60/min per IP | Two columns from 1000 px: systems on the left, incidents on the right; one column below, with active incidents first. The headline counts systems up. Systems with a problem come first; they and the first 12 others show 90 daily bars, the rest a plain list. Incidents: every open one, however old, with its updates, and the newest 10 resolved in the last 7 days, folded. Links to the history, `/status/{slug}/tickets` and the report form. | AC-06.03, AC-21.01, AC-21.02 |
-| GET | `/status/{slug}/history` | public, 60/min per IP | Every incident that touched a public system, newest first, 25 per page under month headings, `?before=<started_at>.<id>` for the next. The same public fields as 7.1. | AC-22.01 |
+| GET | `/api/ui/public/{slug}/status` | public, 60/min per IP | `status`: the project, `overall`, every public item with 90 days, and every open incident however old, with its updates. `recent`: the newest 10 incidents resolved in the last 7 days. The page shows two columns from 1000 px: systems on the left, incidents on the right; one column below, with active incidents first. The headline counts systems up. Systems with a problem come first; they and the first 12 others show 90 daily bars, the rest a plain list. Resolved incidents are folded. | AC-06.03, AC-21.01, AC-21.02 |
+| GET | `/api/ui/public/{slug}/history` | public, 60/min per IP | `?before=<started_at>.<id>` from `older`. `incidents`: every incident that touched a public system, newest first, 25 per page; `older` is the next cursor or null. The page groups them under month headings. | AC-22.01 |

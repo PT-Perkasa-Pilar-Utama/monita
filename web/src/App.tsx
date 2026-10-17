@@ -20,9 +20,11 @@ import { Monitors } from "@/pages/project/Monitors";
 import { Overview } from "@/pages/project/Overview";
 import { Ticket } from "@/pages/project/Ticket";
 import { Tickets } from "@/pages/project/Tickets";
+import { History } from "@/pages/public/History";
 import { KnownIssues } from "@/pages/public/KnownIssues";
 import { Mine } from "@/pages/public/Mine";
 import { Report } from "@/pages/public/Report";
+import { Status } from "@/pages/public/Status";
 import { Invite } from "@/pages/Invite";
 import { Login } from "@/pages/Login";
 import { NotFound } from "@/pages/NotFound";
@@ -60,6 +62,8 @@ export default function App(): ReactElement {
         </Route>
       </Route>
       <Route path="/status/:slug" element={<PublicLayout />}>
+        <Route index element={<Status />} />
+        <Route path="history" element={<History />} />
         <Route path="tickets" element={<KnownIssues />} />
         <Route path="report" element={<Report />} />
         <Route path="mine" element={<Mine />} />

@@ -9,6 +9,16 @@ use monita::{
 };
 use serde_json::Value;
 
+const PAGE: &str = "/api/ui/public/payments/status";
+const HISTORY: &str = "/api/ui/public/payments/history";
+
+/// A public JSON response as text, for checks on what it must never carry.
+async fn text(app: &TestApp, path: &str) -> String {
+    let res = app.get(path, None).await;
+    assert_eq!(res.status(), 200, "{path}");
+    res.text().await.unwrap()
+}
+
 /// A project with one public and one hidden monitor, and an incident on the public one that
 /// Monita detected (cause names an internal host) and the TL updated.
 async fn setup(app: &TestApp) -> String {
@@ -62,13 +72,17 @@ async fn status_page_shows_public_items_their_bars_and_incidents() {
     // AC-21.01, AC-21.02, AC-06.03
     let app = TestApp::spawn("test").await;
     setup(&app).await;
-    let res = app.get("/status/payments", None).await;
+    let res = app.get(PAGE, None).await;
     assert_eq!(res.status(), 200);
     assert_eq!(res.headers()["cache-control"], "public, max-age=30");
-    let html = res.text().await.unwrap();
+    let page: Value = res.json().await.unwrap();
+    let html = page.to_string();
     assert!(html.contains("Checkout is down"));
     assert!(html.contains("A DNS change rolled back."));
-    assert_eq!(html.matches("title=\"20").count(), 90, "90 day bars");
+    let days = page["data"]["status"]["items"][0]["days"]
+        .as_array()
+        .unwrap();
+    assert_eq!(days.len(), 90, "90 day bars");
     assert!(
         !html.contains("Internal DB admin"),
         "hidden monitors never appear"
@@ -144,7 +158,10 @@ async fn days_before_an_item_existed_are_null() {
 #[tokio::test]
 async fn an_unknown_slug_is_404() {
     let app = TestApp::spawn("test").await;
-    assert_eq!(app.get("/status/nope", None).await.status(), 404);
+    assert_eq!(
+        app.get("/api/ui/public/nope/status", None).await.status(),
+        404
+    );
     let res = app.get("/api/v1/public/status/nope", None).await;
     assert_eq!(res.status(), 404);
     let body: Value = res.json().await.unwrap();
@@ -187,12 +204,7 @@ async fn hidden_incidents_do_not_push_public_ones_off_the_page() {
         })
         .await
         .unwrap();
-    let html = app
-        .get("/status/payments", None)
-        .await
-        .text()
-        .await
-        .unwrap();
+    let html = text(&app, PAGE).await;
     assert!(
         html.contains("A DNS change rolled back."),
         "the public incident is still listed"
@@ -245,7 +257,7 @@ fn upto(n: i64) -> String {
 }
 
 #[tokio::test]
-async fn a_status_page_with_200_systems_draws_bars_only_for_problems_and_the_first_12() {
+async fn a_status_page_with_200_systems_sends_each_with_its_90_days() {
     let app = TestApp::spawn("test").await;
     setup(&app).await;
     let t = now();
@@ -255,22 +267,13 @@ async fn a_status_page_with_200_systems_draws_bars_only_for_problems_and_the_fir
         upto(more)
     ))
     .await;
-    let html = app
-        .get("/status/payments", None)
-        .await
-        .text()
-        .await
-        .unwrap();
-    let strips = html.matches("class=\"uptime__bars\"").count();
-    assert_eq!(
-        strips,
-        1 + monita::platform::caps::PUBLIC_BARS,
-        "one problem system plus 12"
-    );
-    let listed = more as usize - monita::platform::caps::PUBLIC_BARS;
+    let page: Value = app.get(PAGE, None).await.json().await.unwrap();
+    let items = page["data"]["status"]["items"].as_array().unwrap();
+    assert_eq!(items.len() as i64, more + 1, "the public one and the rest");
     assert!(
-        html.contains(&format!("{listed} more systems</summary>")),
-        "the rest are a plain list"
+        items
+            .iter()
+            .all(|i| i["days"].as_array().unwrap().len() == 90)
     );
 }
 
@@ -288,51 +291,34 @@ async fn the_page_shows_open_incidents_and_the_newest_10_of_the_week_and_history
         upto(26)
     ))
     .await;
-    let page = app
-        .get("/status/payments", None)
-        .await
-        .text()
-        .await
-        .unwrap();
-    let active = &page[page.find("id=\"active\"").unwrap()..page.find("id=\"past\"").unwrap()];
+    let page = text(&app, PAGE).await;
+    let json: Value = serde_json::from_str(&page).unwrap();
+    let active = json["data"]["status"]["incidents"].to_string();
     assert!(
         active.contains("Long outage"),
         "an open incident shows however old"
     );
-    let past = &page[page.find("id=\"past\"").unwrap()..];
-    assert_eq!(
-        past.matches("class=\"inc\"").count() as i64,
-        monita::platform::caps::PUBLIC_RECENT
-    );
+    let past = json["data"]["recent"].as_array().unwrap();
+    assert_eq!(past.len() as i64, monita::platform::caps::PUBLIC_RECENT);
     assert!(
         !page.contains("Admin DB slow"),
         "an incident on a hidden system shows nowhere"
     );
 
-    let first = app
-        .get("/status/payments/history", None)
+    let first: Value = app.get(HISTORY, None).await.json().await.unwrap();
+    let count = |v: &Value| v["data"]["incidents"].as_array().unwrap().len() as i64;
+    assert_eq!(count(&first), monita::platform::caps::PUBLIC_HISTORY_PAGE);
+    let before = first["data"]["older"].as_str().expect("an Older link");
+    let second: Value = app
+        .get(&format!("{HISTORY}?before={before}"), None)
         .await
-        .text()
-        .await
-        .unwrap();
-    assert_eq!(
-        first.matches("<details class=\"inc").count() as i64,
-        monita::platform::caps::PUBLIC_HISTORY_PAGE
-    );
-    let before = first
-        .split("?before=")
-        .nth(1)
-        .and_then(|s| s.split('"').next())
-        .expect("an Older link");
-    let second = app
-        .get(&format!("/status/payments/history?before={before}"), None)
-        .await
-        .text()
+        .json()
         .await
         .unwrap();
     // 26 blips, the resolved incident 1 and the long outage make 28: 25 then 3.
-    assert_eq!(second.matches("<details class=\"inc").count(), 3);
-    assert!(!second.contains("?before="));
+    assert_eq!(count(&second), 3);
+    assert!(second["data"]["older"].is_null());
+    let (first, second) = (first.to_string(), second.to_string());
     assert!(!first.contains("Admin DB slow") && !second.contains("Admin DB slow"));
     assert!(
         !first.contains("db-7.corp.internal"),
@@ -353,19 +339,9 @@ async fn past_incidents_older_than_a_week_leave_the_page_for_the_history() {
         o = t - 20 * 86_400
     ))
     .await;
-    let page = app
-        .get("/status/payments", None)
-        .await
-        .text()
-        .await
-        .unwrap();
+    let page = text(&app, PAGE).await;
     assert!(page.contains("Recent blip"));
     assert!(!page.contains("Old blip"));
-    let history = app
-        .get("/status/payments/history", None)
-        .await
-        .text()
-        .await
-        .unwrap();
+    let history = text(&app, HISTORY).await;
     assert!(history.contains("Old blip"));
 }

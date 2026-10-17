@@ -85,7 +85,8 @@ async fn monita_makes_a_unique_slug_from_the_name() {
         let (base, suffix) = slug.rsplit_once('-').unwrap();
         assert_eq!(base, "customer-portal");
         assert_eq!(suffix.len(), 6);
-        let status = app.get(&format!("/status/{slug}"), None).await.status();
+        let path = format!("/api/ui/public/{slug}/status");
+        let status = app.get(&path, None).await.status();
         assert_eq!(status, 200, "AC-06.03");
         slugs.push(slug);
     }

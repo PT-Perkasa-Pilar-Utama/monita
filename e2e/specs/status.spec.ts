@@ -27,7 +27,7 @@ test.describe("as the TL", () => {
     await expect(v.getByText("All systems operational")).toBeVisible();
     await expect(v.getByText("Checkout")).toBeVisible();
     await expect(v.getByText("internal-etl")).toHaveCount(0);
-    await expect(v.locator(".uptime__bars > span")).toHaveCount(90);
+    await expect(v.locator("[data-uptime-bars] > span")).toHaveCount(90);
 
     const json = await v.request.get(`/api/v1/public/status/${slug}`);
     expect(json.status()).toBe(200);
