@@ -15,7 +15,7 @@ use super::{
     CheckRow, FieldErrors, INTERVALS_S, Monitor, MonitorInput,
     chart::Range,
     insight::{Insight, Stat},
-    overview::{self, Day},
+    overview::{self, Day, check_summary, interval_label},
 };
 use crate::{
     accounts::CurrentUser,
@@ -23,7 +23,7 @@ use crate::{
     incidents::{self, ItemState, SourceKind},
     platform::{
         caps, now,
-        page::{PageError, Shell},
+        page::{ListFilter, PageError, Shell},
         render::render,
         time,
     },
@@ -41,25 +41,6 @@ pub fn router() -> Router<AppState> {
         .route("/projects/{slug}/monitors/{id}/delete", post(delete))
 }
 
-fn interval_label(s: i64) -> &'static str {
-    match s {
-        30 => "30s",
-        60 => "1m",
-        180 => "3m",
-        300 => "5m",
-        _ => "?",
-    }
-}
-
-fn check_summary(c: &CheckRow) -> String {
-    let latency = c.latency_ms.map(|l| format!("{l}ms")).unwrap_or_default();
-    match (c.status_code, &c.error) {
-        (Some(code), _) => format!("{code} in {latency}"),
-        (None, Some(e)) => e.chars().take(60).collect(),
-        (None, None) => latency,
-    }
-}
-
 #[derive(Template)]
 #[template(path = "checks/monitors.html")]
 struct ListPage {
@@ -68,10 +49,18 @@ struct ListPage {
     monitors: Vec<Monitor>,
     states: HashMap<(SourceKind, i64), ItemState>,
     days: HashMap<i64, Day>,
+    filter: ListFilter,
     now: i64,
 }
 
 impl ListPage {
+    fn rows(&self) -> Vec<&Monitor> {
+        let keep = |m: &&Monitor| {
+            self.filter
+                .keeps(&[&m.name, &m.url], self.state(m).0, &m.severity)
+        };
+        self.monitors.iter().filter(keep).collect()
+    }
     fn day(&self, m: &Monitor) -> Option<&Day> {
         self.days.get(&m.id)
     }
@@ -106,6 +95,7 @@ async fn list(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
     Path(slug): Path<String>,
+    Query(filter): Query<ListFilter>,
 ) -> Result<Response, PageError> {
     let project = projects::find_for(&state.db, &user, &slug).await?;
     let monitors = super::list_monitors(&state.db, project.id).await?;
@@ -118,6 +108,7 @@ async fn list(
         monitors,
         states,
         days,
+        filter,
         now,
     }))
 }

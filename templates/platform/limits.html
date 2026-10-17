@@ -1,9 +1,8 @@
 {% extends "layout/app.html" %}
 {% import "ui/macros.html" as ui %}
 {% block title %}System · Monita{% endblock %}
-{% block crumbs %}<span>Admin</span><span class="subtle">/</span><strong>System</strong>{% endblock %}
 {% block content %}
-<div class="page-head"><div><h1>System</h1></div></div>
+<div class="page-head"><h1>System</h1></div>
 <div class="panels">
   <section class="panel" id="email">
     <div class="panel__head"><h2>Email delivery</h2>{% if mail.server.is_some() %}{% call ui::state("up", "SMTP set") %}{% endcall %}{% else %}{% call ui::state("issue", "No mail server") %}{% endcall %}{% endif %}</div>

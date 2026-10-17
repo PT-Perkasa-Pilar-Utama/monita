@@ -3,7 +3,7 @@
 
 use std::collections::HashMap;
 
-use super::{chart::Bucket, heartbeat::Heartbeat, store::charts as store};
+use super::{CheckRow, chart::Bucket, heartbeat::Heartbeat, store::charts as store};
 use crate::platform::{db::Db, time};
 
 pub const HOURS: usize = 24;
@@ -20,6 +20,25 @@ pub struct Day {
     pub fails: Vec<f64>,
     pub uptime: Option<String>,
     pub mean_ms: Option<i64>,
+}
+
+pub fn interval_label(s: i64) -> &'static str {
+    match s {
+        30 => "30s",
+        60 => "1m",
+        180 => "3m",
+        300 => "5m",
+        _ => "?",
+    }
+}
+
+pub fn check_summary(c: &CheckRow) -> String {
+    let latency = c.latency_ms.map(|l| format!("{l}ms")).unwrap_or_default();
+    match (c.status_code, &c.error) {
+        (Some(code), _) => format!("{code} in {latency}"),
+        (None, Some(e)) => e.chars().take(60).collect(),
+        (None, None) => latency,
+    }
 }
 
 pub async fn last_day(db: &Db, project_id: i64, now: i64) -> anyhow::Result<HashMap<i64, Day>> {

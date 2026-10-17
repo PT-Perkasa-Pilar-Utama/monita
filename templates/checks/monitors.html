@@ -1,10 +1,8 @@
 {% extends "layout/app.html" %}
 {% import "ui/macros.html" as ui %}
 {% block title %}Monitors · {{ project.name }} · Monita{% endblock %}
-{% block crumbs %}<span>{{ project.name }}</span><span class="subtle">/</span><strong>Monitors</strong>{% endblock %}
-{% block actions %}<a class="btn btn--primary btn--sm" href="/projects/{{ project.slug }}/monitors/new">{% call ui::icon("plus") %}{% endcall %}New monitor</a>{% endblock %}
 {% block content %}
-<div class="page-head"><div class="page-title"><h1>Monitors</h1><span class="count">{{ monitors.len() }}</span></div></div>
+<div class="page-head"><h1>Monitors</h1><div class="page-actions"><a class="btn btn--primary btn--sm" href="/projects/{{ project.slug }}/monitors/new">{% call ui::icon("plus") %}{% endcall %}New monitor</a></div></div>
 {% if monitors.is_empty() %}
 <section class="panel">
   {% call ui::empty("Add your first monitor", "A monitor checks a URL on an interval and tells you when it stops answering. Add the health endpoint of your service first.") %}{% endcall %}
@@ -12,12 +10,23 @@
 {% else %}
 {% let sum = self.summary() %}
 <p class="overall overall--{{ sum.0 }}">{{ sum.1 }}</p>
+{% let rows = self.rows() %}
 <section class="panel">
+  <form class="tablebar" method="get" role="search" aria-label="Filter monitors" data-autosubmit>
+    <span class="tablebar__count">{{ filter.count(rows.len(), monitors.len(), "monitor") }}</span>
+    <div class="tablebar__tools">
+      <input class="input input--sm tablebar__search" type="search" name="q" value="{{ filter.q }}" maxlength="100" placeholder="Search monitors" aria-label="Search monitors">
+      <select class="select select--sm" name="state" aria-label="State">{% call ui::option("", "Any state", filter.state) %}{% endcall %}{% call ui::option("up", "Up", filter.state) %}{% endcall %}{% call ui::option("down", "Down", filter.state) %}{% endcall %}{% call ui::option("issue", "Issue", filter.state) %}{% endcall %}{% call ui::option("unknown", "Waiting", filter.state) %}{% endcall %}</select>
+      <select class="select select--sm" name="severity" aria-label="Severity">{% call ui::option("", "Any severity", filter.severity) %}{% endcall %}{% call ui::option("critical", "Critical", filter.severity) %}{% endcall %}{% call ui::option("warning", "Warning", filter.severity) %}{% endcall %}</select>
+      <noscript><button class="btn btn--sm" type="submit">Filter</button></noscript>
+    </div>
+  </form>
+  {% if rows.is_empty() %}<div class="empty"><h3>Nothing matches these filters</h3><a class="btn btn--sm" href="?">Clear the filters</a></div>{% else %}
   <div class="table-wrap">
     <table class="table table--rich">
       <thead><tr><th>Monitor</th><th>State</th><th class="hide-sm">Last 24 hours</th><th class="hide-sm t-right">Uptime</th><th class="t-right">Last check</th></tr></thead>
       <tbody>
-      {% for m in monitors %}
+      {% for m in rows %}
         {% let st = self.state(m) %}
         <tr>
           <td>
@@ -42,6 +51,7 @@
       </tbody>
     </table>
   </div>
+  {% endif %}
 </section>
 {% endif %}
 {% endblock %}

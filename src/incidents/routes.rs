@@ -16,7 +16,7 @@ use crate::{
     app::AppState,
     platform::{
         now,
-        page::{PageError, Shell},
+        page::{ListFilter, PageError, Shell},
         render::render,
         time,
     },
@@ -36,18 +36,30 @@ pub fn router() -> Router<AppState> {
 struct ListPage {
     shell: Shell,
     project: Project,
-    open: Vec<IncidentRow>,
-    resolved: Vec<IncidentRow>,
+    /// Open incidents, or resolved ones when the State select says so.
+    incidents: Vec<IncidentRow>,
     show_resolved: bool,
+    filter: ListFilter,
     now: i64,
 }
 
 impl ListPage {
-    fn rows(&self) -> &[IncidentRow] {
+    fn all(&self) -> &[IncidentRow] {
+        &self.incidents
+    }
+    fn rows(&self) -> Vec<&IncidentRow> {
+        let id = |i: &IncidentRow| format!("INC-{}", i.id);
+        let keep = |i: &&IncidentRow| {
+            self.filter
+                .keeps(&[&i.title, &id(i)], &self.filter.state, &i.severity)
+        };
+        self.incidents.iter().filter(keep).collect()
+    }
+    fn noun(&self) -> &'static str {
         if self.show_resolved {
-            &self.resolved
+            "resolved incident"
         } else {
-            &self.open
+            "open incident"
         }
     }
     fn duration(&self, i: &IncidentRow) -> String {
@@ -61,31 +73,21 @@ impl ListPage {
     }
 }
 
-#[derive(Deserialize)]
-struct ListQuery {
-    state: Option<String>,
-}
-
 async fn list(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
     Path(slug): Path<String>,
-    Query(q): Query<ListQuery>,
+    Query(filter): Query<ListFilter>,
 ) -> Result<Response, PageError> {
     let project = projects::find_for(&state.db, &user, &slug).await?;
-    let show_resolved = q.state.as_deref() == Some("resolved");
-    let open = super::list(&state.db, project.id, true).await?;
-    let resolved = if show_resolved {
-        super::list(&state.db, project.id, false).await?
-    } else {
-        Vec::new()
-    };
+    let show_resolved = filter.state == "resolved";
+    let incidents = super::list(&state.db, project.id, !show_resolved).await?;
     Ok(render(&ListPage {
         shell: projects::shell(&state.db, &user, "incidents", Some(&project)).await?,
         project,
-        open,
-        resolved,
+        incidents,
         show_resolved,
+        filter,
         now: now(),
     }))
 }

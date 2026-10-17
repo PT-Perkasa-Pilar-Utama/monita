@@ -1,10 +1,8 @@
 {% extends "layout/app.html" %}
 {% import "ui/macros.html" as ui %}
 {% block title %}Tickets · {{ project.name }} · Monita{% endblock %}
-{% block crumbs %}<span>{{ project.name }}</span><span class="subtle">/</span><strong>Tickets</strong>{% endblock %}
-{% block actions %}<a class="btn btn--ghost btn--sm" href="/status/{{ project.slug }}/tickets">Public board</a>{% endblock %}
 {% block content %}
-<div class="page-head"><div class="page-title"><h1>Tickets</h1><span class="count">{{ self.total() }}</span></div></div>
+<div class="page-head"><h1>Tickets</h1><div class="page-actions"><a class="btn btn--sm" href="/status/{{ project.slug }}/tickets">{% call ui::icon("globe") %}{% endcall %}Public board</a></div></div>
 {% if tickets.is_empty() %}
 <section class="panel">{% call ui::empty("Bug reports arrive here", "Project users report bugs with a ref ID from your system, through the API or the form at /status/" ~ project.slug ~ "/report.") %}{% endcall %}</section>
 {% else %}

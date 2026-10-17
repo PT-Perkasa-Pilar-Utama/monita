@@ -1,9 +1,8 @@
 {% extends "layout/app.html" %}
 {% import "ui/macros.html" as ui %}
 {% block title %}Projects · Monita{% endblock %}
-{% block crumbs %}<strong>Projects</strong>{% endblock %}
 {% block content %}
-<div class="page-head"><div class="page-title"><h1>Projects</h1><span class="count">{{ projects.len() }}</span></div></div>
+<div class="page-head"><h1>Projects</h1></div>
 <div class="split">
   <section class="panel">
     {% if projects.is_empty() %}

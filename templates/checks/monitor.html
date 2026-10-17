@@ -1,8 +1,7 @@
 {% extends "layout/app.html" %}
 {% import "ui/macros.html" as ui %}
 {% block title %}{{ monitor.name }} · {{ project.name }} · Monita{% endblock %}
-{% block crumbs %}<span>{{ project.name }}</span><span class="subtle">/</span><a class="link-quiet" href="/projects/{{ project.slug }}/monitors">Monitors</a><span class="subtle">/</span><strong>{{ monitor.name }}</strong>{% endblock %}
-{% block actions %}<a class="btn btn--sm" href="/projects/{{ project.slug }}/monitors/{{ monitor.id }}/edit">Edit</a>{% endblock %}
+{% block crumbs %}<a class="link-quiet" href="/projects/{{ project.slug }}/monitors">Monitors</a><span class="subtle">/</span><strong>{{ monitor.name }}</strong>{% endblock %}
 {% block content %}
 {% let st = self.state() %}
 <div class="detail">
@@ -10,8 +9,9 @@
   <div class="hero__body">
     <h1>{{ monitor.name }}</h1>
     <p class="hero__meta"><span class="hero__state state state--{{ st.0 }}">{{ st.1 }}</span><span>Checked every {{ self.every() }}</span><a class="link-quiet mono" href="{{ monitor.url }}" rel="noreferrer noopener" target="_blank">{{ monitor.url }}</a></p>
+    <div class="hero__tags">{% if monitor.severity == "critical" %}{% call ui::chip("critical", "Critical") %}{% endcall %}{% else %}{% call ui::chip("warning", "Warning") %}{% endcall %}{% endif %}<span class="tag mono">expects {{ monitor.expected_status }}</span><span class="tag">{% if monitor.is_public %}On the status page{% else %}Hidden{% endif %}</span></div>
   </div>
-  <div class="hero__tags">{% if monitor.severity == "critical" %}{% call ui::chip("critical", "Critical") %}{% endcall %}{% else %}{% call ui::chip("warning", "Warning") %}{% endcall %}{% endif %}<span class="tag mono">expects {{ monitor.expected_status }}</span><span class="tag">{% if monitor.is_public %}On the status page{% else %}Hidden{% endif %}</span></div>
+  <div class="page-actions"><a class="btn btn--sm" href="/projects/{{ project.slug }}/monitors/{{ monitor.id }}/edit">Edit</a></div>
 </header>
 {% let stats = self.stats() %}
 {% include "checks/insight.html" %}

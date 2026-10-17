@@ -1,7 +1,7 @@
 {% extends "layout/app.html" %}
 {% import "ui/macros.html" as ui %}
 {% block title %}Report incident · {{ project.name }} · Monita{% endblock %}
-{% block crumbs %}<span>{{ project.name }}</span><span class="subtle">/</span><a class="link-quiet" href="/projects/{{ project.slug }}/incidents">Incidents</a><span class="subtle">/</span><strong>Report</strong>{% endblock %}
+{% block crumbs %}<a class="link-quiet" href="/projects/{{ project.slug }}/incidents">Incidents</a><span class="subtle">/</span><strong>Report</strong>{% endblock %}
 {% block content %}
 <div class="form-page">
 <section class="panel panel--form">

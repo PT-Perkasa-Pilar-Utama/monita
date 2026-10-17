@@ -1,7 +1,7 @@
 {% extends "layout/app.html" %}
 {% import "ui/macros.html" as ui %}
 {% block title %}#{{ ticket.number }} {{ ticket.title }} · Monita{% endblock %}
-{% block crumbs %}<span>{{ project.name }}</span><span class="subtle">/</span><a class="link-quiet" href="/projects/{{ project.slug }}/tickets">Tickets</a><span class="subtle">/</span><strong>#{{ ticket.number }}</strong>{% endblock %}
+{% block crumbs %}<a class="link-quiet" href="/projects/{{ project.slug }}/tickets">Tickets</a><span class="subtle">/</span><strong>#{{ ticket.number }}</strong>{% endblock %}
 {% block content %}
 <div class="page-head"><div class="page-title"><h1>{{ ticket.title }}</h1><span class="count">#{{ ticket.number }}</span></div></div>
 {% if !error.is_empty() %}{% call ui::notice("error", error) %}{% endcall %}{% endif %}

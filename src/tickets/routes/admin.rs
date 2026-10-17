@@ -19,9 +19,6 @@ impl KanbanPage {
             .find(|(s, _)| s == stage)
             .map_or(0, |(_, n)| *n)
     }
-    fn total(&self) -> i64 {
-        self.counts.iter().map(|(_, n)| n).sum()
-    }
     fn column(&self, stage: &str) -> Vec<&TicketRow> {
         self.tickets.iter().filter(|t| t.stage == stage).collect()
     }

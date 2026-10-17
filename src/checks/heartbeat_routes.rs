@@ -22,7 +22,7 @@ use crate::{
     incidents::{self, ItemState, SourceKind},
     platform::{
         caps, now,
-        page::{PageError, Shell},
+        page::{ListFilter, PageError, Shell},
         render::render,
         time,
     },
@@ -49,10 +49,15 @@ struct ListPage {
     project: Project,
     heartbeats: Vec<Heartbeat>,
     states: HashMap<(SourceKind, i64), ItemState>,
+    filter: ListFilter,
     now: i64,
 }
 
 impl ListPage {
+    fn rows(&self) -> Vec<&Heartbeat> {
+        let keep = |h: &&Heartbeat| self.filter.keeps(&[&h.name], self.state(h).0, &h.severity);
+        self.heartbeats.iter().filter(keep).collect()
+    }
     fn state(&self, h: &Heartbeat) -> (&'static str, &'static str) {
         h.state(self.states.get(&(SourceKind::Heartbeat, h.id)).copied())
     }
@@ -77,6 +82,7 @@ async fn list(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
     Path(slug): Path<String>,
+    Query(filter): Query<ListFilter>,
 ) -> Result<Response, PageError> {
     let project = projects::find_for(&state.db, &user, &slug).await?;
     let heartbeats = heartbeat::list(&state.db, project.id).await?;
@@ -86,6 +92,7 @@ async fn list(
         project,
         heartbeats,
         states,
+        filter,
         now: now(),
     }))
 }

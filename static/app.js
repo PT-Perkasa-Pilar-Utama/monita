@@ -1,4 +1,5 @@
-// Copy buttons (<button data-copy="element-id">) and the theme switch (<button data-theme-toggle>).
+// Copy buttons (<button data-copy="element-id">), the theme switch (<button data-theme-toggle>)
+// and filter bars (<form data-autosubmit>) that apply a select as soon as it changes.
 // theme.js applies a saved theme before the first paint.
 document.addEventListener("click", (event) => {
   if (!event.target.closest("[data-theme-toggle]")) return;
@@ -30,4 +31,9 @@ document.addEventListener("click", async (event) => {
     selection.addRange(range);
     button.textContent = "Press Ctrl+C";
   }
+});
+
+document.addEventListener("change", (event) => {
+  const form = event.target.closest("form[data-autosubmit]");
+  if (form && event.target.matches("select")) form.requestSubmit();
 });

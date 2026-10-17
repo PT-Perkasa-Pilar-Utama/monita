@@ -1,9 +1,8 @@
 {% extends "layout/app.html" %}
 {% import "ui/macros.html" as ui %}
 {% block title %}Users · Monita{% endblock %}
-{% block crumbs %}<span>Admin</span><span class="subtle">/</span><strong>Users</strong>{% endblock %}
 {% block content %}
-<div class="page-head"><div class="page-title"><h1>Users</h1><span class="count">{{ users.len() }}</span></div></div>
+<div class="page-head"><h1>Users</h1></div>
 <div class="split split--aside">
 <div class="stack">
   {% if let Some((email, link)) = invite %}
@@ -21,6 +20,7 @@
   </section>
 </div>
   <section class="panel">
+    <div class="tablebar"><span class="tablebar__count">{{ users.len() }} {% if users.len() == 1 %}user{% else %}users{% endif %}</span></div>
     <div class="table-wrap">
       <table class="table">
         <thead><tr><th>Email</th><th>Role</th><th>Status</th><th class="hide-sm">Joined</th><th class="t-right">Actions</th></tr></thead>

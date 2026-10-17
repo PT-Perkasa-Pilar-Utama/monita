@@ -1,9 +1,8 @@
 {% extends "layout/app.html" %}
 {% import "ui/macros.html" as ui %}
 {% block title %}Alerts · {{ project.name }} · Monita{% endblock %}
-{% block crumbs %}<span>{{ project.name }}</span><span class="subtle">/</span><strong>Alerts</strong>{% endblock %}
 {% block content %}
-<div class="page-head"><div><h1>Alerts</h1></div></div>
+<div class="page-head"><h1>Alerts</h1></div>
 <div class="panels">
 {% for r in routes %}
   <section class="panel" id="{{ r.severity }}">

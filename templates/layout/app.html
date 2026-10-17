@@ -1,7 +1,7 @@
 {% extends "layout/base.html" %}
 {% import "ui/macros.html" as ui %}
 {% block body %}
-<div class="app">
+<div class="app{% if shell.project.is_none() %} app--flat{% endif %}">
   <header class="appbar-band">
     <div class="appbar">
       <a class="appbar__brand" href="/" aria-label="Monita, all projects">{% include "ui/mark.html" %}<span>Monita</span></a>
@@ -12,14 +12,15 @@
       <span class="appbar__sep" aria-hidden="true">/</span><span class="appbar__project">Admin</span>
       {% endif %}
       <nav class="appbar__end" aria-label="Account">
-        <a class="appbar__link hide-sm" href="https://pt-perkasa-pilar-utama.github.io/monita/docs/">Docs</a>
+        <a class="appbar__link" href="/"{% if shell.area() != "admin" %} aria-current="true"{% endif %}>{% call ui::icon("folder") %}{% endcall %}<span class="hide-sm">Projects</span></a>
         {% if shell.is_admin %}
-        <button class="appbar__link" type="button" popovertarget="admin-menu"{% if shell.area() == "admin" %} aria-current="true"{% endif %}>Admin{% call ui::icon("chevron") %}{% endcall %}</button>
+        <button class="appbar__link" type="button" popovertarget="admin-menu"{% if shell.area() == "admin" %} aria-current="true"{% endif %}>{% call ui::icon("users") %}{% endcall %}<span class="hide-sm">Admin</span>{% call ui::icon("chevron") %}{% endcall %}</button>
         <div class="menu menu--down" id="admin-menu" popover>
           <a class="menu__item" href="/admin/users">{% call ui::icon("users") %}{% endcall %}Users</a>
           <a class="menu__item" href="/admin/settings">{% call ui::icon("server") %}{% endcall %}System</a>
         </div>
         {% endif %}
+        <a class="appbar__link hide-sm" href="https://pt-perkasa-pilar-utama.github.io/monita/docs/">Docs</a>
         <button class="user" type="button" popovertarget="user-menu" aria-label="Account: {{ shell.email }}" title="{{ shell.email }}"><span class="user__avatar">{{ shell.initial() }}</span></button>
         <div class="menu menu--down" id="user-menu" popover>
           <div class="menu__who"><span class="user__avatar">{{ shell.initial() }}</span><span class="user__text">{% let parts = shell.email_parts() %}<span class="user__email">{{ parts.0 }}<wbr>{{ parts.1 }}</span><span class="user__role">{{ shell.role() }}</span></span></div>
@@ -56,7 +57,7 @@
     </nav>
     {% endif %}
     <div class="content__main">
-      <div class="pagebar"><div class="crumbs">{% block crumbs %}{% endblock %}</div><div class="pagebar__actions">{% block actions %}{% endblock %}</div></div>
+      <nav class="crumbs" aria-label="Breadcrumb">{% block crumbs %}{% endblock %}</nav>
       {% block content %}{% endblock %}
     </div>
   </main>

@@ -239,6 +239,41 @@ async fn tl_creates_a_monitor_and_bad_input_is_refused() {
 }
 
 #[tokio::test]
+async fn the_monitor_list_filters_by_search_and_severity() {
+    let app = TestApp::spawn("test").await;
+    let tl = tl_project(&app).await;
+    for (name, severity) in [("Checkout API", "critical"), ("Admin panel", "warning")] {
+        let url = format!("https://{}.internal/", name.len());
+        let form = [
+            ("name", name),
+            ("url", url.as_str()),
+            ("interval_s", "60"),
+            ("timeout_s", "10"),
+            ("expected_status", "2xx"),
+            ("severity", severity),
+        ];
+        let res = app
+            .post_form("/projects/payments/monitors", &form, Some(&tl))
+            .await;
+        assert_eq!(res.status(), 303);
+    }
+    let page = |q: &'static str| {
+        let (app, tl) = (&app, &tl);
+        async move {
+            let path = format!("/projects/payments/monitors{q}");
+            app.get(&path, Some(tl)).await.text().await.unwrap()
+        }
+    };
+    let html = page("?q=checkout").await;
+    assert!(html.contains("Checkout API") && !html.contains("Admin panel"));
+    assert!(html.contains("1 of 2 monitors"));
+    let html = page("?severity=warning").await;
+    assert!(!html.contains("Checkout API") && html.contains("Admin panel"));
+    let html = page("?q=nothing-like-this").await;
+    assert!(html.contains("Nothing matches these filters"));
+}
+
+#[tokio::test]
 async fn due_monitors_are_checked_and_the_detail_lists_the_results() {
     // AC-10.01
     let app = TestApp::spawn("test").await;

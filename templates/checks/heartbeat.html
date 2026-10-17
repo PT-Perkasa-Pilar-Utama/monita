@@ -1,8 +1,7 @@
 {% extends "layout/app.html" %}
 {% import "ui/macros.html" as ui %}
 {% block title %}{{ hb.name }} · {{ project.name }} · Monita{% endblock %}
-{% block crumbs %}<span>{{ project.name }}</span><span class="subtle">/</span><a class="link-quiet" href="/projects/{{ project.slug }}/heartbeats">Heartbeats</a><span class="subtle">/</span><strong>{{ hb.name }}</strong>{% endblock %}
-{% block actions %}<a class="btn btn--sm" href="/projects/{{ project.slug }}/heartbeats/{{ hb.id }}/edit">Edit</a>{% endblock %}
+{% block crumbs %}<a class="link-quiet" href="/projects/{{ project.slug }}/heartbeats">Heartbeats</a><span class="subtle">/</span><strong>{{ hb.name }}</strong>{% endblock %}
 {% block content %}
 {% let st = self.state() %}
 <div class="detail">
@@ -10,8 +9,9 @@
   <div class="hero__body">
     <h1>{{ hb.name }}</h1>
     <p class="hero__meta"><span class="hero__state state state--{{ st.0 }}">{{ st.1 }}</span><span>Expected every {{ self.period() }}</span><span>Grace {{ self.grace() }}</span></p>
+    <div class="hero__tags">{% if hb.severity == "critical" %}{% call ui::chip("critical", "Critical") %}{% endcall %}{% else %}{% call ui::chip("warning", "Warning") %}{% endcall %}{% endif %}<span class="tag">{% if hb.is_public %}On the status page{% else %}Hidden{% endif %}</span></div>
   </div>
-  <div class="hero__tags">{% if hb.severity == "critical" %}{% call ui::chip("critical", "Critical") %}{% endcall %}{% else %}{% call ui::chip("warning", "Warning") %}{% endcall %}{% endif %}<span class="tag">{% if hb.is_public %}On the status page{% else %}Hidden{% endif %}</span></div>
+  <div class="page-actions"><a class="btn btn--sm" href="/projects/{{ project.slug }}/heartbeats/{{ hb.id }}/edit">Edit</a></div>
 </header>
 <section class="panel ping-url">
   <div class="panel__body stack stack--sm">
