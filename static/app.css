@@ -99,9 +99,9 @@
     --accent: #c4258f;
     --accent-ink: #a61f79;
     --accent-fg: #ffffff;
-    --green: #2e8b5c;
+    --green: #23784e;
     --red: #d24545;
-    --yellow: #b07f00;
+    --yellow: #8a6300;
     --hair-alpha: 10%;
     --shadow: 0 2px 24px color-mix(in srgb, var(--fg) 10%, transparent), 0 0 0 1px color-mix(in srgb, var(--fg) 6%, transparent);
     color-scheme: light;
@@ -115,9 +115,9 @@
   --accent: #c4258f;
   --accent-ink: #a61f79;
   --accent-fg: #ffffff;
-  --green: #2e8b5c;
+  --green: #23784e;
   --red: #d24545;
-  --yellow: #b07f00;
+  --yellow: #8a6300;
   --hair-alpha: 10%;
   --shadow: 0 2px 24px color-mix(in srgb, var(--fg) 10%, transparent), 0 0 0 1px color-mix(in srgb, var(--fg) 6%, transparent);
   color-scheme: light;
