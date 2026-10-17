@@ -122,6 +122,9 @@
   }
   h1, h2, h3 { letter-spacing: -0.022em; }
   code, kbd, pre, .font-mono { font-feature-settings: normal; }
+  @media (prefers-reduced-motion: reduce) {
+    *, ::before, ::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
 }
 
 @utility tabular { font-variant-numeric: tabular-nums; }

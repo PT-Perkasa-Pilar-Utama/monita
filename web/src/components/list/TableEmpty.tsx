@@ -36,7 +36,7 @@ export function TableEmpty({
   onClear?: (() => void) | undefined;
 }): ReactElement {
   return (
-    <Empty className="page-in gap-4 px-6 py-12 md:py-14">
+    <Empty className="gap-4 px-6 py-12 md:py-14">
       <EmptyHeader>
         <EmptyTitle role="heading" aria-level={2} className="text-sm font-semibold tracking-normal">
           {filtered ? `No ${noun ?? "rows"} match these filters.` : title}

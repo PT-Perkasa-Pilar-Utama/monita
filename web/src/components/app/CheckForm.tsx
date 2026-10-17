@@ -82,7 +82,7 @@ export function FormAside({ title, steps, note }: { title: string; steps: ReactN
         <ol className="flex flex-col gap-3">
           {steps.map((s, i) => (
             <li key={i} className="flex gap-3">
-              <span className="grid size-6 shrink-0 place-items-center rounded-full bg-primary/15 text-xs font-semibold">{i + 1}</span>
+              <span className="grid size-6 shrink-0 place-items-center rounded-full bg-muted text-xs font-semibold">{i + 1}</span>
               <span className="text-foreground/90">{s}</span>
             </li>
           ))}
