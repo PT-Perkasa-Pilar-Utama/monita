@@ -22,7 +22,9 @@ Monita reads `MONITA_*` environment variables at start. `monita setup` writes th
 
 ## Runtime limits
 
-A super admin changes these on **Limits** without a restart:
+Admins see every value on this page, except secrets, on the **System** page under Admin. That page also shows whether email delivery works and sends a test email. Changing a variable takes an edit of the env file and `sudo systemctl restart monita`.
+
+A super admin changes these on **System** without a restart:
 
 | Setting | Default |
 | --- | --- |

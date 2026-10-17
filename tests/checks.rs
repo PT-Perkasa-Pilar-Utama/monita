@@ -404,6 +404,37 @@ async fn limits_page_is_for_super_admins_and_rejects_bad_values() {
 }
 
 #[tokio::test]
+async fn the_system_page_queues_a_test_email_to_the_signed_in_admin_only() {
+    let app = TestApp::spawn("test").await;
+    let admin = app.super_admin("admin@x.co").await;
+    let tl = app.tl("rina@x.co").await;
+    let none: &[(&str, &str)] = &[];
+    let refused = app
+        .post_form("/admin/settings/test-email", none, Some(&tl))
+        .await;
+    assert_eq!(refused.status(), 403);
+    let res = app
+        .post_form("/admin/settings/test-email", none, Some(&admin))
+        .await;
+    assert_eq!(res.status(), 303);
+    let queued = monita::platform::db::query_i64(
+        &app.state.db.read().await.unwrap(),
+        "SELECT count(*) FROM outbox WHERE channel = 'email' AND recipient = 'admin@x.co' AND subject = 'Monita test email'",
+        (),
+    )
+    .await
+    .unwrap();
+    assert_eq!(queued, Some(1));
+    let html = app
+        .get("/admin/settings?sent=1", Some(&admin))
+        .await
+        .text()
+        .await
+        .unwrap();
+    assert!(html.contains("Test email queued for admin@x.co"));
+}
+
+#[tokio::test]
 async fn a_blank_number_re_renders_the_form_with_its_error() {
     let app = TestApp::spawn("test").await;
     let tl = tl_project(&app).await;

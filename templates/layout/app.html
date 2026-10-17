@@ -22,7 +22,7 @@
       {% if shell.is_admin %}
       <div class="nav__group cap">Admin</div>
       <a href="/admin/users"{% if shell.active == "users" %} aria-current="page"{% endif %}>{% call ui::icon("users") %}{% endcall %}Users</a>
-      <a href="/admin/settings"{% if shell.active == "limits" %} aria-current="page"{% endif %}>{% call ui::icon("settings") %}{% endcall %}Limits</a>
+      <a href="/admin/settings"{% if shell.active == "limits" %} aria-current="page"{% endif %}>{% call ui::icon("settings") %}{% endcall %}System</a>
       {% endif %}
     </nav>
     <div class="sidebar__foot"><span>{{ shell.email }}</span><button class="btn btn--ghost btn--sm btn--icon" type="button" data-theme-toggle aria-label="Switch light or dark theme" title="Switch theme">{% call ui::icon("theme") %}{% endcall %}</button><form method="post" action="/logout"><button class="btn btn--ghost btn--sm" type="submit">Sign out</button></form></div>

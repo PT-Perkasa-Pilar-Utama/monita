@@ -45,7 +45,8 @@ curl -fsS -m 10 https://monita.company.co.id/ping/k3j9w2x7q4m8p6r1t5v0y2z8ab
 | GET | `/projects/{slug}/heartbeats/{id}` | owner, super_admin | `?range=` as the monitor page; `?before=<received_at>.<id>`, the cursor the page links to | Detail, ping URL, the same stats, chart and availability as the monitor page with pings per bucket, then pings of the last 7 days, 25 per page | AC-12.02 |
 | POST | `/projects/{slug}/heartbeats/{id}` | owner, super_admin | same as create | Update | |
 | POST | `/projects/{slug}/heartbeats/{id}/delete` | owner, super_admin | | Delete | |
-| GET | `/admin/settings` | super_admin | | Limits and the check cap | AC-11.03, AC-31.03 |
+| GET | `/admin/settings` | super_admin | `?sent=1` after a test email | The System page: email delivery (server and sender from config, never the password; email counts for 7 days; the newest error), the server's configuration, the limits, and the fixed caps with the project and account counts | AC-11.03, AC-31.03 |
+| POST | `/admin/settings/test-email` | super_admin | | Queue a test email to the signed-in admin through the outbox. Redirect to `?sent=1#email`. | |
 | POST | `/admin/settings` | super_admin | each `settings` key | Validate positive integers. Save. | AC-11.03, AC-31.03 |
 
 Validation: `interval_s` in {30, 60, 180, 300}. `timeout_s` 1 to 30. `expected_status` is a comma list of classes (`2xx`) or codes (`200`); spaces around commas are allowed, and `2xx,301` mixes both. `url` is `http` or `https`. A blank or non-numeric number re-renders the form with the field's error.

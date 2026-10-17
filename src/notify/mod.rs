@@ -264,6 +264,30 @@ pub async fn send_test(
     .await
 }
 
+/// How email delivery went since `since`, for the system page.
+#[derive(Debug, Default, PartialEq, Eq)]
+pub struct EmailHealth {
+    pub sent: i64,
+    pub failed: i64,
+    pub waiting: i64,
+    pub last_sent_at: Option<i64>,
+    /// The newest delivery error and when it happened.
+    pub last_error: Option<(String, i64)>,
+}
+
+pub async fn email_health(db: &Db, since: i64) -> anyhow::Result<EmailHealth> {
+    let c = db.read().await?;
+    let (sent, failed, waiting) = store::email_counts(&c, since).await?;
+    let (last_sent_at, last_error) = store::email_latest(&c).await?;
+    Ok(EmailHealth {
+        sent,
+        failed,
+        waiting,
+        last_sent_at,
+        last_error,
+    })
+}
+
 /// Outbox rows not yet sent or failed, retries included. `/healthz` shows it.
 pub async fn pending_count(c: &Connection) -> anyhow::Result<i64> {
     store::pending_count(c).await

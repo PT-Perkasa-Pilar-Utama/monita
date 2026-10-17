@@ -12,7 +12,7 @@ Under 820 px the sidebar turns into a top bar with a horizontal nav. The switche
 
 ## 3.2 Navigation
 
-Project menu, in this order: Monitors, Heartbeats, Incidents, Tickets, Alerts, Settings, Status page. "Status page" leaves the app for the public `/status/{slug}`. Super admins also see an "Admin" group: Users, Settings (limits). Counts on the right in `.nav__count`; a down count uses `.nav__count--alert`.
+Project menu, in this order: Monitors, Heartbeats, Incidents, Tickets, Alerts, Settings, Status page. "Status page" leaves the app for the public `/status/{slug}`. Super admins also see an "Admin" group: Users, System (email delivery, server configuration, limits, fixed caps). Counts on the right in `.nav__count`; a down count uses `.nav__count--alert`.
 
 ## 3.3 Page recipes
 

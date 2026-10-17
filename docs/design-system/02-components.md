@@ -18,7 +18,11 @@ Templates call the macros in `templates/ui/macros.html`. They never repeat the m
 | Overall line | `.overall` + `--down`, `--issue`, `--unknown` | none | One sentence above a list that sums up its state: "1 of 4 monitors is down." |
 | Sparkline | `svg.spark` > `.spark__line`, `.spark__fail` | none | The monitors list: 24 hourly mean response times from `checks::overview`, with failed hours shaded red. |
 | Deadline bar | `svg.due` > `.due__track`, `.due__fill`, `.due--late` | none | The heartbeats list: the share of the wait before the deadline that has passed. |
-| Panels | `.panels` > `.panel`, `.panel--wide` | none | Two panels side by side from 1180 px; a wide panel takes the row. Settings and alerts. |
+| Panels | `.panels` > `.panel`, `.panel--wide` | none | Two panels side by side from 1180 px; a wide panel takes the row. Settings, alerts and System. |
+| Tally | `.tally` > `.tally__cell` + `--wait`, `--bad`, `.tally__n` | none | Three counts side by side, such as emails sent, waiting and failed. |
+| Range | `svg.range` > `.range__track`, `.range__fill`, `.range__default` | none | Where a limit sits between 1 and its maximum on a log scale, with a mark at the default; or a cap's use. |
+| Limit row | `.limits` > `.limits__group` > `.limit` > `.limit__text`, `.limit__set` | none | One editable limit: what it does, its input, its range and its default. |
+| Cap card | `.caps` > `.capcard`, `.capcard__n` | none | A fixed cap, with its use when Monita counts it. |
 | Tabs | `.tabs` > `a[aria-current="page"]` | `tabs(items, current)` | Project settings sections, ticket views |
 | Uptime bar | `.uptime`, `.uptime__bars` > `span.is-partial / .is-down / .is-none`, `.uptime__legend` | `uptime(days)` | 90 spans, oldest first. `title` gives date and uptime. |
 | Timeline | `.timeline`, `.timeline__item`, `.timeline__mark`, `.timeline__meta`, `.timeline__body`, `.comment` | `timeline_item(update)` | Status updates, newest first. TL updates in `.comment`, Monita's own entries as plain text. |

@@ -180,3 +180,36 @@ pub async fn mark(c: &Connection, id: i64, outcome: &Outcome, at: i64) -> anyhow
     };
     Ok(())
 }
+
+/// Emails created since `since`: (sent, failed for good, still waiting), one aggregate row.
+pub async fn email_counts(c: &Connection, since: i64) -> anyhow::Result<(i64, i64, i64)> {
+    let rows = crate::platform::db::query_all(
+        c,
+        "SELECT coalesce(sum(sent_at IS NOT NULL), 0), coalesce(sum(failed_at IS NOT NULL), 0),
+                coalesce(sum(sent_at IS NULL AND failed_at IS NULL), 0)
+         FROM outbox WHERE channel = 'email' AND created_at >= ?1",
+        [since],
+        |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+    )
+    .await?;
+    Ok(rows.into_iter().next().unwrap_or((0, 0, 0)))
+}
+
+/// The newest email delivery: when it was sent, or the error of the newest attempt that failed.
+pub async fn email_latest(c: &Connection) -> anyhow::Result<(Option<i64>, Option<(String, i64)>)> {
+    let sent = crate::platform::db::query_i64(
+        c,
+        "SELECT max(sent_at) FROM outbox WHERE channel = 'email'",
+        (),
+    )
+    .await?;
+    let error = crate::platform::db::query_all(
+        c,
+        "SELECT last_error, coalesce(failed_at, created_at) FROM outbox
+         WHERE channel = 'email' AND last_error IS NOT NULL ORDER BY id DESC LIMIT 1",
+        (),
+        |r| Ok((r.get(0)?, r.get(1)?)),
+    )
+    .await?;
+    Ok((sent, error.into_iter().next()))
+}
