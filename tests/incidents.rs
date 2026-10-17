@@ -485,6 +485,19 @@ async fn status_updates_need_a_message_and_work_after_close() {
         )
         .await;
     assert_eq!(ok.status(), 204);
+    assert_eq!(
+        incident(&app, &tl, 1).await["labels"],
+        json!(["investigating", "identified", "monitoring"]),
+        "an open automatic incident offers every label but Resolved"
+    );
+    let watching = app
+        .api_post(
+            "/api/ui/projects/payments/incidents/1/updates",
+            json!({ "label": "monitoring", "message": "Watching the new node" }),
+            Some(&tl),
+        )
+        .await;
+    assert_eq!(watching.status(), 204);
     let note = app
         .api_post(
             "/api/ui/projects/payments/incidents/1/updates",
@@ -612,6 +625,11 @@ Some(&tl),
     )
     .await;
     assert_eq!(list["data"]["monitors"][0]["state"], "issue");
+    assert_eq!(
+        incident(&app, &tl, 1).await["labels"],
+        json!(["investigating", "identified", "monitoring", "resolved"]),
+        "a reported incident offers all four labels"
+    );
 
     app.api_post(
         "/api/ui/projects/payments/incidents/1/updates",

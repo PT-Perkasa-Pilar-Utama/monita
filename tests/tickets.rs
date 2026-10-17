@@ -86,6 +86,12 @@ async fn a_reporter_submits_through_the_api_and_the_form() {
     let body: Value = res.json().await.unwrap();
     assert_eq!(body["data"]["number"], 1);
     assert_eq!(body["data"]["stage"], "triage");
+    let ticket = read(&app, "/api/ui/projects/payments/tickets/1", Some(&s.tl)).await;
+    assert_eq!(ticket["title"], "Checkout button does nothing");
+    assert_eq!(ticket["description"], "Card 4111 failed at the last step");
+    assert_eq!(ticket["page_url"], "https://shop.example/pay");
+    assert_eq!(ticket["stage"], "triage");
+    assert_eq!(ticket["ref_revoked"], false);
 
     let form = app
         .api_post(

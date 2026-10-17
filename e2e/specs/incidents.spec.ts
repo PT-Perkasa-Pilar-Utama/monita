@@ -49,6 +49,9 @@ test("@US-14 @US-17 @US-18 @US-19 a failing job opens an incident, the TL update
   await page.reload();
   await expect(page.getByText(/Recovered after/)).toBeVisible();
   await expect(page.locator("#state")).toContainText("Resolved");
+  // AC-18.02: the facts name the start, the end and the duration.
+  for (const fact of ["Started", "Ended", "Duration"]) await expect(page.locator("dt", { hasText: fact })).toBeVisible();
+  await expect(page.locator("dt", { hasText: "Ended" }).locator("+ dd")).toHaveText(/UTC$/);
 });
 
 test("@US-20 TL reports an incident by hand and resolves it", async ({ page }) => {
