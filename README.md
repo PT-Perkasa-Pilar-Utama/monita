@@ -58,11 +58,13 @@ This README and the guide use each of these words with one meaning.
 
 ## Install
 
-Download the `monita` binary from [Releases](https://github.com/PT-Perkasa-Pilar-Utama/monita/releases)
-to a Linux server, then run three commands:
+On a Linux server (x86-64), download the archive from
+[Releases](https://github.com/PT-Perkasa-Pilar-Utama/monita/releases), unpack it, and install the binary:
 
 ```sh
-install -m 0755 monita /usr/local/bin/monita
+curl -fsSLO https://github.com/PT-Perkasa-Pilar-Utama/monita/releases/download/v0.1.0/monita_v0.1.0_linux_amd64.tar.gz
+tar -xzf monita_v0.1.0_linux_amd64.tar.gz
+sudo install -m 0755 monita /usr/local/bin/monita
 sudo monita setup
 sudo monita service install
 ```

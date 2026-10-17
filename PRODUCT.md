@@ -59,7 +59,7 @@ The motto from the scope decision is: easy to integrate, simple features, lightw
 
 - The static demo with three sample projects (`seeds/demo.sql`, published at `/demo/`).
 - Screenshots in `docs/assets/screens/`: monitor, monitors, incident, heartbeat, status page, status history and ticket board. `e2e/demo/snapshot.ts --screens` regenerates them.
-- Measured on macOS arm64 on 2026-10-17: the release binary is 25,789,648 bytes, and memory use stayed between 20.5 and 23.3 MiB while 100 monitors ran every 30 seconds for 142 seconds. The Linux figures have not been measured.
+- Measured on macOS arm64 on 2026-10-17: the release binary is 25,789,648 bytes, and memory use stayed between 20.5 and 23.3 MiB while 100 monitors ran every 30 seconds for 142 seconds. The v0.1.0 Linux release (x86-64, static) is 31,508,016 bytes, in a 12,919,831-byte archive, which is above the 30 MB target in NFR-07. Memory on Linux has not been measured.
 - A teammate can supply one real quote later. No quote exists yet; future pages must not invent one.
 - On 2026-10-17 the GitHub releases page had no binary. A page must not tell people to download one until a `v*` release exists.
 - There are no customers, user counts, testimonials, benchmarks against other tools, or press. Future pages must not invent them.

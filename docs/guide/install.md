@@ -9,7 +9,7 @@ Monita runs as one systemd service on a Linux VM. These steps assume Ubuntu or D
    ```sh
    sha256sum -c checksums.txt --ignore-missing
    tar -xzf monita_v0.1.0_linux_amd64.tar.gz
-   install -m 0755 monita /usr/local/bin/monita
+   sudo install -m 0755 monita /usr/local/bin/monita
    ```
 
 2. Answer the setup questions. Setup writes `/etc/monita/monita.env` (mode 0600) and creates the first super admin:
