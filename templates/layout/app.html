@@ -17,7 +17,7 @@
         <button class="appbar__link" type="button" popovertarget="admin-menu"{% if shell.area() == "admin" %} aria-current="true"{% endif %}>Admin{% call ui::icon("chevron") %}{% endcall %}</button>
         <div class="menu menu--down" id="admin-menu" popover>
           <a class="menu__item" href="/admin/users">{% call ui::icon("users") %}{% endcall %}Users</a>
-          <a class="menu__item" href="/admin/settings">{% call ui::icon("settings") %}{% endcall %}System</a>
+          <a class="menu__item" href="/admin/settings">{% call ui::icon("server") %}{% endcall %}System</a>
         </div>
         {% endif %}
         <button class="user" type="button" popovertarget="user-menu" aria-label="Account: {{ shell.email }}" title="{{ shell.email }}"><span class="user__avatar">{{ shell.initial() }}</span></button>
@@ -32,10 +32,10 @@
     </div>
     {% if let Some(p) = shell.project %}
     <nav class="tabbar" aria-label="Project">
-      <a href="/projects/{{ p.slug }}/monitors"{% if shell.active == "monitors" %} aria-current="page"{% endif %}>{% call ui::icon("monitor") %}{% endcall %}Monitors</a>
-      <a href="/projects/{{ p.slug }}/heartbeats"{% if shell.active == "heartbeats" %} aria-current="page"{% endif %}>{% call ui::icon("heartbeat") %}{% endcall %}Heartbeats</a>
-      <a href="/projects/{{ p.slug }}/incidents"{% if shell.active == "incidents" %} aria-current="page"{% endif %}>{% call ui::icon("incident") %}{% endcall %}Incidents</a>
-      <a href="/projects/{{ p.slug }}/tickets"{% if shell.active == "tickets" %} aria-current="page"{% endif %}>{% call ui::icon("ticket") %}{% endcall %}Tickets</a>
+      <a href="/projects/{{ p.slug }}/monitors"{% if shell.active == "monitors" %} aria-current="page"{% endif %}>{% call ui::icon("monitor") %}{% endcall %}Monitors{% if shell.counts.monitors > 0 %}<span class="tabbar__count">{{ shell.counts.monitors }}</span>{% endif %}</a>
+      <a href="/projects/{{ p.slug }}/heartbeats"{% if shell.active == "heartbeats" %} aria-current="page"{% endif %}>{% call ui::icon("heartbeat") %}{% endcall %}Heartbeats{% if shell.counts.heartbeats > 0 %}<span class="tabbar__count">{{ shell.counts.heartbeats }}</span>{% endif %}</a>
+      <a href="/projects/{{ p.slug }}/incidents"{% if shell.active == "incidents" %} aria-current="page"{% endif %}>{% call ui::icon("incident") %}{% endcall %}Incidents{% if shell.counts.incidents > 0 %}<span class="tabbar__count">{{ shell.counts.incidents }}</span>{% endif %}</a>
+      <a href="/projects/{{ p.slug }}/tickets"{% if shell.active == "tickets" %} aria-current="page"{% endif %}>{% call ui::icon("ticket") %}{% endcall %}Tickets{% if shell.counts.tickets > 0 %}<span class="tabbar__count">{{ shell.counts.tickets }}</span>{% endif %}</a>
       <a href="/projects/{{ p.slug }}/settings"{% if shell.area() == "settings" %} aria-current="page"{% endif %}>{% call ui::icon("settings") %}{% endcall %}Settings</a>
       <a class="tabbar__end" href="/status/{{ p.slug }}">{% call ui::icon("globe") %}{% endcall %}Status page</a>
     </nav>
@@ -44,15 +44,15 @@
   <main class="content{% if !shell.area().is_empty() %} content--side{% endif %}">
     {% if shell.area() == "settings" %}{% if let Some(p) = shell.project %}
     <nav class="sidenav" aria-label="Settings">
-      <a href="/projects/{{ p.slug }}/settings"{% if shell.active == "settings" %} aria-current="page"{% endif %}>General</a>
-      <a href="/projects/{{ p.slug }}/alerts"{% if shell.active == "alerts" %} aria-current="page"{% endif %}>Alerts</a>
-      <a href="/projects/{{ p.slug }}/settings#keys">API keys</a>
-      <a href="/projects/{{ p.slug }}/settings#allowlist">Allowlist</a>
+      <a href="/projects/{{ p.slug }}/settings"{% if shell.active == "settings" %} aria-current="page"{% endif %}>{% call ui::icon("settings") %}{% endcall %}General</a>
+      <a href="/projects/{{ p.slug }}/alerts"{% if shell.active == "alerts" %} aria-current="page"{% endif %}>{% call ui::icon("bell") %}{% endcall %}Alerts</a>
+      <a href="/projects/{{ p.slug }}/settings#keys">{% call ui::icon("key") %}{% endcall %}API keys</a>
+      <a href="/projects/{{ p.slug }}/settings#allowlist">{% call ui::icon("shield") %}{% endcall %}Allowlist</a>
     </nav>
     {% endif %}{% else if shell.area() == "admin" %}
     <nav class="sidenav" aria-label="Admin">
-      <a href="/admin/users"{% if shell.active == "users" %} aria-current="page"{% endif %}>Users</a>
-      <a href="/admin/settings"{% if shell.active == "limits" %} aria-current="page"{% endif %}>System</a>
+      <a href="/admin/users"{% if shell.active == "users" %} aria-current="page"{% endif %}>{% call ui::icon("users") %}{% endcall %}Users</a>
+      <a href="/admin/settings"{% if shell.active == "limits" %} aria-current="page"{% endif %}>{% call ui::icon("server") %}{% endcall %}System</a>
     </nav>
     {% endif %}
     <div class="content__main">

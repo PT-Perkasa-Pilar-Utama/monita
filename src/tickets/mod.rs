@@ -20,6 +20,11 @@ pub const CLOSE_REASONS: [(&str, &str); 3] = [
     ("duplicate", "Duplicate"),
 ];
 
+/// Tickets not yet done, for the project's tab bar.
+pub async fn open_count(db: &Db, project_id: i64) -> anyhow::Result<i64> {
+    store::open_count(&db.read().await?, project_id).await
+}
+
 pub fn stage_label(s: &str) -> &'static str {
     STAGES
         .iter()

@@ -93,16 +93,26 @@ pub async fn all(db: &Db) -> anyhow::Result<Vec<Project>> {
 }
 
 /// The page frame for a signed-in user: who they are, the active nav item, the project in view.
-pub fn shell(
+/// The page shell. Inside a project it carries the tab bar's counts, each read through its
+/// module's interface.
+pub async fn shell(
+    db: &Db,
     user: &User,
     active: &'static str,
     project: Option<&Project>,
-) -> crate::platform::page::Shell {
+) -> anyhow::Result<crate::platform::page::Shell> {
     let shell = crate::platform::page::Shell::plain(&user.email, user.is_admin(), active);
-    match project {
-        Some(p) => shell.in_project(&p.name, &p.slug),
-        None => shell,
-    }
+    let Some(p) = project else {
+        return Ok(shell);
+    };
+    let (monitors, heartbeats) = crate::checks::counts(db, p.id).await?;
+    let counts = crate::platform::page::TabCounts {
+        monitors,
+        heartbeats,
+        incidents: crate::incidents::open_count(db, p.id).await?,
+        tickets: crate::tickets::open_count(db, p.id).await?,
+    };
+    Ok(shell.in_project(&p.name, &p.slug).with_counts(counts))
 }
 
 /// Who `reassign` accepts, for the owner list: the acting super admin first, then active TLs.

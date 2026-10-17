@@ -15,6 +15,16 @@ pub struct Shell {
     /// Nav key of the current page: `monitors`, `heartbeats`, `settings`, `users`, `limits`, `projects`.
     pub active: &'static str,
     pub project: Option<ProjectNav>,
+    pub counts: TabCounts,
+}
+
+/// The numbers beside the project tabs: monitors, heartbeats, open incidents, open tickets.
+#[derive(Default)]
+pub struct TabCounts {
+    pub monitors: i64,
+    pub heartbeats: i64,
+    pub incidents: i64,
+    pub tickets: i64,
 }
 
 impl Shell {
@@ -25,7 +35,13 @@ impl Shell {
             is_admin,
             active,
             project: None,
+            counts: TabCounts::default(),
         }
+    }
+
+    pub fn with_counts(mut self, counts: TabCounts) -> Self {
+        self.counts = counts;
+        self
     }
 
     /// The first letter of the email, for the avatar in the user menu.

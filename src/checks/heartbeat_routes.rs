@@ -82,7 +82,7 @@ async fn list(
     let heartbeats = heartbeat::list(&state.db, project.id).await?;
     let states = incidents::states_for(&state.db, project.id).await?;
     Ok(render(&ListPage {
-        shell: projects::shell(&user, "heartbeats", Some(&project)),
+        shell: projects::shell(&state.db, &user, "heartbeats", Some(&project)).await?,
         project,
         heartbeats,
         states,
@@ -141,20 +141,21 @@ impl From<HeartbeatForm> for HeartbeatInput {
     }
 }
 
-fn form_page(
+async fn form_page(
+    state: &AppState,
     user: &crate::accounts::User,
     project: Project,
     id: Option<i64>,
     input: HeartbeatInput,
     errors: FieldErrors,
-) -> FormPage {
-    FormPage {
-        shell: projects::shell(user, "heartbeats", Some(&project)),
+) -> Result<FormPage, PageError> {
+    Ok(FormPage {
+        shell: projects::shell(&state.db, user, "heartbeats", Some(&project)).await?,
         project,
         id,
         input,
         errors,
-    }
+    })
 }
 
 async fn new_form(
@@ -163,13 +164,17 @@ async fn new_form(
     Path(slug): Path<String>,
 ) -> Result<Response, PageError> {
     let project = projects::find_for(&state.db, &user, &slug).await?;
-    Ok(render(&form_page(
-        &user,
-        project,
-        None,
-        HeartbeatInput::default(),
-        FieldErrors::new(),
-    )))
+    Ok(render(
+        &form_page(
+            &state,
+            &user,
+            project,
+            None,
+            HeartbeatInput::default(),
+            FieldErrors::new(),
+        )
+        .await?,
+    ))
 }
 
 async fn create(
@@ -195,7 +200,7 @@ async fn create(
     }
     Ok((
         StatusCode::UNPROCESSABLE_ENTITY,
-        render(&form_page(&user, project, None, input, errors)),
+        render(&form_page(&state, &user, project, None, input, errors).await?),
     )
         .into_response())
 }
@@ -209,13 +214,17 @@ async fn edit_form(
     let hb = heartbeat::find(&state.db, project.id, id)
         .await?
         .ok_or(PageError::NotFound)?;
-    Ok(render(&form_page(
-        &user,
-        project,
-        Some(id),
-        hb.input(),
-        FieldErrors::new(),
-    )))
+    Ok(render(
+        &form_page(
+            &state,
+            &user,
+            project,
+            Some(id),
+            hb.input(),
+            FieldErrors::new(),
+        )
+        .await?,
+    ))
 }
 
 async fn update(
@@ -230,7 +239,7 @@ async fn update(
     if !errors.is_empty() {
         return Ok((
             StatusCode::UNPROCESSABLE_ENTITY,
-            render(&form_page(&user, project, Some(id), input, errors)),
+            render(&form_page(&state, &user, project, Some(id), input, errors).await?),
         )
             .into_response());
     }
@@ -324,7 +333,7 @@ async fn detail(
         .get(&(SourceKind::Heartbeat, id))
         .copied();
     Ok(render(&DetailPage {
-        shell: projects::shell(&user, "heartbeats", Some(&project)),
+        shell: projects::shell(&state.db, &user, "heartbeats", Some(&project)).await?,
         ping_url: ping_url(&state, &hb),
         project,
         hb,

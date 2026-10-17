@@ -81,7 +81,7 @@ async fn list(
         Vec::new()
     };
     Ok(render(&ListPage {
-        shell: projects::shell(&user, "incidents", Some(&project)),
+        shell: projects::shell(&state.db, &user, "incidents", Some(&project)).await?,
         project,
         open,
         resolved,
@@ -152,7 +152,7 @@ async fn detail_page(
     }
     .to_string();
     Ok(DetailPage {
-        shell: projects::shell(user, "incidents", Some(&project)),
+        shell: projects::shell(&state.db, user, "incidents", Some(&project)).await?,
         project,
         incident,
         items,
@@ -239,7 +239,7 @@ async fn new_page(
         })
         .collect();
     Ok(NewPage {
-        shell: projects::shell(user, "incidents", Some(&project)),
+        shell: projects::shell(&state.db, user, "incidents", Some(&project)).await?,
         project,
         choices,
         title: String::new(),

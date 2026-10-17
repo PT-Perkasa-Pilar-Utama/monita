@@ -113,7 +113,7 @@ async fn list(
     let now = now();
     let days = overview::last_day(&state.db, project.id, now).await?;
     Ok(render(&ListPage {
-        shell: projects::shell(&user, "monitors", Some(&project)),
+        shell: projects::shell(&state.db, &user, "monitors", Some(&project)).await?,
         project,
         monitors,
         states,
@@ -203,7 +203,7 @@ async fn new_form(
 ) -> Result<Response, PageError> {
     let project = projects::find_for(&state.db, &user, &slug).await?;
     Ok(render(&FormPage {
-        shell: projects::shell(&user, "monitors", Some(&project)),
+        shell: projects::shell(&state.db, &user, "monitors", Some(&project)).await?,
         project,
         id: None,
         input: MonitorInput::defaults(),
@@ -231,7 +231,7 @@ async fn create(
         }
     }
     let page = FormPage {
-        shell: projects::shell(&user, "monitors", Some(&project)),
+        shell: projects::shell(&state.db, &user, "monitors", Some(&project)).await?,
         project,
         id: None,
         input,
@@ -250,7 +250,7 @@ async fn edit_form(
         .await?
         .ok_or(PageError::NotFound)?;
     Ok(render(&FormPage {
-        shell: projects::shell(&user, "monitors", Some(&project)),
+        shell: projects::shell(&state.db, &user, "monitors", Some(&project)).await?,
         project,
         id: Some(id),
         input: monitor.input(),
@@ -269,7 +269,7 @@ async fn update(
     let errors = input.validate();
     if !errors.is_empty() {
         let page = FormPage {
-            shell: projects::shell(&user, "monitors", Some(&project)),
+            shell: projects::shell(&state.db, &user, "monitors", Some(&project)).await?,
             project,
             id: Some(id),
             input,
@@ -389,7 +389,7 @@ async fn detail(
         .copied();
     let insight = Insight::monitor(&state.db, &monitor, paging.range(), now()).await?;
     Ok(render(&DetailPage {
-        shell: projects::shell(&user, "monitors", Some(&project)),
+        shell: projects::shell(&state.db, &user, "monitors", Some(&project)).await?,
         project,
         monitor,
         checks,

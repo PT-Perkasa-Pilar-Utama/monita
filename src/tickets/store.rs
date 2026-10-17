@@ -280,3 +280,14 @@ pub async fn max_id(c: &Connection) -> anyhow::Result<i64> {
             .unwrap_or(0),
     )
 }
+
+/// Tickets of a project not yet done, for its tab count.
+pub async fn open_count(c: &Connection, project_id: i64) -> anyhow::Result<i64> {
+    Ok(crate::platform::db::query_i64(
+        c,
+        "SELECT count(*) FROM tickets WHERE project_id = ?1 AND stage != 'done'",
+        [project_id],
+    )
+    .await?
+    .unwrap_or(0))
+}

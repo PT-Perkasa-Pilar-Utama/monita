@@ -52,7 +52,7 @@ async fn home_view(
     error: String,
 ) -> Result<Home, PageError> {
     Ok(Home {
-        shell: super::shell(user, "projects", None),
+        shell: super::shell(&state.db, user, "projects", None).await?,
         projects: super::list_for(&state.db, user).await?,
         name,
         slug,
@@ -137,7 +137,7 @@ async fn settings_view(
         Vec::new()
     };
     Ok(Settings {
-        shell: super::shell(user, "settings", Some(&project)),
+        shell: super::shell(&state.db, user, "settings", Some(&project)).await?,
         allowlist: project
             .ip_allowlist
             .clone()

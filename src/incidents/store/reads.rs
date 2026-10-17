@@ -259,3 +259,14 @@ pub async fn last_auto(
     .await?
     .pop())
 }
+
+/// Open incidents of a project, for its tab count.
+pub async fn open_count(c: &Connection, project_id: i64) -> anyhow::Result<i64> {
+    Ok(crate::platform::db::query_i64(
+        c,
+        "SELECT count(*) FROM incidents WHERE project_id = ?1 AND resolved_at IS NULL",
+        [project_id],
+    )
+    .await?
+    .unwrap_or(0))
+}

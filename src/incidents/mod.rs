@@ -196,6 +196,11 @@ pub async fn states_for(
     store::states_for(&db.read().await?, project_id).await
 }
 
+/// Open incidents of a project, for the project's tab bar.
+pub async fn open_count(db: &Db, project_id: i64) -> anyhow::Result<i64> {
+    store::open_count(&db.read().await?, project_id).await
+}
+
 pub fn duration(started: i64, resolved: Option<i64>, now: i64) -> String {
     time::duration(resolved.unwrap_or(now) - started)
 }

@@ -131,6 +131,15 @@ pub struct PublicItem {
     pub seen: bool,
 }
 
+/// How many monitors and heartbeats a project has, for its tab bar.
+pub async fn counts(db: &Db, project_id: i64) -> anyhow::Result<(i64, i64)> {
+    let c = db.read().await?;
+    Ok((
+        store::count_monitors(&c, project_id).await?,
+        store::heartbeats::count(&c, project_id).await?,
+    ))
+}
+
 pub async fn public_items(db: &Db, project_id: i64) -> anyhow::Result<Vec<PublicItem>> {
     store::public_items(&db.read().await?, project_id).await
 }

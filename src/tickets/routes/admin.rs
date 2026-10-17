@@ -52,7 +52,7 @@ pub(super) async fn kanban(
     let project = projects::find_for(&state.db, &user, &slug).await?;
     let (tickets, counts) = crate::tickets::board(&state.db, project.id).await?;
     Ok(render(&KanbanPage {
-        shell: projects::shell(&user, "tickets", Some(&project)),
+        shell: projects::shell(&state.db, &user, "tickets", Some(&project)).await?,
         project,
         tickets,
         counts,
@@ -99,7 +99,7 @@ async fn detail_page(
         .await?
         .ok_or(PageError::NotFound)?;
     Ok(DetailPage {
-        shell: projects::shell(user, "tickets", Some(&project)),
+        shell: projects::shell(&state.db, user, "tickets", Some(&project)).await?,
         project,
         ticket,
         error: String::new(),
