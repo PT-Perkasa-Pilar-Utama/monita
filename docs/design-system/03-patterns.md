@@ -22,7 +22,7 @@ Project tabs, in this order: Overview, Monitors, Heartbeats, Incidents, Tickets,
 | List (monitors, heartbeats, incidents) | `.page-head` (h1, primary action) → `.overall` → `.panel` with `.tablebar` (count, search, State and Severity) and `.table.table--rich`: each monitor row carries a sparkline and 24-hour uptime, each heartbeat row a deadline bar. Empty: `.empty` in the panel; a filter that hides every row says so and offers Clear the filters. |
 | Detail (monitor, heartbeat, incident, ticket) | `nav.crumbs` → `.hero` (title, state and tags, `.page-actions`) → the page. Incident: `.split.split--aside` with the facts panel (`.kv`) first in the markup, in the narrow right column on wide screens; Post update opens a dialog. |
 | Form (create, edit) | `nav.crumbs` → `.page-head` (h1) → `.form-page`: `.panel.panel--form` > `.form`, and a `.form-aside` that explains the rules |
-| Projects | `.page-head` (New project) → `.pcards`; New project is a dialog |
+| Projects | `.page-head` (search, New project) → `.pcards`; New project is a dialog with Name, Owner (super admin), Description and Icon |
 | Users | `.page-head` (Invite tech lead) → `.panel` with `.tablebar` and the table; Invite is a dialog, Disable asks to confirm |
 | Settings (General, Alerts, API keys, Allowlist) | Side navigation → `.page-head` → `.panels` (General, Alerts) or one table panel (API keys, with New API key as a dialog) or one form panel (Allowlist) |
 | Ticket board | `.page-head` (Public board) → `.board` |

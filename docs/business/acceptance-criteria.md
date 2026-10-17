@@ -8,7 +8,7 @@ This file is an index. The full Given/When/Then bodies live in the per-sprint fi
 
 | Sprint | Focus | User Stories | AC Count | File |
 | ------ | ----- | ------------ | -------- | ---- |
-| 1 | Checks run (done 2026-10-16) | US-01, US-02, US-03, US-04, US-05, US-06, US-07, US-08, US-09, US-10, US-11, US-12, US-13, US-14 | 30 | [acceptance-criteria-sprint-1.md](acceptance-criteria-breakdown/acceptance-criteria-sprint-1.md) |
+| 1 | Checks run (done 2026-10-16) | US-01, US-02, US-03, US-04, US-05, US-06, US-07, US-08, US-09, US-10, US-11, US-12, US-13, US-14 | 32 | [acceptance-criteria-sprint-1.md](acceptance-criteria-breakdown/acceptance-criteria-sprint-1.md) |
 | 2 | Incidents and alerts (done 2026-10-17) | US-15, US-16, US-17, US-18, US-19, US-20 | 14 | [acceptance-criteria-sprint-2.md](acceptance-criteria-breakdown/acceptance-criteria-sprint-2.md) |
 | 3 | Public status | US-21, US-22, US-31, US-32, US-33, US-34 | 13 | [acceptance-criteria-sprint-3.md](acceptance-criteria-breakdown/acceptance-criteria-sprint-3.md) |
 | 4 | Tickets | US-23, US-24, US-25, US-26, US-27, US-28, US-29, US-30 | 20 | [acceptance-criteria-sprint-4.md](acceptance-criteria-breakdown/acceptance-criteria-sprint-4.md) |
@@ -51,6 +51,8 @@ This file is an index. The full Given/When/Then bodies live in the per-sprint fi
 - AC-06.01 : Create a project
 - AC-06.02 : The slug is unique
 - AC-06.03 : The slug forms the status page URL
+- AC-06.04 : A project may have a description and an icon
+- AC-06.05 : A super admin picks the owner
 
 ### US-07 : Manage API keys (TL)
 

@@ -20,6 +20,7 @@ erDiagram
   users ||--o{ sessions : has
   users ||--o{ projects : owns
   projects ||--o{ api_keys : has
+  projects ||--o| project_icons : has
   projects ||--o{ alert_routes : has
   projects ||--o{ monitors : has
   projects ||--o{ heartbeats : has
@@ -78,7 +79,19 @@ erDiagram
 | name | TEXT | no | | | `Payments` |
 | slug | TEXT | no | | UNIQUE | `^[a-z0-9-]{2,40}$`. Made at create: the name in lowercase letters, digits and dashes, cut to 33 characters, then `-` and 6 random base32 characters. `payments-k3x9qa` |
 | ip_allowlist | TEXT | yes | | | Comma-separated CIDRs. NULL means off. |
+| description | TEXT | yes | | | Up to 280 characters. NULL means none. |
+| icon_at | INTEGER | yes | | | When the icon was last set. NULL means no icon; the value versions the icon's URL. |
 | created_at, updated_at | INTEGER | no | | | |
+
+### 6.3.4a project_icons
+
+The icon's bytes, apart from `projects` so a project list never reads them.
+
+| column | type | nullable | default | key | notes |
+| --- | --- | --- | --- | --- | --- |
+| project_id | INTEGER | no | | PK, FK projects ON DELETE CASCADE | |
+| mime | TEXT | no | | CHECK `image/png` or `image/webp` | |
+| data | BLOB | no | | | At most 32 KB. The browser scales the picture to 128 px; the server checks the type and the size only. |
 
 ### 6.3.5 api_keys
 

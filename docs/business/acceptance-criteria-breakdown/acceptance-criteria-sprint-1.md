@@ -156,6 +156,25 @@ When anyone opens `/status/payments`
 Then Monita shows the status page of that project
 ```
 
+### AC-06.04: A project may have a description and an icon
+
+```gherkin
+Given the TL creates or edits a project
+When the TL adds a description of up to 280 characters and picks a PNG, JPEG or WebP picture
+Then Monita stores the picture as a small square icon
+  And the project's cards, top bar and overview show the icon in place of its first letter
+  And the overview shows the description
+```
+
+### AC-06.05: A super admin picks the owner
+
+```gherkin
+Given a super admin creates a project
+When the super admin types an active tech lead's email in the Owner field
+Then that tech lead owns the project
+  And a tech lead who creates a project always owns it
+```
+
 ## US-07: Manage API keys (TL)
 
 ### AC-07.01: Create a named key and show it once

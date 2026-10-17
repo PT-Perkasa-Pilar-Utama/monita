@@ -21,7 +21,7 @@ Each module owns its tables (see [06](06-data-model.md)). Other modules use only
 
 ## 5.2 projects
 
-**Responsibility:** projects, ownership, API keys, IP allowlist. Serves US-05 to US-08.
+**Responsibility:** projects, their description and icon, ownership, API keys, IP allowlist. Serves US-05 to US-08.
 
 | Item | Contract |
 | --- | --- |
@@ -29,8 +29,11 @@ Each module owns its tables (see [06](06-data-model.md)). Other modules use only
 | `find_for(db, user, slug) -> Project` | The project a user may manage, or 404 so other projects' names do not leak. |
 | `can_manage(user, project) -> bool` | True for the owner and for every super admin. |
 | `shell(user, active, project)` | The page frame every signed-in page renders. |
-| `eligible_owners(db, acting)` | The owner list `reassign` accepts: the acting super admin first, then active TLs. |
+| `create(db, acting, input)` | US-06. Makes the slug from the name. A TL owns what they create; a super admin owns it unless `owner_email` names an eligible owner. An unknown owner, a description over 280 characters or a bad icon is a form error. |
+| `eligible_owners(db, acting)` | The owners a super admin may pick: the acting super admin first, then active TLs. |
+| `find_owner(db, acting, email)` | The eligible owner with that email, case ignored, or none. |
 | `reassign(db, project_id, new_owner, acting)` | US-05. The new owner is an active TL or the acting super admin; anyone else is 404. |
+| `update_profile(db, project_id, input)` | Saves the description and sets, keeps or removes the icon. |
 
 ## 5.3 checks
 
