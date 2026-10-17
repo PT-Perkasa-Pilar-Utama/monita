@@ -3,7 +3,7 @@
 use askama::Template;
 use axum::{
     Form, Router,
-    extract::{Path, State},
+    extract::State,
     http::StatusCode,
     response::{IntoResponse, Redirect, Response},
     routing::{get, post},
@@ -24,7 +24,7 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/", get(home))
         .route("/projects", post(create))
-        .route("/projects/{slug}", get(open))
+        .route("/projects/{slug}", get(super::overview::page))
         .merge(super::settings_routes::router())
 }
 
@@ -88,13 +88,4 @@ async fn create(
             Ok((StatusCode::UNPROCESSABLE_ENTITY, render(&page)).into_response())
         }
     }
-}
-
-async fn open(
-    State(state): State<AppState>,
-    CurrentUser(user): CurrentUser,
-    Path(slug): Path<String>,
-) -> Result<Response, PageError> {
-    let p = super::find_for(&state.db, &user, &slug).await?;
-    Ok(Redirect::to(&format!("/projects/{}/monitors", p.slug)).into_response())
 }

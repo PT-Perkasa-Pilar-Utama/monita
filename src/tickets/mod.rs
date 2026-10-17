@@ -25,6 +25,11 @@ pub async fn open_count(db: &Db, project_id: i64) -> anyhow::Result<i64> {
     store::open_count(&db.read().await?, project_id).await
 }
 
+/// How many tickets sit in each stage; a stage with none is missing.
+pub async fn stage_counts(db: &Db, project_id: i64) -> anyhow::Result<Vec<(String, i64)>> {
+    store::stage_counts(&db.read().await?, project_id).await
+}
+
 pub fn stage_label(s: &str) -> &'static str {
     STAGES
         .iter()

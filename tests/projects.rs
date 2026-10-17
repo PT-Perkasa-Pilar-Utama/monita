@@ -83,17 +83,34 @@ async fn a_slug_is_unique_and_well_formed() {
 }
 
 #[tokio::test]
+async fn the_overview_sums_up_the_project_and_lists_its_facts() {
+    let app = TestApp::spawn("test").await;
+    let tl = app.tl("rina@x.co").await;
+    project(&app, &tl, "Payments", "payments").await;
+    new_key(&app, &tl, "payments").await;
+    let html = app
+        .get("/projects/payments", Some(&tl))
+        .await
+        .text()
+        .await
+        .unwrap();
+    assert!(html.contains("<h1>Payments</h1>"));
+    assert!(
+        html.contains("Add your first monitor.") && html.contains("No ticket waits in Triage.")
+    );
+    assert!(html.contains("Owned by rina@x.co") && html.contains("1 active API key"));
+    assert!(html.contains("Every system is up"));
+}
+
+#[tokio::test]
 async fn another_tl_cannot_see_the_project() {
     let app = TestApp::spawn("test").await;
     let rina = app.tl("rina@x.co").await;
     let budi = app.tl("budi@x.co").await;
     project(&app, &rina, "Payments", "payments").await;
-    assert_eq!(
-        app.get("/projects/payments/settings", Some(&budi))
-            .await
-            .status(),
-        404
-    );
+    for path in ["/projects/payments", "/projects/payments/settings"] {
+        assert_eq!(app.get(path, Some(&budi)).await.status(), 404, "{path}");
+    }
     assert!(
         !app.get("/", Some(&budi))
             .await

@@ -140,6 +140,39 @@ pub async fn counts(db: &Db, project_id: i64) -> anyhow::Result<(i64, i64)> {
     ))
 }
 
+/// One project-wide line for the Overview: how many there are, the worst state, and a sentence.
+pub struct Summary {
+    pub total: usize,
+    pub kind: &'static str,
+    pub text: String,
+}
+
+/// The Overview's monitor and heartbeat cards, in that order.
+pub async fn summaries(db: &Db, project_id: i64) -> anyhow::Result<[Summary; 2]> {
+    use crate::incidents::SourceKind;
+    let states = crate::incidents::states_for(db, project_id).await?;
+    let state = |kind, id| states.get(&(kind, id)).copied();
+    let monitors = list_monitors(db, project_id).await?;
+    let monitors: Vec<_> = monitors
+        .iter()
+        .map(|m| item_state(m.last.is_some(), state(SourceKind::Monitor, m.id)).0)
+        .collect();
+    let beats = heartbeat::list(db, project_id).await?;
+    let beats: Vec<_> = beats
+        .iter()
+        .map(|h| h.state(state(SourceKind::Heartbeat, h.id)).0)
+        .collect();
+    let line = |states: &[&str], noun| {
+        let (kind, text) = overview::summary(states, noun);
+        Summary {
+            total: states.len(),
+            kind,
+            text,
+        }
+    };
+    Ok([line(&monitors, "monitor"), line(&beats, "heartbeat")])
+}
+
 pub async fn public_items(db: &Db, project_id: i64) -> anyhow::Result<Vec<PublicItem>> {
     store::public_items(&db.read().await?, project_id).await
 }

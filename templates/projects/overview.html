@@ -1,0 +1,69 @@
+{% extends "layout/app.html" %}
+{% import "ui/macros.html" as ui %}
+{% block title %}{{ project.name }} · Monita{% endblock %}
+{% block content %}
+<header class="hero">
+  <div class="hero__title"><span class="switcher__badge hero__badge" aria-hidden="true">{{ self.initial() }}</span><h1>{{ project.name }}</h1></div>
+  <div class="page-actions"><a class="btn btn--primary btn--sm" href="/projects/{{ project.slug }}/monitors/new">{% call ui::icon("plus") %}{% endcall %}New monitor</a><a class="btn btn--sm" href="/projects/{{ project.slug }}/incidents/new">Report incident</a></div>
+</header>
+<div class="split split--about">
+  <div class="stack">
+    <div class="tiles">
+      <a class="tile" href="/projects/{{ project.slug }}/monitors">
+        <span class="tile__icon">{% call ui::icon("monitor") %}{% endcall %}</span>
+        <span class="tile__body"><strong>Monitors</strong><span class="tile__text">{% if monitors.total == 0 %}Add your first monitor.{% else %}{% call ui::st(monitors.kind) %}{% endcall %}{{ monitors.text }}{% endif %}</span></span>
+        <span class="tile__go">{% call ui::icon("chevron") %}{% endcall %}</span>
+      </a>
+      <a class="tile" href="/projects/{{ project.slug }}/heartbeats">
+        <span class="tile__icon">{% call ui::icon("heartbeat") %}{% endcall %}</span>
+        <span class="tile__body"><strong>Heartbeats</strong><span class="tile__text">{% if heartbeats.total == 0 %}Watch your first cron job.{% else %}{% call ui::st(heartbeats.kind) %}{% endcall %}{{ heartbeats.text }}{% endif %}</span></span>
+        <span class="tile__go">{% call ui::icon("chevron") %}{% endcall %}</span>
+      </a>
+      <a class="tile" href="/projects/{{ project.slug }}/tickets">
+        <span class="tile__icon">{% call ui::icon("ticket") %}{% endcall %}</span>
+        <span class="tile__body"><strong>Tickets</strong><span class="tile__text">{% call ui::st("triage") %}{% endcall %}{% if triage == 0 %}No ticket waits in Triage.{% else %}{{ self.plural(triage, "ticket") }} in Triage.{% endif %}</span></span>
+        <span class="tile__go">{% call ui::icon("chevron") %}{% endcall %}</span>
+      </a>
+    </div>
+    <section class="panel">
+      <div class="tablebar"><h2 class="tablebar__count">Open incidents</h2><a class="btn btn--ghost btn--sm" href="/projects/{{ project.slug }}/incidents">All incidents</a></div>
+      {% if incidents.is_empty() %}
+      {% call ui::empty("Every system is up", "Monita opens an incident when a monitor fails twice in a row or a heartbeat misses.") %}{% endcall %}
+      {% else %}
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th>Incident</th><th>Severity</th><th class="hide-sm">Latest update</th><th class="t-right">Duration</th></tr></thead>
+          <tbody>
+          {% for i in incidents %}
+            <tr>
+              <td><a class="table__title" href="/projects/{{ project.slug }}/incidents/{{ i.id }}">{{ i.title }}</a><div class="table__sub">INC-{{ i.id }}, started {{ self.started(i) }}</div></td>
+              <td>{% if i.severity == "critical" %}{% call ui::chip("critical", "Critical") %}{% endcall %}{% else %}{% call ui::chip("warning", "Warning") %}{% endcall %}{% endif %}</td>
+              <td class="hide-sm">{% if let Some(l) = i.last_label %}{% call ui::chip(l, self.label(i)) %}{% endcall %}{% endif %}</td>
+              <td class="t-right mono">{{ self.duration(i) }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if open_incidents > incidents.len() as i64 %}<p class="table__more">Newest {{ incidents.len() }} of {{ open_incidents }} open incidents.</p>{% endif %}
+      {% endif %}
+    </section>
+  </div>
+  <aside class="about" aria-labelledby="about-title">
+    <h2 id="about-title">About</h2>
+    <ul class="facts">
+      <li>{% call ui::icon("globe") %}{% endcall %}<span>Status page <a href="/status/{{ project.slug }}" class="mono">/status/{{ project.slug }}</a></span></li>
+      <li>{% call ui::icon("users") %}{% endcall %}<span>Owned by {{ project.owner_email }}</span></li>
+      <li>{% call ui::icon("folder") %}{% endcall %}<span>Created {{ self.created() }}</span></li>
+      <li>{% call ui::icon("key") %}{% endcall %}<span><a href="/projects/{{ project.slug }}/settings/keys">{{ self.plural(active_keys as i64, "active API key") }}</a></span></li>
+      <li>{% call ui::icon("shield") %}{% endcall %}<span>{% if project.ip_allowlist.is_some() %}Only allowed IP addresses may use the keys{% else %}Any IP address may use the keys{% endif %}</span></li>
+    </ul>
+    <ul class="facts facts--stats">
+      <li>{% call ui::icon("monitor") %}{% endcall %}<span><strong>{{ self.plural(monitors.total as i64, "monitor") }}</strong></span></li>
+      <li>{% call ui::icon("heartbeat") %}{% endcall %}<span><strong>{{ self.plural(heartbeats.total as i64, "heartbeat") }}</strong></span></li>
+      <li>{% call ui::icon("incident") %}{% endcall %}<span><strong>{{ self.plural(open_incidents, "open incident") }}</strong></span></li>
+      <li>{% call ui::icon("ticket") %}{% endcall %}<span><strong>{{ self.plural(open_tickets, "open ticket") }}</strong><span class="cap">{{ triage }} in Triage</span></span></li>
+    </ul>
+  </aside>
+</div>
+{% endblock %}

@@ -2,6 +2,7 @@
 //! Spec: docs/technical-specs/05-module-definitions.md section 5.2.
 
 mod allowlist;
+mod overview;
 pub mod routes;
 mod settings_routes;
 mod store;
