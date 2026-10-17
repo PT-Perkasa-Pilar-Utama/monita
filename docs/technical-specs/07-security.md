@@ -22,9 +22,9 @@
 | --- | --- | --- |
 | SEC-01 | Session cookie | `monita_session`: 128 random bits (26 base32 chars), `HttpOnly`, `Secure` when `MONITA_BASE_URL` is `https://`, `SameSite=Lax`, `Path=/`. Only the SHA-256 hash is stored. |
 | SEC-02 | Session revocation | A new invite, a disabled user, or sign-out deletes the session rows. Sessions expire after 14 days. |
-| SEC-03 | CSRF | Every non-GET request outside `/api/`, `/ping/` and reset-state must carry an `Origin` header equal to `MONITA_BASE_URL`. Otherwise 403. |
+| SEC-03 | CSRF | Every non-GET request outside `/api/v1/`, `/ping/` and reset-state must carry an `Origin` header equal to `MONITA_BASE_URL`. Otherwise 403. This covers the frontend's session-cookie calls under `/api/ui/`. |
 | SEC-04 | Output escaping | askama escapes HTML by default. `|safe` is forbidden outside `templates/ui/` icons. |
-| SEC-05 | Content Security Policy | `default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; frame-ancestors 'none'`. Plus `X-Content-Type-Options: nosniff` and `Referrer-Policy: same-origin`. |
+| SEC-05 | Content Security Policy | `default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'`. Inline styles are allowed because Radix places popovers and dialogs with a `style` attribute; scripts stay limited to Monita's own files. Plus `X-Content-Type-Options: nosniff` and `Referrer-Policy: same-origin`. |
 | SEC-06 | Password storage | Argon2id with the crate defaults. Minimum length 12. |
 | SEC-07 | API key storage | Keys are `mk_` + 26 base32 chars (128 random bits). Only the hash is stored. Shown once. |
 | SEC-08 | IP allowlist | Optional per project. Checked after key lookup. The client IP comes from the socket, or from the right-most `X-Forwarded-For` entry only when `MONITA_TRUST_PROXY=true`. The proxy appends that entry; the entries left of it are client-supplied. |

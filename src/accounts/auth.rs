@@ -37,7 +37,8 @@ pub fn session_token(headers: &HeaderMap) -> Option<String> {
         .filter(|t| !t.is_empty())
 }
 
-/// The signed-in user. Redirects to `/login` when there is no valid session.
+/// The signed-in user. Without a valid session a page request goes to `/login`, and an `/api/`
+/// request gets 401 in the JSON envelope.
 pub struct CurrentUser(pub User);
 
 impl FromRequestParts<AppState> for CurrentUser {
@@ -47,7 +48,14 @@ impl FromRequestParts<AppState> for CurrentUser {
         parts: &mut Parts,
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
-        let to_login = || Redirect::to("/login").into_response();
+        let api = parts.uri.path().starts_with("/api/");
+        let to_login = || {
+            if api {
+                crate::platform::ui::UiError::Unauthorized.into_response()
+            } else {
+                Redirect::to("/login").into_response()
+            }
+        };
         let Some(raw) = session_token(&parts.headers) else {
             return Err(to_login());
         };
@@ -84,6 +92,8 @@ impl FromRequestParts<AppState> for AdminUser {
         let CurrentUser(user) = CurrentUser::from_request_parts(parts, state).await?;
         if user.is_admin() {
             Ok(AdminUser(user))
+        } else if parts.uri.path().starts_with("/api/") {
+            Err(crate::platform::ui::UiError::Forbidden.into_response())
         } else {
             Err(PageError::Forbidden.into_response())
         }

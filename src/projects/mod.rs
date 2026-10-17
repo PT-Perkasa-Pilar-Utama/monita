@@ -2,6 +2,7 @@
 //! Spec: docs/technical-specs/05-module-definitions.md section 5.2.
 
 mod allowlist;
+pub mod api;
 mod icon;
 mod overview;
 mod profile;

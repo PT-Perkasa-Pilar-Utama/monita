@@ -1,0 +1,44 @@
+// The frontend's one door to the server: JSON under /api/ui, in the api-specs 01 envelope.
+
+export type FieldErrors = Record<string, string>;
+
+export class ApiError extends Error {
+  readonly status: number;
+  readonly code: string;
+  readonly fields: FieldErrors;
+
+  constructor(status: number, code: string, message: string, fields: FieldErrors = {}) {
+    super(message);
+    this.status = status;
+    this.code = code;
+    this.fields = fields;
+  }
+}
+
+type Method = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+
+/** Calls `/api/ui${path}` and returns `data`. A 401 sends the reader to sign in. */
+export async function api<T>(path: string, method: Method = "GET", body?: unknown): Promise<T> {
+  const init: RequestInit = { method, credentials: "same-origin", headers: { accept: "application/json" } };
+  if (body !== undefined) {
+    init.headers = { accept: "application/json", "content-type": "application/json" };
+    init.body = JSON.stringify(body);
+  }
+  const res = await fetch(`/api/ui${path}`, init);
+  if (res.status === 204) return undefined as T;
+  const json: unknown = await res.json().catch(() => null);
+  if (!res.ok) {
+    const e = (json as { error?: { code?: string; message?: string; fields?: FieldErrors } } | null)?.error;
+    if (res.status === 401 && path !== "/login" && window.location.pathname !== "/login") {
+      const next = window.location.pathname + window.location.search;
+      window.location.assign(`/login?next=${encodeURIComponent(next)}`);
+    }
+    throw new ApiError(res.status, e?.code ?? "error", e?.message ?? `The server answered ${res.status}.`, e?.fields ?? {});
+  }
+  return (json as { data: T }).data;
+}
+
+/** The message to show for a failed call. */
+export function errorText(e: unknown): string {
+  return e instanceof Error ? e.message : "Something went wrong. Try again.";
+}

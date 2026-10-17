@@ -38,8 +38,8 @@ fn upto(n: i64) -> String {
 /// A TL with the project `payments`. Returns the TL's cookie.
 async fn tl_with_project(app: &TestApp) -> String {
     let tl = app.tl("rina@x.co").await;
-    let res = app.project(&tl, "Payments", "payments").await;
-    assert_eq!(res.status(), 303);
+    let status = app.project(&tl, "Payments", "payments").await;
+    assert_eq!(status, 201);
     tl
 }
 
@@ -56,9 +56,20 @@ async fn a_full_instance_refuses_another_project() {
         ),
     )
     .await;
-    let res = app.project(&tl, "One more", "one-more").await;
+    let res = app
+        .api_post(
+            "/api/ui/projects",
+            serde_json::json!({ "name": "One more" }),
+            Some(&tl),
+        )
+        .await;
     assert_eq!(res.status(), 422);
-    assert!(res.text().await.unwrap().contains("200 projects"));
+    assert!(
+        common::json_of(res).await["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("200 projects")
+    );
     assert_eq!(
         count(&app, "SELECT count(*) FROM projects").await,
         caps::PROJECTS

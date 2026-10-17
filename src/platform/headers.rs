@@ -9,7 +9,9 @@ use axum::{
 
 use crate::app::AppState;
 
-const CSP: &str = "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'";
+/// `style-src` allows inline styles: Radix places popovers and dialogs with a `style` attribute.
+/// Scripts stay limited to Monita's own files.
+const CSP: &str = "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'";
 
 pub async fn security_headers(req: Request, next: Next) -> Response {
     let mut res = next.run(req).await;
@@ -29,20 +31,25 @@ pub async fn security_headers(req: Request, next: Next) -> Response {
     res
 }
 
-/// Browser form posts must come from Monita's own origin. Machine endpoints
-/// (`/api/`, `/ping/`, reset-state) authenticate with keys or tokens instead.
+/// Browser writes must come from Monita's own origin: forms and the frontend's `/api/ui/` calls,
+/// which carry the session cookie. Machine endpoints (`/api/v1/`, `/ping/`, reset-state)
+/// authenticate with keys or tokens instead.
 pub async fn origin_check(State(state): State<AppState>, req: Request, next: Next) -> Response {
     let safe = matches!(*req.method(), Method::GET | Method::HEAD | Method::OPTIONS);
     let path = req.uri().path();
     let machine =
-        path.starts_with("/api/") || path.starts_with("/ping/") || path == "/admin/reset-state";
+        path.starts_with("/api/v1/") || path.starts_with("/ping/") || path == "/admin/reset-state";
     if !safe && !machine {
         let origin = req
             .headers()
             .get(header::ORIGIN)
             .and_then(|v| v.to_str().ok());
         if origin != Some(state.config.base_url.as_str()) {
-            return (StatusCode::FORBIDDEN, "Request blocked: wrong origin.").into_response();
+            let message = "Request blocked: wrong origin.";
+            if path.starts_with("/api/") {
+                return super::api_error(StatusCode::FORBIDDEN, "forbidden", message);
+            }
+            return (StatusCode::FORBIDDEN, message).into_response();
         }
     }
     next.run(req).await

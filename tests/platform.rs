@@ -88,8 +88,8 @@ async fn reset_state_does_not_exist_in_prod() {
 #[tokio::test]
 async fn pages_carry_security_headers_and_assets_load() {
     let app = TestApp::spawn("test").await;
-    let res = app.http.get(app.url("/login")).send().await.unwrap();
-    assert_eq!(res.status(), 200);
+    let res = app.http.get(app.url("/api/ui/me")).send().await.unwrap();
+    assert_eq!(res.status(), 401);
     assert!(
         res.headers()["content-security-policy"]
             .to_str()
@@ -120,16 +120,33 @@ async fn pages_carry_security_headers_and_assets_load() {
 }
 
 #[tokio::test]
+async fn a_page_path_gets_the_frontend_and_an_unknown_api_path_gets_json() {
+    let app = TestApp::spawn("test").await;
+    let page = app
+        .http
+        .get(app.url("/a/page/no/route/claims"))
+        .send()
+        .await
+        .unwrap();
+    // 503 names `make web` when the frontend was not built before the test binary.
+    assert!(
+        matches!(page.status().as_u16(), 200 | 503),
+        "{}",
+        page.status()
+    );
+    let api = app.http.get(app.url("/api/ui/nope")).send().await.unwrap();
+    assert_eq!(api.status(), 404);
+    assert_eq!(common::json_of(api).await["error"]["code"], "not_found");
+}
+
+#[tokio::test]
 async fn a_body_over_128_kib_is_refused() {
     let app = TestApp::spawn("test").await;
     let login = |padding: usize| {
         app.http
-            .post(app.url("/login"))
+            .post(app.url("/api/ui/login"))
             .header("origin", common::BASE_URL)
-            .form(&[
-                ("email", "a@x.co".to_string()),
-                ("password", "x".repeat(padding)),
-            ])
+            .json(&serde_json::json!({ "email": "a@x.co", "password": "x".repeat(padding) }))
             .send()
     };
     // A ticket of 10 000 emoji, percent-encoded, is about 120 KB and must still fit.

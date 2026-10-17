@@ -2,11 +2,32 @@
 
 mod common;
 
-use common::{TestApp, location};
-use serde_json::Value;
+use common::{TestApp, json_of, location};
+use serde_json::{Value, json};
 
-async fn project(app: &TestApp, cookie: &str, name: &str, slug: &str) -> reqwest::Response {
+async fn project(app: &TestApp, cookie: &str, name: &str, slug: &str) -> reqwest::StatusCode {
     app.project(cookie, name, slug).await
+}
+
+/// Creates a project through the API and returns its slug.
+async fn create(app: &TestApp, cookie: &str, body: Value) -> String {
+    let res = app.api_post("/api/ui/projects", body, Some(cookie)).await;
+    assert_eq!(res.status(), 201);
+    json_of(res).await["data"]["slug"]
+        .as_str()
+        .unwrap()
+        .to_string()
+}
+
+/// The slugs on a user's project list.
+async fn listed(app: &TestApp, cookie: &str) -> Vec<String> {
+    let list = json_of(app.get("/api/ui/projects", Some(cookie)).await).await;
+    list["data"]["projects"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|p| p["slug"].as_str().unwrap().to_string())
+        .collect()
 }
 
 /// Creates a key on the settings page and reads it back from the one-time notice.
@@ -40,16 +61,13 @@ async fn tl_creates_a_project_and_owns_it() {
     // AC-06.01
     let app = TestApp::spawn("test").await;
     let tl = app.tl("rina@x.co").await;
-    let res = project(&app, &tl, "Payments", "payments").await;
-    assert_eq!(res.status(), 303);
-    assert!(location(&res).starts_with("/projects/payments-"));
-    let settings = app
-        .get("/projects/payments/settings", Some(&tl))
-        .await
-        .text()
-        .await
-        .unwrap();
-    assert!(settings.contains("rina@x.co"));
+    assert_eq!(project(&app, &tl, "Payments", "payments").await, 201);
+    let list = json_of(app.get("/api/ui/projects", Some(&tl)).await).await;
+    let p = &list["data"]["projects"][0];
+    assert_eq!(
+        (p["slug"].as_str(), p["owner_email"].as_str()),
+        (Some("payments"), Some("rina@x.co"))
+    );
 }
 
 #[tokio::test]
@@ -75,14 +93,7 @@ async fn monita_makes_a_unique_slug_from_the_name() {
     let tl = app.tl("rina@x.co").await;
     let mut slugs = Vec::new();
     for _ in 0..2 {
-        let res = app
-            .post_form("/projects", &[("name", "Customer Portal")], Some(&tl))
-            .await;
-        assert_eq!(res.status(), 303);
-        let slug = location(&res)
-            .trim_start_matches("/projects/")
-            .trim_end_matches("/monitors")
-            .to_string();
+        let slug = create(&app, &tl, json!({ "name": "Customer Portal" })).await;
         let (base, suffix) = slug.rsplit_once('-').unwrap();
         assert_eq!(base, "customer-portal");
         assert_eq!(suffix.len(), 6);
@@ -92,9 +103,13 @@ async fn monita_makes_a_unique_slug_from_the_name() {
     }
     assert_ne!(slugs[0], slugs[1]);
     let blank = app
-        .post_form("/projects", &[("name", "  ")], Some(&tl))
+        .api_post("/api/ui/projects", json!({ "name": "  " }), Some(&tl))
         .await;
     assert_eq!(blank.status(), 422);
+    assert_eq!(
+        json_of(blank).await["error"]["fields"]["name"],
+        "Enter a name."
+    );
 }
 
 #[tokio::test]
@@ -126,14 +141,7 @@ async fn another_tl_cannot_see_the_project() {
     for path in ["/projects/payments", "/projects/payments/settings"] {
         assert_eq!(app.get(path, Some(&budi)).await.status(), 404, "{path}");
     }
-    assert!(
-        !app.get("/", Some(&budi))
-            .await
-            .text()
-            .await
-            .unwrap()
-            .contains("/projects/payments")
-    );
+    assert!(listed(&app, &budi).await.is_empty());
 }
 
 #[tokio::test]
@@ -243,30 +251,35 @@ async fn a_super_admin_names_the_owner_and_a_tl_always_owns_what_they_create() {
     let admin = app.super_admin("admin@x.co").await;
     let rina = app.tl("rina@x.co").await;
     let budi = app.tl("budi@x.co").await;
-    let created = |cookie: &str, name: &'static str, owner: &'static str| {
-        let (app, cookie) = (&app, cookie.to_string());
-        async move {
-            let form = [("name", name), ("owner_email", owner)];
-            app.post_form("/projects", &form, Some(&cookie)).await
-        }
-    };
-    let res = created(&admin, "Payments", "rina@x.co").await;
-    assert_eq!(res.status(), 303);
-    assert_eq!(app.get(&location(&res), Some(&rina)).await.status(), 200);
+    let payments = create(
+        &app,
+        &admin,
+        json!({ "name": "Payments", "owner_email": "rina@x.co" }),
+    )
+    .await;
+    assert_eq!(listed(&app, &rina).await, [payments]);
 
-    let res = created(&budi, "Shop", "rina@x.co").await;
-    assert_eq!(res.status(), 303);
-    let shop = location(&res);
-    assert_eq!(app.get(&shop, Some(&budi)).await.status(), 200);
-    assert_eq!(app.get(&shop, Some(&rina)).await.status(), 404);
+    let shop = create(
+        &app,
+        &budi,
+        json!({ "name": "Shop", "owner_email": "rina@x.co" }),
+    )
+    .await;
+    assert_eq!(
+        listed(&app, &budi).await,
+        [shop],
+        "a TL owns what they create"
+    );
+    assert_eq!(listed(&app, &rina).await.len(), 1);
 
-    let res = created(&admin, "Ghost", "nobody@x.co").await;
+    let ghost = json!({ "name": "Ghost", "owner_email": "nobody@x.co" });
+    let res = app.api_post("/api/ui/projects", ghost, Some(&admin)).await;
     assert_eq!(res.status(), 422);
     assert!(
-        res.text()
-            .await
+        json_of(res).await["error"]["fields"]["owner_email"]
+            .as_str()
             .unwrap()
-            .contains("Pick the owner from the list")
+            .starts_with("Pick the owner from the list")
     );
 }
 
@@ -277,17 +290,21 @@ async fn a_project_keeps_its_description_and_serves_its_icon_to_its_owner_only()
     let app = TestApp::spawn("test").await;
     let rina = app.tl("rina@x.co").await;
     let budi = app.tl("budi@x.co").await;
-    let form = [
-        ("name", "Payments"),
-        ("description", "  Card and bank payments for the shop.  "),
-        ("icon", &format!("data:image/png;base64,{PNG_1X1}")),
-    ];
-    let res = app.post_form("/projects", &form, Some(&rina)).await;
-    assert_eq!(res.status(), 303);
-    let slug = location(&res).replace("/monitors", "");
-    let overview = app.get(&slug, Some(&rina)).await.text().await.unwrap();
-    assert!(overview.contains(">Card and bank payments for the shop.</p>"));
-    assert!(overview.contains(&format!(r#"src="{slug}/icon?v="#)));
+    let body = json!({
+        "name": "Payments",
+        "description": "  Card and bank payments for the shop.  ",
+        "icon": format!("data:image/png;base64,{PNG_1X1}"),
+    });
+    let slug = format!("/projects/{}", create(&app, &rina, body).await);
+    let list = json_of(app.get("/api/ui/projects", Some(&rina)).await).await;
+    let p = &list["data"]["projects"][0];
+    assert_eq!(p["description"], "Card and bank payments for the shop.");
+    assert!(
+        p["icon_url"]
+            .as_str()
+            .unwrap()
+            .starts_with(&format!("{slug}/icon?v="))
+    );
 
     let icon = app.get(&format!("{slug}/icon"), Some(&rina)).await;
     assert_eq!(icon.status(), 200);
@@ -358,40 +375,17 @@ async fn the_edit_dialog_refuses_svg_and_long_text_and_removes_the_icon() {
 }
 
 #[tokio::test]
-async fn the_project_search_matches_name_owner_and_description_within_the_users_projects() {
+async fn the_project_list_holds_only_the_users_projects_and_all_for_a_super_admin() {
     let app = TestApp::spawn("test").await;
     let admin = app.super_admin("admin@x.co").await;
     let rina = app.tl("rina@x.co").await;
     let budi = app.tl("budi@x.co").await;
-    for (cookie, name, description) in [
-        (&rina, "Payments", "Card payments"),
-        (&rina, "Warehouse", "Nightly stock sync"),
-        (&budi, "Shop", "Storefront"),
-    ] {
-        let form = [("name", name), ("description", description)];
-        app.post_form("/projects", &form, Some(cookie)).await;
+    for (cookie, name) in [(&rina, "Payments"), (&rina, "Warehouse"), (&budi, "Shop")] {
+        create(&app, cookie, json!({ "name": name })).await;
     }
-    let home = |cookie: &str, q: &'static str| {
-        let (app, cookie) = (&app, cookie.to_string());
-        async move {
-            app.get(&format!("/?q={q}"), Some(&cookie))
-                .await
-                .text()
-                .await
-                .unwrap()
-        }
-    };
-    let html = home(&rina, "stock").await;
-    assert!(
-        html.contains("<strong>Warehouse</strong>") && !html.contains("<strong>Payments</strong>")
-    );
-    let html = home(&admin, "BUDI@").await;
-    assert!(html.contains("<strong>Shop</strong>") && !html.contains("<strong>Warehouse</strong>"));
-    let html = home(&rina, "shop").await;
-    assert!(
-        html.contains("No project matches"),
-        "a TL never finds another TL's project"
-    );
+    assert_eq!(listed(&app, &rina).await.len(), 2);
+    assert_eq!(listed(&app, &budi).await.len(), 1);
+    assert_eq!(listed(&app, &admin).await.len(), 3);
 }
 
 #[tokio::test]

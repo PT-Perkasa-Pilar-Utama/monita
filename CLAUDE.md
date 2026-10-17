@@ -22,8 +22,8 @@ This file restates rules tersely. The docs win on any conflict; fix this file wh
 | --- | --- |
 | Language | Rust 1.97.1, edition 2024 (`rust-toolchain.toml`) |
 | HTTP | axum 0.8, tokio 1.53 |
-| HTML | askama 0.16 templates in `templates/`, plain forms, `static/app.js` for copy buttons and the theme switch, `static/theme.js` applies the saved theme before paint |
-| CSS | `static/app.css` (Lunear flavor), `static/icons.svg`, embedded fonts. All embedded by rust-embed. |
+| Frontend | React 19, TypeScript, Tailwind 4 and shadcn/ui (new-york, Radix, Phosphor icons) in `web/`, built from Beaverflow's components with Monita's tokens. `make web` builds it with Bun into `web/dist`, which rust-embed puts in the binary. It calls JSON under `/api/ui/`. Migration plan and status: `docs/decisions/2026-10-17-react-ui-migration.md`. |
+| HTML (migrating) | askama 0.16 templates in `templates/` for pages not yet moved to React; `static/app.css`, `static/app.js`, `static/icons.svg`. `static/theme.js` applies the saved theme before paint for both. |
 | Database | turso 0.8.3, standard SQLite features only |
 | Outbound (later sprints) | reqwest 0.13 rustls, lettre 0.11 |
 | Tests | `cargo test` (temp-file DB), Playwright 1.64 on Bun with system Chrome |
@@ -67,7 +67,9 @@ Two builders (the user and Claude), 2 days, sprints 1 to 4 in `docs/business/spr
 - No unbounded list. Every multi-row query has a `LIMIT` from `platform::caps`, a keyset page, or a `GROUP BY` with a fixed number of groups. A list people add to is capped at insert with the same number, so a page never hides a row. Every job reads and deletes in batches and loops until a batch comes back short.
 - `Db::write_without_fk` exists for `platform::migrate` and reset-state only.
 - No transaction stays open across a network call.
-- Templates use `templates/ui/macros.html`. No inline `style=` (CSP blocks it). No color literal outside `:root` in `app.css`.
+- Frontend pages call `/api/ui/` through `web/src/lib/api.ts`. Each module's JSON lives in its `api.rs` and calls the module's interface, as `routes.rs` handlers did. A refused form is 422 with `error.fields`.
+- Components come from `web/src/components/ui` (shadcn) before custom markup. Colours are the tokens in `web/src/index.css`; no hex values in components. CSP allows inline styles (Radix needs them); scripts stay `'self'`.
+- Remaining askama templates use `templates/ui/macros.html`. No color literal outside `:root` in `app.css`.
 - File cap: 400 lines per `.rs`, 200 per template. Past it, turn the file into a folder module and keep `mod.rs` as the interface. The cap applies to `src/`. A test file is a flat list of scenarios and may run to 800 lines.
 
 ## Runtime do and don't
@@ -78,14 +80,15 @@ Two builders (the user and Claude), 2 days, sprints 1 to 4 in `docs/business/spr
 | `conn.query(...)` for any statement that returns rows | `conn.execute(...)` on a SELECT or a row-returning PRAGMA: turso errors "unexpected row" |
 | `{% call ui::x(...) %}{% endcall %}` | `{% call %}` without `{% endcall %}`: askama 0.16 fails to compile |
 | `Db::write(async \|c\| { ... })` | Many connections writing: turso returns busy instead of waiting |
-| `bun` in `e2e/` | npm, npx, `playwright install` (system Chrome is used) |
+| `bun` in `e2e/` and `web/` | npm, npx, `playwright install` (system Chrome is used) |
+| `make web` before a build that must serve pages | Expecting pages from a binary built without `web/dist`: every page answers 503 |
 | `platform::now()` for Unix seconds | Local time in storage |
 
 ## Verification gate
 
 ```sh
-make check      # cargo fmt --check, clippy -D warnings, cargo test --lib, cargo test --tests
-make e2e        # when a page or API changed: debug build, Playwright, server stopped at the end
+make check      # cargo fmt --check, clippy -D warnings, cargo test --lib, web type-check and unit tests, cargo test --tests
+make e2e        # when a page or API changed: make web, debug build, Playwright, server stopped at the end
 ```
 
 `make release-check` adds the 6-minute release build (fat LTO, `opt-level = "s"`). CI (`.github/workflows/ci.yml`, testate's pattern) runs `make check` once, cargo-deny beside it, then the e2e shards from `e2e/lib/shards.ts` on the debug binary that `check` built. A shard skips itself only when a pass on the same inputs is recorded in the cache. The required check `browser end-to-end` passes a skipped e2e only when nothing but docs changed and `check` passed. `release.yml` runs only on a `v*` tag push and opens a draft release.

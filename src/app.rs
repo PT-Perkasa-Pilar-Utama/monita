@@ -63,6 +63,9 @@ pub fn router(state: AppState) -> Router {
     let mut r = Router::new()
         .route("/healthz", get(health::healthz))
         .route("/static/{*path}", get(assets::serve))
+        .route("/assets/{*path}", get(crate::platform::spa::asset))
+        .merge(crate::accounts::api::router())
+        .merge(crate::projects::api::router())
         .merge(crate::accounts::routes::router())
         .merge(crate::projects::routes::router())
         .merge(crate::tickets::routes::router())
@@ -72,7 +75,8 @@ pub fn router(state: AppState) -> Router {
         .merge(crate::incidents::routes::router())
         .merge(crate::notify::routes::router())
         .merge(crate::status::routes::router())
-        .merge(crate::platform::limits::router());
+        .merge(crate::platform::limits::router())
+        .fallback(crate::platform::spa::fallback);
 
     // SEC-17: the route does not exist in prod. Registration is the control, not authorization.
     if state.config.env != Env::Prod {

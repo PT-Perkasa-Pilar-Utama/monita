@@ -40,8 +40,8 @@ jobs:
           echo "code=$code" >> "$GITHUB_OUTPUT"
           echo "::notice::code changed: $code"
 
-  # The one Rust build. `cargo test --tests` also builds the debug binary, which the e2e shards
-  # download instead of compiling again.
+  # The one Rust build. `cargo test --tests` also builds the debug binary, with the React frontend
+  # embedded, which the e2e shards download instead of compiling again.
   check:
     name: format, lint, test
     runs-on: ubuntu-latest
@@ -51,6 +51,11 @@ jobs:
         with:
           persist-credentials: false
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: "1.4.2"
+      # The binary embeds web/dist, so the frontend is built first; the shards reuse this binary.
+      - run: make web
       - run: make check
         env:
           CARGO_BUILD_JOBS: 4

@@ -88,6 +88,18 @@ v1 sends no request ID. A 500 is matched to its log line by time and path.
 | reporter | ref ID | same |
 | public | none | same |
 
-## 1.10 HTML routes
+## 1.10 The frontend and its API
 
-HTML routes return a full page. Form posts use `application/x-www-form-urlencoded`. A validation failure re-renders the form with status 422. A success on a form post redirects with 303. Exception: a post that reveals a one-time secret (a new API key, an invite link) renders it with 200, because the secret must not travel in a URL; a reload creates another key or invite, never a duplicate of the same one.
+The pages are a React app in `web/`, embedded in the binary. A GET to any path no route claims returns its `index.html` with `Cache-Control: no-cache`; its hashed files live under `/assets/` with a one-year cache. A path under `/api/`, `/ping/`, `/static/` or `/assets/` that no route claims is a 404, in the envelope under `/api/`. A write to a path no route claims is also a 404, so an unregistered route such as reset-state in prod looks absent (SEC-17).
+
+The app reads and writes through `/api/ui/...`:
+
+- JSON bodies, the envelope in 1.2, and the session cookie for identity. No session is 401 `unauthorized`; a role without access is 403 `forbidden`.
+- Every write carries `Origin: MONITA_BASE_URL`, which a browser's `fetch` sends (SEC-03). Without it the answer is 403.
+- A refused form is 422 `validation_failed`. `error.message` is the first problem; `error.fields` maps a form field to its message, so the page marks that field.
+- A dead link or token is 410 `gone`.
+- A write that reveals a one-time secret (a new API key, an invite link) returns it in the 2xx body once. It is never in a URL.
+
+## 1.11 HTML routes
+
+Pages not yet moved to the React app return a full page. Form posts use `application/x-www-form-urlencoded`. A validation failure re-renders the form with status 422. A success on a form post redirects with 303. Exception: a post that reveals a one-time secret renders it with 200, because the secret must not travel in a URL.

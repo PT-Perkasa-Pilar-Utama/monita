@@ -5,6 +5,7 @@ use std::net::SocketAddr;
 
 use monita::{app::AppState, notify::Mailer, platform::config::Config};
 use reqwest::{Response, header};
+use serde_json::{Value, json};
 
 pub const RESET_TOKEN: &str = "test-reset-token";
 pub const BASE_URL: &str = "https://monita.test";
@@ -80,17 +81,18 @@ impl TestApp {
         req.send().await.unwrap()
     }
 
-    /// Creates a project through the New project form. Monita makes the slug from the name plus a
-    /// random suffix; the test then sets `slug` so its URLs stay readable. The response is the
-    /// form's own: 303 to the monitors page, or the 422 page.
-    pub async fn project(&self, cookie: &str, name: &str, slug: &str) -> Response {
+    /// Creates a project through the frontend's API. Monita makes the slug from the name plus a
+    /// random suffix; the test then sets `slug` so its URLs stay readable. Returns the status:
+    /// 201, or 422 for a refused form.
+    pub async fn project(&self, cookie: &str, name: &str, slug: &str) -> reqwest::StatusCode {
         let res = self
-            .post_form("/projects", &[("name", name)], Some(cookie))
+            .api_post("/api/ui/projects", json!({ "name": name }), Some(cookie))
             .await;
-        if res.status() == 303 {
-            let made = location(&res)
-                .trim_start_matches("/projects/")
-                .trim_end_matches("/monitors")
+        let status = res.status();
+        if status == 201 {
+            let made = json_of(res).await["data"]["slug"]
+                .as_str()
+                .unwrap()
                 .to_string();
             let slug = slug.to_string();
             self.state
@@ -106,7 +108,36 @@ impl TestApp {
                 .await
                 .unwrap();
         }
-        res
+        status
+    }
+
+    /// A frontend read: `GET /api/ui/...` with the session cookie.
+    pub async fn api_get(&self, path: &str, cookie: Option<&str>) -> Response {
+        self.get(path, cookie).await
+    }
+
+    /// A frontend write: JSON with Monita's origin, as the browser's `fetch` sends it.
+    pub async fn api_send(
+        &self,
+        method: reqwest::Method,
+        path: &str,
+        body: Value,
+        cookie: Option<&str>,
+    ) -> Response {
+        let mut req = self
+            .http
+            .request(method, self.url(path))
+            .header(header::ORIGIN, BASE_URL)
+            .json(&body);
+        if let Some(c) = cookie {
+            req = req.header(header::COOKIE, c);
+        }
+        req.send().await.unwrap()
+    }
+
+    pub async fn api_post(&self, path: &str, body: Value, cookie: Option<&str>) -> Response {
+        self.api_send(reqwest::Method::POST, path, body, cookie)
+            .await
     }
 
     /// A browser form post: carries Monita's origin, as a same-site browser would.
@@ -143,24 +174,28 @@ impl TestApp {
             .await
     }
 
-    /// Sets a password through an invite path. Returns the new session cookie.
+    /// Sets a password through an invite path (`/invite/<token>`). Returns the session cookie.
     pub async fn accept(&self, invite_path: &str, password: &str) -> String {
         let res = self
-            .post_form(
-                invite_path,
-                &[("password", password), ("password_confirm", password)],
+            .api_post(
+                &api_invite(invite_path),
+                json!({ "password": password, "password_confirm": password }),
                 None,
             )
             .await;
-        assert_eq!(res.status(), 303);
+        assert_eq!(res.status(), 204);
         cookie_of(&res)
     }
 
     pub async fn login(&self, email: &str, password: &str) -> String {
         let res = self
-            .post_form("/login", &[("email", email), ("password", password)], None)
+            .api_post(
+                "/api/ui/login",
+                json!({ "email": email, "password": password }),
+                None,
+            )
             .await;
-        assert_eq!(res.status(), 303, "login failed for {email}");
+        assert_eq!(res.status(), 204, "login failed for {email}");
         cookie_of(&res)
     }
 }
@@ -191,4 +226,17 @@ pub fn invite_path(html: &str) -> String {
         .chars()
         .take_while(|c| c.is_ascii_alphanumeric() || *c == '/' || *c == '-' || *c == '_')
         .collect()
+}
+
+/// The JSON body of a response.
+pub async fn json_of(res: Response) -> Value {
+    res.json().await.expect("a JSON body")
+}
+
+/// The invite API path for a page path `/invite/<token>`.
+pub fn api_invite(invite_path: &str) -> String {
+    format!(
+        "/api/ui/invites/{}",
+        invite_path.trim_start_matches("/invite/")
+    )
 }

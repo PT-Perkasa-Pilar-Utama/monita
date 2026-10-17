@@ -16,8 +16,10 @@ pub mod rate_limit;
 pub mod render;
 pub mod reset_state;
 pub mod settings;
+pub mod spa;
 pub mod time;
 pub mod token;
+pub mod ui;
 
 use std::net::{IpAddr, SocketAddr};
 

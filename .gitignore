@@ -11,3 +11,7 @@
 # Impeccable: per-developer hook consent and the detector cache
 .impeccable/config.local.json
 .impeccable/hook.cache.json
+/web/node_modules
+/web/dist
+/web/src/globals.css
+/web/tsconfig.tsbuildinfo

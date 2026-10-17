@@ -1,0 +1,127 @@
+/* Monita's tokens on shadcn's variable names. Structure from Beaverflow; colour, type and shape
+   are Monita's own (docs/design-system/01-foundations.md). Light is :root, dark is .dark;
+   /static/theme.js sets the class before the first paint. */
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 100 900; font-display: swap; src: url("/static/fonts/inter-latin-wght.woff2") format("woff2"); }
+@font-face { font-family: "Geist Mono"; font-style: normal; font-weight: 400; font-display: swap; src: url("/static/fonts/geist-mono-latin-400.woff2") format("woff2"); }
+@font-face { font-family: "Geist Mono"; font-style: normal; font-weight: 500; font-display: swap; src: url("/static/fonts/geist-mono-latin-500.woff2") format("woff2"); }
+
+@theme inline {
+  --font-sans: "Inter", "SF Pro Display", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --font-heading: var(--font-sans);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-paper: var(--paper);
+  --color-link: var(--link);
+  /* State colours carry data: up, down, issue, waiting. Never the brand accent. */
+  --color-up: var(--up);
+  --color-down: var(--down);
+  --color-issue: var(--issue);
+  --color-unknown: var(--unknown);
+  --color-neutral-strong: var(--neutral-strong);
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+  --spacing-app: 1440px;
+  --container-app: 1440px;
+}
+
+:root {
+  color-scheme: light;
+  --radius: 0.5rem;
+  --background: #f7f8f8;
+  --foreground: #16171a;
+  --card: #ffffff;
+  --card-foreground: #16171a;
+  --popover: #ffffff;
+  --popover-foreground: #16171a;
+  --primary: #c4258f;
+  --primary-foreground: #ffffff;
+  --link: #a61f79;
+  --secondary: color-mix(in srgb, #ffffff 93%, #16171a);
+  --secondary-foreground: #16171a;
+  --muted: color-mix(in srgb, #16171a 4%, transparent);
+  --muted-foreground: #565a62;
+  --accent: color-mix(in srgb, #16171a 5%, transparent);
+  --accent-foreground: #16171a;
+  --destructive: #d24545;
+  --destructive-foreground: #ffffff;
+  --border: color-mix(in srgb, #16171a 10%, transparent);
+  --input: color-mix(in srgb, #16171a 16%, transparent);
+  --ring: color-mix(in srgb, #c4258f 45%, transparent);
+  --paper: color-mix(in srgb, #16171a 3%, #ffffff);
+  --up: #23784e;
+  --down: #d24545;
+  --issue: #8a6300;
+  --unknown: #7a7f87;
+  --neutral-strong: #565a62;
+}
+
+.dark {
+  color-scheme: dark;
+  --background: #08090a;
+  --foreground: #f7f8f8;
+  --card: #0f1011;
+  --card-foreground: #f7f8f8;
+  --popover: #141516;
+  --popover-foreground: #f7f8f8;
+  --primary: #f25cbf;
+  --primary-foreground: #1a0612;
+  --link: #f25cbf;
+  --secondary: color-mix(in srgb, #0f1011 90%, #f7f8f8);
+  --secondary-foreground: #f7f8f8;
+  --muted: color-mix(in srgb, #f7f8f8 5%, transparent);
+  --muted-foreground: #a9aeb6;
+  --accent: color-mix(in srgb, #f7f8f8 6%, transparent);
+  --accent-foreground: #f7f8f8;
+  --destructive: #eb5757;
+  --destructive-foreground: #1a0606;
+  --border: color-mix(in srgb, #f7f8f8 9%, transparent);
+  --input: color-mix(in srgb, #f7f8f8 14%, transparent);
+  --ring: color-mix(in srgb, #f25cbf 45%, transparent);
+  --paper: color-mix(in srgb, #f7f8f8 3%, #0f1011);
+  --up: #4cb782;
+  --down: #eb5757;
+  --issue: #f2c94c;
+  --unknown: #8a8f98;
+  --neutral-strong: #a9aeb6;
+}
+
+@layer base {
+  * { @apply border-border outline-ring/50; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-size: 14px;
+    line-height: 1.5;
+    font-feature-settings: "cv01", "ss03";
+  }
+  h1, h2, h3 { letter-spacing: -0.022em; }
+  code, kbd, pre, .font-mono { font-feature-settings: normal; }
+}
+
+@utility tabular { font-variant-numeric: tabular-nums; }

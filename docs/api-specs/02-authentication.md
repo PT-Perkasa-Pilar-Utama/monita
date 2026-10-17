@@ -11,15 +11,22 @@ Session strategy: [../technical-specs/07-security.md](../technical-specs/07-secu
 | Output | Exit 0, prints `created super admin <email>`. |
 | Errors | Exit 1 `email already exists` (AC-01.02). Exit 1 `password too short`. |
 
-## 2.2 HTML routes
+## 2.2 Sign-in and invites
+
+The pages `/login` and `/invite/{token}` are React pages; they call these JSON routes (conventions 1.10).
 
 | Method | Path | Access | Input | Behavior | AC |
 | --- | --- | --- | --- | --- | --- |
-| GET | `/login` | public | | Sign-in form | |
-| POST | `/login` | public, 60/min per IP | `email`, `password` | Verify, create session, set cookie, 303 to `/`. Wrong pair: 422 with one generic message. | |
-| POST | `/logout` | session | | Delete session, clear cookie, 303 to `/login` | |
-| GET | `/invite/{token}` | public | | Password form if the invite is unused and unexpired. Otherwise an error page with 410. | AC-03.01, AC-03.03, AC-02.02 |
-| POST | `/invite/{token}` | public, 60/min per IP | `password`, `password_confirm` | Check the invite first: unknown, used, expired or disabled user is 410 before any hashing. Then hash, mark used, delete older sessions, create session, 303 to `/` | AC-03.02, AC-04.01 |
+| POST | `/api/ui/login` | public, 60/min per IP | `email`, `password` | Verify, create a session, set the cookie, 204. A wrong pair: 422 with one generic message and no field. | |
+| POST | `/api/ui/logout` | session | | Delete the session, clear the cookie, 204. | |
+| GET | `/api/ui/me` | session | | `email`, `role` (`super_admin` or `tl`), `is_admin`. 401 without a session. | |
+| GET | `/api/ui/invites/{token}` | public | | 200 `{usable: true}` while the invite is unused and unexpired; 410 otherwise. | AC-03.01, AC-03.03, AC-02.02 |
+| POST | `/api/ui/invites/{token}` | public, 60/min per IP | `password`, `password_confirm` | Check the invite first: unknown, used, expired or disabled user is 410 before any hashing. A mismatch is 422 on `password_confirm`; a short password is 422 on `password`. Then hash, mark used, delete older sessions, create a session, set the cookie, 204. | AC-03.02, AC-04.01 |
+
+## 2.3 Admin pages (server-rendered until R6)
+
+| Method | Path | Access | Input | Behavior | AC |
+| --- | --- | --- | --- | --- | --- |
 | GET | `/admin/users` | super_admin | | List TLs with status | |
 | POST | `/admin/users` | super_admin | `email` | Create TL, send invite | AC-02.01 |
 | POST | `/admin/users/{id}/invite` | super_admin | | New invite for an active TL; any other target is 404. Older invites and the user's sessions are deleted. | AC-04.01, AC-04.02 |

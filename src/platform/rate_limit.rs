@@ -79,7 +79,7 @@ pub fn ip_limited(method: &axum::http::Method, path: &str) -> bool {
         || path.starts_with("/api/v1/public/")
         || path.starts_with("/api/v1/tickets")
         || (method == axum::http::Method::POST
-            && (path == "/login" || path.starts_with("/invite/")))
+            && (path == "/api/ui/login" || path.starts_with("/api/ui/invites/")))
 }
 
 /// 429 with `Retry-After`: the JSON envelope under `/api/`, plain text elsewhere. The routes that

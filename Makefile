@@ -1,4 +1,4 @@
-.PHONY: setup run fmt check-fast check release-check e2e e2e-full release clean-stale
+.PHONY: setup web web-check run fmt check-fast check release-check e2e e2e-full release clean-stale
 
 # Keep the laptop usable while rustc runs: 4 jobs at low priority. CI sets CARGO_BUILD_JOBS itself.
 export CARGO_BUILD_JOBS ?= 4
@@ -7,8 +7,17 @@ CARGO = nice -n 10 cargo
 setup:
 	git config core.hooksPath .githooks
 	cd e2e && bun install
+	cd web && bun install
 
-run:
+# The React frontend (web/), built into web/dist, which the binary embeds.
+web:
+	cd web && bun install --frozen-lockfile && bun run build
+
+# Type-check and unit-test the frontend.
+web-check:
+	cd web && bun install --frozen-lockfile && bunx tsgo --noEmit && bun test src
+
+run: web
 	MONITA_ENV=dev $(CARGO) run -- serve
 
 fmt:
@@ -21,22 +30,22 @@ check-fast:
 	$(CARGO) test --lib
 
 # The local gate before hand-off.
-check: check-fast
+check: check-fast web-check
 	$(CARGO) test --tests
 
 # Size-optimised build with fat LTO: about 6 minutes. CI runs it; run it locally only before a release.
-release-check: check
+release-check: check web
 	$(CARGO) build --release
 
-e2e:
+e2e: web
 	$(CARGO) build
 	cd e2e && bun run test
 
-e2e-full:
+e2e-full: web
 	$(CARGO) build
 	cd e2e && bun run test:full
 
-release:
+release: web
 	$(CARGO) build --release --target x86_64-unknown-linux-musl
 
 # Drop build artifacts not used for 14 days (cargo's own cache GC).

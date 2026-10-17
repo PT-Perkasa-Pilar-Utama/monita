@@ -2,17 +2,20 @@
 
 mod common;
 
-use common::{BASE_URL, PASSWORD, TestApp, cookie_of, invite_path, location};
+use common::{BASE_URL, PASSWORD, TestApp, api_invite, cookie_of, invite_path, json_of};
 use monita::accounts::{self, AccountError};
+use serde_json::json;
 
 #[tokio::test]
 async fn super_admin_from_the_cli_can_sign_in() {
     // AC-01.01
     let app = TestApp::spawn("test").await;
     let cookie = app.super_admin("Admin@Company.co.id").await;
-    let home = app.get("/", Some(&cookie)).await;
-    assert_eq!(home.status(), 200);
-    assert!(home.text().await.unwrap().contains("admin@company.co.id"));
+    let me = app.get("/api/ui/me", Some(&cookie)).await;
+    assert_eq!(me.status(), 200);
+    let me = json_of(me).await;
+    assert_eq!(me["data"]["email"], "admin@company.co.id");
+    assert_eq!(me["data"]["role"], "super_admin");
 }
 
 #[tokio::test]
@@ -33,28 +36,26 @@ async fn wrong_password_is_refused_without_saying_which_part() {
         .await
         .unwrap();
     let res = app
-        .post_form(
-            "/login",
-            &[("email", "a@x.co"), ("password", "wrong-password-123")],
+        .api_post(
+            "/api/ui/login",
+            json!({ "email": "a@x.co", "password": "wrong-password-123" }),
             None,
         )
         .await;
     assert_eq!(res.status(), 422);
     assert!(res.headers().get("set-cookie").is_none());
-    assert!(
-        res.text()
-            .await
-            .unwrap()
-            .contains("Wrong email or password.")
+    assert_eq!(
+        json_of(res).await["error"]["message"],
+        "Wrong email or password."
     );
 }
 
 #[tokio::test]
 async fn pages_need_a_session_and_admin_pages_need_a_super_admin() {
     let app = TestApp::spawn("test").await;
-    let anon = app.get("/", None).await;
-    assert_eq!(anon.status(), 303);
-    assert_eq!(location(&anon), "/login");
+    let anon = app.get("/api/ui/me", None).await;
+    assert_eq!(anon.status(), 401);
+    assert_eq!(json_of(anon).await["error"]["code"], "unauthorized");
     let tl = app.tl("tl@x.co").await;
     assert_eq!(app.get("/admin/users", Some(&tl)).await.status(), 403);
 }
@@ -109,26 +110,24 @@ async fn invite_link_sets_a_password_once_and_signs_in() {
         .await
         .unwrap();
     let path = link.strip_prefix(BASE_URL).unwrap();
-    let form = app.get(path, None).await;
-    assert_eq!(form.status(), 200);
-    assert!(form.text().await.unwrap().contains("Set your password"));
+    assert_eq!(app.get(&api_invite(path), None).await.status(), 200);
 
     let res = app
-        .post_form(
-            path,
-            &[("password", PASSWORD), ("password_confirm", PASSWORD)],
+        .api_post(
+            &api_invite(path),
+            json!({ "password": PASSWORD, "password_confirm": PASSWORD }),
             None,
         )
         .await;
-    assert_eq!(res.status(), 303);
+    assert_eq!(res.status(), 204);
     let cookie = cookie_of(&res);
-    assert_eq!(app.get("/", Some(&cookie)).await.status(), 200);
+    assert_eq!(app.get("/api/ui/me", Some(&cookie)).await.status(), 200);
 
-    assert_eq!(app.get(path, None).await.status(), 410);
+    assert_eq!(app.get(&api_invite(path), None).await.status(), 410);
     let reuse = app
-        .post_form(
-            path,
-            &[("password", PASSWORD), ("password_confirm", PASSWORD)],
+        .api_post(
+            &api_invite(path),
+            json!({ "password": PASSWORD, "password_confirm": PASSWORD }),
             None,
         )
         .await;
@@ -154,16 +153,16 @@ async fn new_invite_replaces_the_password_and_kills_old_links_and_sessions() {
     let new_path = invite_path(&res.text().await.unwrap());
 
     assert_eq!(
-        app.get("/", Some(&tl_session)).await.status(),
-        303,
+        app.get("/api/ui/me", Some(&tl_session)).await.status(),
+        401,
         "old session must end"
     );
-    assert_eq!(app.get(&old_path, None).await.status(), 410);
+    assert_eq!(app.get(&api_invite(&old_path), None).await.status(), 410);
     app.accept(&new_path, "a-brand-new-password").await;
     let old_pw = app
-        .post_form(
-            "/login",
-            &[("email", "rina@x.co"), ("password", PASSWORD)],
+        .api_post(
+            "/api/ui/login",
+            json!({ "email": "rina@x.co", "password": PASSWORD }),
             None,
         )
         .await;
@@ -179,26 +178,23 @@ async fn a_short_password_or_a_mismatch_is_refused() {
         .unwrap();
     let path = link.strip_prefix(BASE_URL).unwrap();
     let short = app
-        .post_form(
-            path,
-            &[("password", "short"), ("password_confirm", "short")],
+        .api_post(
+            &api_invite(path),
+            json!({ "password": "short", "password_confirm": "short" }),
             None,
         )
         .await;
     assert_eq!(short.status(), 422);
     let mismatch = app
-        .post_form(
-            path,
-            &[
-                ("password", PASSWORD),
-                ("password_confirm", "something-else-1"),
-            ],
+        .api_post(
+            &api_invite(path),
+            json!({ "password": PASSWORD, "password_confirm": "something-else-1" }),
             None,
         )
         .await;
     assert_eq!(mismatch.status(), 422);
     assert_eq!(
-        app.get(path, None).await.status(),
+        app.get(&api_invite(path), None).await.status(),
         200,
         "a refused attempt leaves the link usable"
     );
@@ -211,15 +207,29 @@ async fn a_form_post_from_another_origin_is_blocked() {
     accounts::create_super_admin(&app.state.db, "a@x.co", PASSWORD)
         .await
         .unwrap();
-    let res = app
+    let body = json!({ "email": "a@x.co", "password": PASSWORD });
+    let evil = app
         .http
-        .post(app.url("/login"))
+        .post(app.url("/api/ui/login"))
         .header("origin", "https://evil.example")
-        .form(&[("email", "a@x.co"), ("password", PASSWORD)])
+        .json(&body)
         .send()
         .await
         .unwrap();
-    assert_eq!(res.status(), 403);
+    assert_eq!(evil.status(), 403);
+    let none = app
+        .http
+        .post(app.url("/api/ui/login"))
+        .json(&body)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(
+        none.status(),
+        403,
+        "a write without an Origin is blocked too"
+    );
+    assert_eq!(json_of(none).await["error"]["code"], "forbidden");
 }
 
 #[tokio::test]
@@ -236,11 +246,11 @@ async fn disabled_tl_is_signed_out_and_cannot_sign_in() {
         .id;
     app.post_form(&format!("/admin/users/{id}/disable"), &[], Some(&admin))
         .await;
-    assert_eq!(app.get("/", Some(&tl)).await.status(), 303);
+    assert_eq!(app.get("/api/ui/me", Some(&tl)).await.status(), 401);
     let res = app
-        .post_form(
-            "/login",
-            &[("email", "rina@x.co"), ("password", PASSWORD)],
+        .api_post(
+            "/api/ui/login",
+            json!({ "email": "rina@x.co", "password": PASSWORD }),
             None,
         )
         .await;
@@ -268,11 +278,11 @@ async fn disabling_a_tl_kills_their_pending_invite() {
     let id = user_id(&app, "rina@x.co").await;
     app.post_form(&format!("/admin/users/{id}/disable"), &[], Some(&admin))
         .await;
-    assert_eq!(app.get(path, None).await.status(), 410);
+    assert_eq!(app.get(&api_invite(path), None).await.status(), 410);
     let res = app
-        .post_form(
-            path,
-            &[("password", PASSWORD), ("password_confirm", PASSWORD)],
+        .api_post(
+            &api_invite(path),
+            json!({ "password": PASSWORD, "password_confirm": PASSWORD }),
             None,
         )
         .await;
@@ -319,15 +329,16 @@ async fn invite_posts_are_limited_per_ip_and_a_bad_token_is_refused_before_hashi
         .write(async |c| monita::platform::settings::set(c, "rl_ip_per_min", 2).await)
         .await
         .unwrap();
-    let form = [
-        ("password", PASSWORD),
-        ("password_confirm", "a-different-one"),
-    ];
+    let form = json!({ "password": PASSWORD, "password_confirm": "a-different-one" });
     for _ in 0..2 {
-        let res = app.post_form("/invite/not-a-token", &form, None).await;
+        let res = app
+            .api_post("/api/ui/invites/not-a-token", form.clone(), None)
+            .await;
         assert_eq!(res.status(), 410, "a dead link is 410 even with a mismatch");
     }
-    let res = app.post_form("/invite/not-a-token", &form, None).await;
+    let res = app
+        .api_post("/api/ui/invites/not-a-token", form, None)
+        .await;
     assert_eq!(res.status(), 429);
 }
 
@@ -340,12 +351,15 @@ async fn the_cli_resets_a_super_admin_password_and_signs_them_out() {
     accounts::reset_super_admin_password(&app.state.db, "Admin@X.co", new_password)
         .await
         .unwrap();
-    assert_eq!(app.get("/", Some(&old_session)).await.status(), 303);
-    for (password, status) in [(PASSWORD, 422), (new_password, 303)] {
+    assert_eq!(
+        app.get("/api/ui/me", Some(&old_session)).await.status(),
+        401
+    );
+    for (password, status) in [(PASSWORD, 422), (new_password, 204)] {
         let res = app
-            .post_form(
-                "/login",
-                &[("email", "admin@x.co"), ("password", password)],
+            .api_post(
+                "/api/ui/login",
+                json!({ "email": "admin@x.co", "password": password }),
                 None,
             )
             .await;
@@ -374,13 +388,13 @@ async fn an_existing_address_signs_in_even_if_new_ones_would_be_refused() {
         .await
         .unwrap();
     let res = app
-        .post_form(
-            "/login",
-            &[("email", " Jörg@X.co"), ("password", PASSWORD)],
+        .api_post(
+            "/api/ui/login",
+            json!({ "email": " Jörg@X.co", "password": PASSWORD }),
             None,
         )
         .await;
-    assert_eq!(res.status(), 303);
+    assert_eq!(res.status(), 204);
 }
 
 #[tokio::test]
@@ -399,9 +413,9 @@ async fn a_corrupt_stored_hash_refuses_the_sign_in_without_a_crash() {
         .await
         .unwrap();
     let res = app
-        .post_form(
-            "/login",
-            &[("email", "a@x.co"), ("password", PASSWORD)],
+        .api_post(
+            "/api/ui/login",
+            json!({ "email": "a@x.co", "password": PASSWORD }),
             None,
         )
         .await;

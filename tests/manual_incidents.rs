@@ -7,8 +7,8 @@ use monita::checks::{self, MonitorInput};
 
 async fn setup(app: &TestApp) -> String {
     let tl = app.tl("rina@x.co").await;
-    let res = app.project(&tl, "Payments", "payments").await;
-    assert_eq!(res.status(), 303, "the project exists");
+    let status = app.project(&tl, "Payments", "payments").await;
+    assert_eq!(status, 201, "the project exists");
     let m = MonitorInput {
         name: "API".into(),
         url: "https://x.invalid/".into(),

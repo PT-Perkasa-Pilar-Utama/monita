@@ -13,14 +13,13 @@ export default async function globalSetup(): Promise<void> {
 
   mkdirSync(AUTH_DIR, { recursive: true });
   for (const [role, email] of Object.entries(ROLES)) {
-    const login = await fetch(`${BASE_URL}/login`, {
+    const login = await fetch(`${BASE_URL}/api/ui/login`, {
       method: "POST",
-      redirect: "manual",
-      headers: { "content-type": "application/x-www-form-urlencoded", origin: BASE_URL },
-      body: new URLSearchParams({ email, password: SEED_PASSWORD }),
+      headers: { "content-type": "application/json", origin: BASE_URL },
+      body: JSON.stringify({ email, password: SEED_PASSWORD }),
     });
     const cookie = login.headers.getSetCookie().find((c) => c.startsWith("monita_session="));
-    if (login.status !== 303 || cookie === undefined) throw new Error(`sign-in for ${role} returned ${login.status}`);
+    if (login.status !== 204 || cookie === undefined) throw new Error(`sign-in for ${role} returned ${login.status}`);
     const value = cookie.split(";")[0]!.slice("monita_session=".length);
     const state = {
       cookies: [{ name: "monita_session", value, domain: "127.0.0.1", path: "/", expires: -1, httpOnly: true, secure: false, sameSite: "Lax" }],
