@@ -46,14 +46,16 @@ Rule: color sits in the icon or the dot. The word next to it stays neutral, exce
 
 | Role | Font | Size / weight |
 | --- | --- | --- |
-| UI (admin) | Inter | 13 px / 400, labels 510, titles 590 |
-| Page title | Inter | 24 px / 510, tracking -0.022em |
-| Public body | Inter | 15 px / 400, line height 1.6 |
-| Public title | Inter | 32 px / 510 |
-| Caption, ID, time, table head | Geist Mono | 11 px / 400, uppercase |
-| URLs, tokens, codes | Geist Mono | 12 px |
+| UI (admin) | Inter | 14 px / 400, labels and nav 510, panel titles 15 px / 590 |
+| Page title | Inter | 32 px / 650, tracking -0.03em, the count beside it at 24 px / 400 |
+| Docs title | Inter | 40 px / 650 |
+| Public and docs body | Inter | 15 px / 400, line height 1.6 to 1.7 |
+| Public title | Inter | 32 px / 650 |
+| Table head | Inter | 13 px / 510, sentence case |
+| Caption | Inter | 12 to 13 px / 400, sentence case |
+| URLs, tokens, codes, times in lists | Geist Mono | 12 to 13 px |
 
-Scale: 11, 12, 13, 15, 20, 24, 32. Never above weight 600. Never uppercase a heading.
+Scale: 11, 12, 13, 14, 15, 20, 24, 32, 40. Titles use 650, as the docs and the landing page do. Other text stays at 600 or below. Never uppercase a heading.
 
 ## 1.5 Space
 
