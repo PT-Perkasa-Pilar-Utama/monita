@@ -12,6 +12,7 @@ use turso::Connection;
 use super::{ItemState, Source, SourceKind, engine::SourceState};
 use crate::platform::time;
 
+#[derive(serde::Serialize)]
 pub struct IncidentRow {
     pub id: i64,
     pub origin: String,

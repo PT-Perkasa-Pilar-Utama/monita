@@ -2,13 +2,15 @@
 
 Fields: [../technical-specs/06-data-model.md section 6.3.6](../technical-specs/06-data-model.md#636-alert_routes).
 
-## 6.1 HTML routes
+## 6.1 Frontend routes
+
+The React page `/projects/{slug}/alerts` calls these (conventions 1.10).
 
 | Method | Path | Access | Input | Behavior | AC |
 | --- | --- | --- | --- | --- | --- |
-| GET | `/projects/{slug}/alerts` | owner, super_admin | | One block per severity: emails, webhook URL, use webhook | AC-15.01, AC-15.02 |
-| POST | `/projects/{slug}/alerts/{severity}` | owner, super_admin | `emails` (one per line), `webhook_url`, `use_webhook` | Validate each email (ASCII, a name domain, one the SMTP client accepts) and the URL (`http://` or `https://` with a host, no spaces). Save. | AC-15.01 |
-| POST | `/projects/{slug}/alerts/{severity}/test` | owner, super_admin | | Queue one test email and webhook | |
+| GET | `/api/ui/projects/{slug}/alerts` | owner, super_admin | | One route per severity, critical first: `severity`, `emails`, `webhook_url`, `use_webhook`. | AC-15.01, AC-15.02 |
+| PUT | `/api/ui/projects/{slug}/alerts/{severity}` | owner, super_admin | `emails` (one per line), `webhook_url`, `use_webhook` (boolean) | Validate each email (ASCII, a name domain, one the SMTP client accepts) and the URL (`http://` or `https://` with a host, no spaces). Save, 204. A bad address is 422 on `emails`; a bad URL on `webhook_url`. An unknown severity is 404. | AC-15.01 |
+| POST | `/api/ui/projects/{slug}/alerts/{severity}/test` | owner, super_admin | | Queue one test email per recipient and the webhook. 200 `{sent_to}`, the number of recipients. | |
 
 ## 6.2 Outgoing webhook
 

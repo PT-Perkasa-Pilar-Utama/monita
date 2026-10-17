@@ -7,7 +7,7 @@ mod icon;
 mod overview;
 mod profile;
 pub mod routes;
-mod settings_routes;
+mod settings_api;
 mod store;
 
 use axum::{
@@ -58,6 +58,20 @@ pub async fn all(db: &Db) -> anyhow::Result<Vec<Project>> {
     store::list_all(&db.read().await?).await
 }
 
+/// The numbers beside a project's tabs, each read through its module's interface.
+pub async fn tab_counts(
+    db: &Db,
+    project_id: i64,
+) -> anyhow::Result<crate::platform::page::TabCounts> {
+    let (monitors, heartbeats) = crate::checks::counts(db, project_id).await?;
+    Ok(crate::platform::page::TabCounts {
+        monitors,
+        heartbeats,
+        incidents: crate::incidents::open_count(db, project_id).await?,
+        tickets: crate::tickets::open_count(db, project_id).await?,
+    })
+}
+
 /// The page frame for a signed-in user: who they are, the active nav item, the project in view.
 /// The page shell. Inside a project it carries the tab bar's counts, each read through its
 /// module's interface.
@@ -71,13 +85,7 @@ pub async fn shell(
     let Some(p) = project else {
         return Ok(shell);
     };
-    let (monitors, heartbeats) = crate::checks::counts(db, p.id).await?;
-    let counts = crate::platform::page::TabCounts {
-        monitors,
-        heartbeats,
-        incidents: crate::incidents::open_count(db, p.id).await?,
-        tickets: crate::tickets::open_count(db, p.id).await?,
-    };
+    let counts = tab_counts(db, p.id).await?;
     Ok(shell
         .in_project(&p.name, &p.slug, p.icon_at)
         .with_counts(counts))

@@ -2,7 +2,7 @@
 
 mod common;
 
-use common::{TestApp, json_of, location};
+use common::{TestApp, json_of};
 use serde_json::{Value, json};
 
 async fn project(app: &TestApp, cookie: &str, name: &str, slug: &str) -> reqwest::StatusCode {
@@ -30,22 +30,26 @@ async fn listed(app: &TestApp, cookie: &str) -> Vec<String> {
         .collect()
 }
 
-/// Creates a key on the settings page and reads it back from the one-time notice.
+/// Creates a key through the API and returns the full key, which the answer carries once.
 async fn new_key(app: &TestApp, cookie: &str, slug: &str) -> String {
     let res = app
-        .post_form(
-            &format!("/projects/{slug}/keys"),
-            &[("name", "backend-prod")],
+        .api_post(
+            &format!("/api/ui/projects/{slug}/keys"),
+            json!({ "name": "backend-prod" }),
             Some(cookie),
         )
         .await;
-    assert_eq!(res.status(), 200);
-    let html = res.text().await.unwrap();
-    let start = html.find("id=\"new-key\">").expect("key not shown") + "id=\"new-key\">".len();
-    html[start..]
-        .chars()
-        .take_while(|c| c.is_ascii_alphanumeric() || *c == '_')
-        .collect()
+    assert_eq!(res.status(), 201);
+    json_of(res).await["data"]["key"]
+        .as_str()
+        .unwrap()
+        .to_string()
+}
+
+/// A PUT from the frontend.
+async fn put(app: &TestApp, path: &str, body: Value, cookie: &str) -> reqwest::Response {
+    app.api_send(reqwest::Method::PUT, path, body, Some(cookie))
+        .await
 }
 
 async fn ref_id(app: &TestApp, key: Option<&str>, body: Value) -> reqwest::Response {
@@ -68,22 +72,6 @@ async fn tl_creates_a_project_and_owns_it() {
         (p["slug"].as_str(), p["owner_email"].as_str()),
         (Some("payments"), Some("rina@x.co"))
     );
-}
-
-#[tokio::test]
-async fn every_project_page_links_to_its_public_status_page() {
-    let app = TestApp::spawn("test").await;
-    let tl = app.tl("rina@x.co").await;
-    project(&app, &tl, "Payments", "payments").await;
-    for page in ["monitors", "incidents", "settings"] {
-        let html = app
-            .get(&format!("/projects/payments/{page}"), Some(&tl))
-            .await
-            .text()
-            .await
-            .unwrap();
-        assert!(html.contains(r#"href="/status/payments""#), "{page}");
-    }
 }
 
 #[tokio::test]
@@ -113,23 +101,26 @@ async fn monita_makes_a_unique_slug_from_the_name() {
 }
 
 #[tokio::test]
-async fn the_overview_sums_up_the_project_and_lists_its_facts() {
+async fn the_overview_sums_up_the_project_and_its_head_carries_the_tab_counts() {
     let app = TestApp::spawn("test").await;
     let tl = app.tl("rina@x.co").await;
     project(&app, &tl, "Payments", "payments").await;
     new_key(&app, &tl, "payments").await;
-    let html = app
-        .get("/projects/payments", Some(&tl))
-        .await
-        .text()
-        .await
-        .unwrap();
-    assert!(html.contains("<h1>Payments</h1>"));
-    assert!(
-        html.contains("Add your first monitor.") && html.contains("No ticket waits in Triage.")
+    let o = json_of(
+        app.get("/api/ui/projects/payments/overview", Some(&tl))
+            .await,
+    )
+    .await;
+    let o = &o["data"];
+    assert_eq!(o["monitors"]["total"], 0);
+    assert_eq!(
+        (o["triage"].as_i64(), o["active_keys"].as_i64()),
+        (Some(0), Some(1))
     );
-    assert!(html.contains("Owned by rina@x.co") && html.contains("1 active API key"));
-    assert!(html.contains("Every system is up"));
+    assert_eq!(o["incidents"].as_array().unwrap().len(), 0);
+    let head = json_of(app.get("/api/ui/projects/payments", Some(&tl)).await).await;
+    assert_eq!(head["data"]["project"]["owner_email"], "rina@x.co");
+    assert_eq!(head["data"]["counts"]["monitors"], 0);
 }
 
 #[tokio::test]
@@ -138,9 +129,23 @@ async fn another_tl_cannot_see_the_project() {
     let rina = app.tl("rina@x.co").await;
     let budi = app.tl("budi@x.co").await;
     project(&app, &rina, "Payments", "payments").await;
-    for path in ["/projects/payments", "/projects/payments/settings"] {
+    for path in [
+        "/api/ui/projects/payments",
+        "/api/ui/projects/payments/overview",
+        "/api/ui/projects/payments/keys",
+        "/api/ui/projects/payments/alerts",
+        "/projects/payments/icon",
+    ] {
         assert_eq!(app.get(path, Some(&budi)).await.status(), 404, "{path}");
     }
+    let write = put(
+        &app,
+        "/api/ui/projects/payments/allowlist",
+        json!({ "cidrs": "" }),
+        &budi,
+    )
+    .await;
+    assert_eq!(write.status(), 404, "a write is refused the same way");
     assert!(listed(&app, &budi).await.is_empty());
 }
 
@@ -154,26 +159,16 @@ async fn super_admin_reassigns_a_project_and_its_keys_stay() {
     project(&app, &rina, "Payments", "payments").await;
     let key = new_key(&app, &rina, "payments").await;
 
-    let res = app
-        .post_form(
-            "/projects/payments/owner",
-            &[("owner_email", " Budi@X.co ")],
-            Some(&admin),
-        )
-        .await;
-    assert_eq!(res.status(), 303);
-    assert_eq!(
-        app.get("/projects/payments/settings", Some(&budi))
-            .await
-            .status(),
-        200
-    );
-    assert_eq!(
-        app.get("/projects/payments/settings", Some(&rina))
-            .await
-            .status(),
-        404
-    );
+    let res = put(
+        &app,
+        "/api/ui/projects/payments/owner",
+        json!({ "owner_email": " Budi@X.co " }),
+        &admin,
+    )
+    .await;
+    assert_eq!(res.status(), 204);
+    assert_eq!(listed(&app, &budi).await, ["payments"]);
+    assert!(listed(&app, &rina).await.is_empty());
     assert_eq!(
         ref_id(&app, Some(&key), Value::Null).await.status(),
         201,
@@ -199,50 +194,46 @@ async fn a_project_goes_only_to_an_active_tl() {
         .await
         .unwrap();
     for owner in ["budi@x.co", "nobody@x.co", ""] {
-        let res = app
-            .post_form(
-                "/projects/payments/owner",
-                &[("owner_email", owner)],
-                Some(&admin),
-            )
-            .await;
+        let body = json!({ "owner_email": owner });
+        let res = put(&app, "/api/ui/projects/payments/owner", body, &admin).await;
         assert_eq!(res.status(), 422, "owner {owner}");
-        let html = res.text().await.unwrap();
-        assert!(html.contains("Pick the owner from the list"));
-        assert!(html.contains(r#"id="reassign" aria-labelledby="reassign-title" data-open"#));
+        let err = json_of(res).await;
+        assert!(
+            err["error"]["fields"]["owner_email"]
+                .as_str()
+                .unwrap()
+                .starts_with("Pick the owner from the list")
+        );
     }
     assert_eq!(
-        app.get("/projects/payments/settings", Some(&rina))
-            .await
-            .status(),
-        200,
+        listed(&app, &rina).await,
+        ["payments"],
         "rina still owns it"
     );
 }
 
 #[tokio::test]
-async fn the_owner_list_offers_the_admin_and_marks_the_current_owner() {
+async fn the_owner_list_offers_the_admin_first_then_active_tls_and_only_to_a_super_admin() {
     let app = TestApp::spawn("test").await;
     let admin = app.super_admin("admin@x.co").await;
     let rina = app.tl("rina@x.co").await;
     project(&app, &rina, "Payments", "payments").await;
-    let html = app
-        .get("/projects/payments/settings", Some(&admin))
-        .await
-        .text()
-        .await
-        .unwrap();
-    let admin_at = html
-        .find(r#"<option value="admin@x.co">"#)
-        .expect("the admin is offered");
-    let rina_at = html
-        .find(r#"<option value="rina@x.co">"#)
-        .expect("the tech lead is offered");
-    assert!(admin_at < rina_at, "the admin comes first");
-    assert!(
-        html.contains(r#"name="owner_email" type="email" list="owners" value="rina@x.co""#),
-        "the field starts at the current owner"
-    );
+    let list = json_of(
+        app.get("/api/ui/projects/payments/owners", Some(&admin))
+            .await,
+    )
+    .await;
+    let emails: Vec<&str> = list["data"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|o| o["email"].as_str().unwrap())
+        .collect();
+    assert_eq!(emails, ["admin@x.co", "rina@x.co"]);
+    let tl = app
+        .get("/api/ui/projects/payments/owners", Some(&rina))
+        .await;
+    assert_eq!(tl.status(), 403);
 }
 
 #[tokio::test]
@@ -321,57 +312,31 @@ async fn a_project_keeps_its_description_and_serves_its_icon_to_its_owner_only()
 }
 
 #[tokio::test]
-async fn the_edit_dialog_refuses_svg_and_long_text_and_removes_the_icon() {
+async fn editing_refuses_svg_and_long_text_and_removes_the_icon() {
     let app = TestApp::spawn("test").await;
     let rina = app.tl("rina@x.co").await;
     project(&app, &rina, "Payments", "payments").await;
-    let edit = |form: Vec<(&'static str, String)>| {
-        let (app, rina) = (&app, rina.clone());
-        async move {
-            let form: Vec<(&str, &str)> = form.iter().map(|(k, v)| (*k, v.as_str())).collect();
-            app.post_form("/projects/payments/profile", &form, Some(&rina))
-                .await
-        }
-    };
-    let svg = "data:image/svg+xml;base64,PHN2Zy8+".to_string();
-    let res = edit(vec![("icon", svg)]).await;
+    let edit = |body: Value| put(&app, "/api/ui/projects/payments/profile", body, &rina);
+    let res = edit(json!({ "icon": "data:image/svg+xml;base64,PHN2Zy8+" })).await;
     assert_eq!(res.status(), 422);
-    let html = res.text().await.unwrap();
-    assert!(html.contains("Use a PNG, JPEG or WebP picture.") && html.contains("data-open"));
-    let res = edit(vec![("description", "x".repeat(281))]).await;
+    assert_eq!(
+        json_of(res).await["error"]["fields"]["icon"],
+        "Use a PNG, JPEG or WebP picture."
+    );
+    let res = edit(json!({ "description": "x".repeat(281) })).await;
     assert_eq!(res.status(), 422);
 
-    let res = edit(vec![
-        ("icon", PNG_1X1.to_string()),
-        ("description", "Shop".into()),
-    ])
-    .await;
-    assert_eq!(res.status(), 303);
-    assert_eq!(
-        app.get("/projects/payments/icon", Some(&rina))
-            .await
-            .status(),
-        200
-    );
-    let res = edit(vec![
-        ("remove_icon", "on".into()),
-        ("description", String::new()),
-    ])
-    .await;
-    assert_eq!(res.status(), 303);
-    assert_eq!(
-        app.get("/projects/payments/icon", Some(&rina))
-            .await
-            .status(),
-        404
-    );
-    let general = app
-        .get("/projects/payments/settings", Some(&rina))
-        .await
-        .text()
-        .await
-        .unwrap();
-    assert!(general.contains("None yet"));
+    let res = edit(json!({ "icon": PNG_1X1, "description": "Shop" })).await;
+    assert_eq!(res.status(), 204);
+    let icon = app.get("/projects/payments/icon", Some(&rina)).await;
+    assert_eq!(icon.status(), 200);
+    let res = edit(json!({ "remove_icon": "on", "description": "" })).await;
+    assert_eq!(res.status(), 204);
+    let icon = app.get("/projects/payments/icon", Some(&rina)).await;
+    assert_eq!(icon.status(), 404);
+    let head = json_of(app.get("/api/ui/projects/payments", Some(&rina)).await).await;
+    assert!(head["data"]["project"]["description"].is_null());
+    assert!(head["data"]["project"]["icon_url"].is_null());
 }
 
 #[tokio::test]
@@ -393,13 +358,8 @@ async fn a_tl_cannot_reassign() {
     let app = TestApp::spawn("test").await;
     let rina = app.tl("rina@x.co").await;
     project(&app, &rina, "Payments", "payments").await;
-    let res = app
-        .post_form(
-            "/projects/payments/owner",
-            &[("owner_email", "rina@x.co")],
-            Some(&rina),
-        )
-        .await;
+    let body = json!({ "owner_email": "rina@x.co" });
+    let res = put(&app, "/api/ui/projects/payments/owner", body, &rina).await;
     assert_eq!(res.status(), 403);
 }
 
@@ -411,14 +371,14 @@ async fn a_key_is_shown_once_works_and_stops_when_revoked() {
     project(&app, &tl, "Payments", "payments").await;
     let key = new_key(&app, &tl, "payments").await;
     assert_eq!(key.len(), 29, "mk_ + 26 base32 chars");
-    let keys_page = app
-        .get("/projects/payments/settings/keys", Some(&tl))
+    let keys = app
+        .get("/api/ui/projects/payments/keys", Some(&tl))
         .await
         .text()
         .await
         .unwrap();
-    assert!(keys_page.contains("backend-prod") && keys_page.contains(&key[..7]));
-    assert!(!keys_page.contains(&key), "the full key appears only once");
+    assert!(keys.contains("backend-prod") && keys.contains(&key[..9]));
+    assert!(!keys.contains(&key), "the full key appears only once");
 
     let reusable = ref_id(&app, Some(&key), serde_json::json!({})).await;
     assert_eq!(reusable.status(), 201);
@@ -442,13 +402,13 @@ async fn a_key_is_shown_once_works_and_stops_when_revoked() {
 
     let keys = monita::projects::list_keys(&app.state.db, 1).await.unwrap();
     let res = app
-        .post_form(
-            &format!("/projects/payments/keys/{}/revoke", keys[0].id),
-            &[],
+        .api_post(
+            &format!("/api/ui/projects/payments/keys/{}/revoke", keys[0].id),
+            json!({}),
             Some(&tl),
         )
         .await;
-    assert_eq!(location(&res), "/projects/payments/settings/keys");
+    assert_eq!(res.status(), 204);
     let revoked = ref_id(&app, Some(&key), Value::Null).await;
     assert_eq!(revoked.status(), 401);
     let err: Value = revoked.json().await.unwrap();
@@ -462,23 +422,22 @@ async fn the_allowlist_is_off_by_default_and_blocks_other_ips() {
     let tl = app.tl("rina@x.co").await;
     project(&app, &tl, "Payments", "payments").await;
     let key = new_key(&app, &tl, "payments").await;
-    let page = app
-        .get("/projects/payments/settings/allowlist", Some(&tl))
-        .await
-        .text()
-        .await
-        .unwrap();
-    assert!(page.contains("Allowed IP addresses</h2><span class=\"tag\">Off"));
+    let head = json_of(app.get("/api/ui/projects/payments", Some(&tl)).await).await;
+    assert!(
+        head["data"]["project"]["ip_allowlist"].is_null(),
+        "off by default"
+    );
     assert_eq!(ref_id(&app, Some(&key), Value::Null).await.status(), 201);
 
-    let res = app
-        .post_form(
-            "/projects/payments/allowlist",
-            &[("cidrs", "10.20.0.0/16")],
-            Some(&tl),
+    let allow = |cidrs: &'static str| {
+        put(
+            &app,
+            "/api/ui/projects/payments/allowlist",
+            json!({ "cidrs": cidrs }),
+            &tl,
         )
-        .await;
-    assert_eq!(location(&res), "/projects/payments/settings/allowlist");
+    };
+    assert_eq!(allow("10.20.0.0/16").await.status(), 204);
     let blocked = ref_id(&app, Some(&key), Value::Null).await;
     assert_eq!(
         blocked.status(),
@@ -486,22 +445,12 @@ async fn the_allowlist_is_off_by_default_and_blocks_other_ips() {
         "the test client calls from 127.0.0.1"
     );
 
-    app.post_form(
-        "/projects/payments/allowlist",
-        &[("cidrs", "10.20.0.0/16\n127.0.0.0/8")],
-        Some(&tl),
-    )
-    .await;
+    allow("10.20.0.0/16\n127.0.0.0/8").await;
     assert_eq!(ref_id(&app, Some(&key), Value::Null).await.status(), 201);
 
-    let bad = app
-        .post_form(
-            "/projects/payments/allowlist",
-            &[("cidrs", "intranet")],
-            Some(&tl),
-        )
-        .await;
+    let bad = allow("intranet").await;
     assert_eq!(bad.status(), 422);
+    assert!(json_of(bad).await["error"]["fields"]["cidrs"].is_string());
 }
 
 #[tokio::test]

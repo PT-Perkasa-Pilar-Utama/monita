@@ -1,4 +1,4 @@
-//! Project pages and the project icon. Contract: docs/api-specs/03-projects.md.
+//! The project icon, an image a page links to. Contract: docs/api-specs/03-projects.md.
 
 use axum::{
     Router,
@@ -11,10 +11,7 @@ use axum::{
 use crate::{accounts::CurrentUser, app::AppState, platform::page::PageError};
 
 pub fn router() -> Router<AppState> {
-    Router::new()
-        .route("/projects/{slug}", get(super::overview::page))
-        .route("/projects/{slug}/icon", get(icon))
-        .merge(super::settings_routes::router())
+    Router::new().route("/projects/{slug}/icon", get(icon))
 }
 
 /// The icon's URL carries `?v={icon_at}`, so a new icon is a new URL and the old one never changes.

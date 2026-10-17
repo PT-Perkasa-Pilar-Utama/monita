@@ -1,17 +1,28 @@
 //! Projects as JSON for the frontend. Contract: docs/api-specs/03-projects.md.
 
-use axum::{Json, Router, extract::State, routing::get};
+use axum::{
+    Json, Router,
+    extract::{Path, State},
+    routing::get,
+};
 use serde::Serialize;
 
 use super::{Project, ProjectError, ProjectInput};
 use crate::{
     accounts::CurrentUser,
     app::AppState,
-    platform::ui::{UiError, UiResult, created, data},
+    platform::{
+        page::TabCounts,
+        ui::{UiError, UiResult, created, data},
+    },
 };
 
 pub fn router() -> Router<AppState> {
-    Router::new().route("/api/ui/projects", get(list).post(create))
+    Router::new()
+        .route("/api/ui/projects", get(list).post(create))
+        .route("/api/ui/projects/{slug}", get(detail))
+        .route("/api/ui/projects/{slug}/overview", get(overview))
+        .merge(super::settings_api::router())
 }
 
 /// A project as every page shows it.
@@ -109,4 +120,32 @@ async fn create(
         .await
         .map_err(form_error)?;
     Ok(created(ProjectView::from(&p)))
+}
+
+/// What every page inside a project needs: the project and the numbers beside its tabs.
+#[derive(Serialize)]
+struct ProjectHead {
+    project: ProjectView,
+    counts: TabCounts,
+}
+
+async fn detail(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(slug): Path<String>,
+) -> UiResult {
+    let p = super::find_for(&state.db, &user, &slug).await?;
+    Ok(data(ProjectHead {
+        counts: super::tab_counts(&state.db, p.id).await?,
+        project: ProjectView::from(&p),
+    }))
+}
+
+async fn overview(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(slug): Path<String>,
+) -> UiResult {
+    let p = super::find_for(&state.db, &user, &slug).await?;
+    Ok(data(super::overview::read(&state.db, p.id).await?))
 }

@@ -141,6 +141,7 @@ pub async fn counts(db: &Db, project_id: i64) -> anyhow::Result<(i64, i64)> {
 }
 
 /// One project-wide line for the Overview: how many there are, the worst state, and a sentence.
+#[derive(serde::Serialize)]
 pub struct Summary {
     pub total: usize,
     pub kind: &'static str,

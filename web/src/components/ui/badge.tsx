@@ -5,30 +5,32 @@ import type { VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
 
+// Monita's tone pill: a tinted fill and a coloured word. State colours carry data (up, down,
+// issue); the brand magenta never marks a state.
 const badgeVariants = cva(
-  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  "inline-flex w-fit shrink-0 items-center gap-1 whitespace-nowrap rounded-md border border-transparent px-1.5 py-0.5 text-xs font-semibold [&>svg]:size-3",
   {
     variants: {
       variant: {
-        default: "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
-        secondary:
-          "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        destructive:
-          "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
-        outline: "text-foreground",
+        default: "bg-primary text-primary-foreground",
+        secondary: "bg-secondary text-secondary-foreground",
+        outline: "border-border text-muted-foreground",
+        destructive: "bg-destructive/12 text-destructive",
+        up: "bg-up/12 text-up",
+        down: "bg-down/12 text-down",
+        issue: "bg-issue/14 text-issue",
+        unknown: "bg-muted text-muted-foreground",
+        neutral: "bg-neutral-strong/12 text-neutral-strong",
       },
     },
-    defaultVariants: {
-      variant: "default",
-    },
+    defaultVariants: { variant: "secondary" },
   },
 );
 
-export type BadgeProps = {} & React.HTMLAttributes<HTMLDivElement> &
-  VariantProps<typeof badgeVariants>;
+export type BadgeProps = React.HTMLAttributes<HTMLSpanElement> & VariantProps<typeof badgeVariants>;
 
 function Badge({ className, variant, ...props }: BadgeProps): ReactElement {
-  return <div className={cn(badgeVariants({ variant }), className)} {...props} />;
+  return <span data-slot="badge" className={cn(badgeVariants({ variant }), className)} {...props} />;
 }
 
 export { Badge, badgeVariants };

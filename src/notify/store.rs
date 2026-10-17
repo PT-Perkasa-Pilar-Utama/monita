@@ -2,6 +2,7 @@
 
 use turso::Connection;
 
+#[derive(serde::Serialize)]
 pub struct Route {
     pub severity: String,
     pub emails: Vec<String>,

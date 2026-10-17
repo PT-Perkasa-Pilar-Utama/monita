@@ -125,3 +125,8 @@
 }
 
 @utility tabular { font-variant-numeric: tabular-nums; }
+
+/* The sticky top band's height: the top bar, plus the tab bar inside a project. Sticky side
+   panels sit under it. */
+:root { --bar-h: 57px; }
+body:has(header[data-has-tabs]) { --bar-h: 101px; }

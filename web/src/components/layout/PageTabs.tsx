@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import type * as React from "react";
 import type { ReactElement } from "react";
 import { Link, useLocation } from "react-router-dom";
 import type { AppIcon } from "@/components/icons";
@@ -15,7 +16,13 @@ export type PageTab = {
   end?: boolean;
   /** Other paths that open this tab, such as the pages in its sidebar. */
   match?: readonly string[] | undefined;
+  // ponytail: a server page not yet moved to React loads in full; drop once every tab is React.
+  server?: boolean;
 };
+
+function TabLink({ t, ...props }: { t: PageTab } & Omit<React.ComponentProps<"a">, "href">): ReactElement {
+  return t.server ? <a href={t.to} {...props} /> : <Link to={t.to} {...props} />;
+}
 
 function opens(t: PageTab, pathname: string): boolean {
   return [t.to, ...(t.match ?? [])].some((p) => pathname === p || (!t.end && pathname.startsWith(`${p}/`)));
@@ -48,8 +55,8 @@ export function PageTabs({
         <ul ref={bar} className="-mx-3 flex min-w-0 flex-1 overflow-x-auto [scrollbar-width:none]">
           {tabs.map((t) => (
             <li key={t.to} className="shrink-0">
-              <Link
-                to={t.to}
+              <TabLink
+                t={t}
                 aria-current={open === t.to ? "page" : undefined}
                 className={cn(
                   "relative flex h-11 items-center gap-2 px-3 text-sm transition-colors",
@@ -66,7 +73,7 @@ export function PageTabs({
                     {t.count.toLocaleString()}
                   </span>
                 )}
-              </Link>
+              </TabLink>
             </li>
           ))}
         </ul>

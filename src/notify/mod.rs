@@ -3,9 +3,9 @@
 //! Callers queue messages inside their own write transaction; the outbox loop delivers them,
 //! so a slow SMTP server or webhook never blocks a check or a request.
 
+pub mod api;
 mod digest;
 mod mailer;
-pub mod routes;
 mod store;
 
 use std::{

@@ -67,7 +67,7 @@ pub struct Shell {
 }
 
 /// The numbers beside the project tabs: monitors, heartbeats, open incidents, open tickets.
-#[derive(Default)]
+#[derive(Default, serde::Serialize)]
 pub struct TabCounts {
     pub monitors: i64,
     pub heartbeats: i64,

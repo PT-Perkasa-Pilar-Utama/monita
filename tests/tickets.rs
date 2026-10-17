@@ -424,17 +424,19 @@ async fn each_new_ticket_calls_the_warning_webhook_when_it_is_on() {
     let app = TestApp::spawn("test").await;
     let s = setup(&app).await;
     let hook = format!("http://{addr}/hook");
-    app.post_form(
-        "/projects/payments/alerts/warning",
-        &[("webhook_url", &hook)],
+    app.api_send(
+        reqwest::Method::PUT,
+        "/api/ui/projects/payments/alerts/warning",
+        serde_json::json!({ "webhook_url": &hook }),
         Some(&s.tl),
     )
     .await;
     let rid = ref_id(&app, &s.key, false).await;
     submit(&app, &rid, "Off: no webhook").await;
-    app.post_form(
-        "/projects/payments/alerts/warning",
-        &[("webhook_url", &hook), ("use_webhook", "on")],
+    app.api_send(
+        reqwest::Method::PUT,
+        "/api/ui/projects/payments/alerts/warning",
+        serde_json::json!({ "webhook_url": &hook, "use_webhook": true }),
         Some(&s.tl),
     )
     .await;

@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import type { ReactElement } from "react";
+import { Link } from "react-router-dom";
 import { NewProjectDialog } from "@/components/app/NewProjectDialog";
 import { ProjectBadge } from "@/components/app/ProjectBadge";
 import { Plus } from "@/components/icons";
@@ -16,8 +17,7 @@ import { useApi } from "@/lib/useApi";
 
 function ProjectCard({ p }: { p: Project }): ReactElement {
   return (
-    // The overview is still a server page until R1, so this link loads it in full.
-    <a href={`/projects/${p.slug}`} className="group rounded-xl outline-none focus-visible:ring-[3px] focus-visible:ring-ring">
+    <Link to={`/projects/${p.slug}`} className="group rounded-xl outline-none focus-visible:ring-[3px] focus-visible:ring-ring">
       <Card className="h-full gap-0 py-0 transition-colors group-hover:border-input">
         <div className="flex items-center gap-3 p-5">
           <ProjectBadge name={p.name} iconUrl={p.icon_url} className="size-9 rounded-lg text-sm" />
@@ -38,7 +38,7 @@ function ProjectCard({ p }: { p: Project }): ReactElement {
           </span>
         </div>
       </Card>
-    </a>
+    </Link>
   );
 }
 

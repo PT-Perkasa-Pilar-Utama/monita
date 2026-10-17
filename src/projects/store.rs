@@ -18,6 +18,7 @@ pub struct Project {
     pub icon_at: Option<i64>,
 }
 
+#[derive(serde::Serialize)]
 pub struct ApiKeyRow {
     pub id: i64,
     pub name: String,

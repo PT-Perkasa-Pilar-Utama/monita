@@ -124,28 +124,27 @@ async fn a_project_holds_20_live_keys_and_a_revoked_one_frees_a_slot() {
     let app = TestApp::spawn("test").await;
     let tl = tl_with_project(&app).await;
     sql(&app, &format!("INSERT INTO api_keys (project_id, name, key_hash, key_prefix) {} SELECT 1, 'k' || i, 'hash-' || i, 'mk_x' FROM n;", upto(caps::KEYS_PER_PROJECT))).await;
-    let res = app
-        .post_form(
-            "/projects/payments/keys",
-            &[("name", "one more")],
+    let one_more = || {
+        app.api_post(
+            "/api/ui/projects/payments/keys",
+            serde_json::json!({ "name": "one more" }),
             Some(&tl),
         )
-        .await;
+    };
+    let res = one_more().await;
     assert_eq!(res.status(), 422);
-    assert!(res.text().await.unwrap().contains("20 live keys"));
+    assert!(
+        common::json_of(res).await["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("20 live keys")
+    );
     sql(
         &app,
         "UPDATE api_keys SET revoked_at = 1 WHERE name = 'k1';",
     )
     .await;
-    let res = app
-        .post_form(
-            "/projects/payments/keys",
-            &[("name", "one more")],
-            Some(&tl),
-        )
-        .await;
-    assert_eq!(res.status(), 200);
+    assert_eq!(one_more().await.status(), 201);
 }
 
 #[tokio::test]

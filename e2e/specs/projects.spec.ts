@@ -24,7 +24,7 @@ test("@US-06 @US-07 TL creates a project and a key that is shown once", async ({
   await page.goto(`/projects/${slug}/settings/keys`);
   await expect(page.locator("#new-key")).toHaveCount(0);
   await page.getByRole("button", { name: "Revoke" }).click();
-  await page.getByRole("dialog").getByRole("button", { name: "Revoke" }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Revoke" }).click();
   await expect(page.getByText("Revoked", { exact: true })).toBeVisible();
   const revoked = await page.request.post("/api/v1/ref-ids", { headers: { authorization: `Bearer ${key}` }, data: {} });
   expect(revoked.status()).toBe(401);
