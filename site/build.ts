@@ -113,7 +113,7 @@ export function topbar(up: string, active: string): string {
   const link = (href: string, label: string, key: string, iconName: string) =>
     `<a class="topbar__link" href="${href}"${active === key ? ' aria-current="page"' : ""}>${icon(iconName)}${label}</a>`;
   return `<header class="topbar">
-  <a class="topbar__brand" href="${up}">${icon("mark", "topbar__mark")}<span>Monita</span></a>
+  <a class="topbar__brand" href="${up}" aria-label="Monita">${icon("mark", "topbar__mark")}<span>Monita</span></a>
   <nav class="topbar__nav" aria-label="Site">
     ${link(`${up}demo/`, "Demo", "demo", "pulse")}
     ${link(`${up}docs/`, "Documentation", "docs", "book")}
@@ -229,7 +229,7 @@ function main(): void {
   save(join(assets, "app.css"), readFileSync(join(ROOT, "static/app.css"), "utf8").replaceAll('url("/static/', 'url("./'));
   for (const f of readdirSync(join(ROOT, "static/fonts"))) save(join(assets, "fonts", f), readFileSync(join(ROOT, "static/fonts", f)));
   for (const f of ["app.js", "theme.js", "favicon.svg"]) copyFileSync(join(ROOT, "static", f), join(assets, f));
-  for (const f of ["site.css", "docs.js"]) copyFileSync(join(import.meta.dir, f), join(assets, f));
+  for (const f of ["site.css", "docs.js", "landing.js"]) copyFileSync(join(import.meta.dir, f), join(assets, f));
   copyFileSync(join(ROOT, "docs/assets/logo.svg"), join(assets, "logo.svg"));
   for (const f of readdirSync(join(ROOT, "docs/assets/screens"))) copyFileSync(join(ROOT, "docs/assets/screens", f), join(assets, f));
   save(join(OUT, "index.html"), readFileSync(join(import.meta.dir, "index.html"), "utf8").replace("<!-- topbar -->", topbar("", "home")));
