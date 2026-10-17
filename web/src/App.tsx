@@ -8,6 +8,9 @@ import { Allowlist } from "@/pages/project/Allowlist";
 import { General } from "@/pages/project/General";
 import { Heartbeat } from "@/pages/project/Heartbeat";
 import { HeartbeatForm } from "@/pages/project/HeartbeatForm";
+import { Incident } from "@/pages/project/Incident";
+import { IncidentForm } from "@/pages/project/IncidentForm";
+import { Incidents } from "@/pages/project/Incidents";
 import { Heartbeats } from "@/pages/project/Heartbeats";
 import { Keys } from "@/pages/project/Keys";
 import { Monitor } from "@/pages/project/Monitor";
@@ -38,6 +41,9 @@ export default function App(): ReactElement {
         <Route path="heartbeats/new" element={<HeartbeatForm key="new" />} />
         <Route path="heartbeats/:id" element={<Heartbeat />} />
         <Route path="heartbeats/:id/edit" element={<HeartbeatForm key="edit" />} />
+        <Route path="incidents" element={<Incidents />} />
+        <Route path="incidents/new" element={<IncidentForm />} />
+        <Route path="incidents/:id" element={<Incident />} />
         <Route element={<SettingsLayout />}>
           <Route path="settings" element={<General />} />
           <Route path="settings/keys" element={<Keys />} />

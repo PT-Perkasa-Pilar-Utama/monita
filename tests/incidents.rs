@@ -16,7 +16,7 @@ use axum::{
     http::StatusCode,
     routing::{get, post},
 };
-use common::{RESET_TOKEN, TestApp, json_of, location};
+use common::{RESET_TOKEN, TestApp, json_of};
 use monita::{
     checks::{
         self, MonitorInput,
@@ -24,7 +24,7 @@ use monita::{
     },
     platform::db::query_i64,
 };
-use serde_json::Value;
+use serde_json::{Value, json};
 
 /// `/health` answers 200 or 503 depending on the switch.
 async fn switchable() -> (String, Arc<AtomicBool>) {
@@ -318,20 +318,12 @@ async fn two_failed_checks_open_one_incident_and_alert_then_a_pass_closes_it() {
     );
     assert_eq!(got.lock().unwrap()[1]["event"], "incident.resolved");
 
-    let detail = app
-        .get("/projects/payments/incidents/1", Some(&tl))
-        .await
-        .text()
-        .await
-        .unwrap();
-    for part in [
-        "<dt>Started</dt>",
-        "<dt>Ended</dt>",
-        "<dt>Duration</dt>",
-        "Recovered after",
-        "Detected: HTTP 503",
-    ] {
-        assert!(detail.contains(part), "missing {part}");
+    let detail = incident(&app, &tl, 1).await;
+    assert!(detail["incident"]["started_at"].is_i64());
+    assert!(detail["incident"]["resolved_at"].is_i64(), "ended");
+    let text = detail["updates"].to_string();
+    for part in ["Recovered after", "Detected: HTTP 503"] {
+        assert!(text.contains(part), "missing {part}");
     }
 }
 
@@ -415,13 +407,15 @@ async fn heartbeat_miss_and_fail_ping_open_at_once_and_a_ping_closes() {
         .await,
         1
     );
-    let title = app
-        .get("/projects/payments/incidents", Some(&tl))
-        .await
-        .text()
-        .await
-        .unwrap();
-    assert!(title.contains("nightly missed its heartbeat"));
+    let list = json_of(
+        app.api_get("/api/ui/projects/payments/incidents", Some(&tl))
+            .await,
+    )
+    .await;
+    assert_eq!(
+        list["data"]["incidents"][0]["title"],
+        "nightly missed its heartbeat"
+    );
 
     let ping = app
         .http
@@ -456,14 +450,9 @@ async fn heartbeat_miss_and_fail_ping_open_at_once_and_a_ping_closes() {
         .await,
         1
     );
-    let detail = app
-        .get("/projects/payments/incidents/2", Some(&tl))
-        .await
-        .text()
-        .await
-        .unwrap();
-    assert!(
-        detail.contains("backup.sh: disk full"),
+    let detail = incident(&app, &tl, 2).await;
+    assert_eq!(
+        detail["incident"]["cause"], "backup.sh: disk full",
         "the fail body is the cause"
     );
 }
@@ -480,26 +469,26 @@ async fn status_updates_need_a_message_and_work_after_close() {
     check_once(&app).await;
 
     let empty = app
-        .post_form(
-            "/projects/payments/incidents/1/updates",
-            &[("label", "identified"), ("message", "  ")],
+        .api_post(
+            "/api/ui/projects/payments/incidents/1/updates",
+            json!({ "label": "identified", "message": "  " }),
             Some(&tl),
         )
         .await;
     assert_eq!(empty.status(), 422);
     assert!(empty.text().await.unwrap().contains("Write a message."));
     let ok = app
-        .post_form(
-            "/projects/payments/incidents/1/updates",
-            &[("label", "identified"), ("message", "DB failover")],
+        .api_post(
+            "/api/ui/projects/payments/incidents/1/updates",
+            json!({ "label": "identified", "message": "DB failover" }),
             Some(&tl),
         )
         .await;
-    assert_eq!(ok.status(), 303);
+    assert_eq!(ok.status(), 204);
     let note = app
-        .post_form(
-            "/projects/payments/incidents/1/updates",
-            &[("label", "resolved"), ("message", "Looks fixed")],
+        .api_post(
+            "/api/ui/projects/payments/incidents/1/updates",
+            json!({ "label": "resolved", "message": "Looks fixed" }),
             Some(&tl),
         )
         .await;
@@ -518,20 +507,17 @@ async fn status_updates_need_a_message_and_work_after_close() {
     up.store(true, Ordering::SeqCst);
     check_once(&app).await;
     let after = app
-        .post_form(
-            "/projects/payments/incidents/1/updates",
-            &[
-                ("label", "resolved"),
-                ("message", "Root cause: a full disk"),
-            ],
+        .api_post(
+            "/api/ui/projects/payments/incidents/1/updates",
+            json!({ "label": "resolved", "message": "Root cause: a full disk" }),
             Some(&tl),
         )
         .await;
-    assert_eq!(after.status(), 303);
+    assert_eq!(after.status(), 204);
     let reopened = app
-        .post_form(
-            "/projects/payments/incidents/1/updates",
-            &[("label", "investigating"), ("message", "Still looking")],
+        .api_post(
+            "/api/ui/projects/payments/incidents/1/updates",
+            json!({ "label": "investigating", "message": "Still looking" }),
             Some(&tl),
         )
         .await;
@@ -540,17 +526,14 @@ async fn status_updates_need_a_message_and_work_after_close() {
         422,
         "a closed incident takes only Resolved notes"
     );
-    let html = app
-        .get("/projects/payments/incidents/1", Some(&tl))
-        .await
-        .text()
-        .await
-        .unwrap();
+    let detail = incident(&app, &tl, 1).await;
+    let updates = detail["updates"].to_string();
     assert!(
-        html.contains("Root cause: a full disk")
-            && html.contains("DB failover")
-            && html.contains("rina@x.co")
+        updates.contains("Root cause: a full disk")
+            && updates.contains("DB failover")
+            && updates.contains("rina@x.co")
     );
+    assert_eq!(detail["labels"], json!(["resolved"]), "closed: notes only");
 }
 
 #[tokio::test]
@@ -559,23 +542,21 @@ async fn a_manual_incident_marks_its_items_and_closes_on_resolved() {
     let app = TestApp::spawn("test").await;
     let tl = setup(&app).await;
     monitor(&app, "https://x.invalid/", "warning").await;
-    let form = app
-        .get("/projects/payments/incidents/new", Some(&tl))
-        .await
-        .text()
-        .await
-        .unwrap();
-    assert!(form.contains("value=\"monitor:1\""));
+    let choices = json_of(
+        app.api_get("/api/ui/projects/payments/incident-items", Some(&tl))
+            .await,
+    )
+    .await;
+    assert_eq!(
+        choices["data"],
+        json!([{ "value": "monitor:1", "name": "API health" }])
+    );
     let none = app
-        .post_form(
-            "/projects/payments/incidents",
-            &[
-                ("title", "Slow checkout"),
-                ("severity", "warning"),
-                ("message", "Some users wait 20 s"),
-            ],
-            Some(&tl),
-        )
+        .api_post(
+"/api/ui/projects/payments/incidents",
+json!({ "title": "Slow checkout", "items": [], "severity": "warning", "message": "Some users wait 20 s" }),
+Some(&tl),
+)
         .await;
     assert_eq!(none.status(), 422);
     assert!(
@@ -586,16 +567,11 @@ async fn a_manual_incident_marks_its_items_and_closes_on_resolved() {
     );
     let long = "x".repeat(10_001);
     let too_long = app
-        .post_form(
-            "/projects/payments/incidents",
-            &[
-                ("title", "Slow checkout"),
-                ("items", "monitor:1"),
-                ("severity", "warning"),
-                ("message", long.as_str()),
-            ],
-            Some(&tl),
-        )
+        .api_post(
+"/api/ui/projects/payments/incidents",
+json!({ "title": "Slow checkout", "items": ["monitor:1"], "severity": "warning", "message": long }),
+Some(&tl),
+)
         .await;
     assert_eq!(
         too_long.status(),
@@ -604,16 +580,11 @@ async fn a_manual_incident_marks_its_items_and_closes_on_resolved() {
     );
     let long_title = "t".repeat(121);
     let res = app
-        .post_form(
-            "/projects/payments/incidents",
-            &[
-                ("title", long_title.as_str()),
-                ("items", "monitor:1"),
-                ("severity", "warning"),
-                ("message", "m"),
-            ],
-            Some(&tl),
-        )
+        .api_post(
+"/api/ui/projects/payments/incidents",
+json!({ "title": long_title, "items": ["monitor:1"], "severity": "warning", "message": "m" }),
+Some(&tl),
+)
         .await;
     assert!(
         res.text()
@@ -622,20 +593,14 @@ async fn a_manual_incident_marks_its_items_and_closes_on_resolved() {
             .contains("The title needs at most 120 characters.")
     );
     let res = app
-        .post_form(
-            "/projects/payments/incidents",
-            &[
-                ("title", "Slow checkout"),
-                ("items", "monitor:1"),
-                ("items", "monitor:1"),
-                ("severity", "critical"),
-                ("message", "Some users wait 20 s"),
-            ],
-            Some(&tl),
-        )
+        .api_post(
+"/api/ui/projects/payments/incidents",
+json!({ "title": "Slow checkout", "items": ["monitor:1", "monitor:1"], "severity": "critical", "message": "Some users wait 20 s" }),
+Some(&tl),
+)
         .await;
-    assert_eq!(res.status(), 303);
-    assert_eq!(location(&res), "/projects/payments/incidents/1");
+    assert_eq!(res.status(), 201);
+    assert_eq!(json_of(res).await["data"]["id"], 1);
     assert_eq!(
         count(&app, "SELECT count(*) FROM incident_items").await,
         1,
@@ -648,9 +613,9 @@ async fn a_manual_incident_marks_its_items_and_closes_on_resolved() {
     .await;
     assert_eq!(list["data"]["monitors"][0]["state"], "issue");
 
-    app.post_form(
-        "/projects/payments/incidents/1/updates",
-        &[("label", "resolved"), ("message", "CDN fixed")],
+    app.api_post(
+        "/api/ui/projects/payments/incidents/1/updates",
+        json!({ "label": "resolved", "message": "CDN fixed" }),
         Some(&tl),
     )
     .await;
@@ -795,4 +760,9 @@ async fn reset_state_waits_for_running_checks_so_no_stale_result_lands() {
         0,
         "a stale result landed after the reset"
     );
+}
+
+async fn incident(app: &TestApp, tl: &str, id: i64) -> Value {
+    let path = format!("/api/ui/projects/payments/incidents/{id}");
+    json_of(app.api_get(&path, Some(tl)).await).await["data"].take()
 }

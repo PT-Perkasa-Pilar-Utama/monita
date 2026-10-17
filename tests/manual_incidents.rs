@@ -4,6 +4,7 @@ mod common;
 
 use common::TestApp;
 use monita::checks::{self, MonitorInput};
+use serde_json::json;
 
 async fn setup(app: &TestApp) -> String {
     let tl = app.tl("rina@x.co").await;
@@ -18,9 +19,20 @@ async fn setup(app: &TestApp) -> String {
     tl
 }
 
+/// Posts the create body the form sends: each pair a field, `items` collected into a list.
 async fn error_for(app: &TestApp, tl: &str, form: &[(&str, &str)]) -> String {
+    let mut body = serde_json::Map::new();
+    for (k, v) in form.iter().filter(|(k, _)| *k != "items") {
+        body.insert(k.to_string(), json!(v));
+    }
+    let items: Vec<&str> = form
+        .iter()
+        .filter(|(k, _)| *k == "items")
+        .map(|(_, v)| *v)
+        .collect();
+    body.insert("items".into(), json!(items));
     let res = app
-        .post_form("/projects/payments/incidents", form, Some(tl))
+        .api_post("/api/ui/projects/payments/incidents", body.into(), Some(tl))
         .await;
     assert_eq!(res.status(), 422);
     res.text().await.unwrap()

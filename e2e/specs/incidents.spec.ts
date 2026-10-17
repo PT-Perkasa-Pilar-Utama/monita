@@ -39,16 +39,16 @@ test("@US-14 @US-17 @US-18 @US-19 a failing job opens an incident, the TL update
   const dialog = page.getByRole("dialog");
   await dialog.getByRole("button", { name: "Post update" }).click();
   await expect(dialog.getByRole("alert")).toHaveText("Write a message.");
-  await dialog.getByLabel("Label").selectOption("identified");
+  await dialog.getByRole("radio", { name: "Identified" }).click();
   await dialog.getByLabel("Message").fill("The bank rotated its certificate. Updating the trust store.");
   await dialog.getByRole("button", { name: "Post update" }).click();
-  await expect(page.locator(".comment")).toHaveText("The bank rotated its certificate. Updating the trust store.");
+  await expect(page.locator('[data-update="tech-lead"]')).toHaveText("The bank rotated its certificate. Updating the trust store.");
 
   await page.waitForTimeout(1_100);
   expect((await page.request.get(pingUrl)).status()).toBe(200);
   await page.reload();
   await expect(page.getByText(/Recovered after/)).toBeVisible();
-  await expect(page.locator(".hero .state")).toContainText("Resolved");
+  await expect(page.locator("#state")).toContainText("Resolved");
 });
 
 test("@US-20 TL reports an incident by hand and resolves it", async ({ page }) => {
@@ -69,8 +69,8 @@ test("@US-20 TL reports an incident by hand and resolves it", async ({ page }) =
   await page.getByRole("link", { name: "Slow settlement reports" }).click();
   await page.getByRole("button", { name: "Post update" }).click();
   const dialog = page.getByRole("dialog");
-  await dialog.getByLabel("Label").selectOption("resolved");
+  await dialog.getByRole("radio", { name: "Resolved" }).click();
   await dialog.getByLabel("Message").fill("Index added. Reports take 90 seconds.");
   await dialog.getByRole("button", { name: "Post update" }).click();
-  await expect(page.locator(".hero .state")).toContainText("Resolved");
+  await expect(page.locator("#state")).toContainText("Resolved");
 });

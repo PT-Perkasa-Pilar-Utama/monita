@@ -3,18 +3,18 @@
 //! `observe` is the only door for check results. Callers run it inside their own write
 //! transaction and pass the returned event to `notify::send` in that same transaction.
 
+pub mod api;
 pub mod availability;
 pub mod engine;
 pub mod history;
 mod manual;
-pub mod routes;
 mod store;
 
 use std::collections::HashMap;
 
 use turso::Connection;
 
-use crate::platform::{caps, db::Db, time};
+use crate::platform::{caps, db::Db};
 use engine::Effect;
 
 pub use manual::{NewIncident, open_manual};
@@ -199,10 +199,6 @@ pub async fn states_for(
 /// Open incidents of a project, for the project's tab bar.
 pub async fn open_count(db: &Db, project_id: i64) -> anyhow::Result<i64> {
     store::open_count(&db.read().await?, project_id).await
-}
-
-pub fn duration(started: i64, resolved: Option<i64>, now: i64) -> String {
-    time::duration(resolved.unwrap_or(now) - started)
 }
 
 pub async fn list(db: &Db, project_id: i64, open: bool) -> anyhow::Result<Vec<IncidentRow>> {

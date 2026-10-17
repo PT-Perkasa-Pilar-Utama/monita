@@ -184,3 +184,9 @@ export type CheckOptions = {
   monitor: { interval_s: number; timeout_s: number; expected_status: string; severity: Severity };
   heartbeat: { period_s: number; grace_s: number; severity: Severity };
 };
+
+export type UpdateRow = { label: UpdateLabel; message: string; author_email: string | null; created_at: number };
+
+export type IncidentDetail = { incident: IncidentRow; items: string[]; updates: UpdateRow[]; labels: UpdateLabel[] };
+
+export type IncidentItem = { value: string; name: string };

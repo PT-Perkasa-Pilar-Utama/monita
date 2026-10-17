@@ -106,7 +106,7 @@ export function Overview(): ReactElement {
               </Link>
             </Button>
             <Button asChild variant="secondary">
-              <a href={`${base}/incidents/new`}>Report incident</a>
+              <Link to={`${base}/incidents/new`}>Report incident</Link>
             </Button>
           </>
         }
@@ -143,7 +143,7 @@ export function Overview(): ReactElement {
             title="Open incidents"
             tools={
               <Button asChild variant="ghost" size="sm">
-                <a href={`${base}/incidents`}>All incidents</a>
+                <Link to={`${base}/incidents`}>All incidents</Link>
               </Button>
             }
           >
@@ -166,9 +166,9 @@ export function Overview(): ReactElement {
                     {d.incidents.map((i) => (
                       <TableRow key={i.id}>
                         <TableCell className="whitespace-normal">
-                          <a href={`${base}/incidents/${i.id}`} className="font-medium hover:underline">
+                          <Link to={`${base}/incidents/${i.id}`} className="font-medium hover:underline">
                             {i.title}
-                          </a>
+                          </Link>
                           <div className="font-mono text-xs text-muted-foreground">
                             INC-{i.id}, started {ago(i.started_at, now)}
                           </div>

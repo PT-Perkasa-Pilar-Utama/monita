@@ -30,6 +30,7 @@ pub struct ItemRef {
     pub id: i64,
 }
 
+#[derive(serde::Serialize)]
 pub struct UpdateRow {
     pub label: String,
     pub message: String,

@@ -8,54 +8,6 @@ use axum::{
 
 use super::render::render;
 
-/// The filter bar above a list: a search text and two selects, read from the query string.
-/// An empty field matches every row. A value no row has matches none.
-#[derive(Debug, Default, serde::Deserialize)]
-pub struct ListFilter {
-    #[serde(default)]
-    pub q: String,
-    #[serde(default)]
-    pub state: String,
-    #[serde(default)]
-    pub severity: String,
-}
-
-impl ListFilter {
-    /// Longest search text kept; the rest is cut.
-    const Q_MAX: usize = 100;
-
-    pub fn is_set(&self) -> bool {
-        !self.needle().is_empty() || !self.state.is_empty() || !self.severity.is_empty()
-    }
-
-    fn needle(&self) -> String {
-        self.q
-            .trim()
-            .chars()
-            .take(Self::Q_MAX)
-            .collect::<String>()
-            .to_lowercase()
-    }
-
-    /// True when any of `text` contains the search, ignoring case, and the selects match.
-    pub fn keeps(&self, text: &[&str], state: &str, severity: &str) -> bool {
-        let needle = self.needle();
-        (needle.is_empty() || text.iter().any(|t| t.to_lowercase().contains(&needle)))
-            && (self.state.is_empty() || self.state == state)
-            && (self.severity.is_empty() || self.severity == severity)
-    }
-
-    /// "4 monitors", or "2 of 4 monitors" when the filter hides some.
-    pub fn count(&self, shown: usize, total: usize, noun: &str) -> String {
-        let plural = if total == 1 { "" } else { "s" };
-        if shown == total {
-            format!("{total} {noun}{plural}")
-        } else {
-            format!("{shown} of {total} {noun}{plural}")
-        }
-    }
-}
-
 /// What `templates/layout/app.html` needs: who is signed in and where they are.
 pub struct Shell {
     pub email: String,
@@ -191,41 +143,5 @@ impl IntoResponse for PageError {
             }
         };
         (status, render(&ErrorPage { title, text })).into_response()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::ListFilter;
-
-    fn filter(q: &str, state: &str, severity: &str) -> ListFilter {
-        ListFilter {
-            q: q.into(),
-            state: state.into(),
-            severity: severity.into(),
-        }
-    }
-
-    #[test]
-    fn an_empty_filter_keeps_every_row() {
-        let f = filter("  ", "", "");
-        assert!(!f.is_set());
-        assert!(f.keeps(&["API"], "down", "critical"));
-    }
-
-    #[test]
-    fn the_search_matches_any_text_ignoring_case_and_the_selects_match_exactly() {
-        let f = filter(" PORTAL ", "down", "critical");
-        assert!(f.keeps(&["API", "https://portal.example.com"], "down", "critical"));
-        assert!(!f.keeps(&["API", "https://api.example.com"], "down", "critical"));
-        assert!(!f.keeps(&["Portal"], "up", "critical"));
-        assert!(!f.keeps(&["Portal"], "down", "warning"));
-    }
-
-    #[test]
-    fn the_count_names_the_total_and_what_the_filter_hides() {
-        let f = ListFilter::default();
-        assert_eq!(f.count(1, 1, "monitor"), "1 monitor");
-        assert_eq!(f.count(2, 4, "monitor"), "2 of 4 monitors");
     }
 }
