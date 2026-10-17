@@ -6,8 +6,8 @@ Templates call the macros in `templates/ui/macros.html`. They never repeat the m
 | --- | --- | --- | --- |
 | Button | `.btn` + `--primary`, `--accent`, `--danger`, `--ghost`, `--sm`, `--lg` | `btn(label, kind, href)` | One `--primary` per view. `--danger` for revoke and delete. No icon-only buttons without `aria-label`. |
 | Status icon | `.st` + `--up`, `--down`, `--issue`, `--unknown`, `--triage`, `--backlog`, `--progress`, `--done` | `st(kind)` | 13 px ring or disc |
-| State | `.state` (`--down`) | `state(kind, label)` | Icon + word for a monitor or heartbeat |
-| Chip | `.chip` + `--critical`, `--warning`, `--investigating`, `--identified`, `--monitoring`, `--resolved` | `chip(kind, label)` | Severity and status-update labels. Plain `.chip` for neutral tags. |
+| State | `.state` + `--up`, `--down`, `--issue`, `--unknown` | `state(kind, label)` | Tone pill: tinted fill and coloured word, no dot. Monitor, heartbeat and incident state. |
+| Chip | `.chip` + `--critical`, `--warning`, `--investigating`, `--identified`, `--monitoring`, `--resolved` | `chip(kind, label)` | Severity and status-update labels, as tone pills like `.state`. Neutral facts use `.tag`. |
 | Panel | `.panel`, `.panel__head`, `.panel__body`, `.panel--float` | `panel_start(title)` / `panel_end()` | The one boxed surface. Group content, do not box every block. |
 | Table | `.table-wrap` > `.table`, `.table__title`, `.table__sub`, `.t-right` | none (plain HTML) | Lists of monitors, heartbeats, incidents, keys, users. Rows 44 px. |
 | Field | `.field`, `.label`, `.input`, `.select`, `.textarea`, `.help`, `.error`, `.field--error` | `input(name, label, value, error, help)`, `select(...)`, `textarea(...)` | Every form control has a `<label for>`. The error replaces nothing: it adds a line under the control. |
@@ -23,7 +23,8 @@ Templates call the macros in `templates/ui/macros.html`. They never repeat the m
 | Key-value | `.kv` (`dl`) | none | Incident facts, monitor settings |
 | Empty state | `.empty` | `empty(title, text, action)` | Every list with no rows says what the thing is and how to add the first one. |
 | Dialog | `dialog.dialog`, `.dialog__body`, `.dialog__foot` | `confirm(id, title, text, action)` | Confirm revoke and delete. Native `<dialog>`, no JS library. |
-| Caption | `.cap` | none | 11 px mono uppercase: IDs, times, counts |
+| Caption | `.cap` | none | 12 px muted sentence case. Never an uppercase label above a title. |
+| Title count | `.page-title` > `h1` + `.count` | none | A number beside a page title: "Monitors 4" |
 | Quiet link | `.link-quiet` | none | "Known issues →". Arrows live here, never inside buttons. |
 | Detail hero | `.hero`, `.orb` + `--down`, `--issue`, `--unknown`, `.hero__state`, `.tag` | none | Top of a monitor or heartbeat page: live state, name, cadence |
 | Stat | `.stats` > `.stat` + `--up`, `--down` | `checks/insight.html` | Four numbers under the hero |

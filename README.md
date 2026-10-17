@@ -8,9 +8,10 @@ One self-hosted binary, one SQLite file.
 [![CI](https://github.com/PT-Perkasa-Pilar-Utama/monita/actions/workflows/ci.yml/badge.svg)](https://github.com/PT-Perkasa-Pilar-Utama/monita/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-5e6ad2)](LICENSE)
 
-**[Try the demo](https://pt-perkasa-pilar-utama.github.io/monita/demo/)** &nbsp;·&nbsp;
-**[Install](#install)** &nbsp;·&nbsp;
-**[Docs](#docs)**
+**[Website](https://pt-perkasa-pilar-utama.github.io/monita/)** &nbsp;&nbsp;
+**[Try the demo](https://pt-perkasa-pilar-utama.github.io/monita/demo/)** &nbsp;&nbsp;
+**[Docs](https://pt-perkasa-pilar-utama.github.io/monita/docs/)** &nbsp;&nbsp;
+**[Install](#install)**
 
 </div>
 
@@ -25,11 +26,11 @@ Better Stack.
 The [demo](https://pt-perkasa-pilar-utama.github.io/monita/demo/) is a read-only snapshot of the
 real app on sample data.
 
-![A project's public status page: 90 days of uptime per service and the incident timeline](docs/assets/screens/status.png)
+![A monitor page: uptime streak, last check, mean response time, a response-time chart and availability](docs/assets/screens/monitor.png)
 
-| Monitors | Tickets |
+| Status page | Tickets |
 | --- | --- |
-| ![Monitors with state, severity and last check](docs/assets/screens/monitors.png) | ![The ticket kanban: triage, backlog, in progress, done](docs/assets/screens/tickets.png) |
+| ![A project's public status page: 90 days of uptime per service and the incident timeline](docs/assets/screens/status.png) | ![The ticket kanban: triage, backlog, in progress, done](docs/assets/screens/tickets.png) |
 
 ## Install
 
@@ -42,7 +43,7 @@ sudo monita service install   # systemd unit, started now and at every boot
 ```
 
 Put your HTTPS reverse proxy in front of `127.0.0.1:8080`. Backups, restore and upgrades:
-[Install and run](docs/INSTALL.md).
+[Install](https://pt-perkasa-pilar-utama.github.io/monita/docs/install/) and [Operations](https://pt-perkasa-pilar-utama.github.io/monita/docs/operations/).
 
 ## Ping from a cron job
 
@@ -56,12 +57,14 @@ send its error as the request body: the first 1 KB becomes the incident's cause.
 
 ## Docs
 
-| Run it | Integrate | Reference |
+The [documentation](https://pt-perkasa-pilar-utama.github.io/monita/docs/) covers getting started, every integration, and running Monita in production. Its sources are in [docs/guide/](docs/guide/).
+
+| Start | Integrate | Reference |
 | --- | --- | --- |
-| [Install and run](docs/INSTALL.md) | [Ping API](docs/api-specs/04-checks.md) | [Technical specs](docs/technical-specs/_index.md) |
-| [Configuration](docs/technical-specs/11-environment-configuration.md) | [Status JSON](docs/api-specs/07-status.md) | [API specs](docs/api-specs/_index.md) |
-| [Command line](docs/api-specs/10-cli.md) | [Tickets API](docs/api-specs/08-tickets.md) | [Design system](docs/design-system/) |
-| [Security](docs/technical-specs/07-security.md) | [Webhook payload](docs/api-specs/06-notify.md) | [Decisions](docs/decisions/) |
+| [Getting started](docs/guide/getting-started.md) | [Heartbeats and cron](docs/guide/heartbeats.md) | [Technical specs](docs/technical-specs/_index.md) |
+| [Install](docs/guide/install.md) | [Status JSON](docs/guide/status-page.md) | [API specs](docs/api-specs/_index.md) |
+| [Configuration](docs/guide/configuration.md) | [Tickets API](docs/guide/tickets.md) | [Design system](docs/design-system/) |
+| [Operations](docs/guide/operations.md) | [Webhooks](docs/guide/incidents.md) | [Decisions](docs/decisions/) |
 
 ## Contributing
 

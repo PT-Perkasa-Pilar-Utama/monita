@@ -37,9 +37,12 @@ Project menu, in this order: Monitors, Heartbeats, Incidents, Tickets, Alerts, S
 
 | Do | Don't |
 | --- | --- |
-| Put color in icons and dots | Color a whole row or section |
+| Put state colour in a tone pill: tinted fill, coloured word | Decorative dots, pulsing orbs, dots before labels |
+| Put a count beside the title: "Monitors 4" | An uppercase label above a title |
+| Put a needed hint in the field's label | A subtitle under a form field |
+| Separate facts with spacing or a comma | `·` between facts |
 | Use one `--primary` button per view | Put two light pills side by side |
 | Separate groups with hairlines | Add shadows to flat panels |
-| Use `.cap` for IDs, times and counts | Uppercase headings or use weight 700 |
 | Fade colors on hover in 160 ms | Pulse, bounce or animate on scroll |
 | Write tokens on `:root` | Write a hex value in a template or a component rule |
+| Keep secondary text at 4.5:1 or more in both themes | Grey text that fades into the dark background |
