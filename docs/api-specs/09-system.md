@@ -26,7 +26,7 @@ Not wrapped in the `data` envelope, so probes can read `status` directly. (AC-34
 | Purpose | Put the database back into a known state for QA and e2e. |
 | Mounted | Only when `MONITA_ENV` is `dev` or `test`. In `prod` the route is not registered and returns 404. |
 | Access | Header `X-Reset-Token` equal to `MONITA_RESET_TOKEN`, in `dev` and `test`. With no token configured, every call is 401. The compare runs on SHA-256 digests, so its time does not depend on how many leading bytes match. |
-| Input | `{"seed": "dev" \| "qa"}` |
+| Input | `{"seed": "dev" \| "qa" \| "demo"}`. `demo` holds the history the static demo shows. |
 | Behavior | Pause the scheduler. Delete all rows. Run migrations. Load `seeds/<seed>.sql`. Resume. Synchronous. |
 | Output | 204 |
 | Errors | 400 `invalid_request` for another seed. 401 `unauthorized` for a missing or wrong token. |

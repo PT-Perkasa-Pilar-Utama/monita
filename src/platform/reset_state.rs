@@ -39,11 +39,12 @@ pub async fn handler(
     let seed = match req.seed.as_str() {
         "dev" => include_str!("../../seeds/dev.sql"),
         "qa" => include_str!("../../seeds/qa.sql"),
+        "demo" => include_str!("../../seeds/demo.sql"),
         _ => {
             return api_error(
                 StatusCode::BAD_REQUEST,
                 "invalid_request",
-                "seed must be dev or qa.",
+                "seed must be dev, qa or demo.",
             );
         }
     };

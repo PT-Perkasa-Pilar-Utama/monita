@@ -1,0 +1,29 @@
+/* The static demo's banner and notice. Colors come from the app's tokens in app.css. */
+.demo-banner {
+  position: fixed;
+  z-index: 50;
+  left: 50%;
+  bottom: var(--s4);
+  transform: translateX(-50%);
+  max-width: calc(100vw - 2 * var(--s4));
+  padding: var(--s2) var(--s4);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-3);
+  box-shadow: var(--shadow);
+  color: var(--fg-2);
+  font-size: var(--t-13);
+  line-height: 1.4;
+  text-align: center;
+}
+.demo-banner strong {
+  margin-right: var(--s2);
+  color: var(--accent);
+}
+.demo-banner a {
+  color: var(--fg);
+}
+.demo-banner.is-flash {
+  border-color: var(--accent);
+  color: var(--fg);
+}

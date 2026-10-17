@@ -171,6 +171,44 @@ jobs:
         if: failure()
         run: sudo journalctl -u monita --no-pager -n 200
 
+  # The static demo on GitHub Pages: the debug binary on seeds/demo.sql, crawled to HTML
+  # (e2e/demo/snapshot.ts). Built here, never committed. Main only.
+  demo:
+    name: publish the demo
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [check]
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}demo/
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: "1.4.2"
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: monita-debug
+          path: target/debug
+      - run: chmod +x target/debug/monita
+      # No `bun install`: the crawl needs no package; only --screens loads Playwright.
+      - run: bun e2e/demo/snapshot.ts
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: target/site
+      - id: deploy
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+
   # A branch rule can require this one name; the shards answer through it. A skipped e2e passes
   # only when nothing but docs changed and the check job passed; a failed check also skips e2e.
   e2e-result:

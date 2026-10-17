@@ -34,7 +34,7 @@ src/app.rs            AppState, router, build_with(), serve()
 src/platform/         config, db, migrate, render, assets, headers, health, reset_state
 src/<module>/         mod.rs (interface) routes.rs store.rs + logic files
 templates/layout/     base, app (sidebar), public, bare     templates/ui/ macros.html, mark.html
-migrations/           0001_init.sql, append only            seeds/ dev.sql, qa.sql
+migrations/           0001_init.sql, append only            seeds/ dev, qa, demo .sql
 tests/                integration, tests/common::TestApp    e2e/ specs, lib, global-setup.ts
 ```
 

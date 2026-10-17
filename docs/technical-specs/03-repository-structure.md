@@ -10,7 +10,7 @@ monita/
 ├── deny.toml                  cargo-deny: licenses and advisories
 ├── migrations/                numbered .sql files, built into the binary
 │   └── 0001_init.sql
-├── seeds/                     dev.sql and qa.sql, loaded by reset-state
+├── seeds/                     dev.sql, qa.sql and demo.sql, loaded by reset-state
 ├── src/
 │   ├── lib.rs                 module tree; integration tests link against it
 │   ├── main.rs                calls cli::run
@@ -30,7 +30,8 @@ monita/
 ├── templates/                 askama templates, one folder per module, plus layout/ and ui/
 ├── static/                    app.css, app.js (copy buttons), icons.svg, fonts; embedded by rust-embed
 ├── tests/                     Rust integration tests (temp-file DB, fake adapters)
-├── e2e/                       Playwright on Bun: package.json, playwright.config.ts, specs/
+├── e2e/                       Playwright on Bun: package.json, playwright.config.ts, specs/, demo/ (static demo build)
+├── scripts/                   smoke-cli.sh: `setup` and `service` as root on CI
 ├── deploy/                    monita.service (systemd), monita.env.example
 ├── .githooks/                 pre-commit
 ├── Makefile                   the commands in 04 section 4.5
