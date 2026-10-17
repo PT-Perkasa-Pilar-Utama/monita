@@ -270,6 +270,93 @@ async fn a_super_admin_names_the_owner_and_a_tl_always_owns_what_they_create() {
     );
 }
 
+const PNG_1X1: &str = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+
+#[tokio::test]
+async fn a_project_keeps_its_description_and_serves_its_icon_to_its_owner_only() {
+    let app = TestApp::spawn("test").await;
+    let rina = app.tl("rina@x.co").await;
+    let budi = app.tl("budi@x.co").await;
+    let form = [
+        ("name", "Payments"),
+        ("description", "  Card and bank payments for the shop.  "),
+        ("icon", &format!("data:image/png;base64,{PNG_1X1}")),
+    ];
+    let res = app.post_form("/projects", &form, Some(&rina)).await;
+    assert_eq!(res.status(), 303);
+    let slug = location(&res).replace("/monitors", "");
+    let overview = app.get(&slug, Some(&rina)).await.text().await.unwrap();
+    assert!(overview.contains(">Card and bank payments for the shop.</p>"));
+    assert!(overview.contains(&format!(r#"src="{slug}/icon?v="#)));
+
+    let icon = app.get(&format!("{slug}/icon"), Some(&rina)).await;
+    assert_eq!(icon.status(), 200);
+    assert_eq!(icon.headers()["content-type"], "image/png");
+    assert!(
+        icon.headers()["cache-control"]
+            .to_str()
+            .unwrap()
+            .contains("immutable")
+    );
+    assert_eq!(icon.bytes().await.unwrap().len(), 70);
+    let other = app.get(&format!("{slug}/icon"), Some(&budi)).await;
+    assert_eq!(other.status(), 404);
+}
+
+#[tokio::test]
+async fn the_edit_dialog_refuses_svg_and_long_text_and_removes_the_icon() {
+    let app = TestApp::spawn("test").await;
+    let rina = app.tl("rina@x.co").await;
+    project(&app, &rina, "Payments", "payments").await;
+    let edit = |form: Vec<(&'static str, String)>| {
+        let (app, rina) = (&app, rina.clone());
+        async move {
+            let form: Vec<(&str, &str)> = form.iter().map(|(k, v)| (*k, v.as_str())).collect();
+            app.post_form("/projects/payments/profile", &form, Some(&rina))
+                .await
+        }
+    };
+    let svg = "data:image/svg+xml;base64,PHN2Zy8+".to_string();
+    let res = edit(vec![("icon", svg)]).await;
+    assert_eq!(res.status(), 422);
+    let html = res.text().await.unwrap();
+    assert!(html.contains("Use a PNG, JPEG or WebP picture.") && html.contains("data-open"));
+    let res = edit(vec![("description", "x".repeat(281))]).await;
+    assert_eq!(res.status(), 422);
+
+    let res = edit(vec![
+        ("icon", PNG_1X1.to_string()),
+        ("description", "Shop".into()),
+    ])
+    .await;
+    assert_eq!(res.status(), 303);
+    assert_eq!(
+        app.get("/projects/payments/icon", Some(&rina))
+            .await
+            .status(),
+        200
+    );
+    let res = edit(vec![
+        ("remove_icon", "on".into()),
+        ("description", String::new()),
+    ])
+    .await;
+    assert_eq!(res.status(), 303);
+    assert_eq!(
+        app.get("/projects/payments/icon", Some(&rina))
+            .await
+            .status(),
+        404
+    );
+    let general = app
+        .get("/projects/payments/settings", Some(&rina))
+        .await
+        .text()
+        .await
+        .unwrap();
+    assert!(general.contains("None yet"));
+}
+
 #[tokio::test]
 async fn a_tl_cannot_reassign() {
     let app = TestApp::spawn("test").await;

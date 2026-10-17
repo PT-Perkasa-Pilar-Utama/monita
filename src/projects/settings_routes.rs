@@ -11,7 +11,7 @@ use axum::{
 };
 use serde::Deserialize;
 
-use super::{ApiKeyRow, Project, ProjectError};
+use super::{ApiKeyRow, ProfileInput, Project, ProjectError};
 use crate::{
     accounts::{AdminUser, CurrentUser, User, UserRow},
     app::AppState,
@@ -29,6 +29,7 @@ pub fn router() -> Router<AppState> {
         .route("/projects/{slug}/settings/keys", get(keys))
         .route("/projects/{slug}/settings/allowlist", get(allowlist_page))
         .route("/projects/{slug}/owner", post(reassign))
+        .route("/projects/{slug}/profile", post(profile))
         .route("/projects/{slug}/keys", post(create_key))
         .route("/projects/{slug}/keys/{id}/revoke", post(revoke_key))
         .route("/projects/{slug}/allowlist", post(allowlist))
@@ -44,6 +45,9 @@ struct General {
     /// The Reassign dialog's field after a rejected try; the current owner before.
     owner_email: String,
     error: String,
+    /// The Edit project dialog after a rejected save; empty before.
+    profile_error: String,
+    description: String,
 }
 
 impl General {
@@ -70,10 +74,12 @@ async fn general_view(
     };
     Ok(General {
         shell: super::shell(&state.db, user, "settings", Some(&project)).await?,
+        description: project_description(&project),
         project,
         owners,
         owner_email: String::new(),
         error: String::new(),
+        profile_error: String::new(),
     })
 }
 
@@ -107,6 +113,30 @@ async fn reassign(
     };
     super::reassign(&state.db, p.id, owner_id, &admin).await?;
     Ok(Redirect::to(&format!("/projects/{slug}/settings")).into_response())
+}
+
+fn project_description(p: &Project) -> String {
+    p.description.clone().unwrap_or_default()
+}
+
+/// The owner, or a super admin, edits the description and the icon.
+async fn profile(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(slug): Path<String>,
+    Form(input): Form<ProfileInput>,
+) -> Result<Response, PageError> {
+    let p = super::find_for(&state.db, &user, &slug).await?;
+    match super::update_profile(&state.db, p.id, &input).await {
+        Ok(()) => Ok(Redirect::to(&format!("/projects/{slug}/settings")).into_response()),
+        Err(ProjectError::Other(e)) => Err(e.into()),
+        Err(e) => {
+            let mut page = general_view(&state, &user, p).await?;
+            page.description = input.description;
+            page.profile_error = e.to_string();
+            Ok((StatusCode::UNPROCESSABLE_ENTITY, render(&page)).into_response())
+        }
+    }
 }
 
 #[derive(Template)]

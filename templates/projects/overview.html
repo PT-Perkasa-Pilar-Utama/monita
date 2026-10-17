@@ -3,7 +3,7 @@
 {% block title %}{{ project.name }} · Monita{% endblock %}
 {% block content %}
 <header class="hero">
-  <div class="hero__title"><span class="switcher__badge hero__badge" aria-hidden="true">{{ self.initial() }}</span><h1>{{ project.name }}</h1></div>
+  <div class="hero__title">{% call ui::badge(project.slug, project.icon_at, self.initial(), "hero__badge") %}{% endcall %}<h1>{{ project.name }}</h1></div>
   <div class="page-actions"><a class="btn btn--primary btn--sm" href="/projects/{{ project.slug }}/monitors/new">{% call ui::icon("plus") %}{% endcall %}New monitor</a><a class="btn btn--sm" href="/projects/{{ project.slug }}/incidents/new">Report incident</a></div>
 </header>
 <div class="split split--about">
@@ -51,6 +51,7 @@
   </div>
   <aside class="about" aria-labelledby="about-title">
     <h2 id="about-title">About</h2>
+    {% if let Some(d) = project.description %}<p class="about__text">{{ d }}</p>{% endif %}
     <ul class="facts">
       <li>{% call ui::icon("globe") %}{% endcall %}<span>Status page <a href="/status/{{ project.slug }}" class="mono">/status/{{ project.slug }}</a></span></li>
       <li>{% call ui::icon("users") %}{% endcall %}<span>Owned by {{ project.owner_email }}</span></li>

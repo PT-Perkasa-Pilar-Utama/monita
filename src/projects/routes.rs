@@ -12,8 +12,8 @@ use crate::{
 use askama::Template;
 use axum::{
     Form, Router,
-    extract::State,
-    http::StatusCode,
+    extract::{Path, State},
+    http::{StatusCode, header},
     response::{IntoResponse, Redirect, Response},
     routing::{get, post},
 };
@@ -23,6 +23,7 @@ pub fn router() -> Router<AppState> {
         .route("/", get(home))
         .route("/projects", post(create))
         .route("/projects/{slug}", get(super::overview::page))
+        .route("/projects/{slug}/icon", get(icon))
         .merge(super::settings_routes::router())
 }
 
@@ -92,4 +93,24 @@ async fn create(
             Ok((StatusCode::UNPROCESSABLE_ENTITY, render(&page)).into_response())
         }
     }
+}
+
+/// The icon's URL carries `?v={icon_at}`, so a new icon is a new URL and the old one never changes.
+async fn icon(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(slug): Path<String>,
+) -> Result<Response, PageError> {
+    let project = super::find_for(&state.db, &user, &slug).await?;
+    let (mime, data) = super::icon(&state.db, project.id)
+        .await?
+        .ok_or(PageError::NotFound)?;
+    let headers = [
+        (header::CONTENT_TYPE, mime),
+        (
+            header::CACHE_CONTROL,
+            "private, max-age=31536000, immutable".to_string(),
+        ),
+    ];
+    Ok((headers, data).into_response())
 }

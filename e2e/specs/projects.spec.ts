@@ -29,3 +29,25 @@ test("@US-06 @US-07 TL creates a project and a key that is shown once", async ({
   const revoked = await page.request.post("/api/v1/ref-ids", { headers: { authorization: `Bearer ${key}` }, data: {} });
   expect(revoked.status()).toBe(401);
 });
+
+test("@US-06 the page shrinks a picked icon before it reaches the server", async ({ page }) => {
+  // A 1x1 PNG: the page draws it into a 128 px square and sends WebP.
+  const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64");
+  await page.goto("/");
+  await page.getByRole("button", { name: "New project" }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByLabel("Name").fill("Branded");
+  await dialog.getByLabel("Description (optional)").fill("The shop's storefront.");
+  await dialog.getByLabel(/^Icon/).setInputFiles({ name: "logo.png", mimeType: "image/png", buffer: png });
+  await expect(dialog.locator("[data-icon-preview]")).toBeVisible();
+  await dialog.getByRole("button", { name: "Create project" }).click();
+  await expect(page).toHaveURL(/\/monitors$/);
+  const slug = new URL(page.url()).pathname.split("/")[2];
+
+  const icon = await page.request.get(`/projects/${slug}/icon`);
+  expect(icon.status()).toBe(200);
+  expect(icon.headers()["content-type"]).toBe("image/webp");
+  expect((await icon.body()).length).toBeLessThanOrEqual(32 * 1024);
+  await page.goto("/");
+  await expect(page.getByText("The shop's storefront.")).toBeVisible();
+});

@@ -192,6 +192,7 @@ strong { color: var(--fg); font-weight: 590; }
 .appbar__project { display: flex; align-items: center; gap: var(--s2); min-width: 0; height: 34px; padding: 0 var(--s2); border-radius: var(--r); color: var(--fg); font-weight: 590; white-space: nowrap; }
 a.appbar__project:hover { background: var(--f4); }
 .appbar__project > span:last-child { overflow: hidden; text-overflow: ellipsis; }
+.badge--icon { object-fit: cover; background: var(--f4); }
 .switcher__badge { display: grid; place-items: center; flex: none; width: 22px; height: 22px; border-radius: var(--r-sm); background: var(--accent); color: var(--accent-fg); font-size: var(--t-11); font-weight: 600; }
 .appbar__end { display: flex; align-items: center; gap: var(--s1); margin-left: auto; }
 .appbar__link { display: inline-flex; align-items: center; gap: var(--s1); height: 34px; padding: 0 var(--s3); border: 0; border-radius: var(--r); background: transparent; color: var(--fg-muted); font: 510 var(--t-14) var(--font-body); cursor: pointer; }
@@ -387,8 +388,13 @@ a.pcard:hover { border-color: var(--border-input); box-shadow: var(--shadow); }
 .pcard__foot { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s3); margin-top: auto; padding: var(--s3) var(--s5); border-top: 1px solid var(--border); border-radius: 0 0 var(--r-lg) var(--r-lg); background: var(--f2); font-size: var(--t-13); }
 .pcard__foot > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pcard__key { color: var(--fg-muted); font-size: var(--t-12); }
-.pcard--add { align-items: center; justify-content: center; gap: var(--s2); min-height: 132px; border-style: dashed; border-color: var(--border-input); background: transparent; color: var(--fg-muted); font: 510 var(--t-14) var(--font-body); cursor: pointer; }
-.pcard--add:hover { border-color: var(--accent); color: var(--fg); }
+
+.pcard__desc { display: -webkit-box; margin: calc(-1 * var(--s3)) var(--s5) var(--s4); overflow: hidden; color: var(--fg-muted); font-size: var(--t-13); -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.about__text { color: var(--fg-2); }
+.iconpick { display: flex; align-items: center; gap: var(--s3); }
+.iconpick__preview { width: 40px; height: 40px; border-radius: var(--r); }
+.iconpick__preview[hidden] { display: none; }
+.iconpick__file { height: auto; padding: var(--s2); }
 
 /* ---------- Dialog: a header band, the body, a footer bar ---------- */
 .dialog { width: min(520px, calc(100vw - 32px)); max-height: calc(100dvh - 64px); padding: 0; border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--bg-2); color: var(--fg); box-shadow: var(--shadow); }

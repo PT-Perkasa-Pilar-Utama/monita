@@ -7,7 +7,7 @@
       <a class="appbar__brand" href="/" aria-label="Monita, all projects">{% include "ui/mark.html" %}<span>Monita</span></a>
       {% if let Some(p) = shell.project %}
       <span class="appbar__sep" aria-hidden="true">/</span>
-      <a class="appbar__project" href="/projects/{{ p.slug }}"><span class="switcher__badge">{{ p.initial() }}</span><span>{{ p.name }}</span></a>
+      <a class="appbar__project" href="/projects/{{ p.slug }}">{% call ui::badge(p.slug, p.icon_at, p.initial(), "") %}{% endcall %}<span>{{ p.name }}</span></a>
       {% else if shell.area() == "admin" %}
       <span class="appbar__sep" aria-hidden="true">/</span><span class="appbar__project">Admin</span>
       {% endif %}

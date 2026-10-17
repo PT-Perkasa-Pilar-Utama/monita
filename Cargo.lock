@@ -2077,6 +2077,7 @@ dependencies = [
  "argon2",
  "askama",
  "axum",
+ "base64 0.22.1",
  "clap",
  "getrandom 0.4.3",
  "http-body",

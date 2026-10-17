@@ -13,6 +13,9 @@ pub struct Project {
     pub slug: String,
     pub ip_allowlist: Option<String>,
     pub created_at: i64,
+    pub description: Option<String>,
+    /// When the icon was last set; `None` when the project has none.
+    pub icon_at: Option<i64>,
 }
 
 pub struct ApiKeyRow {
@@ -24,7 +27,7 @@ pub struct ApiKeyRow {
     pub created_at: i64,
 }
 
-const COLS: &str = "p.id, p.owner_id, u.email, p.name, p.slug, p.ip_allowlist, p.created_at, u.disabled_at IS NULL";
+const COLS: &str = "p.id, p.owner_id, u.email, p.name, p.slug, p.ip_allowlist, p.created_at, u.disabled_at IS NULL, p.description, p.icon_at";
 
 fn row(r: &turso::Row) -> turso::Result<Project> {
     Ok(Project {
@@ -36,6 +39,8 @@ fn row(r: &turso::Row) -> turso::Result<Project> {
         ip_allowlist: r.get(5)?,
         created_at: r.get(6)?,
         owner_active: r.get::<i64>(7)? == 1,
+        description: r.get(8)?,
+        icon_at: r.get(9)?,
     })
 }
 
@@ -47,13 +52,83 @@ async fn many(
     crate::platform::db::query_all(c, sql, params, row).await
 }
 
-pub async fn insert(c: &Connection, owner_id: i64, name: &str, slug: &str) -> anyhow::Result<i64> {
+pub async fn insert(
+    c: &Connection,
+    owner_id: i64,
+    name: &str,
+    slug: &str,
+    description: Option<&str>,
+) -> anyhow::Result<i64> {
     c.execute(
-        "INSERT INTO projects (owner_id, name, slug) VALUES (?1, ?2, ?3)",
-        (owner_id, name, slug),
+        "INSERT INTO projects (owner_id, name, slug, description) VALUES (?1, ?2, ?3, ?4)",
+        (owner_id, name, slug, description),
     )
     .await?;
     Ok(c.last_insert_rowid())
+}
+
+pub async fn set_description(
+    c: &Connection,
+    project_id: i64,
+    description: Option<&str>,
+    at: i64,
+) -> anyhow::Result<()> {
+    c.execute(
+        "UPDATE projects SET description = ?1, updated_at = ?2 WHERE id = ?3",
+        (description, at, project_id),
+    )
+    .await?;
+    Ok(())
+}
+
+pub async fn set_icon(
+    c: &Connection,
+    project_id: i64,
+    mime: &str,
+    data: Vec<u8>,
+    at: i64,
+) -> anyhow::Result<()> {
+    c.execute(
+        "INSERT INTO project_icons (project_id, mime, data) VALUES (?1, ?2, ?3)
+         ON CONFLICT (project_id) DO UPDATE SET mime = excluded.mime, data = excluded.data",
+        (project_id, mime, turso::Value::from(data)),
+    )
+    .await?;
+    c.execute(
+        "UPDATE projects SET icon_at = ?1, updated_at = ?1 WHERE id = ?2",
+        (at, project_id),
+    )
+    .await?;
+    Ok(())
+}
+
+pub async fn remove_icon(c: &Connection, project_id: i64, at: i64) -> anyhow::Result<()> {
+    c.execute(
+        "DELETE FROM project_icons WHERE project_id = ?1",
+        [project_id],
+    )
+    .await?;
+    c.execute(
+        "UPDATE projects SET icon_at = NULL, updated_at = ?1 WHERE id = ?2",
+        (at, project_id),
+    )
+    .await?;
+    Ok(())
+}
+
+/// The icon's type and bytes.
+pub async fn icon(c: &Connection, project_id: i64) -> anyhow::Result<Option<(String, Vec<u8>)>> {
+    Ok(crate::platform::db::query_all(
+        c,
+        "SELECT mime, data FROM project_icons WHERE project_id = ?1",
+        [project_id],
+        |r| {
+            let data = r.get_value(1)?.as_blob().cloned().unwrap_or_default();
+            Ok((r.get(0)?, data))
+        },
+    )
+    .await?
+    .pop())
 }
 
 pub async fn name_slug(

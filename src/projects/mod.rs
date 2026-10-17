@@ -2,6 +2,7 @@
 //! Spec: docs/technical-specs/05-module-definitions.md section 5.2.
 
 mod allowlist;
+mod icon;
 mod overview;
 mod profile;
 pub mod routes;
@@ -20,7 +21,7 @@ use crate::{
     platform::{api_error, caps, db::Db, now, page::PageError, token},
 };
 
-pub use profile::{ProjectInput, create, find_owner, slug_for};
+pub use profile::{ProfileInput, ProjectInput, create, find_owner, icon, slug_for, update_profile};
 pub use store::{ApiKeyRow, Project};
 
 #[derive(Debug, thiserror::Error)]
@@ -29,6 +30,10 @@ pub enum ProjectError {
     InvalidName,
     #[error("Pick the owner from the list: yourself or an active tech lead.")]
     UnknownOwner,
+    #[error("The description needs at most 280 characters.")]
+    LongDescription,
+    #[error("{0}")]
+    BadIcon(&'static str),
     #[error("Not a valid IP or CIDR: {0}")]
     InvalidCidr(String),
     /// A hard cap in `platform::caps` is reached.
@@ -72,7 +77,9 @@ pub async fn shell(
         incidents: crate::incidents::open_count(db, p.id).await?,
         tickets: crate::tickets::open_count(db, p.id).await?,
     };
-    Ok(shell.in_project(&p.name, &p.slug).with_counts(counts))
+    Ok(shell
+        .in_project(&p.name, &p.slug, p.icon_at)
+        .with_counts(counts))
 }
 
 /// Who `reassign` accepts, for the owner list: the acting super admin first, then active TLs.

@@ -124,10 +124,11 @@ impl Shell {
         }
     }
 
-    pub fn in_project(mut self, name: &str, slug: &str) -> Self {
+    pub fn in_project(mut self, name: &str, slug: &str, icon_at: Option<i64>) -> Self {
         self.project = Some(ProjectNav {
             name: name.to_string(),
             slug: slug.to_string(),
+            icon_at,
         });
         self
     }
@@ -136,6 +137,8 @@ impl Shell {
 pub struct ProjectNav {
     pub name: String,
     pub slug: String,
+    /// Versions the icon's URL; `None` shows the first letter instead.
+    pub icon_at: Option<i64>,
 }
 
 impl ProjectNav {

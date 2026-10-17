@@ -16,6 +16,9 @@
 
 {% macro option(m_value, m_label, m_current) %}<option value="{{ m_value }}"{% if m_current == m_value %} selected{% endif %}>{{ m_label }}</option>{% endmacro %}
 
+{# A project's badge: its icon when it has one, its first letter otherwise. Decorative: the name sits beside it. #}
+{% macro badge(m_slug, m_icon_at, m_letter, m_class) %}{% if let Some(v) = m_icon_at %}<img class="switcher__badge badge--icon {{ m_class }}" src="/projects/{{ m_slug }}/icon?v={{ v }}" alt="">{% else %}<span class="switcher__badge {{ m_class }}" aria-hidden="true">{{ m_letter }}</span>{% endif %}{% endmacro %}
+
 {# A dialog's header band: its title and a close button. The body and footer follow in the caller. #}
 {% macro dialog_head(m_id, m_title) %}<div class="dialog__head"><h2 id="{{ m_id }}-title">{{ m_title }}</h2><button class="btn btn--ghost btn--icon" type="button" data-close aria-label="Close">{% call icon("x") %}{% endcall %}</button></div>{% endmacro %}
 

@@ -1,17 +1,19 @@
-//! A project's own fields: its name, owner and slug at creation.
+//! A project's own fields: its name, owner and slug at creation, then its description and icon.
 
 use serde::Deserialize;
 
-use super::{Project, ProjectError, eligible_owners, store};
+use super::{Project, ProjectError, eligible_owners, icon::parse as parse_icon, store};
 use crate::{
     accounts::User,
-    platform::{caps, db::Db, token},
+    platform::{caps, db::Db, now, token},
 };
 
 /// The random part of a generated slug: 6 base32 characters, about a billion values.
 const SUFFIX: usize = 6;
 /// The longest slug the data model allows (technical-specs 06).
 const SLUG_MAX: usize = 40;
+/// The longest description, in characters.
+const DESCRIPTION_MAX: usize = 280;
 
 /// The New project form. `owner_email` counts only when a super admin sends it.
 #[derive(Debug, Default, Deserialize)]
@@ -19,6 +21,28 @@ const SLUG_MAX: usize = 40;
 pub struct ProjectInput {
     pub name: String,
     pub owner_email: String,
+    pub description: String,
+    /// Base64 of the scaled icon, filled by the page's script; empty for none.
+    pub icon: String,
+}
+
+/// The Edit project form on Settings, General.
+#[derive(Debug, Default, Deserialize)]
+#[serde(default)]
+pub struct ProfileInput {
+    pub description: String,
+    pub icon: String,
+    /// A checkbox: "on" removes the icon when no new one is sent.
+    pub remove_icon: String,
+}
+
+/// An empty description is none.
+fn description(raw: &str) -> Result<Option<&str>, ProjectError> {
+    match raw.trim() {
+        "" => Ok(None),
+        d if d.chars().count() > DESCRIPTION_MAX => Err(ProjectError::LongDescription),
+        d => Ok(Some(d)),
+    }
 }
 
 /// US-06: the name in lowercase letters, digits and dashes, cut to fit, then `-` and the suffix.
@@ -57,6 +81,8 @@ pub async fn create(db: &Db, acting: &User, input: &ProjectInput) -> Result<Proj
     if name.is_empty() || name.chars().count() > 80 {
         return Err(ProjectError::InvalidName);
     }
+    let description = description(&input.description)?;
+    let icon = parse_icon(&input.icon)?;
     let owner = if acting.is_admin() && !input.owner_email.trim().is_empty() {
         find_owner(db, acting, &input.owner_email)
             .await?
@@ -80,7 +106,10 @@ pub async fn create(db: &Db, acting: &User, input: &ProjectInput) -> Result<Proj
             for _ in 0..3 {
                 let slug = slug_for(name, &token::random_token()[..SUFFIX]);
                 if store::find_by_slug(c, &slug).await?.is_none() {
-                    let id = store::insert(c, owner, name, &slug).await?;
+                    let id = store::insert(c, owner, name, &slug, description).await?;
+                    if let Some(i) = &icon {
+                        store::set_icon(c, id, i.mime, i.data.clone(), now()).await?;
+                    }
                     crate::notify::create_routes(c, id).await?;
                     return Ok(Ok(slug));
                 }
@@ -93,6 +122,34 @@ pub async fn create(db: &Db, acting: &User, input: &ProjectInput) -> Result<Proj
     store::find_by_slug(&db.read().await?, &slug)
         .await?
         .ok_or_else(|| ProjectError::Other(anyhow::anyhow!("project {slug} vanished after insert")))
+}
+
+/// Saves the description, and sets, keeps or removes the icon. A new icon wins over remove.
+pub async fn update_profile(
+    db: &Db,
+    project_id: i64,
+    input: &ProfileInput,
+) -> Result<(), ProjectError> {
+    let description = description(&input.description)?;
+    let icon = parse_icon(&input.icon)?;
+    let remove = input.remove_icon == "on";
+    db.write(async |c| {
+        let at = now();
+        store::set_description(c, project_id, description, at).await?;
+        match &icon {
+            Some(i) => store::set_icon(c, project_id, i.mime, i.data.clone(), at).await?,
+            None if remove => store::remove_icon(c, project_id, at).await?,
+            None => {}
+        }
+        Ok(())
+    })
+    .await?;
+    Ok(())
+}
+
+/// The icon's type and bytes, for its own route.
+pub async fn icon(db: &Db, project_id: i64) -> anyhow::Result<Option<(String, Vec<u8>)>> {
+    store::icon(&db.read().await?, project_id).await
 }
 
 #[cfg(test)]

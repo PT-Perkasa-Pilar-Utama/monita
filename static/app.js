@@ -2,7 +2,8 @@
 // filter bars (<form data-autosubmit>) that apply a select as soon as it changes, and dialogs:
 // <button data-dialog="id"> opens <dialog id>, [data-close] closes it, and <dialog data-open> opens
 // on load because its form came back with an error. A submit button with data-confirm asks first
-// in the shared #confirm dialog; without this script the form submits at once.
+// in the shared #confirm dialog; without this script the form submits at once. An icon picker
+// (<input type="file" data-icon-file>) scales the picture to a small square before it is sent.
 // theme.js applies a saved theme before the first paint.
 document.addEventListener("click", (event) => {
   if (!event.target.closest("[data-theme-toggle]")) return;
@@ -75,4 +76,40 @@ document.addEventListener("submit", (event) => {
     form.requestSubmit(button);
   };
   openDialog(dialog);
+});
+
+// The server stores at most 32 KB and never resizes, so the page sends a 128 px square: WebP,
+// or PNG where the browser cannot write WebP, at the first quality that fits.
+const ICON_PX = 128;
+const ICON_MAX = 32 * 1024;
+document.addEventListener("change", async (event) => {
+  const input = event.target.closest("[data-icon-file]");
+  if (!input) return;
+  const field = input.closest(".field");
+  const value = field.querySelector("[data-icon-value]");
+  const preview = field.querySelector("[data-icon-preview]");
+  value.value = "";
+  preview.hidden = true;
+  input.setCustomValidity("");
+  const file = input.files[0];
+  if (!file) return;
+  try {
+    const picture = await createImageBitmap(file);
+    const side = Math.min(picture.width, picture.height);
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = ICON_PX;
+    const x = (picture.width - side) / 2;
+    const y = (picture.height - side) / 2;
+    canvas.getContext("2d").drawImage(picture, x, y, side, side, 0, 0, ICON_PX, ICON_PX);
+    const url = [0.85, 0.6, 0.4]
+      .map((quality) => canvas.toDataURL("image/webp", quality))
+      .find((u) => u.length * 0.75 <= ICON_MAX);
+    if (!url) throw new Error("icon over the cap");
+    value.value = url;
+    preview.src = url;
+    preview.hidden = false;
+  } catch {
+    input.setCustomValidity("Monita could not read this picture. Pick a PNG, JPEG or WebP file.");
+    input.reportValidity();
+  }
 });
