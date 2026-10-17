@@ -31,6 +31,8 @@ Project menu, in this order: Monitors, Heartbeats, Incidents, Tickets, Alerts, S
 - Buttons say what happens: "Save heartbeat", "Revoke key", "Post update".
 - Errors say what to do: "Enter a name, for example nightly-settlement."
 - Times: relative in lists ("6m ago"), absolute in UTC on detail pages ("2026-10-16 14:02 UTC").
+- Write whole sentences. Do not stack short fragments: "No X, no Y", "Nothing ...", "One X, one Y", or a word, a comma or a period, then another word. An empty state names what will appear or what to do: "Waiting for the first check", not "No checks yet".
+- Say what is true and literal. No metaphors: "users see the updates you post", not "keeps the status page honest".
 - Durations: `6m 18s`, `2h 4m`, `3d 2h`. Latency: `182ms`. Uptime: two decimals on the status page (`99.91%`), three in the availability table (`99.987%`).
 
 ## 3.5 Do and don't

@@ -10,7 +10,7 @@ test("@US-06 @US-07 TL creates a project and a key that is shown once", async ({
   await page.getByLabel("Slug").fill(slug);
   await page.getByRole("button", { name: "Create project" }).click();
   await expect(page).toHaveURL(new RegExp(`/projects/${slug}/monitors$`));
-  await expect(page.getByRole("heading", { name: "No monitors yet" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Add your first monitor" })).toBeVisible();
 
   await page.getByRole("link", { name: "Settings" }).click();
   await page.getByLabel("Key name").fill("backend-prod");

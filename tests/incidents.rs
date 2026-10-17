@@ -276,6 +276,13 @@ async fn two_failed_checks_open_one_incident_and_alert_then_a_pass_closes_it() {
             .body
             .contains("https://monita.test/projects/payments/incidents/1")
     );
+    // The app's own outbox loop may have claimed the webhook row first; wait for it to land.
+    for _ in 0..50 {
+        if !got.lock().unwrap().is_empty() {
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    }
     {
         let hooks = got.lock().unwrap();
         assert_eq!(hooks[0]["event"], "incident.opened");

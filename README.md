@@ -2,8 +2,8 @@
 
 <img src="docs/assets/logo.svg" alt="Monita" width="236">
 
-**Uptime, heartbeats, incidents, status pages and bug tickets for every project in your team.**
-One self-hosted binary, one SQLite file.
+**Uptime monitoring, cron heartbeats, incidents, status pages and bug tickets for every project in your team.**
+Monita runs as a single self-hosted binary and keeps all its data in a SQLite file.
 
 [![CI](https://github.com/PT-Perkasa-Pilar-Utama/monita/actions/workflows/ci.yml/badge.svg)](https://github.com/PT-Perkasa-Pilar-Utama/monita/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-c4258f)](LICENSE)
@@ -15,13 +15,16 @@ One self-hosted binary, one SQLite file.
 
 </div>
 
-Monita watches your projects and tells people when one breaks. It is a small, self-hosted take on
-Better Stack.
+Monita checks your services and cron jobs and tells the right people when something breaks. It
+covers what a team usually buys from Better Stack, and you host it yourself.
 
-- **Check:** HTTP monitors every 30 s to 5 min, and heartbeats that cron jobs ping.
-- **Alert:** an incident opens on two failed checks or one missed ping. Email and webhook alerts follow.
-- **Tell users:** each project gets a public status page with 90 days of uptime and your updates.
-- **Collect bugs:** users file tickets through the status page; you sort them on a kanban.
+- HTTP monitors request your URLs every 30 seconds to 5 minutes, and heartbeats wait for your cron
+  jobs to report in.
+- Two failed checks in a row, or a missed heartbeat, open an incident and send email and webhook
+  alerts.
+- Each project gets a public status page that shows 90 days of uptime and the updates you post.
+- Users can report bugs through the status page, and the project's tech lead sorts them on a
+  kanban.
 
 The [demo](https://pt-perkasa-pilar-utama.github.io/monita/demo/) is a read-only snapshot of the
 real app on sample data.

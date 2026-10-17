@@ -31,13 +31,13 @@
 
   <section class="sp__active" aria-labelledby="active">
     <h2 id="active">Active incidents</h2>
-    {% if status.incidents.is_empty() %}<p class="sp__calm">No open incidents.</p>{% endif %}
+    {% if status.incidents.is_empty() %}<p class="sp__calm">Every system is running normally.</p>{% endif %}
     {% for inc in status.incidents %}{% include "status/incident.html" %}{% endfor %}
   </section>
 
   <section class="sp__past" aria-labelledby="past">
     <h2 id="past">Past 7 days</h2>
-    {% if recent.is_empty() %}<p class="muted">No incidents in the last 7 days.</p>{% endif %}
+    {% if recent.is_empty() %}<p class="muted">There were no incidents in the last 7 days.</p>{% endif %}
     {% for inc in recent %}{% include "status/incident.html" %}{% endfor %}
     <a class="link-quiet" href="/status/{{ status.project.slug }}/history">Incident history →</a>
   </section>

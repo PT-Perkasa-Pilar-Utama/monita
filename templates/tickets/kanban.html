@@ -6,7 +6,7 @@
 {% block content %}
 <div class="page-head"><div class="page-title"><h1>Tickets</h1><span class="count">{{ self.total() }}</span></div></div>
 {% if tickets.is_empty() %}
-<section class="panel">{% call ui::empty("No tickets yet", "Project users report bugs with a ref ID from your system, through the API or the form at /status/" ~ project.slug ~ "/report.") %}{% endcall %}</section>
+<section class="panel">{% call ui::empty("Bug reports arrive here", "Project users report bugs with a ref ID from your system, through the API or the form at /status/" ~ project.slug ~ "/report.") %}{% endcall %}</section>
 {% else %}
 <div class="board">
 {% for (key, label) in self.columns() %}

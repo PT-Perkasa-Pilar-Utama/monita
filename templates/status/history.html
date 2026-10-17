@@ -7,7 +7,7 @@
   <a class="link-quiet" href="/status/{{ project.slug }}">← Current status</a>
 </header>
 <section class="sp-history" aria-label="Incidents">
-  {% if incidents.is_empty() %}<p class="muted">No incidents to show.</p>{% endif %}
+  {% if incidents.is_empty() %}<p class="muted">This project has had no incidents.</p>{% endif %}
   {% for inc in incidents %}{% if let Some(m) = self.month(loop.index0) %}<h2 class="sp-month">{{ m }}</h2>{% endif %}{% include "status/incident.html" %}{% endfor %}
   {% if let Some(before) = older %}<a class="link-quiet" href="?before={{ before }}">Older incidents →</a>{% endif %}
 </section>

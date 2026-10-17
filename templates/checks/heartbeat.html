@@ -25,7 +25,7 @@
 <section class="panel">
   <div class="panel__head"><h2>Pings, last 7 days</h2></div>
   {% if pings.is_empty() %}
-    {% call ui::empty("No pings yet", "The first ping arrives when the job next runs.") %}{% endcall %}
+    {% call ui::empty("Waiting for the first ping", "The first ping arrives when the job next runs.") %}{% endcall %}
   {% else %}
   <div class="table-wrap">
     <table class="table">

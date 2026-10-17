@@ -10,7 +10,7 @@
 <section class="panel">
   {% let rows = self.rows() %}
   {% if rows.is_empty() %}
-    {% if show_resolved %}{% call ui::empty("No resolved incidents", "Closed incidents and their timelines appear here.") %}{% endcall %}{% else %}{% call ui::empty("Nothing is down", "Monita opens an incident when a monitor fails twice in a row or a heartbeat misses. You can also report one by hand.") %}{% endcall %}{% endif %}
+    {% if show_resolved %}{% call ui::empty("Resolved incidents appear here", "Each one keeps its timeline of updates.") %}{% endcall %}{% else %}{% call ui::empty("Every system is up", "Monita opens an incident when a monitor fails twice in a row or a heartbeat misses. You can also report one by hand.") %}{% endcall %}{% endif %}
   {% else %}
   <div class="table-wrap">
     <table class="table">

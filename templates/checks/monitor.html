@@ -33,7 +33,7 @@
 <section class="panel">
   <div class="panel__head"><h2>Checks, last 7 days</h2></div>
   {% if checks.is_empty() %}
-    {% call ui::empty("No checks yet", "The first check runs within one interval of saving.") %}{% endcall %}
+    {% call ui::empty("Waiting for the first check", "The first check runs within one interval of saving.") %}{% endcall %}
   {% else %}
   <div class="table-wrap">
     <table class="table">

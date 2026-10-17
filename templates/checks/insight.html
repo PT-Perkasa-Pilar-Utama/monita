@@ -25,7 +25,7 @@
     {% for b in ch.fails %}<rect class="chart__fail" x="{{ insight.f(b.x) }}" y="{{ insight.f(b.y) }}" width="{{ insight.f(b.w) }}" height="{{ insight.f(b.h) }}"><title>{{ b.title }}</title></rect>{% endfor %}
     {% for b in ch.hovers %}<rect class="chart__hover" x="{{ insight.f(b.x) }}" y="{{ insight.f(b.y) }}" width="{{ insight.f(b.w) }}" height="{{ insight.f(b.h) }}"><title>{{ b.title }}</title></rect>{% endfor %}
     {% for t in ch.x_ticks %}<text class="chart__label" x="{{ insight.f(t.at) }}" y="232" text-anchor="middle">{{ t.label }}</text>{% endfor %}
-    {% if ch.empty %}<text class="chart__empty" x="504" y="112" text-anchor="middle">Nothing recorded in this range yet</text>{% endif %}
+    {% if ch.empty %}<text class="chart__empty" x="504" y="112" text-anchor="middle">Checks and pings in this range will show here</text>{% endif %}
   </svg>
   <div class="chart-legend">
     {% if insight.title == "Response time" %}<span><i class="key key--line"></i>Mean response time</span>{% else %}<span><i class="key key--tick"></i>Ping received</span>{% endif %}

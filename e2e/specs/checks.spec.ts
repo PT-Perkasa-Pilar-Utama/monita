@@ -21,7 +21,7 @@ test("@US-09 TL adds a monitor with defaults and sees it waiting for its first c
   await page.getByLabel("URL").fill("http://127.0.0.1:18080/healthz");
   await page.getByRole("button", { name: "Save monitor" }).click();
   await expect(page.getByRole("heading", { name: "Monita health" })).toBeVisible();
-  await expect(page.getByText("Waiting")).toBeVisible();
+  await expect(page.getByText("Waiting", { exact: true })).toBeVisible();
 
   await page.goto(`/projects/${slug}/monitors/new`);
   await page.getByLabel("Name").fill("Broken");
@@ -36,7 +36,7 @@ test("@US-12 @US-13 @US-14 a job pings its heartbeat URL and the state follows",
   await page.getByRole("link", { name: "New heartbeat" }).click();
   await page.getByLabel("Name").fill("nightly-settlement");
   await page.getByRole("button", { name: "Save heartbeat" }).click();
-  await expect(page.getByText("Waiting")).toBeVisible();
+  await expect(page.getByText("Waiting", { exact: true })).toBeVisible();
   const pingUrl = (await page.locator("#ping-url").textContent())!.trim();
 
   expect((await page.request.get(pingUrl)).status()).toBe(200);
