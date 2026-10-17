@@ -14,8 +14,9 @@
   --bg-2: #0f1011;
   --fg: #f7f8f8;
   --fg-muted: #a9aeb6;
-  --accent: #5e6ad2;
-  --accent-fg: #ffffff;
+  --accent: #f25cbf;
+  --accent-ink: #f25cbf;
+  --accent-fg: #1a0612;
   --green: #4cb782;
   --red: #eb5757;
   --yellow: #f2c94c;
@@ -35,6 +36,8 @@
   --f6: color-mix(in srgb, var(--fg) 6%, transparent);
   --pill-light: color-mix(in srgb, var(--fg) 92%, var(--bg));
   --ring-accent: color-mix(in srgb, var(--accent) 40%, transparent);
+  /* A finished stage or a monitoring update: a state, so never the brand accent. */
+  --neutral-strong: var(--fg-muted);
   --header-bg: color-mix(in srgb, var(--bg) 82%, transparent);
   --backdrop: color-mix(in srgb, var(--bg) 60%, transparent);
 
@@ -93,7 +96,8 @@
     --bg-2: #ffffff;
     --fg: #16171a;
     --fg-muted: #565a62;
-    --accent: #5e6ad2;
+    --accent: #c4258f;
+    --accent-ink: #a61f79;
     --accent-fg: #ffffff;
     --green: #2e8b5c;
     --red: #d24545;
@@ -108,7 +112,8 @@
   --bg-2: #ffffff;
   --fg: #16171a;
   --fg-muted: #565a62;
-  --accent: #5e6ad2;
+  --accent: #c4258f;
+  --accent-ink: #a61f79;
   --accent-fg: #ffffff;
   --green: #2e8b5c;
   --red: #d24545;
@@ -244,16 +249,18 @@ strong { color: var(--fg); font-weight: 590; }
 
 /* ---------- Public shell (status page, ticket form, public board) ---------- */
 .public {
+  min-height: 100vh;
   max-width: var(--public-max);
   margin: 0 auto;
-  padding-block: var(--s7) var(--s8);
+  padding-block: var(--s7) var(--s5);
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
   font-size: var(--t-15);
   line-height: 1.6;
 }
 .public h1 { font-size: var(--t-32); line-height: 1.05; }
-.public__foot { margin-top: var(--s7); padding-top: var(--s4); border-top: 1px solid var(--rule); display: flex; justify-content: space-between; gap: var(--s3); flex-wrap: wrap; }
+.lead-text { color: var(--fg-muted); font-size: var(--t-15); max-width: 60ch; }
+.public__foot { margin-top: auto; padding-top: var(--s4); border-top: 1px solid var(--rule); display: flex; justify-content: space-between; gap: var(--s3); flex-wrap: wrap; }
 
 /* ---------- Panel: the one boxed surface ---------- */
 .panel { background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--r-lg); min-width: 0; }
@@ -352,7 +359,7 @@ strong { color: var(--fg); font-weight: 590; }
 .st--triage { border-style: dashed; border-color: var(--fg-3); }
 .st--backlog { border-color: var(--fg-muted); }
 .st--progress { border-color: var(--issue); background: conic-gradient(var(--issue) 0 50%, transparent 50% 100%); }
-.st--done { border-color: var(--accent); background: var(--accent); }
+.st--done { border-color: var(--neutral-strong); background: var(--neutral-strong); }
 
 /* State: icon + word. Only "down" colors its word. */
 /* Tone pill: a tinted fill and a coloured word, no dot. */
@@ -375,7 +382,7 @@ strong { color: var(--fg); font-weight: 590; }
 /* ---------- Chip: pill with a 7px coloured dot ---------- */
 .chip--critical, .chip--investigating { --c: var(--red); }
 .chip--warning, .chip--identified { --c: var(--yellow); }
-.chip--monitoring { --c: var(--accent); }
+.chip--monitoring { --c: var(--neutral-strong); }
 .chip--resolved { --c: var(--green); }
 
 /* ---------- Uptime bar: 90 days, oldest left ---------- */

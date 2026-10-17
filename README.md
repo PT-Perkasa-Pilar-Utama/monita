@@ -6,7 +6,7 @@
 One self-hosted binary, one SQLite file.
 
 [![CI](https://github.com/PT-Perkasa-Pilar-Utama/monita/actions/workflows/ci.yml/badge.svg)](https://github.com/PT-Perkasa-Pilar-Utama/monita/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-5e6ad2)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/license-MIT-c4258f)](LICENSE)
 
 **[Website](https://pt-perkasa-pilar-utama.github.io/monita/)** &nbsp;&nbsp;
 **[Try the demo](https://pt-perkasa-pilar-utama.github.io/monita/demo/)** &nbsp;&nbsp;

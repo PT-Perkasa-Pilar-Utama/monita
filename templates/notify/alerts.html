@@ -15,8 +15,8 @@
       {% if focus == r.severity && !error.is_empty() %}{% call ui::notice("error", error) %}{% endcall %}{% endif %}
       {% if focus == r.severity && !notice.is_empty() %}{% call ui::notice("ok", notice) %}{% endcall %}{% endif %}
       <div class="field">
-        <label class="label" for="emails-{{ r.severity }}">Email addresses, one per line</label>
-        <textarea class="textarea" id="emails-{{ r.severity }}" name="emails" placeholder="oncall@company.co.id">{{ self.emails(r) }}</textarea>
+        <label class="label" for="emails-{{ r.severity }}">Email addresses</label>
+        <textarea class="textarea" id="emails-{{ r.severity }}" name="emails" placeholder="oncall@company.co.id&#10;lead@company.co.id">{{ self.emails(r) }}</textarea>
       </div>
       <div class="field">
         <label class="label" for="webhook-{{ r.severity }}">Webhook URL</label>

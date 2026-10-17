@@ -57,9 +57,10 @@
   <section class="panel" id="allowlist">
     <div class="panel__head"><h2>IP allowlist</h2><span class="tag">{% if project.ip_allowlist.is_some() %}On{% else %}Off{% endif %}</span></div>
     <form class="panel__body form" method="post" action="/projects/{{ project.slug }}/allowlist">
+      <p class="muted">Only these addresses may use this project's API keys. Leave the list empty to allow any.</p>
       <div class="field{% if !allowlist_error.is_empty() %} field--error{% endif %}">
-        <label class="label" for="cidrs">Allowed IPs and ranges, one per line; empty allows any</label>
-        <textarea class="textarea mono" id="cidrs" name="cidrs" placeholder="10.20.0.0/16">{{ allowlist }}</textarea>
+        <label class="label" for="cidrs">Allowed IPs</label>
+        <textarea class="textarea mono" id="cidrs" name="cidrs" placeholder="10.20.0.0/16&#10;192.168.1.5">{{ allowlist }}</textarea>
         {% if !allowlist_error.is_empty() %}<span class="error">{{ allowlist_error }}</span>{% endif %}
       </div>
       <div class="form__actions"><button class="btn" type="submit">Save allowlist</button></div>

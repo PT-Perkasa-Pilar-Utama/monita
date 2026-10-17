@@ -2,16 +2,17 @@
 {% import "ui/macros.html" as ui %}
 {% block title %}Report a bug · {{ project.name }}{% endblock %}
 {% block content %}
-<header class="stack stack--sm"><h1>Report a bug in {{ project.name }}</h1></header>
+<header class="stack stack--sm"><h1>Report a bug</h1><p class="lead-text">Tell the {{ project.name }} team what broke. Your ref ID is on your account page in {{ project.name }}.</p></header>
 {% if let Some(n) = created %}
   {% call ui::notice("ok", self.thanks(n)) %}{% endcall %}
 {% else %}
 <form class="form" method="post">
   {% if !error.is_empty() %}{% call ui::notice("error", error) %}{% endcall %}{% endif %}
-  {% call ui::input("ref_id", "ref_id", "Ref ID", "text", ref_id, "") %}{% endcall %}
+  {% call ui::input("ref_id", "ref_id", "Your ref ID", "text", ref_id, "") %}{% endcall %}
   {% call ui::input("title", "title", "What went wrong", "text", title, "") %}{% endcall %}
-  <div class="field"><label class="label" for="description">Details, seen only by the team; no passwords</label><textarea class="textarea" id="description" name="description" placeholder="What you did, what you expected, what happened.">{{ description }}</textarea></div>
-  {% call ui::input("page_url", "page_url", "Page URL (optional)", "url", page_url, "") %}{% endcall %}
+  <div class="field"><label class="label" for="description">What happened</label><textarea class="textarea" id="description" name="description" placeholder="What you did, what you expected, what happened.">{{ description }}</textarea></div>
+  {% call ui::input("page_url", "page_url", "Page where it happened (optional)", "url", page_url, "") %}{% endcall %}
+  <p class="muted">Only the team reads your report. Please leave out passwords.</p>
   <div class="form__actions"><button class="btn btn--primary" type="submit">Send report</button></div>
 </form>
 {% endif %}

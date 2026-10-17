@@ -26,7 +26,8 @@ Only the base tokens change per scheme. Every derived token follows by itself.
 | `--border-input` | Input borders (12 % fg) |
 | `--rule` | Opaque section dividers |
 | `--f2`, `--f4`, `--f6` | Row hover, nav hover, active nav |
-| `--accent` | Indigo `#5e6ad2`: focus ring, accent button, Monitoring label, Done stage |
+| `--accent` | Magenta: `#f25cbf` dark, `#c4258f` light. The brand: the mark, the accent button, focus, links, the chart line. Never a state. |
+| `--neutral-strong` | A finished stage and the Monitoring label: states, so not the accent |
 
 ## 1.3 Status colors
 

@@ -27,3 +27,6 @@
   border-color: var(--accent);
   color: var(--fg);
 }
+
+/* Room under the page so the banner never covers its footer. */
+body { padding-bottom: 72px; }
