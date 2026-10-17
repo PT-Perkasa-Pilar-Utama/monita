@@ -187,9 +187,9 @@ pub async fn recent_pings(db: &Db, id: i64, limit: i64) -> anyhow::Result<Vec<Pi
 /// Proof that `admit` passed. Only `admit` makes one and only `record` takes it, so no caller can
 /// store a ping that skipped the token and the limits.
 pub struct Admitted {
-    /// Ids only: `record` reads the heartbeat again, so nothing here can be stale.
-    project_id: i64,
-    id: i64,
+    /// The token only: `record` reads the heartbeat again, so nothing here can be stale. A
+    /// reset can reuse an id; it never reuses a token.
+    token: String,
     kind: PingKind,
     source_ip: Option<String>,
 }
@@ -237,8 +237,7 @@ pub async fn admit(db: &Db, limiter: &Limiter, p: &Ping<'_>) -> anyhow::Result<A
         return Ok(Admission::Limited(retry));
     }
     Ok(Admission::Admitted(Admitted {
-        project_id: hb.project_id,
-        id: hb.id,
+        token: hb.token,
         kind: p.kind,
         source_ip: p.source_ip.map(|ip| ip.to_string()),
     }))
@@ -246,7 +245,7 @@ pub async fn admit(db: &Db, limiter: &Limiter, p: &Ping<'_>) -> anyhow::Result<A
 
 /// AC-13.01, AC-14.01, AC-17.03, AC-18.01. An OK ping pushes the deadline out and closes an
 /// open incident; a fail ping opens one at once and leaves the deadline.
-/// Returns false when the heartbeat was deleted after `admit`.
+/// Returns false when no heartbeat has the token any more.
 pub async fn record(
     db: &Db,
     base_url: &str,
@@ -254,8 +253,7 @@ pub async fn record(
     cause: Option<String>,
 ) -> anyhow::Result<bool> {
     let Admitted {
-        project_id,
-        id,
+        token,
         kind,
         source_ip,
     } = a;
@@ -271,7 +269,7 @@ pub async fn record(
     db.write(async |c| {
         // Read again inside the write: the body may have taken seconds, so the heartbeat may have
         // been renamed, re-ranked or deleted since `admit`. Deleted is a 404, not a 500.
-        let Some(hb) = store::find(c, project_id, id).await? else {
+        let Some(hb) = store::find_by_token(c, &token).await? else {
             return Ok(false);
         };
         store::insert_ping(c, hb.id, kind, source_ip.as_deref(), cause.as_deref(), t).await?;

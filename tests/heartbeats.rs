@@ -4,7 +4,7 @@ mod common;
 
 use std::time::Duration;
 
-use common::{BASE_URL, TestApp, location};
+use common::{BASE_URL, RESET_TOKEN, TestApp, location};
 use monita::{
     checks::heartbeat::{self, HeartbeatInput},
     platform::db::query_i64,
@@ -522,6 +522,51 @@ async fn a_ping_whose_heartbeat_goes_while_its_body_uploads_is_not_stored() {
         .await
         .unwrap();
     let stored = heartbeat::record(&app.state.db, BASE_URL, a, None)
+        .await
+        .unwrap();
+    assert!(!stored, "the route answers 404");
+    assert_eq!(count(&app, "SELECT count(*) FROM pings").await, 0);
+}
+
+#[tokio::test]
+async fn a_ping_admitted_before_a_reset_never_lands_on_a_new_heartbeat() {
+    let app = TestApp::spawn("test").await;
+    let (_, token) = setup(&app).await;
+    let a = admitted(&app, &token).await;
+    let res = app
+        .http
+        .post(app.url("/admin/reset-state"))
+        .header("x-reset-token", RESET_TOKEN)
+        .json(&serde_json::json!({"seed": "qa"}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), 204);
+    // The QA seed's TL is user 2; the new project and heartbeat reuse id 1.
+    app.state
+        .db
+        .write(async |c| {
+            c.execute(
+                "INSERT INTO projects (id, owner_id, name, slug) VALUES (1, 2, 'New', 'new')",
+                (),
+            )
+            .await?;
+            Ok(())
+        })
+        .await
+        .unwrap();
+    let input = HeartbeatInput {
+        name: "fresh".into(),
+        ..HeartbeatInput::default()
+    };
+    let id = heartbeat::create(&app.state.db, 1, &input).await.unwrap();
+    let fresh = heartbeat::find(&app.state.db, 1, id)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(id, 1, "the precondition: the id is reused");
+    assert_ne!(fresh.token, token);
+    let stored = heartbeat::record(&app.state.db, BASE_URL, a, Some("stale".into()))
         .await
         .unwrap();
     assert!(!stored, "the route answers 404");
