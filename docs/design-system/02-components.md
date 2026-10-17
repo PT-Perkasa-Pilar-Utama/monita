@@ -19,7 +19,7 @@ Order of choice: a shadcn component in `web/src/components/ui/`, then a Monita c
 | Toggle group | `ui/toggle-group.tsx` | `type="single"`, `variant="outline"`. A short option set (2 to 7) in a form. |
 | Radio group | `ui/radio-group.tsx` | Option cards that need a description per choice, such as `SeverityField`. |
 | Select | `ui/select.tsx` | Fixed lists longer than 7, and the filter selects. |
-| Others | `ui/` | `avatar`, `checkbox`, `dropdown-menu`, `input`, `item`, `kbd`, `popover`, `scroll-area`, `separator`, `skeleton`, `sonner`, `spinner`, `switch`, `tabs`, `textarea`, `toggle`, `tooltip` |
+| Others | `ui/` | `avatar`, `checkbox`, `dropdown-menu`, `input`, `separator`, `skeleton`, `sonner`, `spinner`, `textarea`, `toggle`. Add another shadcn component when a page first needs it. |
 
 Button rules:
 
@@ -50,7 +50,6 @@ Use `Badge variant="outline"` for a neutral fact, such as "On the status page". 
 | `useListFilter`, `keeps`, `countLabel` | `lib/useListFilter.ts`, `lib/filter.ts` | Filter state, row test and the band count text. |
 | `TableEmpty` | `list/TableEmpty.tsx` | The empty state, always inside the card. See 3.5. |
 | `Overall` | `app/Overall.tsx` | One sentence above a list, with a tone bar on its left: "1 of 4 monitors is down." Takes a `ListSummary`. |
-| `Band` | `list/Band.tsx` | A paper strip that names a section of a card, with an optional count. |
 | `PageSearch` | `list/PageSearch.tsx` | Search beside a page title, for a page of cards rather than one table. |
 | `HistoryPager` | `app/History.tsx` | "Newest" and "Older" links under a history table. |
 | `Sparkline` | `app/Sparkline.tsx` | Monitors list: 24 hourly mean response times, failed hours shaded red. The line is the brand color. |

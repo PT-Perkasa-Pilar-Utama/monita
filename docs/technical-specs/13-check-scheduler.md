@@ -67,7 +67,7 @@ src/checks/retention.rs   pub async fn run(db: &Db, now: i64) -> anyhow::Result<
 | Non-goal | Where it lives |
 | --- | --- |
 | Decide incidents | [12](12-incident-engine.md) |
-| Deliver email | `notify::outbox` (the loop only triggers it) |
+| Deliver email | `notify::delivery` (`spawn_delivery`, `deliver_due`) (the loop only triggers it) |
 | Run on more than one instance against one DB | Out of scope. See [02 section 2.5](02-system-architecture.md#25-replication-model). |
 
 ## 13.7 Open follow-ups
