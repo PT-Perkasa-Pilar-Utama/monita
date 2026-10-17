@@ -2,66 +2,36 @@
 {% import "ui/macros.html" as ui %}
 {% block title %}Settings · {{ project.name }} · Monita{% endblock %}
 {% block content %}
-<div class="page-head"><h1>Settings</h1></div>
+<div class="page-head"><h1>General</h1></div>
 <div class="panels">
-  <section class="panel" id="general">
-    <div class="panel__head"><h2>General</h2></div>
-    <div class="panel__body stack">
-      <dl class="kv"><dt>Name</dt><dd>{{ project.name }}</dd><dt>Status page</dt><dd class="mono"><a class="link-quiet" href="/status/{{ project.slug }}">/status/{{ project.slug }}</a></dd><dt>Owner</dt><dd>{{ project.owner_email }}</dd><dt>Created</dt><dd>{{ self.utc(project.created_at) }}</dd></dl>
-      {% if shell.is_admin %}
-      <form class="form" method="post" action="/projects/{{ project.slug }}/owner">
-        <div class="field"><label class="label" for="owner_id">Reassign to</label>
-          <select class="select" id="owner_id" name="owner_id">
-            {% for u in owners %}<option value="{{ u.id }}"{% if u.id == project.owner_id %} selected{% endif %}>{{ u.email }}</option>{% endfor %}
-          </select>
-        </div>
-        <div class="form__actions"><button class="btn" type="submit">Reassign project</button></div>
-      </form>
-      {% endif %}
+  <section class="panel">
+    <div class="panel__head"><h2>Project</h2></div>
+    <div class="panel__body">
+      <dl class="kv"><dt>Name</dt><dd>{{ project.name }}</dd><dt>Slug</dt><dd class="mono">{{ project.slug }}</dd><dt>Status page</dt><dd class="mono"><a class="link-quiet" href="/status/{{ project.slug }}">/status/{{ project.slug }}</a></dd><dt>Created</dt><dd>{{ self.utc(project.created_at) }}</dd></dl>
     </div>
   </section>
-
-  <section class="panel panel--wide" id="keys">
-    <div class="panel__head"><h2>API keys</h2></div>
+  <section class="panel">
+    <div class="panel__head"><h2>Owner</h2>{% if shell.is_admin %}<button class="btn btn--sm" type="button" data-dialog="reassign">Reassign</button>{% endif %}</div>
     <div class="panel__body stack">
-      {% if let Some(key) = new_key %}
-      <div class="stack stack--sm">{% call ui::notice("ok", "Key created. Copy it now: Monita shows it only once.") %}{% endcall %}{% call ui::secret("new-key", key) %}{% endcall %}</div>
-      {% endif %}
-      <form class="form" method="post" action="/projects/{{ project.slug }}/keys">
-        {% call ui::input("key-name", "name", "Key name", "text", key_name, key_error) %}{% endcall %}
-        <div class="form__actions"><button class="btn btn--primary" type="submit">Create key</button></div>
-      </form>
+      <p class="table__title">{{ project.owner_email }}</p>
+      <p class="muted">The owner manages this project. A super admin can give it to another tech lead; its monitors, keys and tickets stay as they are.</p>
     </div>
-    {% if !keys.is_empty() %}
-    <div class="table-wrap">
-      <table class="table">
-        <thead><tr><th>Name</th><th>Key</th><th class="hide-sm">Last used</th><th class="t-right">Status</th></tr></thead>
-        <tbody>
-        {% for k in keys %}
-          <tr>
-            <td class="table__title">{{ k.name }}</td>
-            <td class="mono">{{ k.prefix }}…</td>
-            <td class="hide-sm">{{ self.ago(k.last_used_at) }}</td>
-            <td class="t-right">{% if k.revoked_at.is_some() %}{% call ui::state("unknown", "Revoked") %}{% endcall %}{% else %}<form method="post" action="/projects/{{ project.slug }}/keys/{{ k.id }}/revoke"><button class="btn btn--sm btn--danger" type="submit">Revoke</button></form>{% endif %}</td>
-          </tr>
-        {% endfor %}
-        </tbody>
-      </table>
-    </div>
-    {% endif %}
-  </section>
-
-  <section class="panel" id="allowlist">
-    <div class="panel__head"><h2>IP allowlist</h2><span class="tag">{% if project.ip_allowlist.is_some() %}On{% else %}Off{% endif %}</span></div>
-    <form class="panel__body form" method="post" action="/projects/{{ project.slug }}/allowlist">
-      <p class="muted">Only these addresses may use this project's API keys. Leave the list empty to allow any.</p>
-      <div class="field{% if !allowlist_error.is_empty() %} field--error{% endif %}">
-        <label class="label" for="cidrs">Allowed IPs</label>
-        <textarea class="textarea mono" id="cidrs" name="cidrs" placeholder="10.20.0.0/16&#10;192.168.1.5">{{ allowlist }}</textarea>
-        {% if !allowlist_error.is_empty() %}<span class="error">{{ allowlist_error }}</span>{% endif %}
-      </div>
-      <div class="form__actions"><button class="btn" type="submit">Save allowlist</button></div>
-    </form>
   </section>
 </div>
+{% if shell.is_admin %}
+<dialog class="dialog" id="reassign" aria-labelledby="reassign-title">
+  <form method="post" action="/projects/{{ project.slug }}/owner">
+    {% call ui::dialog_head("reassign", "Reassign this project") %}{% endcall %}
+    <div class="dialog__body">
+      <p>The new owner gets the project with its monitors, keys and tickets. The old owner loses access to it.</p>
+      <div class="field"><label class="label" for="owner_id">New owner</label>
+        <select class="select" id="owner_id" name="owner_id">
+          {% for u in owners %}<option value="{{ u.id }}"{% if u.id == project.owner_id %} selected{% endif %}>{{ u.email }}</option>{% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="dialog__foot"><button class="btn btn--ghost" type="button" data-close>Cancel</button><button class="btn btn--primary" type="submit">Reassign project</button></div>
+  </form>
+</dialog>
+{% endif %}
 {% endblock %}

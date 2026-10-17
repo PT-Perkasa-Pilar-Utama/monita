@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { createProject } from "../lib/project";
 import { authFile } from "../lib/roles";
 
 test.describe("as the TL", () => {
@@ -6,10 +7,7 @@ test.describe("as the TL", () => {
 
   test("@US-21 @US-22 a visitor sees public items only, with 90 day bars, and the same data as JSON", async ({ page, browser }) => {
     const slug = `s-${Date.now()}`;
-    await page.goto("/");
-    await page.getByLabel("Name").fill("Storefront");
-    await page.getByLabel("Slug").fill(slug);
-    await page.getByRole("button", { name: "Create project" }).click();
+    await createProject(page, "Storefront", slug);
 
     await page.goto(`/projects/${slug}/monitors/new`);
     await page.getByLabel("Name").fill("Checkout");

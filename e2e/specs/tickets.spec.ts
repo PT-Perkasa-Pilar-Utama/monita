@@ -1,15 +1,14 @@
 import { expect, test } from "@playwright/test";
+import { createProject } from "../lib/project";
 import { authFile } from "../lib/roles";
 
 test.use({ storageState: authFile("tl") });
 
 test("@US-23 @US-24 @US-25 @US-26 @US-28 @US-29 a reported bug goes public only after the TL triages it", async ({ page, browser }) => {
   const slug = `t-${Date.now()}`;
-  await page.goto("/");
-  await page.getByLabel("Name").fill("Shop");
-  await page.getByLabel("Slug").fill(slug);
-  await page.getByRole("button", { name: "Create project" }).click();
-  await page.goto(`/projects/${slug}/settings`);
+  await createProject(page, "Shop", slug);
+  await page.goto(`/projects/${slug}/settings/keys`);
+  await page.getByRole("button", { name: "New API key" }).click();
   await page.getByLabel("Key name").fill("backend");
   await page.getByRole("button", { name: "Create key" }).click();
   const key = (await page.locator("#new-key").textContent())!.trim();

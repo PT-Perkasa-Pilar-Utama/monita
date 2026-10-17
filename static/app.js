@@ -1,5 +1,8 @@
 // Copy buttons (<button data-copy="element-id">), the theme switch (<button data-theme-toggle>)
-// and filter bars (<form data-autosubmit>) that apply a select as soon as it changes.
+// filter bars (<form data-autosubmit>) that apply a select as soon as it changes, and dialogs:
+// <button data-dialog="id"> opens <dialog id>, [data-close] closes it, and <dialog data-open> opens
+// on load because its form came back with an error. A submit button with data-confirm asks first
+// in the shared #confirm dialog; without this script the form submits at once.
 // theme.js applies a saved theme before the first paint.
 document.addEventListener("click", (event) => {
   if (!event.target.closest("[data-theme-toggle]")) return;
@@ -36,4 +39,31 @@ document.addEventListener("click", async (event) => {
 document.addEventListener("change", (event) => {
   const form = event.target.closest("form[data-autosubmit]");
   if (form && event.target.matches("select")) form.requestSubmit();
+});
+
+document.addEventListener("click", (event) => {
+  const opener = event.target.closest("[data-dialog]");
+  if (opener) document.getElementById(opener.dataset.dialog)?.showModal();
+  if (event.target.closest("[data-close]")) event.target.closest("dialog")?.close();
+  // A click on the backdrop lands on the dialog element itself.
+  if (event.target.matches("dialog")) event.target.close();
+});
+for (const dialog of document.querySelectorAll("dialog[data-open]")) dialog.showModal();
+
+document.addEventListener("submit", (event) => {
+  const form = event.target;
+  const button = event.submitter;
+  if (!button?.dataset.confirm || form.dataset.confirmed) return;
+  event.preventDefault();
+  const dialog = document.getElementById("confirm");
+  dialog.querySelector("#confirm-title").textContent = button.dataset.confirm;
+  dialog.querySelector("#confirm-text").textContent = button.dataset.confirmText ?? "";
+  const yes = dialog.querySelector("#confirm-yes");
+  yes.textContent = button.textContent.trim();
+  yes.onclick = () => {
+    form.dataset.confirmed = "yes";
+    dialog.close();
+    form.requestSubmit(button);
+  };
+  dialog.showModal();
 });

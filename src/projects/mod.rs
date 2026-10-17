@@ -3,6 +3,7 @@
 
 mod allowlist;
 pub mod routes;
+mod settings_routes;
 mod store;
 
 use axum::{

@@ -1,14 +1,12 @@
 import { expect, test } from "@playwright/test";
+import { createProject } from "../lib/project";
 import { authFile } from "../lib/roles";
 
 test.use({ storageState: authFile("tl") });
 
 async function newProject(page: import("@playwright/test").Page): Promise<string> {
   const slug = `c-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-  await page.goto("/");
-  await page.getByLabel("Name").fill("Checks");
-  await page.getByLabel("Slug").fill(slug);
-  await page.getByRole("button", { name: "Create project" }).click();
+  await createProject(page, "Checks", slug);
   return slug;
 }
 

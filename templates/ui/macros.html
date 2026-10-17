@@ -16,6 +16,9 @@
 
 {% macro option(m_value, m_label, m_current) %}<option value="{{ m_value }}"{% if m_current == m_value %} selected{% endif %}>{{ m_label }}</option>{% endmacro %}
 
+{# A dialog's header band: its title and a close button. The body and footer follow in the caller. #}
+{% macro dialog_head(m_id, m_title) %}<div class="dialog__head"><h2 id="{{ m_id }}-title">{{ m_title }}</h2><button class="btn btn--ghost btn--icon" type="button" data-close aria-label="Close">{% call icon("x") %}{% endcall %}</button></div>{% endmacro %}
+
 {% macro empty(m_title, m_text) %}<div class="empty"><h3>{{ m_title }}</h3><p>{{ m_text }}</p></div>{% endmacro %}
 
 {% macro input(m_id, m_name, m_label, m_type, m_value, m_error) %}

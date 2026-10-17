@@ -47,8 +47,8 @@
     <nav class="sidenav" aria-label="Settings">
       <a href="/projects/{{ p.slug }}/settings"{% if shell.active == "settings" %} aria-current="page"{% endif %}>{% call ui::icon("settings") %}{% endcall %}General</a>
       <a href="/projects/{{ p.slug }}/alerts"{% if shell.active == "alerts" %} aria-current="page"{% endif %}>{% call ui::icon("bell") %}{% endcall %}Alerts</a>
-      <a href="/projects/{{ p.slug }}/settings#keys">{% call ui::icon("key") %}{% endcall %}API keys</a>
-      <a href="/projects/{{ p.slug }}/settings#allowlist">{% call ui::icon("shield") %}{% endcall %}Allowlist</a>
+      <a href="/projects/{{ p.slug }}/settings/keys"{% if shell.active == "keys" %} aria-current="page"{% endif %}>{% call ui::icon("key") %}{% endcall %}API keys</a>
+      <a href="/projects/{{ p.slug }}/settings/allowlist"{% if shell.active == "allowlist" %} aria-current="page"{% endif %}>{% call ui::icon("shield") %}{% endcall %}Allowlist</a>
     </nav>
     {% endif %}{% else if shell.area() == "admin" %}
     <nav class="sidenav" aria-label="Admin">
@@ -61,5 +61,10 @@
       {% block content %}{% endblock %}
     </div>
   </main>
+  <dialog class="dialog" id="confirm" aria-labelledby="confirm-title">
+    {% call ui::dialog_head("confirm", "Are you sure?") %}{% endcall %}
+    <p class="dialog__body" id="confirm-text"></p>
+    <div class="dialog__foot"><button class="btn btn--ghost" type="button" data-close>Cancel</button><button class="btn btn--danger" type="button" id="confirm-yes">Confirm</button></div>
+  </dialog>
 </div>
 {% endblock %}

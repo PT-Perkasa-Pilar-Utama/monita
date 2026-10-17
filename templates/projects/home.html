@@ -2,38 +2,32 @@
 {% import "ui/macros.html" as ui %}
 {% block title %}Projects · Monita{% endblock %}
 {% block content %}
-<div class="page-head"><h1>Projects</h1></div>
-<div class="split">
-  <section class="panel">
-    {% if projects.is_empty() %}
-      {% call ui::empty("Create your first project", "A project groups the monitors, heartbeats and tickets of one system. Create the first one below.") %}{% endcall %}
-    {% else %}
-    <div class="table-wrap">
-      <table class="table">
-        <thead><tr><th>Project</th><th class="hide-sm">Owner</th><th class="t-right">Status page</th></tr></thead>
-        <tbody>
-        {% for p in projects %}
-          <tr>
-            <td><a class="table__title" href="/projects/{{ p.slug }}/monitors">{{ p.name }}</a><div class="table__sub">{{ p.slug }}</div></td>
-            <td class="hide-sm">{{ p.owner_email }}</td>
-            <td class="t-right"><a class="link-quiet mono" href="/status/{{ p.slug }}">/status/{{ p.slug }}</a></td>
-          </tr>
-        {% endfor %}
-        </tbody>
-      </table>
-    </div>
-    {% endif %}
-  </section>
-  <section class="panel">
-    <div class="panel__head"><h2>New project</h2></div>
-    <form class="panel__body form" method="post" action="/projects">
-      {% if !error.is_empty() %}{% call ui::notice("error", error) %}{% endcall %}{% endif %}
-      <div class="field__row">
-        {% call ui::input("name", "name", "Name", "text", name, "") %}{% endcall %}
-        {% call ui::input("slug", "slug", "Slug", "text", slug, "") %}{% endcall %}
-      </div>
-      <div class="form__actions"><button class="btn btn--primary" type="submit">Create project</button></div>
-    </form>
-  </section>
+<div class="page-head"><h1>Projects</h1><div class="page-actions"><button class="btn btn--primary btn--sm" type="button" data-dialog="new-project">{% call ui::icon("plus") %}{% endcall %}New project</button></div></div>
+{% if projects.is_empty() %}
+<section class="panel">
+  {% call ui::empty("Create your first project", "A project groups the monitors, heartbeats and tickets of one system, and gets its own status page.") %}{% endcall %}
+</section>
+{% else %}
+<div class="pcards">
+  {% for p in projects %}
+  <a class="pcard" href="/projects/{{ p.slug }}">
+    <span class="pcard__top"><span class="switcher__badge pcard__badge">{{ self.initial(p) }}</span><span class="pcard__name"><strong>{{ p.name }}</strong><span class="mono">{{ p.slug }}</span></span></span>
+    <span class="pcard__foot"><span><span class="pcard__key">Owner</span>{{ p.owner_email }}</span><span><span class="pcard__key">Status page</span><span class="mono">/status/{{ p.slug }}</span></span></span>
+  </a>
+  {% endfor %}
+  <button class="pcard pcard--add" type="button" data-dialog="new-project">{% call ui::icon("plus") %}{% endcall %}Add a project</button>
 </div>
+{% endif %}
+<dialog class="dialog" id="new-project" aria-labelledby="new-project-title"{% if !error.is_empty() %} data-open{% endif %}>
+  <form method="post" action="/projects">
+    {% call ui::dialog_head("new-project", "New project") %}{% endcall %}
+    <div class="dialog__body">
+      {% if !error.is_empty() %}{% call ui::notice("error", error) %}{% endcall %}{% endif %}
+      {% call ui::input("name", "name", "Name", "text", name, "") %}{% endcall %}
+      {% call ui::input("slug", "slug", "Slug", "text", slug, "") %}{% endcall %}
+      <p class="help">Lowercase letters, digits and dashes. The status page lives at /status/ and then the slug.</p>
+    </div>
+    <div class="dialog__foot"><button class="btn btn--ghost" type="button" data-close>Cancel</button><button class="btn btn--primary" type="submit">Create project</button></div>
+  </form>
+</dialog>
 {% endblock %}

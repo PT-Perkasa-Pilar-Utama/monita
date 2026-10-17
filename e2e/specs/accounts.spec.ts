@@ -7,6 +7,7 @@ test.describe("as the super admin", () => {
   test("@US-02 @US-03 super admin invites a TL, who sets a password and lands on projects", async ({ page, browser }) => {
     const email = `tl-${Date.now()}@monita.test`;
     await page.goto("/admin/users");
+    await page.getByRole("button", { name: "Invite tech lead" }).click();
     await page.getByLabel("Email").fill(email);
     await page.getByRole("button", { name: "Send invite" }).click();
     await expect(page.getByRole("status")).toContainText(`Invite queued for ${email}`);

@@ -110,7 +110,7 @@ impl Shell {
     /// The pages that share a left sidebar: a project's settings, or the admin pages.
     pub fn area(&self) -> &'static str {
         match self.active {
-            "settings" | "alerts" => "settings",
+            "settings" | "keys" | "allowlist" | "alerts" => "settings",
             "users" | "limits" => "admin",
             _ => "",
         }

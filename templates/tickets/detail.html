@@ -3,7 +3,12 @@
 {% block title %}#{{ ticket.number }} {{ ticket.title }} · Monita{% endblock %}
 {% block crumbs %}<a class="link-quiet" href="/projects/{{ project.slug }}/tickets">Tickets</a><span class="subtle">/</span><strong>#{{ ticket.number }}</strong>{% endblock %}
 {% block content %}
-<div class="page-head"><div class="page-title"><h1>{{ ticket.title }}</h1><span class="count">#{{ ticket.number }}</span></div></div>
+<header class="hero">
+  <div class="hero__body">
+    <h1>{{ ticket.title }}</h1>
+    <p class="hero__meta"><span class="mono">#{{ ticket.number }}</span></p>
+  </div>
+</header>
 {% if !error.is_empty() %}{% call ui::notice("error", error) %}{% endcall %}{% endif %}
 <div class="cols">
   <section class="panel">
@@ -17,7 +22,7 @@
         <dt>Ref ID</dt><dd>{% if ticket.ref_revoked %}Revoked{% else %}Active{% endif %}</dd>
       </dl>
       {% if !ticket.ref_revoked %}
-      <form method="post" action="/projects/{{ project.slug }}/tickets/{{ ticket.number }}/revoke-ref"><button class="btn btn--danger btn--sm" type="submit">Revoke this reporter's ref ID</button></form>
+      <form method="post" action="/projects/{{ project.slug }}/tickets/{{ ticket.number }}/revoke-ref"><button class="btn btn--danger btn--sm" type="submit" data-confirm="Revoke this ref ID?" data-confirm-text="The reporter can no longer file tickets with it. You cannot undo this.">Revoke this reporter's ref ID</button></form>
       {% endif %}
     </div>
   </section>

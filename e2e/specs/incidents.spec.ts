@@ -1,14 +1,12 @@
 import { expect, type Page, test } from "@playwright/test";
+import { createProject } from "../lib/project";
 import { authFile } from "../lib/roles";
 
 test.use({ storageState: authFile("tl") });
 
 async function projectWithHeartbeat(page: Page): Promise<{ slug: string; pingUrl: string }> {
   const slug = `i-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-  await page.goto("/");
-  await page.getByLabel("Name").fill("Incidents");
-  await page.getByLabel("Slug").fill(slug);
-  await page.getByRole("button", { name: "Create project" }).click();
+  await createProject(page, "Incidents", slug);
   await page.goto(`/projects/${slug}/heartbeats/new`);
   await page.getByLabel("Name").fill("nightly-settlement");
   await page.getByRole("button", { name: "Save heartbeat" }).click();
@@ -39,17 +37,19 @@ test("@US-14 @US-17 @US-18 @US-19 a failing job opens an incident, the TL update
   await expect(page.getByText("settle.sh: bank API timed out").first()).toBeVisible();
 
   await page.getByRole("button", { name: "Post update" }).click();
-  await expect(page.getByRole("alert")).toHaveText("Write a message.");
-  await page.getByLabel("Label").selectOption("identified");
-  await page.getByLabel("Message").fill("The bank rotated its certificate. Updating the trust store.");
-  await page.getByRole("button", { name: "Post update" }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("button", { name: "Post update" }).click();
+  await expect(dialog.getByRole("alert")).toHaveText("Write a message.");
+  await dialog.getByLabel("Label").selectOption("identified");
+  await dialog.getByLabel("Message").fill("The bank rotated its certificate. Updating the trust store.");
+  await dialog.getByRole("button", { name: "Post update" }).click();
   await expect(page.locator(".comment")).toHaveText("The bank rotated its certificate. Updating the trust store.");
 
   await page.waitForTimeout(1_100);
   expect((await page.request.get(pingUrl)).status()).toBe(200);
   await page.reload();
   await expect(page.getByText(/Recovered after/)).toBeVisible();
-  await expect(page.locator(".page-head .state")).toContainText("Resolved");
+  await expect(page.locator(".hero .state")).toContainText("Resolved");
 });
 
 test("@US-20 TL reports an incident by hand and resolves it", async ({ page }) => {
@@ -68,8 +68,10 @@ test("@US-20 TL reports an incident by hand and resolves it", async ({ page }) =
 
   await page.goto(`/projects/${slug}/incidents`);
   await page.getByRole("link", { name: "Slow settlement reports" }).click();
-  await page.getByLabel("Label").selectOption("resolved");
-  await page.getByLabel("Message").fill("Index added. Reports take 90 seconds.");
   await page.getByRole("button", { name: "Post update" }).click();
-  await expect(page.locator(".page-head .state")).toContainText("Resolved");
+  const dialog = page.getByRole("dialog");
+  await dialog.getByLabel("Label").selectOption("resolved");
+  await dialog.getByLabel("Message").fill("Index added. Reports take 90 seconds.");
+  await dialog.getByRole("button", { name: "Post update" }).click();
+  await expect(page.locator(".hero .state")).toContainText("Resolved");
 });

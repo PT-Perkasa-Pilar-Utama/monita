@@ -10,15 +10,13 @@ use axum::{
 };
 use serde::Deserialize;
 
-use super::{ApiKeyRow, Project, ProjectError};
+use super::{Project, ProjectError};
 use crate::{
-    accounts::{AdminUser, CurrentUser, User, UserRow},
+    accounts::{CurrentUser, User},
     app::AppState,
     platform::{
-        now,
         page::{PageError, Shell},
         render::render,
-        time,
     },
 };
 
@@ -27,11 +25,7 @@ pub fn router() -> Router<AppState> {
         .route("/", get(home))
         .route("/projects", post(create))
         .route("/projects/{slug}", get(open))
-        .route("/projects/{slug}/settings", get(settings))
-        .route("/projects/{slug}/owner", post(reassign))
-        .route("/projects/{slug}/keys", post(create_key))
-        .route("/projects/{slug}/keys/{id}/revoke", post(revoke_key))
-        .route("/projects/{slug}/allowlist", post(allowlist))
+        .merge(super::settings_routes::router())
 }
 
 #[derive(Template)]
@@ -42,6 +36,12 @@ struct Home {
     name: String,
     slug: String,
     error: String,
+}
+
+impl Home {
+    fn initial(&self, p: &Project) -> char {
+        p.name.chars().next().unwrap_or('?').to_ascii_uppercase()
+    }
 }
 
 async fn home_view(
@@ -97,150 +97,4 @@ async fn open(
 ) -> Result<Response, PageError> {
     let p = super::find_for(&state.db, &user, &slug).await?;
     Ok(Redirect::to(&format!("/projects/{}/monitors", p.slug)).into_response())
-}
-
-#[derive(Template)]
-#[template(path = "projects/settings.html")]
-struct Settings {
-    shell: Shell,
-    project: Project,
-    keys: Vec<ApiKeyRow>,
-    /// Who `reassign` accepts: the acting super admin first, then every active TL.
-    owners: Vec<UserRow>,
-    new_key: Option<String>,
-    key_name: String,
-    key_error: String,
-    allowlist: String,
-    allowlist_error: String,
-    now: i64,
-}
-
-impl Settings {
-    fn ago(&self, ts: &Option<i64>) -> String {
-        ts.map(|t| time::ago(t, self.now))
-            .unwrap_or_else(|| "never".into())
-    }
-    fn utc(&self, ts: &i64) -> String {
-        time::utc(*ts)
-    }
-}
-
-async fn settings_view(
-    state: &AppState,
-    user: &User,
-    project: Project,
-) -> Result<Settings, PageError> {
-    let keys = super::list_keys(&state.db, project.id).await?;
-    let owners = if user.is_admin() {
-        super::eligible_owners(&state.db, user).await?
-    } else {
-        Vec::new()
-    };
-    Ok(Settings {
-        shell: super::shell(&state.db, user, "settings", Some(&project)).await?,
-        allowlist: project
-            .ip_allowlist
-            .clone()
-            .unwrap_or_default()
-            .replace(',', "\n"),
-        project,
-        keys,
-        owners,
-        new_key: None,
-        key_name: String::new(),
-        key_error: String::new(),
-        allowlist_error: String::new(),
-        now: now(),
-    })
-}
-
-async fn settings(
-    State(state): State<AppState>,
-    CurrentUser(user): CurrentUser,
-    Path(slug): Path<String>,
-) -> Result<Response, PageError> {
-    let p = super::find_for(&state.db, &user, &slug).await?;
-    Ok(render(&settings_view(&state, &user, p).await?))
-}
-
-#[derive(Deserialize, Default)]
-#[serde(default)]
-struct OwnerForm {
-    owner_id: String,
-}
-
-async fn reassign(
-    State(state): State<AppState>,
-    AdminUser(admin): AdminUser,
-    Path(slug): Path<String>,
-    Form(f): Form<OwnerForm>,
-) -> Result<Response, PageError> {
-    let p = super::find_for(&state.db, &admin, &slug).await?;
-    // No user has id 0, so a blank or bad value is the same 404 as an unknown one.
-    let owner_id = f.owner_id.trim().parse().unwrap_or(0);
-    super::reassign(&state.db, p.id, owner_id, &admin).await?;
-    Ok(Redirect::to(&format!("/projects/{slug}/settings")).into_response())
-}
-
-#[derive(Deserialize)]
-struct KeyForm {
-    name: String,
-}
-
-async fn create_key(
-    State(state): State<AppState>,
-    CurrentUser(user): CurrentUser,
-    Path(slug): Path<String>,
-    Form(f): Form<KeyForm>,
-) -> Result<Response, PageError> {
-    let p = super::find_for(&state.db, &user, &slug).await?;
-    let created = super::create_key(&state.db, p.id, &f.name).await;
-    let mut page = settings_view(&state, &user, p).await?;
-    match created {
-        Ok(raw) => {
-            page.new_key = Some(raw);
-            Ok(render(&page))
-        }
-        Err(ProjectError::Other(e)) => Err(e.into()),
-        Err(e) => {
-            page.key_name = f.name;
-            page.key_error = e.to_string();
-            Ok((StatusCode::UNPROCESSABLE_ENTITY, render(&page)).into_response())
-        }
-    }
-}
-
-async fn revoke_key(
-    State(state): State<AppState>,
-    CurrentUser(user): CurrentUser,
-    Path((slug, id)): Path<(String, i64)>,
-) -> Result<Response, PageError> {
-    let p = super::find_for(&state.db, &user, &slug).await?;
-    super::revoke_key(&state.db, p.id, id).await?;
-    Ok(Redirect::to(&format!("/projects/{slug}/settings")).into_response())
-}
-
-#[derive(Deserialize)]
-struct AllowlistForm {
-    cidrs: String,
-}
-
-async fn allowlist(
-    State(state): State<AppState>,
-    CurrentUser(user): CurrentUser,
-    Path(slug): Path<String>,
-    Form(f): Form<AllowlistForm>,
-) -> Result<Response, PageError> {
-    let p = super::find_for(&state.db, &user, &slug).await?;
-    let project_id = p.id;
-    match super::set_allowlist(&state.db, project_id, &f.cidrs).await {
-        Ok(()) => Ok(Redirect::to(&format!("/projects/{slug}/settings")).into_response()),
-        Err(ProjectError::Other(e)) => Err(e.into()),
-        Err(e) => {
-            let mut page = settings_view(&state, &user, p).await?;
-            page.allowlist = f.cidrs;
-            page.allowlist_error = e.to_string();
-            Ok((StatusCode::UNPROCESSABLE_ENTITY, render(&page)).into_response())
-        }
-    }
 }

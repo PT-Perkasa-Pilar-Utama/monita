@@ -1,0 +1,18 @@
+{% extends "layout/app.html" %}
+{% import "ui/macros.html" as ui %}
+{% block title %}Allowlist · {{ project.name }} · Monita{% endblock %}
+{% block content %}
+<div class="page-head"><h1>Allowlist</h1></div>
+<section class="panel panel--form">
+  <div class="panel__head"><h2>Allowed IP addresses</h2><span class="tag">{% if project.ip_allowlist.is_some() %}On{% else %}Off{% endif %}</span></div>
+  <form class="panel__body form" method="post" action="/projects/{{ project.slug }}/allowlist">
+    <p class="muted">Only these addresses may use this project's API keys. Leave the list empty to allow any address.</p>
+    <div class="field{% if !error.is_empty() %} field--error{% endif %}">
+      <label class="label" for="cidrs">One address or CIDR range per line</label>
+      <textarea class="textarea mono" id="cidrs" name="cidrs" placeholder="10.20.0.0/16&#10;192.168.1.5"{% if !error.is_empty() %} aria-invalid="true" aria-describedby="cidrs-error"{% endif %}>{{ cidrs }}</textarea>
+      {% if !error.is_empty() %}<span class="error" id="cidrs-error">{{ error }}</span>{% endif %}
+    </div>
+    <div class="form__actions"><button class="btn btn--primary" type="submit">Save allowlist</button></div>
+  </form>
+</section>
+{% endblock %}

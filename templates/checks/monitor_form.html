@@ -33,7 +33,7 @@
     <div class="form__actions"><button class="btn btn--primary" type="submit">Save monitor</button><a class="btn btn--ghost" href="/projects/{{ project.slug }}/monitors">Cancel</a></div>
   </form>
   {% if let Some(id) = id %}
-  <form class="panel__body" method="post" action="/projects/{{ project.slug }}/monitors/{{ id }}/delete"><button class="btn btn--danger btn--sm" type="submit">Delete monitor and its checks</button></form>
+  <form class="panel__body" method="post" action="/projects/{{ project.slug }}/monitors/{{ id }}/delete"><button class="btn btn--danger btn--sm" type="submit" data-confirm="Delete this monitor?" data-confirm-text="Monita deletes the monitor and every check it ran. You cannot undo this.">Delete monitor and its checks</button></form>
   {% endif %}
 </section>
 <aside class="form-aside">

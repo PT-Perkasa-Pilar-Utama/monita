@@ -28,7 +28,7 @@
     <div class="form__actions"><button class="btn btn--primary" type="submit">Save heartbeat</button><a class="btn btn--ghost" href="/projects/{{ project.slug }}/heartbeats">Cancel</a></div>
   </form>
   {% if let Some(id) = id %}
-  <form class="panel__body" method="post" action="/projects/{{ project.slug }}/heartbeats/{{ id }}/delete"><button class="btn btn--danger btn--sm" type="submit">Delete heartbeat and its pings</button></form>
+  <form class="panel__body" method="post" action="/projects/{{ project.slug }}/heartbeats/{{ id }}/delete"><button class="btn btn--danger btn--sm" type="submit" data-confirm="Delete this heartbeat?" data-confirm-text="Monita deletes the heartbeat and every ping it got. A job that still calls its URL gets 404. You cannot undo this.">Delete heartbeat and its pings</button></form>
   {% endif %}
 </section>
 <aside class="form-aside">

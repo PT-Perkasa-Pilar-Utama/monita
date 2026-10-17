@@ -100,7 +100,7 @@ async fn another_tl_cannot_see_the_project() {
             .text()
             .await
             .unwrap()
-            .contains("/projects/payments/")
+            .contains("/projects/payments")
     );
 }
 
@@ -228,13 +228,14 @@ async fn a_key_is_shown_once_works_and_stops_when_revoked() {
     project(&app, &tl, "Payments", "payments").await;
     let key = new_key(&app, &tl, "payments").await;
     assert_eq!(key.len(), 29, "mk_ + 26 base32 chars");
-    let settings = app
-        .get("/projects/payments/settings", Some(&tl))
+    let keys_page = app
+        .get("/projects/payments/settings/keys", Some(&tl))
         .await
         .text()
         .await
         .unwrap();
-    assert!(!settings.contains(&key), "the full key appears only once");
+    assert!(keys_page.contains("backend-prod") && keys_page.contains(&key[..7]));
+    assert!(!keys_page.contains(&key), "the full key appears only once");
 
     let reusable = ref_id(&app, Some(&key), serde_json::json!({})).await;
     assert_eq!(reusable.status(), 201);
@@ -257,12 +258,14 @@ async fn a_key_is_shown_once_works_and_stops_when_revoked() {
     );
 
     let keys = monita::projects::list_keys(&app.state.db, 1).await.unwrap();
-    app.post_form(
-        &format!("/projects/payments/keys/{}/revoke", keys[0].id),
-        &[],
-        Some(&tl),
-    )
-    .await;
+    let res = app
+        .post_form(
+            &format!("/projects/payments/keys/{}/revoke", keys[0].id),
+            &[],
+            Some(&tl),
+        )
+        .await;
+    assert_eq!(location(&res), "/projects/payments/settings/keys");
     let revoked = ref_id(&app, Some(&key), Value::Null).await;
     assert_eq!(revoked.status(), 401);
     let err: Value = revoked.json().await.unwrap();
@@ -276,13 +279,13 @@ async fn the_allowlist_is_off_by_default_and_blocks_other_ips() {
     let tl = app.tl("rina@x.co").await;
     project(&app, &tl, "Payments", "payments").await;
     let key = new_key(&app, &tl, "payments").await;
-    let settings = app
-        .get("/projects/payments/settings", Some(&tl))
+    let page = app
+        .get("/projects/payments/settings/allowlist", Some(&tl))
         .await
         .text()
         .await
         .unwrap();
-    assert!(settings.contains("IP allowlist</h2><span class=\"tag\">Off"));
+    assert!(page.contains("Allowed IP addresses</h2><span class=\"tag\">Off"));
     assert_eq!(ref_id(&app, Some(&key), Value::Null).await.status(), 201);
 
     let res = app
@@ -292,7 +295,7 @@ async fn the_allowlist_is_off_by_default_and_blocks_other_ips() {
             Some(&tl),
         )
         .await;
-    assert_eq!(res.status(), 303);
+    assert_eq!(location(&res), "/projects/payments/settings/allowlist");
     let blocked = ref_id(&app, Some(&key), Value::Null).await;
     assert_eq!(
         blocked.status(),
