@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import type { ReactElement } from "react";
-import * as SelectPrimitive from "@radix-ui/react-select";
+import { Select as SelectPrimitive } from "radix-ui";
 import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from "@/components/icons";
 
 import { cn } from "@/lib/utils";
