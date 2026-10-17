@@ -18,26 +18,31 @@ Templates call the macros in `templates/ui/macros.html`. They never repeat the m
 | Overall line | `.overall` + `--down`, `--issue`, `--unknown` | none | One sentence above a list that sums up its state: "1 of 4 monitors is down." |
 | Sparkline | `svg.spark` > `.spark__line`, `.spark__fail` | none | The monitors list: 24 hourly mean response times from `checks::overview`, with failed hours shaded red. |
 | Deadline bar | `svg.due` > `.due__track`, `.due__fill`, `.due--late` | none | The heartbeats list: the share of the wait before the deadline that has passed. |
-| Top bar and tabs | `.appbar-band` > `.appbar` (`.appbar__brand`, `.appbar__project`, `.appbar__end`, `.appbar__link`) and `.tabbar` > `a[aria-current="page"]`, `.tabbar__end` | none | One sticky band. The tab bar shows a project's areas; the open one takes the brand underline. It scrolls sideways on its own on a phone. |
+| Top bar and tabs | `.appbar-band` > `.appbar` (`.appbar__brand`, `.appbar__project`, `.appbar__end`, `.appbar__link`) and `.tabbar` > `a[aria-current="page"]`, `.tabbar__count`, `.tabbar__end` | none | One sticky band. The top bar's area links (Projects, Admin) show the current area as a raised pill. The tab bar shows a project's areas with a count beside Monitors, Heartbeats, open Incidents and open Tickets; the open tab takes an inset brand underline. It scrolls sideways on a phone. |
 | Account menu | `button.user` (`popovertarget`, `aria-label="Account: …"`) > `.user__avatar`; `.menu[popover]` > `.menu__who`, `.menu__item`, `.menu__item--danger`, `.menu__rule` | none | The avatar at the top bar's right end. The menu holds All projects, the theme switch and Sign out, so signing out takes two clicks. The Admin menu uses the same `.menu`. Esc and a click outside close both. |
-| Side navigation | `.content--side` > `.sidenav` > `a[aria-current="page"]`, `.content__main` | none | Only an area with sub-pages: a project's Settings (General, Alerts, API keys, Allowlist) and Admin (Users, System). A row of links on a phone. |
+| Side navigation | `.content--side` > `.sidenav` > `a[aria-current="page"]`, `.content__main` | none | Only an area with sub-pages: a project's Settings (General, Alerts, API keys, Allowlist) and Admin (Users, System). Each link has an icon; the current one is a raised card with a 2 px brand bar on its left. A row of links on a phone. |
 | Panels | `.panels` > `.panel`, `.panel--wide` | none | Two panels side by side from 1180 px; a wide panel takes the row. Settings, alerts and System. |
 | Tally | `.tally` > `.tally__cell` + `--wait`, `--bad`, `.tally__n` | none | Three counts side by side, such as emails sent, waiting and failed. |
 | Range | `svg.range` > `.range__track`, `.range__fill`, `.range__default` | none | Where a limit sits between 1 and its maximum on a log scale, with a mark at the default; or a cap's use. |
 | Limit row | `.limits` > `.limits__group` > `.limit` > `.limit__text`, `.limit__set` | none | One editable limit: what it does, its input, its range and its default. |
 | Cap card | `.caps` > `.capcard`, `.capcard__n` | none | A fixed cap, with its use when Monita counts it. |
-| Tabs | `.tabs` > `a[aria-current="page"]` | `tabs(items, current)` | Project settings sections, ticket views |
+| Page head | `.page-head` > `h1` + `.page-actions` | none | One row: the title, then the page's actions at the right end. A detail page uses `.hero` with `.page-actions` instead. |
+| Breadcrumbs | `nav.crumbs` | none | Detail and form pages only, above the title: "Monitors / API". Hidden when empty. |
+| Table bar | `.tablebar` > `.tablebar__count`, `.tablebar__tools` (`.tablebar__search`, `.select--sm`) | `option(value, label, current)` | The band on top of a table panel: the count on the left ("2 of 4 monitors"), then search and filters as a `GET` form. A select applies at once (`data-autosubmit`); Enter applies the search. |
+| Project card | `.pcards` > `a.pcard` (`.pcard__top`, `.pcard__badge`, `.pcard__name`, `.pcard__foot`), `.pcard--add` | none | The projects home: one card per project with a footer band of facts, then a dashed card that opens New project. |
+| Tile | `.tiles` > `a.tile` > `.tile__icon`, `.tile__body`, `.tile__text`, `.tile__go` | none | The project Overview: one tile per area with its state ring and one sentence. |
+| About column | `aside.about` > `h2`, `ul.facts`, `ul.facts--stats` | none | The project Overview's right column: icon facts, then counts. |
 | Uptime bar | `.uptime`, `.uptime__bars` > `span.is-partial / .is-down / .is-none`, `.uptime__legend` | `uptime(days)` | 90 spans, oldest first. `title` gives date and uptime. |
 | Timeline | `.timeline`, `.timeline__item`, `.timeline__mark`, `.timeline__meta`, `.timeline__body`, `.comment` | `timeline_item(update)` | Status updates, newest first. TL updates in `.comment`, Monita's own entries as plain text. |
-| Board | `.board`, `.board__col`, `.board__head`, `.board__count`, `.card`, `.card__title`, `.card__meta` | `ticket_card(ticket)` | Kanban. The column head carries the stage ring. |
+| Board | `.board`, `.board__col`, `.board__head`, `.board__count`, `.card`, `.card__title`, `.card__meta` | `ticket_card(ticket)` | The ticket board. The column head carries the stage ring. |
 | Status headline | `.headline` | `headline(state, text)` | Top of the public status page |
 | Notice | `.notice` + `--ok`, `--error` | `notice(kind, text)` | Result of the last action, or a page-level error |
 | Secret | `.secret` > `code` + copy button | `secret(value)` | API key shown once, ping URL |
 | Key-value | `.kv` (`dl`) | none | Incident facts, monitor settings |
 | Empty state | `.empty` | `empty(title, text, action)` | Every list with no rows says what the thing is and how to add the first one. |
-| Dialog | `dialog.dialog`, `.dialog__body`, `.dialog__foot` | `confirm(id, title, text, action)` | Confirm revoke and delete. Native `<dialog>`, no JS library. |
+| Dialog | `dialog.dialog` > `.dialog__head`, `.dialog__body`, `.dialog__foot` | `dialog_head(id, title)` | Native `<dialog>`. A button with `data-dialog="id"` opens it; `data-close` closes it; `data-open` opens it on load when its form came back with an error. Quick creates: New project, Invite tech lead, New API key, Post update, Reassign. |
+| Confirm | `button[data-confirm][data-confirm-text]` and the shared `#confirm` dialog in the app layout | none | Risky actions ask first: delete a monitor or heartbeat, revoke a key or ref ID, disable a user. The dialog's button repeats the action's label. Without the script the form submits at once. |
 | Caption | `.cap` | none | 12 px muted sentence case. Never an uppercase label above a title. |
-| Title count | `.page-title` > `h1` + `.count` | none | A number beside a page title: "Monitors 4" |
 | Quiet link | `.link-quiet` | none | "Known issues →". Arrows live here, never inside buttons. |
 | Detail hero | `.hero`, `.orb` + `--down`, `--issue`, `--unknown`, `.hero__state`, `.tag` | none | Top of a monitor or heartbeat page: live state, name, cadence |
 | Stat | `.stats` > `.stat` + `--up`, `--down` | `checks/insight.html` | Four numbers under the hero |

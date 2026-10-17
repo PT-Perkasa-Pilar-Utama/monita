@@ -34,8 +34,8 @@ Sign in as `tl@monita.test` with the password `monita-dev-password`.
 
 ## Add a project
 
-1. On **Projects**, enter a name and a slug. The slug is part of the status page URL: `/status/<slug>`.
-2. Open the project. Its menu holds monitors, heartbeats, incidents, tickets, alerts and settings.
+1. On **Projects**, select **New project**. Enter a name and a slug. The slug is part of the status page URL: `/status/<slug>`.
+2. Open the project. Its tabs are Overview, Monitors, Heartbeats, Incidents, Tickets and Settings. Settings holds General, Alerts, API keys and Allowlist.
 
 ## Watch a URL
 

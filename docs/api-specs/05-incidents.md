@@ -6,7 +6,7 @@ Rules: [../technical-specs/12-incident-engine.md](../technical-specs/12-incident
 
 | Method | Path | Access | Input | Behavior | AC |
 | --- | --- | --- | --- | --- | --- |
-| GET | `/projects/{slug}/incidents` | owner, super_admin | `?state=open\|resolved` | List: title, severity, origin, start, duration | |
+| GET | `/projects/{slug}/incidents` | owner, super_admin | `?state=resolved` (open when absent), `?q=` (title or INC id), `?severity=critical\|warning` | List: title, severity, origin, start, duration. The filters narrow the list; the bar shows "2 of 6 open incidents". | |
 | GET | `/projects/{slug}/incidents/{id}` | owner, super_admin | | Detail: start, end, duration, cause, affected items, timeline | AC-18.02 |
 | GET | `/projects/{slug}/incidents/new` | owner, super_admin | | Manual incident form: title, affected items, severity, first update | AC-20.01 |
 | POST | `/projects/{slug}/incidents` | owner, super_admin | `title` (up to 120 chars), `items[]` (`monitor:<id>` or `heartbeat:<id>`), `severity` (`critical` or `warning`, required), `message` (up to 10 000 chars) | Manual incident. First update has label `investigating`. Errors in form order: title, items, severity, message; each is 422. | AC-20.01 |

@@ -30,7 +30,7 @@ Updates show on the status page without the author's name.
 
 ## Alert routes
 
-Each project has two routes, one per severity. Open **Alerts** to set them.
+Each project has two routes, one per severity. Open **Settings**, then **Alerts**, to set them.
 
 | Severity | Default | Gets |
 | --- | --- | --- |

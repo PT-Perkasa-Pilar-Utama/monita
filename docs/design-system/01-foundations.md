@@ -15,7 +15,7 @@ Only the base tokens change per scheme. Every derived token follows by itself.
 
 | Token | Use |
 | --- | --- |
-| `--bg` | Page, sidebar |
+| `--bg` | Page, top band |
 | `--bg-2` | Panels, cards, inputs, dialogs |
 | `--bg-3` | Secondary buttons, code fields |
 | `--fg` | Titles, active nav, values |
@@ -69,12 +69,12 @@ Base unit 4 px. Tokens `--s1` to `--s8`: 4, 8, 12, 16, 24, 32, 48, 72. Use `gap`
 | 12 px | `--r-lg` | Panels, dialogs, status headline |
 | 9 px | literal in `.comment` | Comment cards |
 | 8 px | `--r` | Inputs, cards, code fields |
-| 6 px | `--r-row` | Sidebar rows |
+| 6 px | `--r-row` | Table rows |
 | 4 px | `--r-sm` | Inline code, project badge |
 
 ## 1.7 Elevation
 
-Depth is one surface step plus a hairline. Only floating things (dialogs, `.panel--float`) get `--shadow`. The sidebar on phones and the toolbar get the 82 % blur header. No other blur, glow or gradient.
+Depth is one surface step plus a hairline. Only floating things (dialogs, `.panel--float`) get `--shadow`. The sticky top band is opaque. No other blur, glow or gradient.
 
 ## 1.8 Motion
 

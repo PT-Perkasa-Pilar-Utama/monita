@@ -13,13 +13,13 @@ The ref ID ties tickets to one user without Monita storing who they are. Monita 
 
 ## Get an API key
 
-In the project, open **Settings** and create a key. Monita shows it once. Every JSON call sends it as a bearer token:
+In the project, open **Settings**, then **API keys**, and select **New API key**. Monita shows the key once. Every JSON call sends it as a bearer token:
 
 ```sh
 -H "Authorization: Bearer mk_..."
 ```
 
-An IP allowlist in Settings can limit where keys work.
+An IP allowlist in **Settings**, **Allowlist**, can limit where keys work.
 
 ## Issue a ref ID
 
