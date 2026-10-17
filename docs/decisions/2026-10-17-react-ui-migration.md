@@ -42,7 +42,7 @@ Cosmetic preferences are not findings.
 | R3 | Incidents | d7fc918 |
 | R4 | Ticket board, ticket page, public report, known issues, my tickets | e4c94a3 |
 | R5 | Public status page and history | 0c4afde |
-| R6 | Admin users and system; askama, `templates/` and the old static CSS removed | 1121e90 |
+| R6 | Admin users and system; askama, `templates/` and the old static CSS removed | 2bf44cc |
 
 Two changes follow from the move:
 
