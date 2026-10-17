@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Monita: self-hosted uptime monitoring, heartbeats and status pages</title>
-<meta name="description" content="Monita checks your team's URLs and cron jobs, opens an incident after two failed checks, alerts the owner by email and webhook, and shows it on a public status page. You host it yourself.">
+<meta name="description" content="Monita checks your team's URLs and cron jobs, opens an incident after two failed checks, alerts the people you choose by email and webhook, and shows it on a public status page. You host it yourself.">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <script src="assets/theme.js"></script>
 <link rel="stylesheet" href="assets/app.css">
@@ -97,7 +97,7 @@ sudo monita service install</code></pre>
           </div>
         </div>
         <div class="lp-tabs__panel" role="tabpanel" id="panel-2" aria-labelledby="tab-2" hidden>
-          <p>Paste a Slack or Microsoft Teams incoming-webhook URL into the project's alert settings. Monita posts this JSON when an incident opens and when it closes. It also emails the addresses you list.</p>
+          <p>Paste a Slack or Microsoft Teams incoming-webhook URL into the project's alert settings. Monita posts JSON like this when an incident opens and when it closes. It also emails the addresses you list.</p>
 <pre class="code"><code class="language-json">{
   "text": "[CRITICAL] Payments / API health is down: HTTP 503, expected 2xx after 2 checks",
   "event": "incident.opened",
@@ -135,7 +135,7 @@ curl -s -X POST https://monita.example.com/api/v1/tickets -H 'content-type: appl
       <ol class="lp-steps">
         <li data-step><b>The first check fails</b><span>HTTP 503. Monita waits for the next check.</span></li>
         <li data-step><b>The second check fails</b><span>Two in a row open an automatic incident.</span></li>
-        <li data-step><b>The owner hears about it</b><span>Email and a webhook to Slack or Teams, through an outbox that retries.</span></li>
+        <li data-step><b>Your team hears about it</b><span>An email to the addresses you list and a webhook to Slack or Teams, through an outbox that retries.</span></li>
         <li data-step><b>Users see it</b><span>The status page shows the incident and every update the team posts.</span></li>
         <li data-step><b>The first passing check closes it</b><span>Monita sends a recovery alert with the downtime.</span></li>
       </ol>
