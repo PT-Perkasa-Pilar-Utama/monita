@@ -2,6 +2,7 @@ import type { ReactElement } from "react";
 import { Route, Routes } from "react-router-dom";
 import { AppLayout } from "@/layouts/AppLayout";
 import { ProjectLayout } from "@/layouts/ProjectLayout";
+import { PublicLayout } from "@/layouts/PublicLayout";
 import { SettingsLayout } from "@/layouts/SettingsLayout";
 import { Alerts } from "@/pages/project/Alerts";
 import { Allowlist } from "@/pages/project/Allowlist";
@@ -17,6 +18,11 @@ import { Monitor } from "@/pages/project/Monitor";
 import { MonitorForm } from "@/pages/project/MonitorForm";
 import { Monitors } from "@/pages/project/Monitors";
 import { Overview } from "@/pages/project/Overview";
+import { Ticket } from "@/pages/project/Ticket";
+import { Tickets } from "@/pages/project/Tickets";
+import { KnownIssues } from "@/pages/public/KnownIssues";
+import { Mine } from "@/pages/public/Mine";
+import { Report } from "@/pages/public/Report";
 import { Invite } from "@/pages/Invite";
 import { Login } from "@/pages/Login";
 import { NotFound } from "@/pages/NotFound";
@@ -44,12 +50,19 @@ export default function App(): ReactElement {
         <Route path="incidents" element={<Incidents />} />
         <Route path="incidents/new" element={<IncidentForm />} />
         <Route path="incidents/:id" element={<Incident />} />
+        <Route path="tickets" element={<Tickets />} />
+        <Route path="tickets/:number" element={<Ticket />} />
         <Route element={<SettingsLayout />}>
           <Route path="settings" element={<General />} />
           <Route path="settings/keys" element={<Keys />} />
           <Route path="settings/allowlist" element={<Allowlist />} />
           <Route path="alerts" element={<Alerts />} />
         </Route>
+      </Route>
+      <Route path="/status/:slug" element={<PublicLayout />}>
+        <Route path="tickets" element={<KnownIssues />} />
+        <Route path="report" element={<Report />} />
+        <Route path="mine" element={<Mine />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>

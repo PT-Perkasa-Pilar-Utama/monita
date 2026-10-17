@@ -49,28 +49,19 @@ function StateRing({ kind }: { kind: StateKind | "triage" }): ReactElement {
   );
 }
 
-function Tile({ to, icon: Icon, title, children, server }: { to: string; icon: AppIcon; title: string; children: ReactNode; server?: boolean }): ReactElement {
-  const body = (
-    <Card className="h-full flex-row items-center gap-3 p-4 transition-colors group-hover:border-input">
-      <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground">
-        <Icon className="size-4" />
-      </span>
-      <span className="flex min-w-0 flex-1 flex-col gap-1">
-        <strong className="font-semibold">{title}</strong>
-        <span className="flex items-center gap-2 text-[13px] text-muted-foreground">{children}</span>
-      </span>
-      <ChevronRight className="size-4 text-muted-foreground" />
-    </Card>
-  );
-  const cls = "group rounded-xl outline-none focus-visible:ring-[3px] focus-visible:ring-ring";
-  // ponytail: tickets are a server page until R4.
-  return server ? (
-    <a href={to} className={cls}>
-      {body}
-    </a>
-  ) : (
-    <Link to={to} className={cls}>
-      {body}
+function Tile({ to, icon: Icon, title, children }: { to: string; icon: AppIcon; title: string; children: ReactNode }): ReactElement {
+  return (
+    <Link to={to} className="group rounded-xl outline-none focus-visible:ring-[3px] focus-visible:ring-ring">
+      <Card className="h-full flex-row items-center gap-3 p-4 transition-colors group-hover:border-input">
+        <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground">
+          <Icon className="size-4" />
+        </span>
+        <span className="flex min-w-0 flex-1 flex-col gap-1">
+          <strong className="font-semibold">{title}</strong>
+          <span className="flex items-center gap-2 text-[13px] text-muted-foreground">{children}</span>
+        </span>
+        <ChevronRight className="size-4 text-muted-foreground" />
+      </Card>
     </Link>
   );
 }
@@ -133,7 +124,7 @@ export function Overview(): ReactElement {
                   </>
                 )}
               </Tile>
-              <Tile to={`${base}/tickets`} icon={Ticket} title="Tickets" server>
+              <Tile to={`${base}/tickets`} icon={Ticket} title="Tickets">
                 <StateRing kind="triage" />
                 {d.triage === 0 ? "No ticket waits in Triage." : `${plural(d.triage, "ticket")} in Triage.`}
               </Tile>

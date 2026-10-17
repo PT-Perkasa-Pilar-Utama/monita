@@ -235,19 +235,16 @@ async fn a_board_column_shows_its_newest_200_and_counts_them_all() {
         upto(n)
     ))
     .await;
-    let html = app
-        .get("/projects/payments/tickets", Some(&tl))
-        .await
-        .text()
-        .await
-        .unwrap();
-    assert_eq!(
-        html.matches(r#"class="card""#).count() as i64,
-        caps::TICKETS_PER_COLUMN
-    );
-    assert!(html.contains(&format!(r#"<span class="board__count">{n}</span>"#)));
+    let board = json_of(
+        app.api_get("/api/ui/projects/payments/tickets", Some(&tl))
+            .await,
+    )
+    .await;
+    let tickets = board["data"]["tickets"].as_array().unwrap();
+    assert_eq!(tickets.len() as i64, caps::TICKETS_PER_COLUMN);
+    assert_eq!(board["data"]["counts"]["backlog"], n);
     assert!(
-        !html.contains(">bug 1<"),
+        tickets.iter().all(|t| t["title"] != "bug 1"),
         "the oldest ticket is the one left out"
     );
 }

@@ -1,34 +1,29 @@
-//! Ticket API and pages. Contract: docs/api-specs/08-tickets.md.
-//! `api` serves project backends, `public` the reporter and visitors, `admin` the TL.
+//! Ticket API and pages' JSON. Contract: docs/api-specs/08-tickets.md.
+//! `api` serves project backends, `public` the reporter and visitors, `board` the tech lead.
 
-mod admin;
 mod api;
+mod board;
 mod public;
 
-use askama::Template;
 use axum::{
-    Form, Json, Router,
+    Json, Router,
     body::Bytes,
     extract::{Path, State},
     http::{HeaderMap, HeaderValue, StatusCode, header},
-    response::{IntoResponse, Redirect, Response},
-    routing::{get, post},
+    response::{IntoResponse, Response},
+    routing::{get, post, put},
 };
 use serde::Deserialize;
 
-use crate::tickets::{
-    CLOSE_REASONS, MyTicket, NewTicket, PublicTicket, STAGES, TicketError, TicketRow,
-};
+use crate::tickets::{NewTicket, TicketError};
 use crate::{
     accounts::CurrentUser,
     app::AppState,
     platform::{
         api_error,
-        page::{PageError, Shell},
-        render::render,
-        time,
+        ui::{Body, UiError, UiResult, created, data},
     },
-    projects::{self, ApiProject, Project},
+    projects::{self, ApiProject},
 };
 
 pub fn router() -> Router<AppState> {
@@ -42,27 +37,48 @@ pub fn router() -> Router<AppState> {
             "/api/v1/tickets/mine",
             get(api::api_mine).options(api::preflight),
         )
+        .route("/api/ui/public/{slug}", get(public::project))
+        .route("/api/ui/public/{slug}/tickets", get(public::public_board))
+        .route("/api/ui/public/{slug}/report", post(public::report))
+        .route("/api/ui/public/{slug}/mine", post(public::mine))
+        .route("/api/ui/projects/{slug}/tickets", get(board::board))
         .route(
-            "/status/{slug}/report",
-            get(public::report_form).post(public::report_submit),
+            "/api/ui/projects/{slug}/tickets/{number}",
+            get(board::detail),
         )
         .route(
-            "/status/{slug}/mine",
-            get(public::mine_form).post(public::mine_lookup),
-        )
-        .route("/status/{slug}/tickets", get(public::public_board))
-        .route("/projects/{slug}/tickets", get(admin::kanban))
-        .route("/projects/{slug}/tickets/{number}", get(admin::detail))
-        .route(
-            "/projects/{slug}/tickets/{number}/stage",
-            post(admin::move_stage),
+            "/api/ui/projects/{slug}/tickets/{number}/stage",
+            put(board::move_stage),
         )
         .route(
-            "/projects/{slug}/tickets/{number}/public-title",
-            post(admin::public_title),
+            "/api/ui/projects/{slug}/tickets/{number}/public-title",
+            put(board::public_title),
         )
         .route(
-            "/projects/{slug}/tickets/{number}/revoke-ref",
-            post(admin::revoke_ref),
+            "/api/ui/projects/{slug}/tickets/{number}/revoke-ref",
+            post(board::revoke_ref),
         )
+}
+
+impl From<TicketError> for UiError {
+    fn from(e: TicketError) -> Self {
+        match e {
+            TicketError::Invalid { field, message } => UiError::field(field, message),
+            TicketError::RefIdInvalid => UiError::field("ref_id", e.to_string()),
+            TicketError::NeedReason => UiError::field("close_reason", e.to_string()),
+            TicketError::DailyCap => UiError::DailyCap(e.to_string()),
+            TicketError::Other(e) => UiError::Internal(e),
+        }
+    }
+}
+
+/// Stage name to its ticket count; a stage with none is 0.
+fn counts(rows: Vec<(String, i64)>) -> serde_json::Map<String, serde_json::Value> {
+    crate::tickets::STAGES
+        .iter()
+        .map(|(k, _)| {
+            let n = rows.iter().find(|(s, _)| s == k).map_or(0, |(_, n)| *n);
+            (k.to_string(), n.into())
+        })
+        .collect()
 }

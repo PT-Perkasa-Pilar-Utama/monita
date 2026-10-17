@@ -190,3 +190,33 @@ export type UpdateRow = { label: UpdateLabel; message: string; author_email: str
 export type IncidentDetail = { incident: IncidentRow; items: string[]; updates: UpdateRow[]; labels: UpdateLabel[] };
 
 export type IncidentItem = { value: string; name: string };
+
+export type Stage = "triage" | "backlog" | "in_progress" | "done";
+
+export type CloseReason = "fixed" | "wont_fix" | "duplicate";
+
+export type TicketRow = {
+  number: number;
+  title: string;
+  public_title: string | null;
+  description: string;
+  page_url: string | null;
+  stage: Stage;
+  close_reason: CloseReason | null;
+  created_at: number;
+  updated_at: number;
+  ref_revoked: boolean;
+};
+
+export type StageCounts = Record<Stage, number>;
+
+export type TicketBoard = { tickets: TicketRow[]; counts: StageCounts };
+
+/** SEC-14: what a visitor may see of a ticket. */
+export type PublicTicket = { number: number; title: string; stage: Stage; created_at: number; updated_at: number };
+
+export type PublicBoard = { tickets: PublicTicket[]; counts: StageCounts };
+
+export type MyTicket = { number: number; title: string; stage: Stage; close_reason: CloseReason | null; created_at: number; updated_at: number };
+
+export type PublicProject = { name: string; slug: string };

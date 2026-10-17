@@ -26,6 +26,8 @@ pub enum UiError {
     },
     /// 413: a body over the 128 KiB limit (SEC-19).
     TooLarge,
+    /// 429: a daily cap is reached (SEC-13).
+    DailyCap(String),
     Internal(anyhow::Error),
 }
 
@@ -104,6 +106,12 @@ impl IntoResponse for UiError {
                 BTreeMap::new(),
             ),
             UiError::Gone(m) => (StatusCode::GONE, "gone", m, BTreeMap::new()),
+            UiError::DailyCap(m) => (
+                StatusCode::TOO_MANY_REQUESTS,
+                "daily_cap_reached",
+                m,
+                BTreeMap::new(),
+            ),
             UiError::TooLarge => (
                 StatusCode::PAYLOAD_TOO_LARGE,
                 "too_large",

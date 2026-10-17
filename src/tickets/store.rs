@@ -14,6 +14,7 @@ pub struct RefRow {
     pub revoked_at: Option<i64>,
 }
 
+#[derive(serde::Serialize)]
 pub struct TicketRow {
     pub number: i64,
     pub title: String,
@@ -29,6 +30,7 @@ pub struct TicketRow {
 
 /// SEC-14 public fields only: number, title, stage, dates. The close reason is the TL's verdict
 /// and stays private.
+#[derive(serde::Serialize)]
 pub struct PublicTicket {
     pub number: i64,
     pub title: String,

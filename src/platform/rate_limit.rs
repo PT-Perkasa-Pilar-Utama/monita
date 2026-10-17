@@ -76,6 +76,7 @@ pub fn ip_key(ip: Option<std::net::IpAddr>) -> String {
 // public sub-routers if the public surface grows past these prefixes.
 pub fn ip_limited(method: &axum::http::Method, path: &str) -> bool {
     path.starts_with("/status/")
+        || path.starts_with("/api/ui/public/")
         || path.starts_with("/api/v1/public/")
         || path.starts_with("/api/v1/tickets")
         || (method == axum::http::Method::POST
@@ -201,5 +202,19 @@ mod tests {
             matches!(l.over("k", 1, 60, 180), Verdict::Allow),
             "new window"
         );
+    }
+
+    #[test]
+    fn public_pages_and_their_json_are_limited_per_ip_but_signed_in_json_is_not() {
+        use axum::http::Method;
+        for path in [
+            "/status/shop/report",
+            "/api/ui/public/shop/report",
+            "/api/ui/public/shop/tickets",
+        ] {
+            assert!(ip_limited(&Method::POST, path), "{path}");
+        }
+        assert!(!ip_limited(&Method::GET, "/api/ui/projects/shop/tickets"));
+        assert!(!ip_limited(&Method::GET, "/api/ui/login"));
     }
 }

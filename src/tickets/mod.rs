@@ -46,8 +46,12 @@ pub fn reason_label(s: &str) -> &'static str {
 
 #[derive(Debug, thiserror::Error)]
 pub enum TicketError {
-    #[error("{0}")]
-    Invalid(&'static str),
+    /// A bad value in one field of the form or body.
+    #[error("{message}")]
+    Invalid {
+        field: &'static str,
+        message: &'static str,
+    },
     #[error("This ref ID is unknown, revoked or already used.")]
     RefIdInvalid,
     #[error("The daily ticket limit is reached. Try again tomorrow.")]
@@ -82,20 +86,25 @@ impl NewTicket {
     pub fn validate(&self) -> Result<(), TicketError> {
         let title = self.title.trim().chars().count();
         if !(3..=120).contains(&title) {
-            return Err(TicketError::Invalid("The title needs 3 to 120 characters."));
+            return Err(TicketError::Invalid {
+                field: "title",
+                message: "The title needs 3 to 120 characters.",
+            });
         }
         let desc = self.description.trim().chars().count();
         if !(1..=10_000).contains(&desc) {
-            return Err(TicketError::Invalid(
-                "The description needs 1 to 10 000 characters.",
-            ));
+            return Err(TicketError::Invalid {
+                field: "description",
+                message: "The description needs 1 to 10 000 characters.",
+            });
         }
         if let Some(u) = &self.page_url
             && !crate::platform::valid_http_url(u)
         {
-            return Err(TicketError::Invalid(
-                "The page URL must start with http:// or https://.",
-            ));
+            return Err(TicketError::Invalid {
+                field: "page_url",
+                message: "The page URL must start with http:// or https://.",
+            });
         }
         Ok(())
     }
@@ -205,7 +214,10 @@ pub async fn move_stage(
     reason: Option<&str>,
 ) -> Result<bool, TicketError> {
     if !STAGES.iter().any(|(k, _)| *k == stage) {
-        return Err(TicketError::Invalid("Pick a column."));
+        return Err(TicketError::Invalid {
+            field: "stage",
+            message: "Pick a column.",
+        });
     }
     let reason = if stage == "done" {
         match reason.filter(|r| CLOSE_REASONS.iter().any(|(k, _)| k == r)) {
@@ -230,9 +242,10 @@ pub async fn set_public_title(
 ) -> Result<bool, TicketError> {
     let title = title.trim();
     if title.chars().count() > 120 {
-        return Err(TicketError::Invalid(
-            "The public title needs at most 120 characters.",
-        ));
+        return Err(TicketError::Invalid {
+            field: "public_title",
+            message: "The public title needs at most 120 characters.",
+        });
     }
     let t = now();
     let value = (!title.is_empty()).then_some(title);

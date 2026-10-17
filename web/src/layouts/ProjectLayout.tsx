@@ -33,7 +33,7 @@ function ProjectChrome(): ReactElement | null {
         { to: `${base}/monitors`, label: "Monitors", icon: Activity, count: counts.monitors },
         { to: `${base}/heartbeats`, label: "Heartbeats", icon: Heartbeat, count: counts.heartbeats },
         { to: `${base}/incidents`, label: "Incidents", icon: AlertTriangle, count: counts.incidents },
-        { to: `${base}/tickets`, label: "Tickets", icon: Ticket, count: counts.tickets, server: true },
+        { to: `${base}/tickets`, label: "Tickets", icon: Ticket, count: counts.tickets },
         { to: `${base}/settings`, label: "Settings", icon: Settings, match: [`${base}/alerts`] },
       ]}
       end={

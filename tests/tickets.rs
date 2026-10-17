@@ -8,7 +8,7 @@ use std::{
 };
 
 use axum::{Router, extract::State, routing::post};
-use common::TestApp;
+use common::{TestApp, json_of};
 use monita::platform::{db::query_i64, now, settings};
 use serde_json::{Value, json};
 
@@ -55,6 +55,25 @@ async fn count(app: &TestApp, sql: &str) -> i64 {
         .unwrap_or(0)
 }
 
+const PUBLIC_BOARD: &str = "/api/ui/public/payments/tickets";
+
+/// The `data` of a JSON read.
+async fn read(app: &TestApp, path: &str, cookie: Option<&str>) -> Value {
+    json_of(app.api_get(path, cookie).await).await["data"].take()
+}
+
+/// Moves ticket 1, as the board's Move ticket button does.
+async fn stage(app: &TestApp, tl: &str, body: Value) -> reqwest::Response {
+    let path = "/api/ui/projects/payments/tickets/1/stage";
+    app.api_send(reqwest::Method::PUT, path, body, Some(tl))
+        .await
+}
+
+async fn revoke(app: &TestApp, tl: &str) -> reqwest::Response {
+    let path = "/api/ui/projects/payments/tickets/1/revoke-ref";
+    app.api_post(path, json!({}), Some(tl)).await
+}
+
 #[tokio::test]
 async fn a_reporter_submits_through_the_api_and_the_form() {
     // AC-24.01, AC-24.02, AC-25.02
@@ -69,26 +88,14 @@ async fn a_reporter_submits_through_the_api_and_the_form() {
     assert_eq!(body["data"]["stage"], "triage");
 
     let form = app
-        .post_form(
-            "/status/payments/report",
-            &[
-                ("ref_id", &rid),
-                ("title", "Receipt shows wrong currency"),
-                ("description", "IDR shown as USD"),
-                ("page_url", ""),
-            ],
+        .api_post(
+            "/api/ui/public/payments/report",
+            json!({ "ref_id": rid, "title": "Receipt shows wrong currency", "description": "IDR shown as USD", "page_url": "" }),
             None,
         )
         .await;
-    assert_eq!(form.status(), 303, "a reload must not resubmit");
-    let thanks = app.get(&common::location(&form), None).await;
-    assert!(
-        thanks
-            .text()
-            .await
-            .unwrap()
-            .contains("Your report is ticket #2")
-    );
+    assert_eq!(form.status(), 201);
+    assert_eq!(json_of(form).await["data"]["number"], 2);
     assert_eq!(
         count(&app, "SELECT count(*) FROM tickets WHERE stage = 'triage'").await,
         2
@@ -117,13 +124,9 @@ async fn bad_ref_ids_are_refused_before_the_caps_are_counted() {
     app.project(&other_tl, "Other", "other").await;
     let rid = ref_id(&app, &s.key, false).await;
     let wrong_project = app
-        .post_form(
-            "/status/other/report",
-            &[
-                ("ref_id", &rid),
-                ("title", "Wrong project"),
-                ("description", "x"),
-            ],
+        .api_post(
+            "/api/ui/public/other/report",
+            json!({ "ref_id": rid, "title": "Wrong project", "description": "x" }),
             None,
         )
         .await;
@@ -132,11 +135,13 @@ async fn bad_ref_ids_are_refused_before_the_caps_are_counted() {
         422,
         "a ref ID works only on its own project's form"
     );
+    assert_eq!(
+        json_of(wrong_project).await["error"]["fields"]["ref_id"],
+        "This ref ID is unknown, revoked or already used."
+    );
 
-    let res = app
-        .post_form("/projects/payments/tickets/1/revoke-ref", &[], Some(&s.tl))
-        .await;
-    assert_eq!(res.status(), 303);
+    let res = revoke(&app, &s.tl).await;
+    assert_eq!(res.status(), 204);
     assert_eq!(
         count(&app, "SELECT count(*) FROM tickets").await,
         1,
@@ -183,42 +188,28 @@ async fn kanban_moves_need_a_reason_for_done_and_leaving_done_clears_it() {
     let s = setup(&app).await;
     let rid = ref_id(&app, &s.key, false).await;
     submit(&app, &rid, "Checkout broken").await;
-    let html = app
-        .get("/projects/payments/tickets", Some(&s.tl))
-        .await
-        .text()
-        .await
-        .unwrap();
-    for col in ["Triage", "Backlog", "In progress", "Done"] {
-        assert!(html.contains(col), "missing column {col}");
-    }
-    let no_reason = app
-        .post_form(
-            "/projects/payments/tickets/1/stage",
-            &[("stage", "done"), ("close_reason", "")],
-            Some(&s.tl),
-        )
-        .await;
-    assert_eq!(no_reason.status(), 422);
-    assert!(
-        no_reason
-            .text()
-            .await
-            .unwrap()
-            .contains("Pick a close reason.")
+    let board = read(&app, "/api/ui/projects/payments/tickets", Some(&s.tl)).await;
+    assert_eq!(
+        board["counts"],
+        json!({ "triage": 1, "backlog": 0, "in_progress": 0, "done": 0 })
     );
-    let done = app
-        .post_form(
-            "/projects/payments/tickets/1/stage",
-            &[("stage", "done"), ("close_reason", "wont_fix")],
-            Some(&s.tl),
-        )
-        .await;
-    assert_eq!(done.status(), 303);
-    app.post_form(
-        "/projects/payments/tickets/1/stage",
-        &[("stage", "backlog"), ("close_reason", "wont_fix")],
-        Some(&s.tl),
+    let no_reason = stage(&app, &s.tl, json!({ "stage": "done", "close_reason": "" })).await;
+    assert_eq!(no_reason.status(), 422);
+    assert_eq!(
+        json_of(no_reason).await["error"]["fields"]["close_reason"],
+        "Pick a close reason."
+    );
+    let done = stage(
+        &app,
+        &s.tl,
+        json!({ "stage": "done", "close_reason": "wont_fix" }),
+    )
+    .await;
+    assert_eq!(done.status(), 204);
+    stage(
+        &app,
+        &s.tl,
+        json!({ "stage": "backlog", "close_reason": "wont_fix" }),
     )
     .await;
     assert_eq!(
@@ -239,35 +230,25 @@ async fn the_public_board_hides_triage_descriptions_and_reporters() {
     let rid = ref_id(&app, &s.key, false).await;
     submit(&app, &rid, "Card of Budi Santoso declined").await;
     submit(&app, &rid, "Still in triage").await;
-    let board = app
-        .get("/status/payments/tickets", None)
-        .await
-        .text()
-        .await
-        .unwrap();
+    let res = app.api_get(PUBLIC_BOARD, None).await;
+    assert_eq!(res.headers()["cache-control"], "public, max-age=30");
+    let board = read(&app, PUBLIC_BOARD, None).await.to_string();
     assert!(
         !board.contains("Budi Santoso") && !board.contains("Still in triage"),
         "Triage is private"
     );
 
-    app.post_form(
-        "/projects/payments/tickets/1/public-title",
-        &[("public_title", "A card is declined at checkout")],
-        Some(&s.tl),
-    )
-    .await;
-    app.post_form(
-        "/projects/payments/tickets/1/stage",
-        &[("stage", "in_progress")],
-        Some(&s.tl),
-    )
-    .await;
-    let board = app
-        .get("/status/payments/tickets", None)
-        .await
-        .text()
-        .await
-        .unwrap();
+    let res = app
+        .api_send(
+            reqwest::Method::PUT,
+            "/api/ui/projects/payments/tickets/1/public-title",
+            json!({ "public_title": "A card is declined at checkout" }),
+            Some(&s.tl),
+        )
+        .await;
+    assert_eq!(res.status(), 204);
+    stage(&app, &s.tl, json!({ "stage": "in_progress" })).await;
+    let board = read(&app, PUBLIC_BOARD, None).await.to_string();
     assert!(board.contains("A card is declined at checkout"));
     assert!(
         !board.contains("Budi Santoso"),
@@ -275,21 +256,16 @@ async fn the_public_board_hides_triage_descriptions_and_reporters() {
     );
     assert!(!board.contains("4111"), "descriptions never appear");
     assert!(!board.contains(&rid), "reporters never appear");
-    app.post_form(
-        "/projects/payments/tickets/1/stage",
-        &[("stage", "done"), ("close_reason", "wont_fix")],
-        Some(&s.tl),
+    stage(
+        &app,
+        &s.tl,
+        json!({ "stage": "done", "close_reason": "wont_fix" }),
     )
     .await;
-    let board = app
-        .get("/status/payments/tickets", None)
-        .await
-        .text()
-        .await
-        .unwrap();
+    let board = read(&app, PUBLIC_BOARD, None).await.to_string();
     assert!(board.contains("A card is declined at checkout"));
     assert!(
-        !board.contains("Won"),
+        !board.contains("wont_fix") && !board.contains("close_reason"),
         "the close reason is the TL's, not public"
     );
 }
@@ -301,8 +277,7 @@ async fn a_reporter_lists_their_tickets_even_after_revocation() {
     let s = setup(&app).await;
     let rid = ref_id(&app, &s.key, false).await;
     submit(&app, &rid, "Checkout broken").await;
-    app.post_form("/projects/payments/tickets/1/revoke-ref", &[], Some(&s.tl))
-        .await;
+    revoke(&app, &s.tl).await;
     assert_eq!(submit(&app, &rid, "After revoke").await.status(), 422);
     let res = app
         .http
@@ -326,13 +301,17 @@ async fn a_reporter_lists_their_tickets_even_after_revocation() {
         401
     );
 
-    let page = app
-        .post_form("/status/payments/mine", &[("ref_id", &rid)], None)
-        .await
-        .text()
-        .await
-        .unwrap();
-    assert!(page.contains("Checkout broken") && page.contains("Triage"));
+    let mine = app
+        .api_post(
+            "/api/ui/public/payments/mine",
+            json!({ "ref_id": rid }),
+            None,
+        )
+        .await;
+    let mine = json_of(mine).await;
+    assert_eq!(mine["data"]["tickets"][0]["title"], "Checkout broken");
+    assert_eq!(mine["data"]["tickets"][0]["stage"], "triage");
+    assert!(mine["data"]["tickets"][0].get("description").is_none());
 }
 
 #[tokio::test]
@@ -475,19 +454,25 @@ async fn boards_show_the_newest_200_of_each_column() {
         .await
         .unwrap();
     for (path, cookie) in [
-        ("/projects/payments/tickets", Some(s.tl.as_str())),
-        ("/status/payments/tickets", None),
+        ("/api/ui/projects/payments/tickets", Some(s.tl.as_str())),
+        (PUBLIC_BOARD, None),
     ] {
-        let html = app.get(path, cookie).await.text().await.unwrap();
-        assert_eq!(html.matches("class=\"card\"").count(), 300, "{path}");
+        let board = read(&app, path, cookie).await;
+        let titles: Vec<&str> = board["tickets"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|t| t["title"].as_str().unwrap())
+            .collect();
+        assert_eq!(titles.len(), 300, "{path}");
         assert!(
-            !html.contains(">Ticket 1<"),
+            !titles.contains(&"Ticket 1"),
             "{path}: the oldest Done drops off"
         );
-        assert!(html.contains(">Ticket 2<") && html.contains(">Ticket 301<"));
-        assert!(
-            html.contains("Newest 200 of 201"),
-            "{path}: the cut column says so"
+        assert!(titles.contains(&"Ticket 2") && titles.contains(&"Ticket 301"));
+        assert_eq!(
+            board["counts"]["done"], 201,
+            "{path}: the count is every ticket"
         );
     }
 }

@@ -72,16 +72,18 @@ The reporter sees their original title. The description is not returned.
 
 `OPTIONS /api/v1/tickets` and `OPTIONS /api/v1/tickets/mine` answer 204 with `Access-Control-Allow-Origin: *`, `Allow-Methods: GET, POST, OPTIONS`, `Allow-Headers: content-type, x-ref-id` and `Max-Age: 86400`. Preflights do not count against the per-IP limit.
 
-## 8.5 HTML routes
+## 8.5 Frontend routes
+
+The React pages `/status/{slug}/report`, `/status/{slug}/mine` and `/status/{slug}/tickets` call the public routes below with no sign-in; the per-IP limit covers `/api/ui/public/` (SEC-12). The pages `/projects/{slug}/tickets` and `/projects/{slug}/tickets/{number}` call the tech lead's routes (conventions 1.10). A refused form is 422 with the error on its field: `ref_id`, `title`, `description`, `page_url`, `stage`, `close_reason` or `public_title`. SEC-14: no public route returns a description, a reporter, a close reason or a Triage ticket.
 
 | Method | Path | Access | Input | Behavior | AC |
 | --- | --- | --- | --- | --- | --- |
-| GET | `/status/{slug}/report` | public | | Ticket form | AC-24.01 |
-| POST | `/status/{slug}/report` | public, 60/min per IP | `ref_id`, `title`, `description`, `page_url` | Same rules as 8.2. The ref ID must belong to this project. | AC-24.01, AC-24.03 to AC-24.05 |
-| GET, POST | `/status/{slug}/mine` | public | GET shows the form; POST takes `ref_id` | Same data as 8.3. The ref ID must belong to this project. | AC-29.01 |
-| GET | `/status/{slug}/tickets` | public | | Public board: stages Backlog, In progress, Done. Fields: number, public title or title, stage, created, updated. Each column shows its newest 200 and counts them all; the page says so. | AC-28.01, AC-28.02, AC-26.01 |
-| GET | `/projects/{slug}/tickets` | owner, super_admin | | Kanban: Triage, Backlog, In progress, Done. Each column shows its newest 200 and counts them all; the page says so. | AC-25.01 |
-| GET | `/projects/{slug}/tickets/{number}` | owner, super_admin | | Full ticket, including description and whether its ref ID is active or revoked. Only the ref ID's hash is stored, so no part of it can be shown. | |
-| POST | `/projects/{slug}/tickets/{number}/stage` | owner, super_admin | `stage`, `close_reason` (required for `done`) | Move. Missing reason for `done`: 422. Leaving `done` clears the reason. | AC-25.03 |
-| POST | `/projects/{slug}/tickets/{number}/public-title` | owner, super_admin | `public_title` (empty clears it) | Save | AC-26.01 |
-| POST | `/projects/{slug}/tickets/{number}/revoke-ref` | owner, super_admin | | Revoke the ticket's ref ID. Tickets stay. | AC-27.01, AC-27.02 |
+| GET | `/api/ui/public/{slug}` | public | | The project's `name` and `slug`, for a public page's header. Unknown slug: 404. | |
+| POST | `/api/ui/public/{slug}/report` | public, 60/min per IP | `ref_id`, `title`, `description`, `page_url` | Same rules as 8.2. The ref ID must belong to this project. 201 `{number}`; a cap is 429 `daily_cap_reached`. | AC-24.01, AC-24.03 to AC-24.05 |
+| POST | `/api/ui/public/{slug}/mine` | public, 60/min per IP | `ref_id` | `tickets`: the same data as 8.3. The ref ID must belong to this project. A POST keeps the ref ID out of URLs and logs. | AC-29.01 |
+| GET | `/api/ui/public/{slug}/tickets` | public | | Public board: stages Backlog, In progress, Done. `tickets` with number, public title or title, stage, created, updated; `counts` per stage. Each column holds its newest 200; the count is every ticket. `Cache-Control: public, max-age=30`. | AC-28.01, AC-28.02, AC-26.01 |
+| GET | `/api/ui/projects/{slug}/tickets` | owner, super_admin | | Ticket board: Triage, Backlog, In progress, Done. `tickets` (newest 200 per column) and `counts` per stage. | AC-25.01 |
+| GET | `/api/ui/projects/{slug}/tickets/{number}` | owner, super_admin | | Full ticket, including description and whether its ref ID is active or revoked. Only the ref ID's hash is stored, so no part of it can be shown. | |
+| PUT | `/api/ui/projects/{slug}/tickets/{number}/stage` | owner, super_admin | `stage`, `close_reason` (required for `done`) | Move, 204. Missing reason for `done`: 422 on `close_reason`. Leaving `done` clears the reason. | AC-25.03 |
+| PUT | `/api/ui/projects/{slug}/tickets/{number}/public-title` | owner, super_admin | `public_title` (empty clears it) | Save, 204. | AC-26.01 |
+| POST | `/api/ui/projects/{slug}/tickets/{number}/revoke-ref` | owner, super_admin | | Revoke the ticket's ref ID, 204. Tickets stay. | AC-27.01, AC-27.02 |
