@@ -178,7 +178,7 @@ function check(dir: string): string[] {
   return broken;
 }
 
-/** The README screenshots, from the live server so they match the demo. */
+/** The README and landing-page screenshots, from the live server so they match the demo. */
 async function screenshots(cookie: string, dir: string): Promise<void> {
   const { chromium } = await import("@playwright/test");
   const browser = await chromium.launch({ channel: "chrome" });
@@ -193,6 +193,9 @@ async function screenshots(cookie: string, dir: string): Promise<void> {
       ["status.png", "/status/payments"],
       ["monitors.png", "/projects/portal/monitors"],
       ["tickets.png", "/projects/portal/tickets"],
+      ["incident.png", "/projects/payments/incidents/6"],
+      ["heartbeat.png", "/projects/portal/heartbeats/1"],
+      ["history.png", "/status/payments/history"],
     ] as const) {
       await page.goto(LOCAL + path);
       await page.screenshot({ path: join(dir, file) });

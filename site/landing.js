@@ -44,94 +44,6 @@
     step(0);
   };
 
-  // ---------- Hero: a 3D field of daily uptime bars ----------
-  const field = document.querySelector("[data-field]");
-  if (field) {
-    const ctx = field.getContext("2d");
-    const ROWS = 8;
-    const COLS = 32;
-    // Height is a day's mean response time; a few days had downtime.
-    const bars = [];
-    for (let r = 0; r < ROWS; r++) {
-      for (let c = 0; c < COLS; c++) {
-        const wave = 0.35 + 0.18 * Math.sin(c / 4 + r * 1.3) + 0.1 * Math.sin(c / 1.7 + r);
-        const down = (r * 31 + c * 17) % 97 === 0 || (r === 4 && c === COLS - 3);
-        bars.push({ r, c, h: down ? 1.6 : Math.max(0.12, wave), down });
-      }
-    }
-    let tiltX = 0;
-    let tiltY = 0;
-    field.addEventListener("pointermove", (e) => {
-      const b = field.getBoundingClientRect();
-      tiltX = ((e.clientX - b.left) / b.width - 0.5) * 0.5;
-      tiltY = ((e.clientY - b.top) / b.height - 0.5) * 0.3;
-    });
-    field.addEventListener("pointerleave", () => {
-      tiltX = 0;
-      tiltY = 0;
-    });
-    const size = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const b = field.getBoundingClientRect();
-      field.width = Math.round(b.width * dpr);
-      field.height = Math.round(b.height * dpr);
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    };
-    size();
-    window.addEventListener("resize", size);
-    let yaw = -0.55;
-    let pitch = 0.62;
-    const draw = (t) => {
-      const w = field.clientWidth;
-      const h = field.clientHeight;
-      ctx.clearRect(0, 0, w, h);
-      const time = t / 1000;
-      yaw += ((-0.55 + Math.sin(time * 0.18) * 0.32 + tiltX) - yaw) * 0.04;
-      pitch += ((0.62 + tiltY) - pitch) * 0.04;
-      const scan = (time * 6) % COLS;
-      const cy = Math.cos(yaw);
-      const sy = Math.sin(yaw);
-      const cp = Math.cos(pitch);
-      const sp = Math.sin(pitch);
-      const scale = Math.min(w / 50, h / 34);
-      const project = (x, y, z) => {
-        const X = x * cy - z * sy;
-        const Z = x * sy + z * cy;
-        const Y = y * cp - Z * sp;
-        const D = y * sp + Z * cp + 70;
-        const k = (70 / D) * scale;
-        return [w / 2 + X * k, h * 0.62 - Y * k, D];
-      };
-      const items = bars.map((b) => {
-        const x = (b.c - COLS / 2) * 1.15;
-        const z = (b.r - ROWS / 2) * 2.1;
-        const near = Math.max(0, 1 - Math.abs(b.c - scan) / 2.5);
-        const grow = still ? 1 : 0.85 + 0.15 * Math.sin(time * 1.4 + b.c * 0.3 + b.r);
-        return { b, x, z, hh: b.h * 6 * grow + near * 1.2, near, depth: project(x, 0, z)[2] };
-      });
-      items.sort((a, b) => b.depth - a.depth);
-      const face = (pts, fill) => {
-        ctx.beginPath();
-        pts.forEach(([px, py], i) => (i ? ctx.lineTo(px, py) : ctx.moveTo(px, py)));
-        ctx.closePath();
-        ctx.fillStyle = fill;
-        ctx.fill();
-      };
-      for (const { b, x, z, hh, near } of items) {
-        const base = b.down ? palette.down : palette.up;
-        // The scan line is the latest round of checks passing over each service.
-        const lift = 1 + near * 0.55;
-        const s = 0.38;
-        const p = (dx, y, dz) => project(x + dx, y, z + dz);
-        const fog = 0.55 + 0.45 * (1 - (z + ROWS) / (ROWS * 2.2));
-        face([p(-s, hh, -s), p(s, hh, -s), p(s, hh, s), p(-s, hh, s)], rgb(base, 1.15 * lift, fog));
-        face([p(-s, 0, s), p(s, 0, s), p(s, hh, s), p(-s, hh, s)], rgb(base, 0.72 * lift, fog));
-        face([p(s, 0, -s), p(s, 0, s), p(s, hh, s), p(s, hh, -s)], rgb(base, 0.52 * lift, fog));
-      }
-    };
-    whileVisible(field, draw);
-  }
-
   // ---------- A failing check, step by step ----------
   const sim = document.querySelector("[data-sim]");
   if (sim) {
@@ -251,55 +163,78 @@
     });
   }
 
-  // ---------- Screens stacked in 3D, tilting with the pointer ----------
-  const stack = document.querySelector("[data-stack]");
-  if (stack && !still) {
-    stack.addEventListener("pointermove", (e) => {
-      const b = stack.getBoundingClientRect();
-      stack.style.setProperty("--rx", `${(0.5 - (e.clientY - b.top) / b.height) * 14}deg`);
-      stack.style.setProperty("--ry", `${((e.clientX - b.left) / b.width - 0.5) * 22}deg`);
+  // ---------- Hero screenshot: tilted back, it lies flat as it scrolls up ----------
+  const shot = document.querySelector("[data-tilt]");
+  if (shot && !still) {
+    let queued = false;
+    const tilt = () => {
+      queued = false;
+      const top = shot.getBoundingClientRect().top;
+      const flat = Math.min(1, Math.max(0, 1 - (top - window.innerHeight * 0.25) / (window.innerHeight * 0.6)));
+      shot.style.setProperty("--tilt", `${(1 - flat) * 24}deg`);
+    };
+    window.addEventListener("scroll", () => {
+      if (!queued) requestAnimationFrame(tilt);
+      queued = true;
+    }, { passive: true });
+    tilt();
+  }
+
+  // ---------- Connections: tabs that light the matching line on the map ----------
+  const tabs = document.querySelector("[data-tabs]");
+  if (tabs) {
+    const buttons = [...tabs.querySelectorAll('[role="tab"]')];
+    const select = (i, focus) => {
+      buttons.forEach((b, n) => {
+        b.setAttribute("aria-selected", String(n === i));
+        b.tabIndex = n === i ? 0 : -1;
+        document.getElementById(b.getAttribute("aria-controls")).hidden = n !== i;
+      });
+      tabs.querySelectorAll("[data-link], [data-node]").forEach((el) => {
+        el.classList.toggle("is-on", Number(el.dataset.link ?? el.dataset.node) === i);
+      });
+      if (focus) buttons[i].focus();
+      window.dispatchEvent(new Event("resize"));
+    };
+    buttons.forEach((b, i) => {
+      b.addEventListener("click", () => select(i, false));
+      b.addEventListener("keydown", (e) => {
+        const step = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[e.key];
+        if (!step) return;
+        e.preventDefault();
+        select((i + step + buttons.length) % buttons.length, true);
+      });
     });
-    stack.addEventListener("pointerleave", () => {
-      stack.style.removeProperty("--rx");
-      stack.style.removeProperty("--ry");
+    select(0, false);
+  }
+
+  // ---------- Screenshots open at full size in a dialog ----------
+  const dialog = document.querySelector("[data-zoom-dialog]");
+  if (dialog) {
+    const shots = [...document.querySelectorAll("[data-zoom]")].sort((a, b) => a.dataset.zoom - b.dataset.zoom);
+    const img = dialog.querySelector("img");
+    const caption = dialog.querySelector("p");
+    let at = 0;
+    const show = (i) => {
+      at = (i + shots.length) % shots.length;
+      const source = shots[at].querySelector("img");
+      img.src = source.currentSrc || source.src;
+      img.alt = source.alt;
+      caption.textContent = source.alt;
+    };
+    shots.forEach((b, i) => b.addEventListener("click", () => {
+      show(i);
+      dialog.showModal();
+    }));
+    dialog.addEventListener("click", (e) => {
+      const step = e.target.closest("[data-zoom-step]");
+      if (step) show(at + Number(step.dataset.zoomStep));
+      else if (e.target === dialog || e.target.closest("[data-zoom-close]")) dialog.close();
+    });
+    dialog.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowRight") show(at + 1);
+      if (e.key === "ArrowLeft") show(at - 1);
     });
   }
 
-  // ---------- Install commands typed into a terminal ----------
-  const term = document.querySelector("[data-type]");
-  if (term && !still) {
-    const lines = [...term.querySelectorAll("[data-line]")];
-    const full = lines.map((l) => l.textContent);
-    lines.forEach((l) => (l.textContent = ""));
-    let started = false;
-    new IntersectionObserver(([e]) => {
-      if (!e.isIntersecting || started) return;
-      started = true;
-      let li = 0;
-      let ch = 0;
-      const tick = () => {
-        if (li >= lines.length) return;
-        lines[li].textContent = full[li].slice(0, ++ch);
-        if (ch >= full[li].length) {
-          li++;
-          ch = 0;
-          setTimeout(tick, 380);
-        } else setTimeout(tick, 24);
-      };
-      tick();
-    }, { threshold: 0.6 }).observe(term);
-  }
-
-  // ---------- Sections rise into view ----------
-  const reveal = document.querySelectorAll("[data-reveal]");
-  if (still) reveal.forEach((el) => el.classList.add("is-in"));
-  else {
-    const io = new IntersectionObserver((entries) => {
-      for (const e of entries) if (e.isIntersecting) {
-        e.target.classList.add("is-in");
-        io.unobserve(e.target);
-      }
-    }, { threshold: 0.15 });
-    reveal.forEach((el) => io.observe(el));
-  }
 })();

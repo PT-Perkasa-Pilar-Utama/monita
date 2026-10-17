@@ -16,26 +16,115 @@
 <!-- topbar -->
 <main class="landing">
   <section class="lp-hero">
-    <div class="lp-hero__text">
-      <h1>Find out a service is down before your users write to you.</h1>
-      <p>Monita checks every URL and cron job your team runs. When a check fails twice in a row, it opens an incident, emails the owner, posts to your chat, and puts the incident on your public status page.</p>
-      <div class="lp-cta">
-        <a class="btn btn--accent" href="demo/">Open the live demo</a>
-        <a class="btn" href="docs/getting-started/">Run it in five minutes</a>
-      </div>
-      <dl class="lp-facts">
-        <div><dt>30 s</dt><dd>shortest check interval</dd></div>
-        <div><dt>2 checks</dt><dd>to open an incident</dd></div>
-        <div><dt>90 days</dt><dd>of uptime on the status page</dd></div>
-      </dl>
+    <h1>Find out a service is down before your users write to you.</h1>
+    <p>Monita checks the URLs and cron jobs of every project your team runs. When one fails, it opens an incident, alerts the people you choose, and shows the outage on a public status page.</p>
+    <div class="lp-cta">
+      <a class="btn btn--accent" href="demo/">Open the live demo</a>
+      <a class="btn" href="#get">Install Monita</a>
     </div>
-    <figure class="lp-field">
-      <canvas data-field aria-label="Thirty-two days of checks for eight services, drawn as bars. Red bars are days with downtime." role="img"></canvas>
-      <figcaption>Each bar is one day of checks for one service. Its height is the mean response time. Red bars are days with downtime.</figcaption>
-    </figure>
+    <div class="lp-shot" data-tilt>
+      <button class="lp-frame" type="button" data-zoom="0" aria-label="Enlarge the monitor page screenshot">
+        <span class="lp-frame__bar"><span></span><span></span><span></span><b>monita.example.com/projects/portal/monitors/2</b></span>
+        <img src="assets/monitor.png" alt="A monitor page with its uptime, last check, mean response time, a response-time chart and availability for today and the last 7 days" width="2880" height="1800">
+      </button>
+    </div>
   </section>
 
-  <section class="lp-section" data-reveal>
+  <section class="lp-section lp-get" id="get">
+    <div>
+      <h2>Small enough to run on a server you already have</h2>
+      <ul class="lp-motto">
+        <li><b>One program and one file.</b> Monita is a single binary of about 25 MB that keeps all its data in one SQLite file. It does not need Docker, a separate database or a message queue.</li>
+        <li><b>Light on memory.</b> In a two-minute test, Monita used about 21 MB of memory while it checked 100 URLs every 30 seconds.</li>
+        <li><b>Easy to connect.</b> A project needs a health URL, one curl line per cron job and, for bug reports, two HTTP calls. <a href="#connect">See each one below.</a></li>
+        <li><b>Alerts survive a restart.</b> Monita saves every alert before it sends it, and it tries again after a failed delivery or a restart. A slow mail server never delays a check.</li>
+      </ul>
+    </div>
+    <div class="lp-install">
+      <h3>Install on Linux</h3>
+      <p>Download the binary from the <a href="https://github.com/PT-Perkasa-Pilar-Utama/monita/releases">releases page</a>, then run these three commands.</p>
+<pre class="code"><code class="language-sh">install -m 0755 monita /usr/local/bin/monita
+sudo monita setup
+sudo monita service install</code></pre>
+      <p><code>monita setup</code> asks for the public URL, the mail server and the first admin account. <code>monita service install</code> starts Monita now and after every reboot.</p>
+      <p>You can also <a href="demo/">try the demo in your browser</a> first. It needs no account.</p>
+    </div>
+  </section>
+
+  <section class="lp-section" id="connect">
+    <h2>How a project connects to Monita</h2>
+    <p class="lp-lead">Your project does not need a library or an agent. Monita calls your health URL, and your jobs and your backend call Monita over plain HTTP.</p>
+    <div class="lp-connect" data-tabs>
+      <svg class="lp-map" viewBox="0 0 560 360" role="img" aria-label="Your project's web server, cron jobs, app and backend on the left, Monita in the middle, and your team chat on the right, joined by the five connections listed beside the diagram.">
+        <rect class="lp-map__group" x="8" y="8" width="208" height="344" rx="14"/>
+        <text class="lp-map__title" x="24" y="34">Your project</text>
+        <g class="lp-map__node" data-node="0"><rect x="24" y="52" width="176" height="56" rx="10"/><text x="40" y="85">Web server</text></g>
+        <g class="lp-map__node" data-node="1"><rect x="24" y="128" width="176" height="56" rx="10"/><text x="40" y="161">Cron jobs</text></g>
+        <g class="lp-map__node" data-node="3"><rect x="24" y="204" width="176" height="56" rx="10"/><text x="40" y="237">Your app</text></g>
+        <g class="lp-map__node" data-node="4"><rect x="24" y="280" width="176" height="56" rx="10"/><text x="40" y="313">Your backend</text></g>
+        <rect class="lp-map__monita" x="300" y="150" width="120" height="120" rx="16"/>
+        <text class="lp-map__name" x="360" y="216" text-anchor="middle">Monita</text>
+        <g class="lp-map__node" data-node="2"><rect x="456" y="182" width="96" height="56" rx="10"/><text x="504" y="215" text-anchor="middle">Chat</text></g>
+        <path class="lp-map__link" data-link="0" id="link-0" d="M300 170 C 260 120, 240 80, 200 80"/>
+        <path class="lp-map__link" data-link="1" id="link-1" d="M200 156 C 250 156, 260 190, 300 190"/>
+        <path class="lp-map__link" data-link="2" id="link-2" d="M420 210 L 456 210"/>
+        <path class="lp-map__link" data-link="3" id="link-3" d="M200 232 C 250 232, 260 225, 300 225"/>
+        <path class="lp-map__link" data-link="4" id="link-4" d="M200 308 C 250 308, 270 260, 300 255"/>
+        <circle class="lp-map__dot" r="5"><animateMotion dur="2.4s" repeatCount="indefinite"><mpath href="#link-0"/></animateMotion></circle>
+        <circle class="lp-map__dot" r="5"><animateMotion dur="2.4s" begin="-1.9s" repeatCount="indefinite"><mpath href="#link-1"/></animateMotion></circle>
+        <circle class="lp-map__dot" r="5"><animateMotion dur="1.2s" begin="-0.3s" repeatCount="indefinite"><mpath href="#link-2"/></animateMotion></circle>
+        <circle class="lp-map__dot" r="5"><animateMotion dur="2.4s" begin="-1s" repeatCount="indefinite"><mpath href="#link-3"/></animateMotion></circle>
+        <circle class="lp-map__dot" r="5"><animateMotion dur="2.4s" begin="-0.5s" repeatCount="indefinite"><mpath href="#link-4"/></animateMotion></circle>
+      </svg>
+      <div class="lp-tabs">
+        <div class="lp-tabs__list" role="tablist" aria-label="Connections">
+          <button role="tab" type="button" id="tab-0" aria-controls="panel-0" aria-selected="true">Watch a URL</button>
+          <button role="tab" type="button" id="tab-1" aria-controls="panel-1" aria-selected="false">Report from a cron job</button>
+          <button role="tab" type="button" id="tab-2" aria-controls="panel-2" aria-selected="false">Alert your chat</button>
+          <button role="tab" type="button" id="tab-3" aria-controls="panel-3" aria-selected="false">Show status in your app</button>
+          <button role="tab" type="button" id="tab-4" aria-controls="panel-4" aria-selected="false">Take bug reports</button>
+        </div>
+        <div class="lp-tabs__panel" role="tabpanel" id="panel-0" aria-labelledby="tab-0">
+          <p>Add a monitor with your health URL in the dashboard. Every 30, 60, 180 or 300 seconds, Monita makes this request. An answer with a 2xx status within 10 seconds passes. You can also require a word in the body.</p>
+<pre class="code"><code class="language-sh">curl -fsS -m 10 https://shop.example.com/healthz</code></pre>
+        </div>
+        <div class="lp-tabs__panel" role="tabpanel" id="panel-1" aria-labelledby="tab-1" hidden>
+          <p>Add a heartbeat and copy its URL. The job calls the URL when it finishes. If the call does not arrive in time, Monita opens an incident. A call to <code>/fail</code> opens one at once, and the first kilobyte of its body becomes the cause.</p>
+<pre class="code"><code class="language-sh">0 2 * * * /opt/jobs/backup.sh &amp;&amp; curl -fsS -m 10 https://monita.example.com/ping/&lt;token&gt;</code></pre>
+          <div class="lp-track">
+            <canvas data-track aria-label="Pings arriving on a timeline. Three pings are missing, the deadline passes, and the next ping closes the incident." role="img"></canvas>
+            <p class="lp-track__state" data-track-state>Pings arriving on time</p>
+          </div>
+        </div>
+        <div class="lp-tabs__panel" role="tabpanel" id="panel-2" aria-labelledby="tab-2" hidden>
+          <p>Paste a Slack or Microsoft Teams incoming-webhook URL into the project's alert settings. Monita posts this JSON when an incident opens and when it closes. It also emails the addresses you list.</p>
+<pre class="code"><code class="language-json">{
+  "text": "[CRITICAL] Payments / API health is down: HTTP 503, expected 2xx after 2 checks",
+  "event": "incident.opened",
+  "project": "payments",
+  "severity": "critical",
+  "incident_url": "https://monita.example.com/projects/payments/incidents/42"
+}</code></pre>
+        </div>
+        <div class="lp-tabs__panel" role="tabpanel" id="panel-3" aria-labelledby="tab-3" hidden>
+          <p>Link to the project's public status page, or build your own banner from its JSON. The endpoint is public and allows requests from any origin.</p>
+<pre class="code"><code class="language-sh">curl -s https://monita.example.com/api/v1/public/status/payments?days=30</code></pre>
+<pre class="code"><code class="language-json">{ "data": { "overall": "down", "items": [ { "name": "API health", "state": "down", "uptime_90d": 99.95 } ] } }</code></pre>
+        </div>
+        <div class="lp-tabs__panel" role="tabpanel" id="panel-4" aria-labelledby="tab-4" hidden>
+          <p>Your backend asks Monita for a reference ID with the project's API key and gives it to the user. The user then sends a ticket with it, from your app or from the status page. Monita stores only a hash of the ID, so it never learns who the user is.</p>
+<pre class="code"><code class="language-sh">curl -s -X POST https://monita.example.com/api/v1/ref-ids \
+  -H "Authorization: Bearer $MONITA_KEY" -H 'content-type: application/json' \
+  -d '{"single_use": false}'
+
+curl -s -X POST https://monita.example.com/api/v1/tickets -H 'content-type: application/json' \
+  -d '{"ref_id": "rf_...", "title": "Checkout button does nothing", "description": "I click Pay and nothing happens."}'</code></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="lp-section">
     <h2>What Monita does when a check fails</h2>
     <p class="lp-lead">This is the sequence for an HTTP monitor that checks every 30 seconds. A single failed check does not alert anyone, because one dropped request is common. The second failure in a row opens the incident.</p>
     <div class="lp-sim" data-sim>
@@ -53,69 +142,47 @@
     </div>
   </section>
 
-  <section class="lp-section lp-split" data-reveal>
-    <div>
-      <h2>Cron jobs report in, and Monita notices when one stops</h2>
-      <p class="lp-lead">A heartbeat waits for a job to call its URL. When a ping does not arrive by the deadline, Monita opens an incident. A job can also report its own failure, and the first kilobyte of its error output becomes the incident's cause.</p>
-<pre class="code">URL=https://monita.example.com/ping/&lt;token&gt;
-if ! out=$(backup.sh 2&gt;&amp;1); then
-  printf '%s' "$out" |
-    curl -fsS -m 10 --data-binary @- "$URL/fail"
-  exit 1
-fi
-curl -fsS -m 10 "$URL"</pre>
-    </div>
-    <div class="lp-track">
-      <canvas data-track aria-label="Pings arriving on a timeline. One ping is missing and the deadline passes." role="img"></canvas>
-      <p class="lp-track__state" data-track-state>Pings arriving on time</p>
+  <section class="lp-section">
+    <h2>The pages your team and your users see</h2>
+    <p class="lp-lead">These screenshots come from the demo. Select one to see it at full size.</p>
+    <div class="lp-gallery">
+      <button type="button" data-zoom="1"><img src="assets/monitors.png" alt="The monitors of a project, each with its state, interval and response time" width="2880" height="1800" loading="lazy"><span>Every monitor of a project, with its state and response time</span></button>
+      <button type="button" data-zoom="2"><img src="assets/incident.png" alt="An open incident with its cause, timeline and status updates" width="2880" height="1800" loading="lazy"><span>An open incident with its cause and the updates the team posted</span></button>
+      <button type="button" data-zoom="3"><img src="assets/heartbeat.png" alt="A heartbeat with its schedule, last ping and the list of pings" width="2880" height="1800" loading="lazy"><span>A heartbeat with its deadline and the pings it received</span></button>
+      <button type="button" data-zoom="4"><img src="assets/status.png" alt="A project's public status page with 90 days of uptime per service" width="2880" height="1800" loading="lazy"><span>The public status page with 90 days of uptime</span></button>
+      <button type="button" data-zoom="5"><img src="assets/tickets.png" alt="The ticket board with triage, backlog, in progress and done" width="2880" height="1800" loading="lazy"><span>The ticket board where the tech lead sorts bug reports</span></button>
+      <button type="button" data-zoom="6"><img src="assets/history.png" alt="The status page history with every past incident, grouped by month" width="2880" height="1800" loading="lazy"><span>Every past incident on the status page, grouped by month</span></button>
     </div>
   </section>
 
-  <section class="lp-section lp-split lp-split--flip" data-reveal>
-    <div class="lp-stack" data-stack>
-      <img class="lp-stack__back" src="assets/tickets.png" alt="The ticket board: triage, backlog, in progress, done" width="2880" height="1800">
-      <img class="lp-stack__mid" src="assets/status.png" alt="A project's public status page with 90 days of uptime per service" width="2880" height="1800">
-      <img class="lp-stack__front" src="assets/monitor.png" alt="A monitor page with its response-time chart and availability" width="2880" height="1800">
-    </div>
-    <div>
-      <h2>Your team and your users read the same incident</h2>
-      <p class="lp-lead">Each project gets a public status page. It shows 90 days of uptime for the services you mark public, every open incident, and the updates your team posts. Users can also report a bug from that page, and the tech lead sorts the reports on the ticket board.</p>
-      <p class="lp-lead">Inside Monita, each monitor has a response-time chart, availability for today, 7, 30 and 365 days, and the full list of checks.</p>
-    </div>
+  <section class="lp-section">
+    <h2>What Monita does not do</h2>
+    <p class="lp-lead">Read these before you install it. Each one is a choice for version 1, and some of them can change.</p>
+    <ul class="lp-limits">
+      <li><b>It checks from one place.</b> Every check runs from the server that runs Monita, so Monita cannot tell a regional outage from a local one.</li>
+      <li><b>It checks HTTP only.</b> TCP, ping and DNS checks are not in version 1.</li>
+      <li><b>It alerts by email and webhook.</b> It does not send text messages, make phone calls or manage an on-call rotation.</li>
+      <li><b>It signs people in with an email and a password.</b> Single sign-on and two-factor sign-in are not in version 1.</li>
+      <li><b>It keeps single checks for 7 days.</b> Daily summaries stay for good, so the uptime history stays complete.</li>
+      <li><b>Tickets hold text only.</b> Users cannot attach files to a bug report.</li>
+    </ul>
   </section>
 
-  <section class="lp-section" data-reveal>
-    <h2>Built to run on a server you already have</h2>
-    <div class="lp-grid">
-      <article><h3>A single binary</h3><p>Monita is a Rust program that stores everything in a SQLite file. It does not need Docker, a separate database or a message queue.</p></article>
-      <article><h3>Daily backups</h3><p>Monita copies its database file every night and keeps the last seven copies. A backup restores by copying the file back.</p></article>
-      <article><h3>Checks from inside your network</h3><p>Monita runs next to your services, so it can check internal addresses that an outside service cannot reach.</p></article>
-      <article><h3>Alerts that do not block checks</h3><p>Alerts go through an outbox. A slow mail server delays an email, but every check still runs on time.</p></article>
-      <article><h3>Bounded by design</h3><p>Every list has a hard limit and every background job works in batches, so a large project does not slow the pages down.</p></article>
-      <article><h3>MIT licensed</h3><p>The source is on GitHub. You can read every check, change it, and run it without a subscription.</p></article>
-    </div>
-  </section>
-
-  <section class="lp-section lp-split" data-reveal>
-    <div>
-      <h2>Three commands install it on Linux</h2>
-      <p class="lp-lead"><code>monita setup</code> asks for your public URL and mail server and creates the first admin. <code>monita service install</code> creates the system user and the systemd unit, starts Monita and waits until it answers.</p>
-      <a class="btn" href="docs/install/">Read the install guide</a>
-    </div>
-    <div class="lp-term" data-type>
-      <div class="lp-term__bar"><span></span><span></span><span></span><b>root@monitor-vm</b></div>
-<pre class="lp-term__body"><span data-line>install -m 0755 monita /usr/local/bin/monita</span>
-<span data-line>sudo monita setup</span>
-<span data-line>sudo monita service install</span>
-<span data-line class="lp-ok">monita is running: http://127.0.0.1:8080/healthz</span></pre>
-    </div>
-  </section>
-
-  <section class="lp-final" data-reveal>
+  <section class="lp-final">
     <h2>See it with real data first</h2>
     <p>The demo is a copy of Monita with three sample projects, open incidents and a ticket board. It runs in your browser and needs no account.</p>
     <div class="lp-cta"><a class="btn btn--accent" href="demo/">Open the live demo</a><a class="btn" href="docs/">Read the documentation</a></div>
   </section>
+
+  <dialog class="lp-zoom" data-zoom-dialog aria-label="Screenshot">
+    <img src="assets/monitor.png" alt="" width="2880" height="1800">
+    <p></p>
+    <div class="lp-zoom__nav">
+      <button class="btn" type="button" data-zoom-step="-1">Previous</button>
+      <button class="btn" type="button" data-zoom-step="1">Next</button>
+      <button class="btn" type="button" data-zoom-close>Close</button>
+    </div>
+  </dialog>
 
   <footer class="foot-l"><span>MIT licensed. Made by PT. Perkasa Pilar Utama.</span><nav><a href="docs/">Documentation</a><a href="demo/">Demo</a><a href="https://github.com/PT-Perkasa-Pilar-Utama/monita">GitHub</a></nav></footer>
 </main>
