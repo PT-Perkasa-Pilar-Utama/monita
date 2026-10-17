@@ -1,0 +1,30 @@
+<!doctype html>
+<!-- The 1200x630 share image. e2e/demo/snapshot.ts --screens renders it to docs/assets/og.png. -->
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../target/site/assets/app.css">
+<style>
+  html, body { margin: 0; width: 1200px; height: 630px; overflow: hidden; }
+  body { position: relative; background: var(--bg); font-family: var(--font-body); }
+  .card { position: absolute; inset: 0; display: grid; grid-template-columns: 560px 1fr; align-items: center; }
+  .text { padding: 0 0 0 72px; display: flex; flex-direction: column; gap: 28px; }
+  .og-brand { display: flex; align-items: center; gap: 14px; color: var(--fg); font-size: 34px; font-weight: 650; letter-spacing: -0.02em; }
+  .og-brand svg { width: 44px; height: 44px; color: var(--accent); }
+  h1 { margin: 0; color: var(--fg); font-size: 54px; line-height: 1.04; font-weight: 700; letter-spacing: -0.04em; }
+  p { margin: 0; color: var(--fg-muted); font-size: 24px; line-height: 1.4; }
+  .shot { position: relative; height: 630px; perspective: 1400px; }
+  .shot img { position: absolute; top: 96px; left: 40px; width: 1000px; border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 40px 90px -30px color-mix(in srgb, var(--fg) 40%, transparent); transform: rotateY(-16deg) rotateX(6deg); transform-origin: 0 50%; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="text">
+    <div class="og-brand"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="8.25" stroke="currentColor" stroke-width="1.5"/><path d="M4.5 10.5h2.5l1.5-3.5 3 6 1.5-2.5h2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Monita</div>
+    <h1>Find out a service is down before your users write to you.</h1>
+    <p>Self-hosted uptime monitoring, heartbeats, incidents and status pages in one program.</p>
+  </div>
+  <div class="shot"><img src="../docs/assets/screens/monitors.png" alt=""></div>
+</div>
+</body>
+</html>

@@ -178,7 +178,7 @@ function check(dir: string): string[] {
   return broken;
 }
 
-/** The README and landing-page screenshots, from the live server so they match the demo. */
+/** The README and landing-page screenshots, from the live server so they match the demo, and the share image. */
 async function screenshots(cookie: string, dir: string): Promise<void> {
   const { chromium } = await import("@playwright/test");
   const browser = await chromium.launch({ channel: "chrome" });
@@ -200,6 +200,11 @@ async function screenshots(cookie: string, dir: string): Promise<void> {
       await page.goto(LOCAL + path);
       await page.screenshot({ path: join(dir, file) });
     }
+    // The 1200x630 link-preview image, drawn from site/og.html and the monitors screenshot above.
+    const og = await browser.newPage({ viewport: { width: 1200, height: 630 }, deviceScaleFactor: 1, colorScheme: "light" });
+    await og.goto(`file://${join(ROOT, "site/og.html")}`);
+    await og.waitForLoadState("networkidle");
+    await og.screenshot({ path: join(dir, "og.png") });
   } finally {
     await browser.close();
   }

@@ -15,6 +15,21 @@ const ROOT = resolve(import.meta.dir, "..");
 const OUT = process.env["DEMO_OUT"] ?? join(ROOT, "target/site");
 const GUIDE = join(ROOT, "docs/guide");
 const REPO = "https://github.com/PT-Perkasa-Pilar-Utama/monita";
+const SITE_URL = "https://pt-perkasa-pilar-utama.github.io/monita/";
+
+/** Link-preview tags. Chat apps and social sites fetch the image by its absolute URL. */
+export function ogTags(title: string, description: string, path: string): string {
+  return `<meta property="og:type" content="website">
+<meta property="og:site_name" content="Monita">
+<meta property="og:title" content="${esc(title)}">
+<meta property="og:description" content="${esc(description)}">
+<meta property="og:url" content="${SITE_URL}${path}">
+<meta property="og:image" content="${SITE_URL}assets/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Monita: find out a service is down before your users write to you.">
+<meta name="twitter:card" content="summary_large_image">`;
+}
 
 type Page = { slug: string; title: string; lead: string; body: string; headings: [string, string][] };
 type Group = { title: string; icon: string; blurb: string; pages: string[] };
@@ -83,7 +98,7 @@ function links(html: string): string {
     .replace(/href="\.\.\/\.\.\/([^"]+)"/g, (_, path: string) => `href="${REPO}/blob/main/${path}"`);
 }
 
-function shell(opts: { title: string; up: string; active: string; side: string; main: string; toc: string; description: string }): string {
+function shell(opts: { title: string; up: string; active: string; side: string; main: string; toc: string; description: string; path: string }): string {
   const { up } = opts;
   return `<!doctype html>
 <html lang="en">
@@ -92,6 +107,7 @@ function shell(opts: { title: string; up: string; active: string; side: string; 
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(opts.title)}</title>
 <meta name="description" content="${esc(opts.description)}">
+${ogTags(opts.title, opts.description, opts.path)}
 <link rel="icon" href="${up}assets/favicon.svg" type="image/svg+xml">
 <script src="${up}assets/theme.js"></script>
 <link rel="stylesheet" href="${up}assets/app.css">
@@ -168,6 +184,7 @@ ${pager}
     main,
     toc: toc(p.headings),
     description: p.lead.replace(/<[^>]+>/g, ""),
+    path: `docs/${p.slug}/`,
   });
 }
 
@@ -208,6 +225,7 @@ function overview(pages: Map<string, Page>): string {
     main,
     toc: toc([["guides", "Guides"], ["integrate", "Integrate"]]),
     description: "Monita documentation: getting started, integration and operations.",
+    path: "docs/",
   });
 }
 
@@ -254,7 +272,12 @@ function main(): void {
   const pages = new Map([...listed].map((slug) => [slug, load(slug)]));
   for (const p of pages.values()) page(join(OUT, "docs", p.slug, "index.html"), pageHtml(pages, p));
   page(join(OUT, "docs", "index.html"), overview(pages));
-  page(join(OUT, "index.html"), readFileSync(join(import.meta.dir, "index.html"), "utf8").replace("<!-- topbar -->", topbar("", "home")));
+  page(join(OUT, "index.html"), readFileSync(join(import.meta.dir, "index.html"), "utf8").replace("<!-- topbar -->", topbar("", "home"))
+    .replace("<!-- og -->", ogTags(
+      "Monita: self-hosted uptime monitoring, heartbeats and status pages",
+      "Monita checks your team's URLs and cron jobs, opens an incident after two failed checks, alerts the people you choose by email and webhook, and shows it on a public status page. You host it yourself.",
+      "",
+    )));
   console.log(`site: ${pages.size} guide pages in ${OUT}`);
 }
 
