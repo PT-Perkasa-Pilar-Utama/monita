@@ -11,7 +11,11 @@ use axum::{
 use serde::Deserialize;
 use std::collections::HashMap;
 
-use super::{CheckRow, FieldErrors, INTERVALS_S, Monitor, MonitorInput};
+use super::{
+    CheckRow, FieldErrors, INTERVALS_S, Monitor, MonitorInput,
+    chart::Range,
+    insight::{Insight, Stat},
+};
 use crate::{
     accounts::CurrentUser,
     app::AppState,
@@ -25,7 +29,7 @@ use crate::{
     projects::{self, Project},
 };
 
-const PAGE: i64 = 100;
+const PAGE: i64 = 25;
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -286,11 +290,36 @@ struct DetailPage {
     checks: Vec<CheckRow>,
     older: Option<String>,
     incident: Option<ItemState>,
+    insight: Insight,
 }
 
 impl DetailPage {
     fn state(&self) -> (&'static str, &'static str) {
         super::item_state(self.monitor.last.is_some(), self.incident)
+    }
+    fn stats(&self) -> [Stat; 4] {
+        let i = &self.insight;
+        let last = match &self.monitor.last {
+            Some(c) => (
+                "Last check",
+                time::ago(c.checked_at, i.now),
+                format!("{} · {}", self.code(c), self.latency(c)),
+                if c.ok { "up" } else { "down" },
+            ),
+            None => (
+                "Last check",
+                "Never".into(),
+                "the first runs soon".into(),
+                "plain",
+            ),
+        };
+        let mean = ("Mean response", i.mean(), i.range_word(), "plain");
+        [
+            i.streak_stat(self.monitor.last.is_some()),
+            last,
+            mean,
+            i.incidents_stat(),
+        ]
     }
     fn every(&self) -> &'static str {
         interval_label(self.monitor.interval_s)
@@ -312,6 +341,8 @@ impl DetailPage {
 pub(super) struct Paging {
     /// A cursor the page itself links to; a hand-edited bad value shows the first page.
     before: Option<String>,
+    /// The chart range: hour, day, week or month. Anything else is a day.
+    range: Option<String>,
 }
 
 impl Paging {
@@ -319,6 +350,10 @@ impl Paging {
     pub(super) fn cursor(&self) -> Option<(i64, i64)> {
         let (t, id) = self.before.as_deref()?.split_once('.')?;
         Some((t.parse().ok()?, id.parse().ok()?))
+    }
+
+    pub(super) fn range(&self) -> Range {
+        Range::parse(self.range.as_deref())
     }
 }
 
@@ -340,6 +375,7 @@ async fn detail(
         .await?
         .get(&(SourceKind::Monitor, id))
         .copied();
+    let insight = Insight::monitor(&state.db, &monitor, paging.range(), now()).await?;
     Ok(render(&DetailPage {
         shell: projects::shell(&user, "monitors", Some(&project)),
         project,
@@ -347,5 +383,6 @@ async fn detail(
         checks,
         older,
         incident,
+        insight,
     }))
 }

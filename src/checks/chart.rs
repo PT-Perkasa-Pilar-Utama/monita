@@ -91,18 +91,24 @@ pub struct Bucket {
 pub struct Mark {
     pub x: f64,
     pub w: f64,
+    pub y: f64,
+    pub h: f64,
     pub title: String,
 }
+
+const FULL: (f64, f64) = (TOP, BOTTOM - TOP);
 
 pub struct Tick {
     pub at: f64,
     pub label: String,
 }
 
-/// What `ui::chart` draws. Coordinates are in a 720 x 200 view box.
+/// What `checks/insight.html` draws. Coordinates are in a 960 x 240 view box.
 pub struct Chart {
     pub line: String,
     pub area: String,
+    /// (x, y) of each mean, drawn as dots when there are few.
+    pub dots: Vec<(f64, f64)>,
     pub up: Vec<Mark>,
     pub down: Vec<Mark>,
     pub fails: Vec<Mark>,
@@ -113,10 +119,10 @@ pub struct Chart {
     pub empty: bool,
 }
 
-pub const LEFT: f64 = 52.0;
-pub const RIGHT: f64 = 712.0;
-pub const TOP: f64 = 8.0;
-pub const BOTTOM: f64 = 176.0;
+pub const LEFT: f64 = 56.0;
+pub const RIGHT: f64 = 952.0;
+pub const TOP: f64 = 10.0;
+pub const BOTTOM: f64 = 212.0;
 
 fn x_of(w: &Window, t: i64) -> f64 {
     let span = (w.end() - w.from) as f64;
@@ -151,7 +157,7 @@ fn nice(v: i64) -> i64 {
 }
 
 fn ms(v: i64) -> String {
-    if v >= 1000 && v % 100 == 0 {
+    if v >= 1000 {
         format!("{}s", v as f64 / 1000.0)
     } else {
         format!("{v}ms")
@@ -213,6 +219,8 @@ fn band(w: &Window, s: i64, e: i64, title: &str) -> Mark {
     Mark {
         x,
         w: (x_of(w, e) - x).max(1.0),
+        y: FULL.0,
+        h: FULL.1,
         title: title.to_string(),
     }
 }
@@ -221,6 +229,7 @@ fn blank(range: Range, w: &Window) -> Chart {
     Chart {
         line: String::new(),
         area: String::new(),
+        dots: Vec::new(),
         up: Vec::new(),
         down: Vec::new(),
         fails: Vec::new(),
@@ -232,11 +241,14 @@ fn blank(range: Range, w: &Window) -> Chart {
     }
 }
 
-/// Mean response time per bucket as a line, gaps where no check ran, failed checks in red.
+/// Mean response time per bucket as a line, failed checks in red. The line bridges up to
+/// `max_gap` empty buckets, the check interval in buckets, and breaks where checks stopped.
+#[allow(clippy::too_many_arguments)]
 pub fn latency(
     range: Range,
     w: &Window,
     buckets: &[Bucket],
+    max_gap: usize,
     covered_from: i64,
     now: i64,
     down: &[(i64, i64)],
@@ -260,6 +272,8 @@ pub fn latency(
             chart.fails.push(Mark {
                 x: bx,
                 w: bw.max(1.0),
+                y: BOTTOM - 6.0,
+                h: 6.0,
                 title: format!(
                     "{} · {} of {} checks failed",
                     when(w, b.index),
@@ -271,6 +285,8 @@ pub fn latency(
         chart.hovers.push(Mark {
             x: bx,
             w: bw,
+            y: FULL.0,
+            h: FULL.1,
             title: format!(
                 "{} · {} checks{}",
                 when(w, b.index),
@@ -282,7 +298,8 @@ pub fn latency(
         });
         let Some(v) = b.avg_ms else { continue };
         let (px, py) = (bx + bw / 2.0, y(v));
-        if prev == Some(b.index.wrapping_sub(1)) {
+        chart.dots.push((px, py));
+        if prev.is_some_and(|p| b.index - p <= max_gap) {
             chart.line += &format!(" L{px:.1} {py:.1}");
             chart.area += &format!(" L{px:.1} {py:.1}");
         } else {
@@ -300,6 +317,9 @@ pub fn latency(
         chart.area += &format!(" L{last_x:.1} {BOTTOM:.1} L{run_start:.1} {BOTTOM:.1} Z");
         chart.empty = false;
     }
+    if chart.dots.len() > 60 {
+        chart.dots.clear();
+    }
     chart.line = chart.line.trim().to_string();
     chart.area = chart.area.trim().to_string();
     chart
@@ -316,14 +336,20 @@ pub fn pings(
 ) -> Chart {
     let mut chart = blank(range, w);
     (chart.up, chart.down) = bands(w, covered_from, now, down);
+    // A bar per bucket that heard a ping, as tall as its count against the busiest bucket.
+    let most = buckets.iter().map(|b| b.total).max().unwrap_or(1).max(1) as f64;
     for b in buckets
         .iter()
         .filter(|b| b.index < w.buckets && b.total > 0)
     {
         let (bx, bw) = bucket_x(w, b.index);
+        let width = (bw * 0.6).max(2.0);
+        let h = (FULL.1 * (b.total as f64 / most)).max(FULL.1 * 0.15);
         let mark = Mark {
-            x: bx + bw / 2.0 - 1.0,
-            w: 2.0,
+            x: bx + (bw - width) / 2.0,
+            w: width,
+            y: BOTTOM - h,
+            h,
             title: format!(
                 "{} · {} ok, {} failed",
                 when(w, b.index),
@@ -374,34 +400,32 @@ mod tests {
         assert_eq!(nice(4100), 5000);
         assert_eq!(ms(2500), "2.5s");
         assert_eq!(ms(250), "250ms");
+        assert_eq!(ms(3750), "3.75s");
     }
 
     #[test]
-    fn a_bucket_without_checks_breaks_the_line_and_failures_are_marked() {
+    fn a_gap_longer_than_the_interval_breaks_the_line_and_failures_are_marked() {
         let w = Window {
             from: 0,
             step: 60,
             buckets: 60,
         };
-        let chart = latency(
-            Range::Hour,
-            &w,
-            &[
-                b(0, 2, 2, Some(100)),
-                b(1, 2, 1, Some(100)),
-                b(3, 1, 1, Some(50)),
-            ],
-            0,
-            3600,
-            &[],
-        );
+        let buckets = [
+            b(0, 2, 2, Some(100)),
+            b(1, 2, 1, Some(100)),
+            b(3, 1, 1, Some(50)),
+        ];
+        let chart = latency(Range::Hour, &w, &buckets, 1, 0, 3600, &[]);
         assert_eq!(chart.line.matches('M').count(), 2, "{}", chart.line);
         assert_eq!(chart.line.matches('L').count(), 1, "{}", chart.line);
         assert_eq!(chart.area.matches('Z').count(), 2, "{}", chart.area);
+        assert_eq!(chart.dots.len(), 3);
         assert_eq!(chart.fails.len(), 1);
         assert!(chart.fails[0].title.contains("1 of 2 checks failed"));
         assert!(!chart.empty);
-        assert!(latency(Range::Hour, &w, &[], 0, 3600, &[]).empty);
+        let bridged = latency(Range::Hour, &w, &buckets, 2, 0, 3600, &[]);
+        assert_eq!(bridged.line.matches('M').count(), 1, "{}", bridged.line);
+        assert!(latency(Range::Hour, &w, &[], 1, 0, 3600, &[]).empty);
     }
 
     #[test]
@@ -434,5 +458,9 @@ mod tests {
             &[],
         );
         assert_eq!((chart.oks.len(), chart.fails.len()), (1, 1));
+        assert!(
+            chart.fails[0].h > chart.oks[0].h,
+            "two pings stand taller than one"
+        );
     }
 }

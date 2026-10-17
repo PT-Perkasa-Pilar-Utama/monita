@@ -60,8 +60,10 @@ async fn state_label(app: &TestApp, tl: &str) -> String {
         .text()
         .await
         .unwrap();
-    let pill = &html[html.find("<span class=\"state").expect("state pill")..];
-    let label = &pill[pill.find("></span>").unwrap() + "></span>".len()..];
+    let hero = &html[html
+        .find("<span class=\"hero__state")
+        .expect("the hero state")..];
+    let label = &hero[hero.find('>').unwrap() + 1..];
     label[..label.find("</span>").unwrap()].to_string()
 }
 

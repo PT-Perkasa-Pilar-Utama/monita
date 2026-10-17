@@ -37,7 +37,7 @@ pub const JOB_BATCH: i64 = 500;
 /// Missed heartbeats handled per write: each runs the incident engine and queues alerts.
 pub const MISSED_BATCH: i64 = 50;
 /// Pings per page on the heartbeat page.
-pub const PINGS_PAGE: i64 = 100;
+pub const PINGS_PAGE: i64 = 25;
 
 #[cfg(test)]
 mod tests {

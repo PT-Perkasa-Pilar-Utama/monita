@@ -37,12 +37,12 @@ curl -fsS -m 10 https://monita.company.co.id/ping/k3j9w2x7q4m8p6r1t5v0y2z8ab
 | GET | `/projects/{slug}/monitors` | owner, super_admin | | List with current state and last check | |
 | GET | `/projects/{slug}/monitors/new` | owner, super_admin | | Form with defaults: 1m, 10 s, `2xx`, warning, hidden | AC-09.02 |
 | POST | `/projects/{slug}/monitors` | owner, super_admin | `name`, `url`, `interval_s`, `timeout_s` (stored as `timeout_ms`), `expected_status`, `keyword`, `skip_tls_verify`, `severity`, `is_public` | Validate. `next_check_at = now + 5 + rand(0..interval_s - 5)`. | AC-09.01, AC-11.01 |
-| GET | `/projects/{slug}/monitors/{id}` | owner, super_admin | `?before=<checked_at>.<id>`, the cursor the page links to | Detail and checks of the last 7 days: time, status, latency, error | AC-10.01 |
+| GET | `/projects/{slug}/monitors/{id}` | owner, super_admin | `?range=hour\|day\|week\|month` (anything else is a day); `?before=<checked_at>.<id>`, the cursor the page links to | Up or down for how long, the last check, the mean response time, incidents in 30 days. A response-time chart for the range: hour, day and week from the raw checks, month from the daily rollup and today. Availability for today, 7, 30 and 365 days and all time, from automatic incidents. Checks of the last 7 days, 25 per page. | AC-10.01 |
 | POST | `/projects/{slug}/monitors/{id}` | owner, super_admin | same as create | Update | |
 | POST | `/projects/{slug}/monitors/{id}/delete` | owner, super_admin | | Delete with results | |
 | GET | `/projects/{slug}/heartbeats` | owner, super_admin | | List with state, last ping, ping URL | |
 | POST | `/projects/{slug}/heartbeats` | owner, super_admin | `name`, `period_s`, `grace_s`, `severity`, `is_public` | Create token. `deadline_at = now + period_s + grace_s`. | AC-12.01, AC-12.02 |
-| GET | `/projects/{slug}/heartbeats/{id}` | owner, super_admin | `?before=<received_at>.<id>`, the cursor the page links to | Detail, ping URL, pings of the last 7 days, 100 per page | AC-12.02 |
+| GET | `/projects/{slug}/heartbeats/{id}` | owner, super_admin | `?range=` as the monitor page; `?before=<received_at>.<id>`, the cursor the page links to | Detail, ping URL, the same stats, chart and availability as the monitor page with pings per bucket, then pings of the last 7 days, 25 per page | AC-12.02 |
 | POST | `/projects/{slug}/heartbeats/{id}` | owner, super_admin | same as create | Update | |
 | POST | `/projects/{slug}/heartbeats/{id}/delete` | owner, super_admin | | Delete | |
 | GET | `/admin/settings` | super_admin | | Limits and the check cap | AC-11.03, AC-31.03 |

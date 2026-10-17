@@ -41,10 +41,10 @@ test("@US-12 @US-13 @US-14 a job pings its heartbeat URL and the state follows",
 
   expect((await page.request.get(pingUrl)).status()).toBe(200);
   await page.reload();
-  await expect(page.locator(".page-head .state")).toHaveText("Up");
+  await expect(page.locator(".hero__state")).toHaveText("Up");
 
   await page.waitForTimeout(1_100);
   expect((await page.request.post(`${pingUrl}/fail`)).status()).toBe(200);
   await page.reload();
-  await expect(page.locator(".page-head .state")).toHaveText("Down");
+  await expect(page.locator(".hero__state")).toHaveText("Down");
 });

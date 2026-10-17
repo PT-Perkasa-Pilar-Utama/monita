@@ -25,6 +25,10 @@ Templates call the macros in `templates/ui/macros.html`. They never repeat the m
 | Dialog | `dialog.dialog`, `.dialog__body`, `.dialog__foot` | `confirm(id, title, text, action)` | Confirm revoke and delete. Native `<dialog>`, no JS library. |
 | Caption | `.cap` | none | 11 px mono uppercase: IDs, times, counts |
 | Quiet link | `.link-quiet` | none | "Known issues →". Arrows live here, never inside buttons. |
+| Detail hero | `.hero`, `.orb` + `--down`, `--issue`, `--unknown`, `.hero__state`, `.tag` | none | Top of a monitor or heartbeat page: live state, name, cadence |
+| Stat | `.stats` > `.stat` + `--up`, `--down` | `checks/insight.html` | Four numbers under the hero |
+| Chart | `.chart-panel`, `svg.chart`, `.seg`, `.chart-legend` | `checks/insight.html` | Server-drawn SVG from `checks::chart`. No script. |
+| Availability | `.avail__cell`, `.avail__bar` + `.avail--good`, `--fair`, `--poor` | `checks/availability.html` | Period table under the chart |
 
 ## 2.1 Form states
 

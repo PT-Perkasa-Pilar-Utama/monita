@@ -458,7 +458,7 @@ async fn older_checks_keep_rows_that_share_a_second() {
                 (),
             )
             .await?;
-            for _ in 0..101 {
+            for _ in 0..26 {
                 c.execute(
                     "INSERT INTO check_results (monitor_id, checked_at, ok, error) VALUES (1, ?1, 0, 'row')",
                     [t],
@@ -475,9 +475,9 @@ async fn older_checks_keep_rows_that_share_a_second() {
         .text()
         .await
         .unwrap();
-    assert_eq!(first.matches(">row<").count(), 100);
+    assert_eq!(first.matches(">row<").count(), 25);
     let link = first
-        .split("href=\"?before=")
+        .split("&amp;before=")
         .nth(1)
         .and_then(|s| s.split('"').next())
         .expect("an older-checks link");
@@ -493,7 +493,7 @@ async fn older_checks_keep_rows_that_share_a_second() {
     assert_eq!(
         second.matches(">row<").count(),
         1,
-        "the 101st check is not skipped"
+        "the 26th check is not skipped"
     );
 }
 

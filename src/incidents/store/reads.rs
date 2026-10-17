@@ -192,3 +192,41 @@ pub async fn since_touching(
     }
     Ok(out)
 }
+
+/// One item's automatic incidents overlapping `[since, now)`: (count, seconds down inside the
+/// window, longest, mean). An open incident runs to `now`. One aggregate row.
+pub async fn period_stats(
+    c: &Connection,
+    item: ItemRef,
+    since: i64,
+    now: i64,
+) -> anyhow::Result<(i64, i64, Option<i64>, Option<i64>)> {
+    let row = crate::platform::db::query_all(
+        c,
+        "SELECT count(*), coalesce(sum(min(coalesce(i.resolved_at, ?4), ?4) - max(i.started_at, ?3)), 0),
+                max(coalesce(i.resolved_at, ?4) - i.started_at), CAST(avg(coalesce(i.resolved_at, ?4) - i.started_at) AS INTEGER)
+         FROM incidents i JOIN incident_items it ON it.incident_id = i.id
+         WHERE it.source_kind = ?1 AND it.source_id = ?2 AND i.origin = 'auto'
+           AND coalesce(i.resolved_at, ?4) > ?3 AND i.started_at < ?4",
+        (item.kind.as_str(), item.id, since, now),
+        |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
+    )
+    .await?;
+    Ok(row.into_iter().next().unwrap_or((0, 0, None, None)))
+}
+
+/// The item's newest automatic incident: (started_at, resolved_at).
+pub async fn last_auto(
+    c: &Connection,
+    item: ItemRef,
+) -> anyhow::Result<Option<(i64, Option<i64>)>> {
+    Ok(crate::platform::db::query_all(
+        c,
+        "SELECT i.started_at, i.resolved_at FROM incidents i JOIN incident_items it ON it.incident_id = i.id
+         WHERE it.source_kind = ?1 AND it.source_id = ?2 AND i.origin = 'auto' ORDER BY i.started_at DESC LIMIT 1",
+        (item.kind.as_str(), item.id),
+        |r| Ok((r.get(0)?, r.get(1)?)),
+    )
+    .await?
+    .pop())
+}

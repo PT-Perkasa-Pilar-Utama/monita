@@ -36,6 +36,6 @@ No list is unbounded. A list people add to is refused at insert past its cap (42
 | Updates per incident on the status page | 10 | The newest show |
 | Incidents on the status page | 200 | The newest show |
 | Automatic-incident spans read per window | 10 000 | The oldest are left out of the uptime figure |
-| Pings per heartbeat page, checks per monitor page | 100 | An "Older" link pages back |
+| Pings per heartbeat page, checks per monitor page | 25 | An "Older" link pages back |
 | Missed heartbeats per write | 50 | The sweep loops |
 | Rows per job batch (rollup, outbox and session purge) | 500 | The job loops |

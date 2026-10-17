@@ -1,0 +1,35 @@
+{# Stats, chart and availability for a monitor or heartbeat page. Needs `insight` (checks::insight)
+   and `stats`, the page's own four (label, value, sub) cards. Plot bounds match chart.rs:
+   LEFT 56, RIGHT 952, TOP 10, BOTTOM 212 in a 960 x 240 view box. #}
+{% let ch = insight.series.chart %}
+<div class="stats">
+  {% for (label, value, sub, tone) in stats %}
+  <div class="stat stat--{{ tone }}"><span class="stat__label">{{ label }}</span><span class="stat__value">{{ value }}</span><span class="stat__sub">{{ sub }}</span></div>
+  {% endfor %}
+</div>
+
+<section class="panel chart-panel">
+  <div class="chart-panel__head">
+    <div class="stack stack--sm"><h2>{{ insight.title }}</h2><span class="cap">{{ insight.series.total }} {% if insight.title == "Response time" %}checks · mean {{ insight.mean() }}{% else %}pings{% endif %}{% if insight.failed() > 0 %} · {{ insight.failed() }} failed{% endif %}</span></div>
+    <nav class="seg" aria-label="Range">{% for r in insight.ranges() %}<a href="?range={{ r.key() }}"{% if insight.is_range(r) %} aria-current="page"{% endif %}>{{ r.label() }}</a>{% endfor %}</nav>
+  </div>
+  <svg class="chart" viewBox="0 0 960 240" role="img" aria-label="{{ insight.title }}, last {{ insight.series.range.label()|lower }}">
+    <defs><linearGradient id="chart-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="chart__stop-top"/><stop offset="1" class="chart__stop-bottom"/></linearGradient></defs>
+    {% for b in ch.up %}<rect class="chart__up" x="{{ insight.f(b.x) }}" y="{{ insight.f(b.y) }}" width="{{ insight.f(b.w) }}" height="{{ insight.f(b.h) }}"><title>{{ b.title }}</title></rect>{% endfor %}
+    {% for b in ch.down %}<rect class="chart__down" x="{{ insight.f(b.x) }}" y="{{ insight.f(b.y) }}" width="{{ insight.f(b.w) }}" height="{{ insight.f(b.h) }}"><title>{{ b.title }}</title></rect>{% endfor %}
+    {% for t in ch.y_ticks %}<line class="chart__grid" x1="56" x2="952" y1="{{ insight.f(t.at) }}" y2="{{ insight.f(t.at) }}"/><text class="chart__label" x="48" y="{{ insight.f(t.at) }}" text-anchor="end" dominant-baseline="middle">{{ t.label }}</text>{% endfor %}
+    <line class="chart__axis" x1="56" x2="952" y1="212" y2="212"/>
+    {% if !ch.area.is_empty() %}<path class="chart__area" d="{{ ch.area }}" fill="url(#chart-fill)"/><path class="chart__line" d="{{ ch.line }}"/>{% endif %}
+    {% for (x, y) in ch.dots %}<circle class="chart__dot" cx="{{ insight.f(x) }}" cy="{{ insight.f(y) }}" r="2.5"/>{% endfor %}
+    {% for b in ch.oks %}<rect class="chart__tick" x="{{ insight.f(b.x) }}" y="{{ insight.f(b.y) }}" width="{{ insight.f(b.w) }}" height="{{ insight.f(b.h) }}"><title>{{ b.title }}</title></rect>{% endfor %}
+    {% for b in ch.fails %}<rect class="chart__fail" x="{{ insight.f(b.x) }}" y="{{ insight.f(b.y) }}" width="{{ insight.f(b.w) }}" height="{{ insight.f(b.h) }}"><title>{{ b.title }}</title></rect>{% endfor %}
+    {% for b in ch.hovers %}<rect class="chart__hover" x="{{ insight.f(b.x) }}" y="{{ insight.f(b.y) }}" width="{{ insight.f(b.w) }}" height="{{ insight.f(b.h) }}"><title>{{ b.title }}</title></rect>{% endfor %}
+    {% for t in ch.x_ticks %}<text class="chart__label" x="{{ insight.f(t.at) }}" y="232" text-anchor="middle">{{ t.label }}</text>{% endfor %}
+    {% if ch.empty %}<text class="chart__empty" x="504" y="112" text-anchor="middle">Nothing recorded in this range yet</text>{% endif %}
+  </svg>
+  <div class="chart-legend">
+    {% if insight.title == "Response time" %}<span><i class="key key--line"></i>Mean response time</span>{% else %}<span><i class="key key--tick"></i>Ping received</span>{% endif %}
+    <span><i class="key key--up"></i>Up</span><span><i class="key key--down"></i>Down</span><span><i class="key key--fail"></i>Failed</span>
+    <span class="chart-legend__end cap">UTC</span>
+  </div>
+</section>

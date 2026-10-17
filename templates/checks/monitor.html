@@ -5,42 +5,55 @@
 {% block actions %}<a class="btn btn--sm" href="/projects/{{ project.slug }}/monitors/{{ monitor.id }}/edit">Edit</a>{% endblock %}
 {% block content %}
 {% let st = self.state() %}
-<div class="page-head"><div><span class="cap">{{ monitor.url }}</span><h1>{{ monitor.name }}</h1></div>{% call ui::state(st.0, st.1) %}{% endcall %}</div>
-<div class="stack stack--lg">
+<div class="detail">
+<header class="hero">
+  <span class="orb orb--{{ st.0 }}" aria-hidden="true"></span>
+  <div class="hero__body">
+    <h1>{{ monitor.name }}</h1>
+    <p class="hero__meta"><span class="hero__state hero__state--{{ st.0 }}">{{ st.1 }}</span><span>Checked every {{ self.every() }}</span><a class="link-quiet mono" href="{{ monitor.url }}" rel="noreferrer noopener" target="_blank">{{ monitor.url }}</a></p>
+  </div>
+  <div class="hero__tags">{% if monitor.severity == "critical" %}{% call ui::chip("critical", "Critical") %}{% endcall %}{% else %}{% call ui::chip("warning", "Warning") %}{% endcall %}{% endif %}<span class="tag mono">expects {{ monitor.expected_status }}</span><span class="tag">{% if monitor.is_public %}On the status page{% else %}Hidden{% endif %}</span></div>
+</header>
+{% let stats = self.stats() %}
+{% include "checks/insight.html" %}
+<div class="split">
+  {% include "checks/availability.html" %}
   <section class="panel">
+    <div class="panel__head"><h2>Settings</h2><a class="link-quiet" href="/projects/{{ project.slug }}/monitors/{{ monitor.id }}/edit">Edit →</a></div>
     <div class="panel__body">
       <dl class="kv">
-        <dt>Every</dt><dd>{{ self.every() }}, timeout {{ monitor.timeout_ms / 1000 }}s</dd>
+        <dt>Every</dt><dd>{{ self.every() }}</dd>
+        <dt>Timeout</dt><dd>{{ monitor.timeout_ms / 1000 }} s</dd>
         <dt>Expects</dt><dd class="mono">{{ monitor.expected_status }}{% if let Some(k) = monitor.keyword %} and "{{ k }}"{% endif %}</dd>
-        <dt>Severity</dt><dd>{% if monitor.severity == "critical" %}Critical{% else %}Warning{% endif %}</dd>
-        <dt>Public</dt><dd>{% if monitor.is_public %}Shown on the status page{% else %}Hidden{% endif %}</dd>
-        <dt>Next check</dt><dd>{{ self.utc(monitor.next_check_at) }}</dd>
+        <dt>TLS</dt><dd>{% if monitor.skip_tls_verify %}Not verified{% else %}Verified{% endif %}</dd>
+        <dt>Next check</dt><dd class="mono">{{ self.utc(monitor.next_check_at) }}</dd>
       </dl>
     </div>
   </section>
-  <section class="panel">
-    <div class="panel__head"><h2>Checks, last 7 days</h2><span class="cap">{{ checks.len() }} shown</span></div>
-    {% if checks.is_empty() %}
-      {% call ui::empty("No checks yet", "The first check runs within one interval of saving.") %}{% endcall %}
-    {% else %}
-    <div class="table-wrap">
-      <table class="table">
-        <thead><tr><th>Time</th><th>Result</th><th>Status</th><th class="t-right">Latency</th><th class="hide-sm">Error</th></tr></thead>
-        <tbody>
-        {% for c in checks %}
-          <tr>
-            <td class="mono">{{ self.utc(c.checked_at) }}</td>
-            <td>{% if c.ok %}{% call ui::state("up", "OK") %}{% endcall %}{% else %}{% call ui::state("down", "Failed") %}{% endcall %}{% endif %}</td>
-            <td class="mono">{{ self.code(c) }}</td>
-            <td class="t-right mono">{{ self.latency(c) }}</td>
-            <td class="hide-sm table__sub">{% if let Some(e) = c.error %}{{ e }}{% endif %}</td>
-          </tr>
-        {% endfor %}
-        </tbody>
-      </table>
-    </div>
-    {% if let Some(before) = older %}<div class="panel__body"><a class="link-quiet" href="?before={{ before }}">Older checks →</a></div>{% endif %}
-    {% endif %}
-  </section>
+</div>
+<section class="panel">
+  <div class="panel__head"><h2>Checks, last 7 days</h2><span class="cap">{{ checks.len() }} shown, newest first</span></div>
+  {% if checks.is_empty() %}
+    {% call ui::empty("No checks yet", "The first check runs within one interval of saving.") %}{% endcall %}
+  {% else %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Time</th><th>Result</th><th>Status</th><th class="t-right">Latency</th><th class="hide-sm">Error</th></tr></thead>
+      <tbody>
+      {% for c in checks %}
+        <tr>
+          <td class="mono">{{ self.utc(c.checked_at) }}</td>
+          <td>{% if c.ok %}{% call ui::state("up", "OK") %}{% endcall %}{% else %}{% call ui::state("down", "Failed") %}{% endcall %}{% endif %}</td>
+          <td class="mono">{{ self.code(c) }}</td>
+          <td class="t-right mono">{{ self.latency(c) }}</td>
+          <td class="hide-sm table__sub">{% if let Some(e) = c.error %}{{ e }}{% endif %}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if let Some(before) = older %}<div class="panel__body"><a class="link-quiet" href="?range={{ insight.series.range.key() }}&amp;before={{ before }}">Older checks →</a></div>{% endif %}
+  {% endif %}
+</section>
 </div>
 {% endblock %}

@@ -275,7 +275,7 @@ async fn the_ping_list_pages_with_an_older_link() {
         .await
         .unwrap();
     let before = first
-        .split("?before=")
+        .split("&amp;before=")
         .nth(1)
         .and_then(|s| s.split('"').next())
         .expect("an Older pings link");
@@ -289,12 +289,13 @@ async fn the_ping_list_pages_with_an_older_link() {
         .await
         .unwrap();
     assert!(
-        !second.contains("?before="),
+        !second.contains("&amp;before="),
         "the last page has no Older link"
     );
-    let rows = |html: &str| html.matches("<tr>").count();
+    // Each ping row carries an OK state; nothing else on the page does.
+    let rows = |html: &str| html.matches("</span>OK</span>").count();
     assert_eq!(
-        rows(&first) as i64 + rows(&second) as i64 - 2,
+        rows(&first) as i64 + rows(&second) as i64,
         caps::PINGS_PAGE + 1
     );
 }

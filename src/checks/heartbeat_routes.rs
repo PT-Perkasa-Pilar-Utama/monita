@@ -14,6 +14,7 @@ use std::collections::HashMap;
 use super::{
     FieldErrors,
     heartbeat::{self, GRACES_S, Heartbeat, HeartbeatInput, PERIODS_S, PingRow},
+    insight::{Insight, Stat},
 };
 use crate::{
     accounts::CurrentUser,
@@ -252,11 +253,38 @@ struct DetailPage {
     pings: Vec<PingRow>,
     older: Option<String>,
     incident: Option<ItemState>,
+    insight: Insight,
 }
 
 impl DetailPage {
     fn state(&self) -> (&'static str, &'static str) {
         self.hb.state(self.incident)
+    }
+    fn stats(&self) -> [Stat; 4] {
+        let i = &self.insight;
+        let seen = self.hb.last_ping_at.is_some();
+        let last = match self.hb.last_ping_at {
+            Some(t) => (
+                "Last ping",
+                time::ago(t, i.now),
+                format!("expected every {}", self.period()),
+                "plain",
+            ),
+            None => (
+                "Last ping",
+                "Never".into(),
+                format!("expected every {}", self.period()),
+                "plain",
+            ),
+        };
+        let failed = i.failed();
+        let pings = (
+            "Pings",
+            i.series.total.to_string(),
+            format!("{failed} failed · {}", i.range_word()),
+            if failed > 0 { "down" } else { "plain" },
+        );
+        [i.streak_stat(seen), last, pings, i.incidents_stat()]
     }
     fn period(&self) -> String {
         heartbeat::label(&PERIODS_S, self.hb.period_s)
@@ -280,6 +308,7 @@ async fn detail(
         .await?
         .ok_or(PageError::NotFound)?;
     let pings = heartbeat::recent_pings(&state.db, id, paging.cursor()).await?;
+    let insight = Insight::heartbeat(&state.db, &hb, paging.range(), now()).await?;
     let older = (pings.len() as i64 == caps::PINGS_PAGE)
         .then(|| pings.last().map(|p| format!("{}.{}", p.received_at, p.id)))
         .flatten();
@@ -295,5 +324,6 @@ async fn detail(
         pings,
         older,
         incident,
+        insight,
     }))
 }

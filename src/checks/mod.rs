@@ -5,11 +5,13 @@ mod cause;
 pub mod chart;
 pub mod heartbeat;
 pub mod heartbeat_routes;
+mod insight;
 pub mod ping_routes;
 mod probe;
 pub mod retention;
 pub mod routes;
 pub mod scheduler;
+pub mod series;
 mod store;
 
 use std::collections::BTreeMap;

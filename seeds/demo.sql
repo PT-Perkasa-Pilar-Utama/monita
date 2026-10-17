@@ -32,12 +32,24 @@ INSERT INTO monitors (id, project_id, name, url, interval_s, expected_status, ke
   (6, 2, 'Bank callback', 'https://pay.example.com/callback/ping', 60, '2xx', NULL, 'critical', 1, unixepoch() + 600, unixepoch() - 100 * 86400),
   (7, 3, 'Query gateway', 'https://dwh.example.com/health', 300, '2xx', NULL, 'warning', 0, unixepoch() + 600, unixepoch() - 50 * 86400);
 
--- 120 checks per monitor. Login page answers slowly in the last ten, behind the open manual incident.
+-- The last hour at each monitor's interval; Login page answers slowly in its last ten checks,
+-- behind the open manual incident.
 INSERT INTO check_results (monitor_id, checked_at, ok, status_code, latency_ms, error)
 WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 120)
 SELECT m.id, unixepoch() - n.i * m.interval_s, 1, 200,
-  CASE WHEN m.id = 3 AND n.i <= 10 THEN 2300 + (n.i * 173) % 900 ELSE 60 + (n.i * 37 + m.id * 53) % 140 END,
+  CASE WHEN m.id = 3 AND n.i <= 10 THEN 2300 + (n.i * 173) % 900 ELSE 70 + m.id * 12 + (n.i * 37 + m.id * 53) % 60 END,
   NULL
+FROM monitors m, n WHERE n.i * m.interval_s <= 3600;
+
+-- Before that, one check every 5 minutes back to 7 days, with a daily wave and a few failures of
+-- the bank callback, enough to fill the day and week charts.
+INSERT INTO check_results (monitor_id, checked_at, ok, status_code, latency_ms, error)
+WITH RECURSIVE n(i) AS (SELECT 13 UNION ALL SELECT i + 1 FROM n WHERE i < 2016)
+SELECT m.id, unixepoch() - n.i * 300,
+  CASE WHEN m.id = 6 AND n.i IN (40, 41, 300) THEN 0 ELSE 1 END,
+  CASE WHEN m.id = 6 AND n.i IN (40, 41, 300) THEN 502 ELSE 200 END,
+  70 + m.id * 12 + (n.i * 37 + m.id * 53) % 60 + 45 * ((n.i % 288) BETWEEN 96 AND 180),
+  CASE WHEN m.id = 6 AND n.i IN (40, 41, 300) THEN 'HTTP 502 from the bank gateway' END
 FROM monitors m, n;
 
 INSERT INTO heartbeats (id, project_id, name, token, period_s, grace_s, severity, is_public, last_ping_at, deadline_at, created_at) VALUES
@@ -99,3 +111,15 @@ INSERT INTO tickets (project_id, number, ref_id, title, public_title, descriptio
   (1, 6, 2, 'Same as the CSV accents bug', NULL, 'Names with ñ break in the export too.', 'https://portal.example.com/orders', 'done', 'duplicate', unixepoch() - 7 * 86400, unixepoch() - 6 * 86400),
   (1, 7, 1, 'Search ignores the date filter', NULL, 'Filtering orders by last week still shows older ones.', 'https://portal.example.com/orders', 'triage', NULL, unixepoch() - 86400, unixepoch() - 86400),
   (2, 1, 4, 'Receipt email shows the amount without currency', 'Receipts show no currency', 'The email says 150.000 with no IDR.', NULL, 'backlog', NULL, unixepoch() - 12 * 86400, unixepoch() - 11 * 86400);
+
+-- 90 rolled-up days per monitor and heartbeat for the month chart.
+INSERT INTO daily_summaries (source_kind, source_id, day, checks_total, checks_ok, downtime_s, avg_latency_ms)
+WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 90)
+SELECT 'monitor', m.id, date(unixepoch() - n.i * 86400, 'unixepoch'), 86400 / m.interval_s,
+  86400 / m.interval_s - (CASE WHEN (n.i * 7 + m.id) % 23 = 0 THEN 3 ELSE 0 END), 0,
+  80 + m.id * 12 + (n.i * 29 + m.id * 17) % 45
+FROM monitors m, n
+UNION ALL
+SELECT 'heartbeat', h.id, date(unixepoch() - n.i * 86400, 'unixepoch'), 86400 / h.period_s,
+  86400 / h.period_s - (CASE WHEN h.id = 2 AND n.i % 9 = 0 THEN 1 ELSE 0 END), 0, NULL
+FROM heartbeats h, n;
