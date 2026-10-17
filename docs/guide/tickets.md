@@ -1,6 +1,6 @@
 # Tickets
 
-Users of a project report bugs to Monita. The tech lead sorts them on a kanban, and the accepted ones show on a public board.
+Users of a project report bugs to Monita. The tech lead sorts them on the ticket board, and the accepted ones show on a public board.
 
 ## How it fits together
 
@@ -60,7 +60,7 @@ curl -s https://monita.example.com/api/v1/tickets/mine -H "X-Ref-Id: rf_..."
 
 The user gets their newest 100 tickets with stage and close reason, never the description.
 
-## The kanban
+## The ticket board
 
 | Stage | Public | Note |
 | --- | --- | --- |

@@ -16,7 +16,7 @@
         <dt>Duration</dt><dd>{{ self.duration() }}</dd>
         {% if let Some(c) = incident.cause %}<dt>Cause</dt><dd class="mono">{{ c }}</dd>{% endif %}
         <dt>Affects</dt><dd>{{ items.join(", ") }}</dd>
-        <dt>Origin</dt><dd>{% if incident.origin == "auto" %}Detected by Monita{% else %}Reported by a TL{% endif %}</dd>
+        <dt>Origin</dt><dd>{% if incident.origin == "auto" %}Detected by Monita{% else %}Reported by a tech lead{% endif %}</dd>
       </dl>
     </div>
   </section>

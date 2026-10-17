@@ -34,7 +34,7 @@ sudo monita admin reset-password --email you@company.co.id
 systemctl start monita
 ```
 
-The command asks for the new password without echo (or reads stdin in a script) and signs the admin out everywhere. A TL gets a new invite from a super admin instead.
+The command asks for the new password without echo (or reads stdin in a script) and signs the admin out everywhere. A tech lead gets a new invite from a super admin instead.
 
 ## Upgrade
 

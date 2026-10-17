@@ -9,7 +9,7 @@ Monita watches the systems of every project in a team and tells people when one 
 - An **HTTP monitor** requests a URL every 30 s to 5 min. Two failed checks in a row open an incident; the first passing check closes it.
 - A **heartbeat** waits for a ping from a cron job. A ping that does not come in time opens an incident.
 - An **incident** sends email and webhook alerts, and shows on the project's public **status page**.
-- Users file **bug tickets** through the status page, and the tech lead sorts them on a kanban.
+- Users file **tickets** through the status page, and the tech lead sorts them on the ticket board.
 
 A super admin invites tech leads. Each tech lead owns their projects and sees only those.
 
