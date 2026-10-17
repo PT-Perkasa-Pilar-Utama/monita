@@ -14,8 +14,14 @@ use crate::app::AppState;
 const CSP: &str = "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'";
 
 pub async fn security_headers(req: Request, next: Next) -> Response {
+    // Signed-in JSON can carry a one-time secret (a new API key, an invite link): no cache keeps it.
+    let private = req.uri().path().starts_with("/api/ui/")
+        && !req.uri().path().starts_with("/api/ui/public/");
     let mut res = next.run(req).await;
     let h = res.headers_mut();
+    if private {
+        h.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
+    }
     h.insert(
         header::CONTENT_SECURITY_POLICY,
         HeaderValue::from_static(CSP),

@@ -97,6 +97,11 @@ async fn pages_carry_security_headers_and_assets_load() {
             .contains("default-src 'self'")
     );
     assert_eq!(res.headers()["x-content-type-options"], "nosniff");
+    assert_eq!(
+        res.headers()["cache-control"],
+        "no-store",
+        "signed-in JSON is never cached"
+    );
     let script = app
         .http
         .get(app.url("/static/theme.js"))

@@ -13,5 +13,5 @@
 ## 10.1 Caching
 
 - The public status JSON and page are built on each request. At NFR-05 this needs no cache.
-- `Cache-Control: no-store` on admin pages. `Cache-Control: max-age=30` on public status pages and JSON.
+- `Cache-Control: no-store` on every signed-in `/api/ui/` response. `Cache-Control: public, max-age=30` on the public status and ticket-board JSON.
 - Static assets: `Cache-Control: max-age=31536000, immutable`. The file name holds a content hash computed at build time.
