@@ -9,6 +9,7 @@
 import { createHash } from "node:crypto";
 import { copyFileSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
+import { highlight } from "./highlight";
 
 const ROOT = resolve(import.meta.dir, "..");
 const OUT = process.env["DEMO_OUT"] ?? join(ROOT, "target/site");
@@ -215,6 +216,16 @@ function save(file: string, body: string | Buffer): void {
   writeFileSync(file, body);
 }
 
+// Every code block gets highlighted tokens and a copy button. app.js answers [data-copy].
+function codeBlocks(html: string): string {
+  let n = 0;
+  return html.replace(/<pre( class="[^"]*")?><code(?: class="language-(\w+)")?>([\s\S]*?)<\/code><\/pre>/g, (_, cls = "", lang = "", body: string) => {
+    const id = `code-${++n}`;
+    const code = `<code${lang ? ` class="language-${lang}"` : ""}>${highlight(body, lang)}</code>`;
+    return `<div class="codeblock"><pre id="${id}"${cls}>${code}</pre><button class="codeblock__copy" type="button" data-copy="${id}">Copy</button></div>`;
+  });
+}
+
 // Pages lets browsers cache every file for 10 minutes. A content hash in each asset URL stops a
 // new page from loading the old CSS or JS, as platform::assets::url does for the app.
 function versioned(html: string, assets: string): string {
@@ -239,7 +250,7 @@ function main(): void {
   copyFileSync(join(ROOT, "docs/assets/logo.svg"), join(assets, "logo.svg"));
   for (const f of readdirSync(join(ROOT, "docs/assets/screens"))) copyFileSync(join(ROOT, "docs/assets/screens", f), join(assets, f));
 
-  const page = (file: string, html: string) => save(file, versioned(html, assets));
+  const page = (file: string, html: string) => save(file, versioned(codeBlocks(html), assets));
   const pages = new Map([...listed].map((slug) => [slug, load(slug)]));
   for (const p of pages.values()) page(join(OUT, "docs", p.slug, "index.html"), pageHtml(pages, p));
   page(join(OUT, "docs", "index.html"), overview(pages));

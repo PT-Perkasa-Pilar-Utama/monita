@@ -17,6 +17,8 @@ document.addEventListener("click", async (event) => {
   if (!button) return;
   const source = document.getElementById(button.dataset.copy);
   if (!source) return;
+  const label = (button.dataset.label ??= button.textContent);
+  setTimeout(() => (button.textContent = label), 2000);
   try {
     await navigator.clipboard.writeText(source.textContent.trim());
     button.textContent = "Copied";
