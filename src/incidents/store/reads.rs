@@ -165,25 +165,54 @@ pub async fn source_spans(
     .await
 }
 
-/// Incidents started since `since` or still open that name one of `items`, newest 200 first.
-pub async fn since_touching(
+/// Which public incidents to read. Every variant names its own bound in the caller's `limit`.
+#[derive(Clone, Copy)]
+pub enum Touching {
+    /// Started since the moment, or still open: the status JSON's window.
+    Window(i64),
+    /// Still open, however old.
+    Open,
+    /// Resolved, and started since the moment.
+    ResolvedSince(i64),
+    /// Every incident older than the `(started_at, id)` cursor: one page of the history.
+    Before(Option<(i64, i64)>),
+}
+
+/// Incidents that name one of `items`, newest first, at most `limit`.
+pub async fn touching(
     c: &Connection,
     project_id: i64,
-    since: i64,
     items: &[ItemRef],
+    which: Touching,
+    limit: i64,
 ) -> anyhow::Result<Vec<IncidentRow>> {
     let of = |kind: SourceKind| id_list(items.iter().filter(|i| i.kind == kind).map(|i| i.id));
+    let (filter, t, id) = match which {
+        Touching::Window(since) => ("(i.started_at >= ?2 OR i.resolved_at IS NULL)", since, 0),
+        Touching::Open => ("i.resolved_at IS NULL", 0, 0),
+        Touching::ResolvedSince(since) => {
+            ("i.resolved_at IS NOT NULL AND i.started_at >= ?2", since, 0)
+        }
+        Touching::Before(cursor) => {
+            let (t, id) = cursor.unwrap_or((i64::MAX, i64::MAX));
+            (
+                "(i.started_at < ?2 OR (i.started_at = ?2 AND i.id < ?3))",
+                t,
+                id,
+            )
+        }
+    };
     let mut rows = c
         .query(
             format!(
-                "SELECT {COLS} FROM incidents i WHERE i.project_id = ?1 AND (i.started_at >= ?2 OR i.resolved_at IS NULL)
+                "SELECT {COLS} FROM incidents i WHERE i.project_id = ?1 AND {filter}
                  AND EXISTS (SELECT 1 FROM incident_items it WHERE it.incident_id = i.id AND (
                    (it.source_kind = 'monitor' AND it.source_id IN ({})) OR (it.source_kind = 'heartbeat' AND it.source_id IN ({}))))
-                 ORDER BY i.started_at DESC LIMIT 200",
+                 ORDER BY i.started_at DESC, i.id DESC LIMIT ?4",
                 of(SourceKind::Monitor),
                 of(SourceKind::Heartbeat)
             ),
-            (project_id, since),
+            (project_id, t, id, limit),
         )
         .await?;
     let mut out = Vec::new();

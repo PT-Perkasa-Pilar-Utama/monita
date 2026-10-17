@@ -34,7 +34,9 @@ No list is unbounded. A list people add to is refused at insert past its cap (42
 | Tickets per board column | 200 shown | The newest show; the header counts all |
 | Tickets per digest email | 50 listed | The email says how many more wait |
 | Updates per incident on the status page | 10 | The newest show |
-| Incidents on the status page | 200 | The newest show |
+| Incidents in the status JSON | 200 | The newest show |
+| Incidents on the status page | Every open one; 10 resolved of the last 7 days | Older ones are on the history page, 25 per page |
+| Systems with daily bars on the status page | Problems plus 12 | The rest are a plain list |
 | Automatic-incident spans read per window | 10 000 | The oldest are left out of the uptime figure |
 | Pings per heartbeat page, checks per monitor page | 25 | An "Older" link pages back |
 | Missed heartbeats per write | 50 | The sweep loops |

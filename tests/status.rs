@@ -231,3 +231,147 @@ async fn monitors_list_before_heartbeats_whatever_their_names() {
         .collect();
     assert_eq!(names, ["Checkout", "Aardvark nightly"]);
 }
+
+/// Runs `sql` as one batch on the writer.
+async fn sql(app: &TestApp, sql: &str) {
+    let sql = sql.to_string();
+    app.state
+        .db
+        .write(async |c| {
+            c.execute_batch(&sql).await?;
+            Ok(())
+        })
+        .await
+        .unwrap();
+}
+
+/// `n` rows from a recursive counter `n(i)`, i = 1..=n.
+fn upto(n: i64) -> String {
+    format!("WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < {n})")
+}
+
+#[tokio::test]
+async fn a_status_page_with_200_systems_draws_bars_only_for_problems_and_the_first_12() {
+    let app = TestApp::spawn("test").await;
+    setup(&app).await;
+    let t = now();
+    let more = monita::platform::caps::SOURCES_PER_PROJECT - 2;
+    sql(&app, &format!(
+        "INSERT INTO monitors (project_id, name, url, is_public, next_check_at, created_at) {} SELECT 1, 'svc ' || i, 'https://x.invalid', 1, 9999999999, {t} FROM n;",
+        upto(more)
+    ))
+    .await;
+    let html = app
+        .get("/status/payments", None)
+        .await
+        .text()
+        .await
+        .unwrap();
+    let strips = html.matches("class=\"uptime__bars\"").count();
+    assert_eq!(
+        strips,
+        1 + monita::platform::caps::PUBLIC_BARS,
+        "one problem system plus 12"
+    );
+    let listed = more as usize - monita::platform::caps::PUBLIC_BARS;
+    assert!(
+        html.contains(&format!("{listed} more systems</summary>")),
+        "the rest are a plain list"
+    );
+}
+
+#[tokio::test]
+async fn the_page_shows_open_incidents_and_the_newest_10_of_the_week_and_history_pages_the_rest() {
+    let app = TestApp::spawn("test").await;
+    setup(&app).await;
+    let t = now();
+    // 26 resolved incidents on the public monitor in the last days, and one open for 30 days.
+    sql(&app, &format!(
+        "UPDATE incidents SET resolved_at = {t} WHERE id = 1;
+         INSERT INTO incidents (id, project_id, origin, title, severity, started_at, resolved_at) {} SELECT 100 + i, 1, 'auto', 'Blip ' || i, 'warning', {t} - i * 3600, {t} - i * 3600 + 60 FROM n;
+         INSERT INTO incidents (id, project_id, origin, title, severity, started_at) VALUES (99, 1, 'auto', 'Long outage', 'critical', {t} - 30 * 86400);
+         INSERT INTO incident_items SELECT id, 'monitor', 1 FROM incidents WHERE id >= 99;",
+        upto(26)
+    ))
+    .await;
+    let page = app
+        .get("/status/payments", None)
+        .await
+        .text()
+        .await
+        .unwrap();
+    let active = &page[page.find("id=\"active\"").unwrap()..page.find("id=\"past\"").unwrap()];
+    assert!(
+        active.contains("Long outage"),
+        "an open incident shows however old"
+    );
+    let past = &page[page.find("id=\"past\"").unwrap()..];
+    assert_eq!(
+        past.matches("class=\"inc\"").count() as i64,
+        monita::platform::caps::PUBLIC_RECENT
+    );
+    assert!(
+        !page.contains("Admin DB slow"),
+        "an incident on a hidden system shows nowhere"
+    );
+
+    let first = app
+        .get("/status/payments/history", None)
+        .await
+        .text()
+        .await
+        .unwrap();
+    assert_eq!(
+        first.matches("<details class=\"inc").count() as i64,
+        monita::platform::caps::PUBLIC_HISTORY_PAGE
+    );
+    let before = first
+        .split("?before=")
+        .nth(1)
+        .and_then(|s| s.split('"').next())
+        .expect("an Older link");
+    let second = app
+        .get(&format!("/status/payments/history?before={before}"), None)
+        .await
+        .text()
+        .await
+        .unwrap();
+    // 26 blips, the resolved incident 1 and the long outage make 28: 25 then 3.
+    assert_eq!(second.matches("<details class=\"inc").count(), 3);
+    assert!(!second.contains("?before="));
+    assert!(!first.contains("Admin DB slow") && !second.contains("Admin DB slow"));
+    assert!(
+        !first.contains("db-7.corp.internal"),
+        "Monita's own cause stays private"
+    );
+}
+
+#[tokio::test]
+async fn past_incidents_older_than_a_week_leave_the_page_for_the_history() {
+    let app = TestApp::spawn("test").await;
+    setup(&app).await;
+    let t = now();
+    sql(&app, &format!(
+        "INSERT INTO incidents (id, project_id, origin, title, severity, started_at, resolved_at) VALUES
+           (50, 1, 'auto', 'Recent blip', 'warning', {r}, {r} + 60), (51, 1, 'auto', 'Old blip', 'warning', {o}, {o} + 60);
+         INSERT INTO incident_items VALUES (50, 'monitor', 1), (51, 'monitor', 1);",
+        r = t - 3 * 86_400,
+        o = t - 20 * 86_400
+    ))
+    .await;
+    let page = app
+        .get("/status/payments", None)
+        .await
+        .text()
+        .await
+        .unwrap();
+    assert!(page.contains("Recent blip"));
+    assert!(!page.contains("Old blip"));
+    let history = app
+        .get("/status/payments/history", None)
+        .await
+        .text()
+        .await
+        .unwrap();
+    assert!(history.contains("Old blip"));
+}

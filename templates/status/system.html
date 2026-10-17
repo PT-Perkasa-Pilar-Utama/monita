@@ -1,0 +1,5 @@
+{# One public system, `i`, with its 90 daily bars. #}
+<div class="sys">
+  <div class="sys__head"><span class="row">{% call ui::state(i.state, self.state_word(i)) %}{% endcall %}<strong>{{ i.name }}</strong></span><span class="subtle">{{ self.uptime(i) }}</span></div>
+  <div class="uptime__bars">{% for d in i.days %}<span class="{{ self.bar_class(d) }}" title="{{ self.bar_title(d) }}"></span>{% endfor %}</div>
+</div>

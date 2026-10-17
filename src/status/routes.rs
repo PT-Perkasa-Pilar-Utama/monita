@@ -10,10 +10,10 @@ use axum::{
 };
 use serde::Deserialize;
 
-use super::{Day, IncidentStatus, ItemStatus, Status};
+use super::{Day, IncidentStatus, ItemStatus, ProjectRef, Status};
 use crate::{
     app::AppState,
-    platform::{api_error, page::PageError, render::render, time},
+    platform::{api_error, caps, page::PageError, render::render, time},
 };
 
 const DAYS: usize = 90;
@@ -21,6 +21,7 @@ const DAYS: usize = 90;
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/status/{slug}", get(page))
+        .route("/status/{slug}/history", get(history))
         .route("/api/v1/public/status/{slug}", get(json))
 }
 
@@ -70,10 +71,42 @@ async fn json(
     res
 }
 
+/// Incident wording shared by the page and the history page.
+struct Words;
+
+impl Words {
+    fn when(&self, i: &IncidentStatus) -> String {
+        match i.resolved_at {
+            Some(r) => format!(
+                "{}, resolved after {}",
+                time::utc(i.started_at),
+                time::duration(r - i.started_at)
+            ),
+            None => format!("Since {}", time::utc(i.started_at)),
+        }
+    }
+    fn utc(&self, ts: &i64) -> String {
+        time::utc(*ts)
+    }
+    fn label(&self, l: &str) -> &'static str {
+        crate::incidents::label_title(l)
+    }
+    fn tone(&self, l: &str) -> &'static str {
+        match l {
+            "resolved" => "up",
+            "investigating" => "down",
+            "identified" => "issue",
+            _ => "unknown",
+        }
+    }
+}
+
 #[derive(Template)]
 #[template(path = "status/page.html")]
 struct Page {
     status: Status,
+    recent: Vec<IncidentStatus>,
+    words: Words,
 }
 
 impl Page {
@@ -91,6 +124,39 @@ impl Page {
             "issue" => "Some systems have issues".into(),
             _ => "All systems operational".into(),
         }
+    }
+    fn up_count(&self) -> usize {
+        self.status.items.iter().filter(|i| i.state == "up").count()
+    }
+    /// Down and issue first, with their bars.
+    fn problems(&self) -> Vec<&ItemStatus> {
+        let rank = |s: &str| match s {
+            "down" => 0,
+            "issue" => 1,
+            _ => 2,
+        };
+        let mut v: Vec<&ItemStatus> = self
+            .status
+            .items
+            .iter()
+            .filter(|i| rank(i.state) < 2)
+            .collect();
+        v.sort_by_key(|i| rank(i.state));
+        v
+    }
+    fn calm(&self) -> Vec<&ItemStatus> {
+        self.status
+            .items
+            .iter()
+            .filter(|i| !matches!(i.state, "down" | "issue"))
+            .collect()
+    }
+    /// The first operational systems keep their bars; the rest are a plain list.
+    fn barred(&self) -> Vec<&ItemStatus> {
+        self.calm().into_iter().take(caps::PUBLIC_BARS).collect()
+    }
+    fn rest(&self) -> Vec<&ItemStatus> {
+        self.calm().into_iter().skip(caps::PUBLIC_BARS).collect()
     }
     fn bar_class(&self, d: &Day) -> &'static str {
         match d.uptime {
@@ -120,32 +186,88 @@ impl Page {
             _ => "Up",
         }
     }
-    fn when(&self, i: &IncidentStatus) -> String {
-        match i.resolved_at {
-            Some(r) => format!(
-                "{}, resolved after {}",
-                time::utc(i.started_at),
-                time::duration(r - i.started_at)
-            ),
-            None => format!("{}, ongoing", time::utc(i.started_at)),
-        }
-    }
-    fn hhmm(&self, ts: &i64) -> String {
-        time::utc(*ts)
-    }
-    fn label(&self, l: &str) -> &'static str {
-        crate::incidents::label_title(l)
-    }
 }
 
 async fn page(
     State(state): State<AppState>,
     Path(slug): Path<String>,
 ) -> Result<Response, PageError> {
-    let status = super::load(&state.db, &slug, DAYS)
+    let data = super::page(&state.db, &slug)
         .await?
         .ok_or(PageError::NotFound)?;
     Ok(crate::platform::render::public_cache(render(&Page {
-        status,
+        status: data.status,
+        recent: data.recent,
+        words: Words,
+    })))
+}
+
+#[derive(Template)]
+#[template(path = "status/history.html")]
+struct History {
+    project: ProjectRef,
+    incidents: Vec<IncidentStatus>,
+    older: Option<String>,
+    words: Words,
+}
+
+impl History {
+    /// "October 2026" above the first incident of each month.
+    fn month(&self, i: &usize) -> Option<String> {
+        let i = *i;
+        const NAMES: [&str; 12] = [
+            "January",
+            "February",
+            "March",
+            "April",
+            "May",
+            "June",
+            "July",
+            "August",
+            "September",
+            "October",
+            "November",
+            "December",
+        ];
+        let key = |n: usize| time::day(self.incidents[n].started_at)[..7].to_string();
+        let this = key(i);
+        if i > 0 && key(i - 1) == this {
+            return None;
+        }
+        let month: usize = this[5..7].parse().ok()?;
+        Some(format!("{} {}", NAMES[month - 1], &this[..4]))
+    }
+}
+
+#[derive(Deserialize)]
+struct Before {
+    /// `<started_at>.<id>`, a cursor the page links to; a bad value shows the first page.
+    before: Option<String>,
+}
+
+async fn history(
+    State(state): State<AppState>,
+    Path(slug): Path<String>,
+    Query(q): Query<Before>,
+) -> Result<Response, PageError> {
+    let cursor = q.before.as_deref().and_then(|b| {
+        let (t, id) = b.split_once('.')?;
+        Some((t.parse().ok()?, id.parse().ok()?))
+    });
+    let (project, incidents) = super::history_page(&state.db, &slug, cursor)
+        .await?
+        .ok_or(PageError::NotFound)?;
+    let older = (incidents.len() as i64 == caps::PUBLIC_HISTORY_PAGE)
+        .then(|| {
+            incidents
+                .last()
+                .map(|i| format!("{}.{}", i.started_at, i.id))
+        })
+        .flatten();
+    Ok(crate::platform::render::public_cache(render(&History {
+        project,
+        incidents,
+        older,
+        words: Words,
     })))
 }

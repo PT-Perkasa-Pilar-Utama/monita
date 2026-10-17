@@ -29,6 +29,17 @@ pub const TICKETS_PER_COLUMN: i64 = 200;
 pub const DIGEST_LINES: i64 = 50;
 /// Status updates per incident on the public page, newest first.
 pub const PUBLIC_UPDATES: i64 = 10;
+/// Incidents in the status JSON's window, newest first.
+pub const PUBLIC_INCIDENTS: i64 = 200;
+/// Incidents open at once in one project: one automatic per source, plus the open manual ones.
+pub const OPEN_INCIDENTS: i64 = SOURCES_PER_PROJECT + OPEN_MANUAL_PER_PROJECT;
+/// Resolved incidents of the last 7 days on the status page; older ones are on its history page.
+pub const PUBLIC_RECENT: i64 = 10;
+/// Incidents per page of the public incident history.
+pub const PUBLIC_HISTORY_PAGE: i64 = 25;
+/// Operational systems the status page draws with their 90-day bars; the rest are listed
+/// without bars, so the page stays light with 200 public items.
+pub const PUBLIC_BARS: usize = 12;
 /// Automatic-incident spans read for one project's window. A source that flaps faster than this
 /// has its oldest spans left out of the uptime figure.
 pub const SPANS: i64 = 10_000;

@@ -23,7 +23,7 @@ Project menu, in this order: Monitors, Heartbeats, Incidents, Tickets, Alerts, S
 | Form (create, edit) | `.panel` > `.panel__head` + `.panel__body` > `.form` |
 | Settings | `.tabs` (General, API keys, Alerts, Allowlist) → one panel per tab |
 | Kanban | `.page-head` with `.tabs` → `.board` |
-| Status page | h1 → `.headline` → per item: title row + `.uptime` → incidents as `.timeline` → footer links |
+| Status page | h1 → `.headline` (state, systems up) → `.sp` grid: `.sp__systems` (problems first, bars for the first 12, the rest in `.sp__more`) beside `.sp__active` and `.sp__past` (`.inc` cards, folded when resolved) → footer links. History: `.inc` cards under month headings. |
 
 ## 3.4 Copy rules
 

@@ -76,11 +76,13 @@ INSERT INTO incidents (id, project_id, origin, title, severity, cause, started_a
   (4, 2, 'auto', 'Checkout API is down', 'critical', 'HTTP 503 from https://pay.example.com/v2/health', unixepoch() - 27 * 86400, unixepoch() - 27 * 86400 + 2100, NULL),
   (5, 2, 'manual', 'Card payments declined for one bank', 'critical', NULL, unixepoch() - 20 * 86400, unixepoch() - 20 * 86400 + 5400, 2),
   (6, 2, 'auto', 'Settlement export missed its heartbeat', 'critical', 'No ping within 1 day and 30 minutes', unixepoch() - 7200, NULL, NULL),
-  (7, 1, 'manual', 'Slow sign-in for some users', 'warning', NULL, unixepoch() - 3000, NULL, 2);
+  (7, 1, 'manual', 'Slow sign-in for some users', 'warning', NULL, unixepoch() - 3000, NULL, 2),
+  (8, 2, 'auto', 'Bank callback is down', 'critical', 'HTTP 502 from the bank gateway', unixepoch() - 3 * 86400, unixepoch() - 3 * 86400 + 360, NULL),
+  (9, 1, 'auto', 'Website is down', 'critical', 'Connection reset by peer', unixepoch() - 5 * 86400, unixepoch() - 5 * 86400 + 240, NULL);
 
 INSERT INTO incident_items (incident_id, source_kind, source_id) VALUES
   (1, 'monitor', 1), (2, 'monitor', 2), (3, 'monitor', 3), (4, 'monitor', 5),
-  (5, 'monitor', 5), (5, 'monitor', 6), (6, 'heartbeat', 3), (7, 'monitor', 3);
+  (5, 'monitor', 5), (5, 'monitor', 6), (6, 'heartbeat', 3), (7, 'monitor', 3), (8, 'monitor', 6), (9, 'monitor', 1);
 
 INSERT INTO incident_sources (source_kind, source_id, fail_streak, open_incident_id) VALUES
   ('monitor', 1, 0, NULL), ('monitor', 2, 0, NULL), ('monitor', 3, 0, NULL), ('monitor', 4, 0, NULL),
@@ -94,7 +96,8 @@ INSERT INTO status_updates (incident_id, label, message, author_id, created_at) 
   (5, 'resolved', 'The new certificate is installed and payments go through.', 2, unixepoch() - 20 * 86400 + 5400),
   (6, 'investigating', 'The nightly settlement file did not arrive. We are checking the export job.', 2, unixepoch() - 5400),
   (7, 'investigating', 'Some users wait more than 2 s to sign in.', 2, unixepoch() - 2700),
-  (7, 'identified', 'A slow session-store node. Traffic is moving to the others.', 2, unixepoch() - 1200);
+  (7, 'identified', 'A slow session-store node. Traffic is moving to the others.', 2, unixepoch() - 1200),
+  (8, 'resolved', 'The bank restarted its gateway. Callbacks are flowing again.', 2, unixepoch() - 3 * 86400 + 900);
 
 INSERT INTO ref_ids (id, project_id, token_hash, single_use, used_at, created_at) VALUES
   (1, 1, 'demo-ref-hash-1', 0, NULL, unixepoch() - 30 * 86400),

@@ -2,42 +2,45 @@
 {% import "ui/macros.html" as ui %}
 {% block title %}{{ status.project.name }} status{% endblock %}
 {% block content %}
-<h1>{{ status.project.name }} status</h1>
-<div class="headline headline--{{ status.overall }}">{{ self.headline() }}</div>
+{# Bounded: every open incident (caps::OPEN_INCIDENTS), the newest 10 resolved of the last 7
+   days, bars for problem systems and the first 12 others; the rest of up to 200 systems are a
+   plain list, so a large project still sends a light page. #}
+<header class="sp-head">
+  <h1>{{ status.project.name }} status</h1>
+  <div class="headline headline--{{ status.overall }}"><span>{{ self.headline() }}</span><span class="headline__count">{{ self.up_count() }} of {{ status.items.len() }} systems up</span></div>
+</header>
 
-{% if status.items.is_empty() %}
-  <p class="muted">This project has no public monitors yet.</p>
-{% else %}
-<section class="stack" aria-label="Systems">
-  {% for i in status.items %}
-  <div class="stack stack--sm">
-    <div class="row row--between"><span class="row">{% call ui::state(i.state, self.state_word(i)) %}{% endcall %}<strong>{{ i.name }}</strong></span><span class="cap">{{ self.uptime(i) }}</span></div>
-    <div class="uptime">
-      <div class="uptime__bars">{% for d in i.days %}<span class="{{ self.bar_class(d) }}" title="{{ self.bar_title(d) }}"></span>{% endfor %}</div>
-      <div class="uptime__legend"><span class="cap">90 days ago</span><span class="cap">Today</span></div>
-    </div>
-  </div>
-  {% endfor %}
-</section>
-{% endif %}
+<div class="sp">
+  <section class="sp__systems" aria-labelledby="systems">
+    <div class="sp__bar"><h2 id="systems">Systems</h2><span class="subtle">Last 90 days</span></div>
+    {% if status.items.is_empty() %}
+      <p class="muted">This project has no public systems yet.</p>
+    {% endif %}
+    {% for i in self.problems() %}{% include "status/system.html" %}{% endfor %}
+    {% for i in self.barred() %}{% include "status/system.html" %}{% endfor %}
+    {% let rest = self.rest() %}
+    {% if !rest.is_empty() %}
+    <details class="sp__more">
+      <summary>{{ rest.len() }} more systems</summary>
+      <ul class="sp__list">
+        {% for i in rest %}<li><span class="row">{% if i.state != "up" %}{% call ui::state(i.state, self.state_word(i)) %}{% endcall %}{% endif %}{{ i.name }}</span><span class="subtle">{{ self.uptime(i) }}</span></li>{% endfor %}
+      </ul>
+    </details>
+    {% endif %}
+  </section>
 
-<section class="stack" aria-label="Incidents">
-  <h2>Incidents</h2>
-  {% if status.incidents.is_empty() %}
-    <p class="muted">No incidents in the last 90 days.</p>
-  {% endif %}
-  {% for inc in status.incidents %}
-  <article class="stack stack--sm">
-    <div class="stack stack--sm"><strong>{{ inc.title }}</strong><span class="subtle">{{ self.when(inc) }}. Affects {{ inc.items.join(", ") }}.</span></div>
-    <ol class="timeline">
-      {% for u in inc.updates %}
-      <li class="timeline__item">
-        <div class="timeline__body"><div class="timeline__meta">{% call ui::chip(u.label, self.label(u.label)) %}{% endcall %}<span class="cap">{{ self.hhmm(u.at) }}</span></div><span class="timeline__text">{{ u.message }}</span></div>
-      </li>
-      {% endfor %}
-    </ol>
-  </article>
-  {% endfor %}
-</section>
+  <section class="sp__active" aria-labelledby="active">
+    <h2 id="active">Active incidents</h2>
+    {% if status.incidents.is_empty() %}<p class="sp__calm">No open incidents.</p>{% endif %}
+    {% for inc in status.incidents %}{% include "status/incident.html" %}{% endfor %}
+  </section>
+
+  <section class="sp__past" aria-labelledby="past">
+    <h2 id="past">Past 7 days</h2>
+    {% if recent.is_empty() %}<p class="muted">No incidents in the last 7 days.</p>{% endif %}
+    {% for inc in recent %}{% include "status/incident.html" %}{% endfor %}
+    <a class="link-quiet" href="/status/{{ status.project.slug }}/history">Incident history →</a>
+  </section>
+</div>
 {% endblock %}
 {% block foot %}<span class="row"><a class="link-quiet" href="/status/{{ status.project.slug }}/tickets">Known issues →</a><a class="link-quiet" href="/status/{{ status.project.slug }}/report">Report a bug →</a></span>{% endblock %}

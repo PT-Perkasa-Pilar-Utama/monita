@@ -4,9 +4,12 @@ Each project has a public status page at `/status/<slug>`. It shows the monitors
 
 ## What users see
 
-- A headline: everything is up, or which item is down.
-- One row per public item with its state and 90 daily bars. A red bar had downtime; a grey bar is a day before the item existed.
-- Incidents of the last 90 days, newest first, with their updates.
+- A headline: everything is up or which system is down, and how many systems are up.
+- On the left, the systems. Those with a problem come first. Each shows its state and 90 daily bars: a red bar had downtime, a grey bar is a day before the system existed. A project with many systems shows bars for the problems and the first 12; the rest fold into a list.
+- On the right, every open incident with its updates, then the resolved incidents of the last 7 days, folded.
+- **Incident history** lists every incident, newest first, 25 per page under month headings.
+
+On a phone the columns stack, with open incidents first.
 
 Users never see who posted an update, nor the technical cause Monita recorded. Manual incidents show as an issue, not downtime.
 

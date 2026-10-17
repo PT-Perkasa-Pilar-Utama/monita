@@ -8,7 +8,7 @@ use serde::Serialize;
 use crate::{
     checks,
     incidents::{self, ItemRef, ItemState, history},
-    platform::{db::Db, now, time},
+    platform::{caps, db::Db, now, time},
     projects,
 };
 
@@ -46,6 +46,9 @@ pub struct Day {
 
 #[derive(Serialize)]
 pub struct IncidentStatus {
+    /// The history cursor's tie-break; not part of the public JSON.
+    #[serde(skip)]
+    pub id: i64,
     pub title: String,
     pub origin: String,
     pub severity: String,
@@ -74,8 +77,15 @@ fn uptime(down: i64, from: i64, to: i64) -> Option<f64> {
     (span > 0).then(|| round2(100.0 * (1.0 - down.min(span) as f64 / span as f64)))
 }
 
-/// Everything the page and the JSON show for `slug` over the last `days` UTC days, or `None`.
-pub async fn load(db: &Db, slug: &str, days: usize) -> anyhow::Result<Option<Status>> {
+/// The project, its public items with `days` of history, and the overall state.
+struct Items {
+    project: projects::Project,
+    items: Vec<ItemStatus>,
+    refs: Vec<(ItemRef, String)>,
+    overall: &'static str,
+}
+
+async fn items(db: &Db, slug: &str, days: usize) -> anyhow::Result<Option<Items>> {
     let Some(project) = projects::find_public(db, slug).await? else {
         return Ok(None);
     };
@@ -139,24 +149,46 @@ pub async fn load(db: &Db, slug: &str, days: usize) -> anyhow::Result<Option<Sta
         "up"
     };
 
-    let refs: Vec<ItemRef> = public
+    let refs = public
         .iter()
-        .map(|i| ItemRef {
-            kind: i.kind,
-            id: i.id,
+        .map(|i| {
+            (
+                ItemRef {
+                    kind: i.kind,
+                    id: i.id,
+                },
+                i.name.clone(),
+            )
         })
         .collect();
+    Ok(Some(Items {
+        project,
+        items,
+        refs,
+        overall,
+    }))
+}
+
+/// Public incidents of `which`, as wire types: public item names, no author, at most `limit`.
+async fn incidents(
+    db: &Db,
+    it: &Items,
+    which: history::Touching,
+    limit: i64,
+) -> anyhow::Result<Vec<IncidentStatus>> {
+    let refs: Vec<ItemRef> = it.refs.iter().map(|(r, _)| r.clone()).collect();
     let name_of = |r: &ItemRef| {
-        public
+        it.refs
             .iter()
-            .find(|p| p.kind == r.kind && p.id == r.id)
-            .map(|p| p.name.clone())
+            .find(|(p, _)| p.kind == r.kind && p.id == r.id)
+            .map(|(_, n)| n.clone())
             .unwrap_or_default()
     };
-    let incidents = history::public(db, project.id, &refs, first_day)
+    Ok(history::public(db, it.project.id, &refs, which, limit)
         .await?
         .into_iter()
         .map(|i| IncidentStatus {
+            id: i.id,
             items: i.items.iter().map(name_of).collect(),
             updates: i
                 .updates
@@ -173,17 +205,78 @@ pub async fn load(db: &Db, slug: &str, days: usize) -> anyhow::Result<Option<Sta
             started_at: i.started_at,
             resolved_at: i.resolved_at,
         })
-        .collect();
+        .collect())
+}
 
-    Ok(Some(Status {
+fn status(it: Items, incidents: Vec<IncidentStatus>) -> Status {
+    Status {
         project: ProjectRef {
-            name: project.name,
-            slug: project.slug,
+            name: it.project.name,
+            slug: it.project.slug,
         },
-        overall,
-        items,
+        overall: it.overall,
+        items: it.items,
         incidents,
+    }
+}
+
+/// The JSON: items over the last `days` UTC days, and incidents started in them or still open.
+pub async fn load(db: &Db, slug: &str, days: usize) -> anyhow::Result<Option<Status>> {
+    let Some(it) = items(db, slug, days).await? else {
+        return Ok(None);
+    };
+    let first_day = time::day_start(now()) - (days as i64 - 1) * 86_400;
+    let list = incidents(
+        db,
+        &it,
+        history::Touching::Window(first_day),
+        caps::PUBLIC_INCIDENTS,
+    )
+    .await?;
+    Ok(Some(status(it, list)))
+}
+
+/// The page: 90 days of items, every open incident, and the newest resolved ones of the last
+/// 7 days. Older incidents live on the history page.
+pub struct PageData {
+    pub status: Status,
+    pub recent: Vec<IncidentStatus>,
+}
+
+pub async fn page(db: &Db, slug: &str) -> anyhow::Result<Option<PageData>> {
+    let Some(it) = items(db, slug, 90).await? else {
+        return Ok(None);
+    };
+    let open = incidents(db, &it, history::Touching::Open, caps::OPEN_INCIDENTS).await?;
+    let week = history::Touching::ResolvedSince(now() - 7 * 86_400);
+    let recent = incidents(db, &it, week, caps::PUBLIC_RECENT).await?;
+    Ok(Some(PageData {
+        status: status(it, open),
+        recent,
     }))
+}
+
+/// One page of the incident history, older than the `(started_at, id)` cursor.
+pub async fn history_page(
+    db: &Db,
+    slug: &str,
+    before: Option<(i64, i64)>,
+) -> anyhow::Result<Option<(ProjectRef, Vec<IncidentStatus>)>> {
+    let Some(it) = items(db, slug, 1).await? else {
+        return Ok(None);
+    };
+    let list = incidents(
+        db,
+        &it,
+        history::Touching::Before(before),
+        caps::PUBLIC_HISTORY_PAGE,
+    )
+    .await?;
+    let project = ProjectRef {
+        name: it.project.name,
+        slug: it.project.slug,
+    };
+    Ok(Some((project, list)))
 }
 
 #[cfg(test)]

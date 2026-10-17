@@ -65,6 +65,7 @@ pub struct PublicUpdate {
 }
 
 pub struct PublicIncident {
+    pub id: i64,
     pub title: String,
     pub origin: String,
     pub severity: String,
@@ -74,23 +75,27 @@ pub struct PublicIncident {
     pub updates: Vec<PublicUpdate>,
 }
 
-/// Incidents since `since` that touch a public item, newest first. Items are cut down to the
+pub use store::Touching;
+
+/// Incidents that touch a public item, newest first, at most `limit`. Items are cut down to the
 /// public ones. Monita's own "Detected" entry drops its cause, which can name internal hosts;
 /// TL messages show as written. No author is ever included.
 pub async fn public(
     db: &Db,
     project_id: i64,
     public: &[ItemRef],
-    since: i64,
+    which: Touching,
+    limit: i64,
 ) -> anyhow::Result<Vec<PublicIncident>> {
     let conn = db.read().await?;
-    let rows = store::since_touching(&conn, project_id, since, public).await?;
+    let rows = store::touching(&conn, project_id, public, which, limit).await?;
     let ids: Vec<i64> = rows.iter().map(|r| r.id).collect();
     let mut items = store::items_of(&conn, &ids).await?;
     let mut updates = store::updates_of(&conn, &ids, crate::platform::caps::PUBLIC_UPDATES).await?;
     Ok(rows
         .into_iter()
         .map(|row| PublicIncident {
+            id: row.id,
             items: items
                 .remove(&row.id)
                 .unwrap_or_default()
