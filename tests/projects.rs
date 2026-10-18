@@ -541,6 +541,34 @@ async fn a_key_is_shown_once_works_and_stops_when_revoked() {
 }
 
 #[tokio::test]
+async fn a_key_works_on_a_project_with_a_description_and_marks_only_itself_used() {
+    let app = TestApp::spawn("test").await;
+    let tl = app.tl("rina@x.co").await;
+    let slug = create(
+        &app,
+        &tl,
+        json!({ "name": "Reports", "description": "Monthly reports." }),
+    )
+    .await;
+    new_key(&app, &tl, &slug).await;
+    let second = new_key(&app, &tl, &slug).await;
+    assert_eq!(ref_id(&app, Some(&second), json!({})).await.status(), 201);
+    let keys = json_of(
+        app.get(&format!("/api/ui/projects/{slug}/keys"), Some(&tl))
+            .await,
+    )
+    .await;
+    let used: Vec<i64> = keys["data"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|k| !k["last_used_at"].is_null())
+        .map(|k| k["id"].as_i64().unwrap())
+        .collect();
+    assert_eq!(used, [2], "{keys}");
+}
+
+#[tokio::test]
 async fn the_allowlist_is_off_by_default_and_blocks_other_ips() {
     // AC-08.01, AC-08.02
     let app = TestApp::spawn("test").await;

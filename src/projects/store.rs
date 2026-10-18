@@ -319,8 +319,10 @@ pub async fn find_live_key(
             [hash],
         )
         .await?;
+    // The key's columns follow the project's, however many COLS holds.
+    let n = COLS.split(',').count();
     Ok(match rows.next().await? {
-        Some(r) => Some((r.get(7)?, row(&r)?, r.get(8)?)),
+        Some(r) => Some((r.get(n)?, row(&r)?, r.get(n + 1)?)),
         None => None,
     })
 }
