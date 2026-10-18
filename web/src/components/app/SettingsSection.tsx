@@ -53,11 +53,11 @@ function OnThisPage({ items }: { items: TocItem[] }): ReactElement {
   );
 }
 
-/** A settings page: its title, its sections in one column and, when given, On this page. */
-export function SettingsPage({ title, toc, children }: { title: string; toc?: TocItem[]; children: ReactNode }): ReactElement {
+/** A settings page: its title and actions, its sections in one column and, when given, On this page. */
+export function SettingsPage({ title, actions, toc, children }: { title: string; actions?: ReactNode; toc?: TocItem[]; children: ReactNode }): ReactElement {
   return (
     <>
-      <PageHeader title={title} />
+      <PageHeader title={title} actions={actions} />
       <div className={cn("grid items-start gap-10", toc && "xl:grid-cols-[minmax(0,1fr)_13rem]")}>
         <div className="flex min-w-0 flex-col gap-6">{children}</div>
         {toc && <OnThisPage items={toc} />}

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { ReactElement } from "react";
-import { Delivery, HowAlertsWork } from "@/components/app/AlertsGuide";
+import { AlertsGuide } from "@/components/app/AlertsGuide";
+import { AlertSwitch } from "@/components/app/AlertSwitch";
 import { SettingsPage, SettingsSection } from "@/components/app/SettingsSection";
 import { TicketAlertsSection } from "@/components/app/TicketAlertsSection";
 import { Send } from "@/components/icons";
@@ -12,7 +13,6 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { api, ApiError, errorText } from "@/lib/api";
 import { useProject } from "@/lib/project";
 import type { AlertRoute, TicketAlerts } from "@/lib/types";
@@ -45,6 +45,7 @@ function RouteSection({ slug, route }: { slug: string; route: AlertRoute }): Rea
   const [busy, setBusy] = useState(false);
   const [testing, setTesting] = useState(false);
   const [notice, setNotice] = useState("");
+  const [enabled, setEnabled] = useState(route.enabled);
   const changed = emails.trim() !== saved.emails.join("\n") || webhook.trim() !== (saved.webhook_url ?? "") || useWebhook !== saved.use_webhook;
 
   const save = async (): Promise<void> => {
@@ -54,7 +55,7 @@ function RouteSection({ slug, route }: { slug: string; route: AlertRoute }): Rea
     try {
       await api(`/projects/${slug}/alerts/${s}`, "PUT", { emails, webhook_url: webhook, use_webhook: useWebhook });
       const list = emails.split("\n").map((e) => e.trim()).filter(Boolean);
-      setSaved({ severity: s, emails: list, webhook_url: webhook.trim() || null, use_webhook: useWebhook });
+      setSaved({ severity: s, emails: list, webhook_url: webhook.trim() || null, use_webhook: useWebhook, enabled });
       setEmails(list.join("\n"));
       setWebhook(webhook.trim());
       toast.success(`${COPY[s].title} saved.`);
@@ -82,11 +83,12 @@ function RouteSection({ slug, route }: { slug: string; route: AlertRoute }): Rea
       id={s}
       title={COPY[s].title}
       description={COPY[s].description}
+      action={<AlertSwitch slug={slug} route={s} name={COPY[s].title} on={enabled} onChange={setEnabled} />}
       onSubmit={() => void save()}
-      footerNote={changed ? "Save to test the new recipients." : notice}
+      footerNote={!enabled ? "Off. Nothing is sent. The recipients stay for when you turn it back on." : changed ? "Save to test the new recipients." : notice}
       footer={
         <>
-          <Button type="button" variant="outline" disabled={changed || testing} onClick={() => void test()}>
+          <Button type="button" variant="outline" disabled={!enabled || changed || testing} onClick={() => void test()}>
             {testing ? <Spinner data-icon="inline-start" /> : <Send data-icon="inline-start" />}
             Send a test
           </Button>
@@ -97,6 +99,7 @@ function RouteSection({ slug, route }: { slug: string; route: AlertRoute }): Rea
         </>
       }
     >
+      <fieldset disabled={!enabled} className="contents">
       <FieldGroup className="gap-5">
         <Field data-invalid={error?.fields.emails ? true : undefined}>
           <FieldLabel htmlFor={`emails-${s}`}>Email addresses, one per line</FieldLabel>
@@ -134,80 +137,12 @@ function RouteSection({ slug, route }: { slug: string; route: AlertRoute }): Rea
         )}
         {error && !error.fields.emails && !error.fields.webhook_url && <p className="text-sm text-destructive">{error.message}</p>}
       </FieldGroup>
+      </fieldset>
     </SettingsSection>
   );
 }
 
-type Preview = {
-  event: string;
-  label: string;
-  // The settings that send it.
-  route: "critical" | "warning" | "ticket";
-  email: { subject: string; body: string } | null;
-  webhook: unknown;
-};
-
-const CODE = "overflow-x-auto rounded-lg border bg-paper p-4 font-mono text-[13px] leading-relaxed whitespace-pre-wrap break-words";
-
-/** Each kind of alert as Monita sends it, built by the server. */
-function WhatRecipientsGet({ slug, webhooks }: { slug: string; webhooks: Record<string, string | null> }): ReactElement {
-  const previews = useApi<Preview[]>(`/projects/${slug}/alerts-preview`);
-  const [kind, setKind] = useState("incident.opened");
-  const p = previews.data?.find((x) => x.event === kind);
-  return (
-    <SettingsSection id="preview" title="What recipients get" description="Sample alerts for this project. The incident and the ticket are made up.">
-      {!previews.data || !p ? (
-        <Skeleton className="h-64" />
-      ) : (
-        <div className="flex flex-col gap-5">
-          <ToggleGroup type="single" variant="outline" value={kind} onValueChange={(v) => v && setKind(v)} className="flex-wrap" aria-label="Alert">
-            {previews.data.map((x) => (
-              <ToggleGroupItem key={x.event} value={x.event} className="px-3">
-                {x.label}
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
-          <div className="flex flex-col gap-2">
-            <h3 className="text-sm font-semibold">Email</h3>
-            {p.email ? (
-              <div className={CODE}>
-                <span className="text-muted-foreground">Subject: </span>
-                {p.email.subject}
-                {"\n\n"}
-                {p.email.body}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">{p.event === "ticket.created" ? "Each ticket sends no email of its own. The owner's daily digest lists the new ones." : "This alert sends no email."}</p>
-            )}
-          </div>
-          <div className="flex flex-col gap-2">
-            <h3 className="text-sm font-semibold">Webhook</h3>
-            <div className={CODE}>
-              <span className="text-muted-foreground">POST </span>
-              {webhooks[p.route] ?? "your webhook URL"}
-              {"\n"}
-              <span className="text-muted-foreground">Content-Type: application/json</span>
-              {"\n\n"}
-              {JSON.stringify(p.webhook, null, 2)}
-            </div>
-            <p className="text-sm text-muted-foreground">
-              {p.event === "ticket.created" ? (
-                <>
-                  Goes to the webhook in <a href="#tickets" className="text-link underline-offset-2 hover:underline">Ticket alerts</a> when it is on. The owner's daily digest lists new tickets by email instead.
-                </>
-              ) : (
-                <>Goes to the {p.route} webhook when it is on.</>
-              )}{" "}
-              <code className="font-mono">at</code> is Unix seconds, UTC.
-            </p>
-          </div>
-        </div>
-      )}
-    </SettingsSection>
-  );
-}
-
-/** Settings, Alerts: who gets critical, warning and ticket alerts, and what they get. */
+/** Settings, Alerts: who gets critical, warning and ticket alerts. The guide opens beside it. */
 export function Alerts(): ReactElement {
   const { project: p } = useProject();
   const routes = useApi<AlertRoute[]>(`/projects/${p.slug}/alerts`);
@@ -221,16 +156,13 @@ export function Alerts(): ReactElement {
   return (
     <SettingsPage
       title="Alerts"
+      actions={<AlertsGuide slug={p.slug} webhooks={webhooks} />}
       toc={[
-        { id: "how", label: "How alerts work" },
         { id: "critical", label: "Critical alerts" },
         { id: "warning", label: "Warning alerts" },
         { id: "tickets", label: "Ticket alerts" },
-        { id: "preview", label: "What recipients get" },
-        { id: "delivery", label: "Webhook delivery" },
       ]}
     >
-      <HowAlertsWork />
       {routes.error && (
         <Alert variant="destructive">
           <AlertDescription>{routes.error.message}</AlertDescription>
@@ -249,8 +181,6 @@ export function Alerts(): ReactElement {
       ) : (
         <Skeleton className="h-56 rounded-xl" />
       )}
-      <WhatRecipientsGet slug={p.slug} webhooks={webhooks} />
-      <Delivery />
     </SettingsPage>
   );
 }

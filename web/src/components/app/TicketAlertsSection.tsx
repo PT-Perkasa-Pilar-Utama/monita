@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { ReactElement } from "react";
+import { AlertSwitch } from "@/components/app/AlertSwitch";
 import { SettingsSection } from "@/components/app/SettingsSection";
 import { Send } from "@/components/icons";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,7 @@ export function TicketAlertsSection({ slug, owner, initial, onSaved }: { slug: s
   const [busy, setBusy] = useState(false);
   const [testing, setTesting] = useState(false);
   const [notice, setNotice] = useState("");
+  const [enabled, setEnabled] = useState(initial.enabled);
   const changed = digest !== saved.digest || useWebhook !== saved.use_webhook || webhook.trim() !== (saved.webhook_url ?? "");
 
   const save = async (): Promise<void> => {
@@ -29,7 +31,7 @@ export function TicketAlertsSection({ slug, owner, initial, onSaved }: { slug: s
     setNotice("");
     try {
       await api(`/projects/${slug}/ticket-alerts`, "PUT", { digest, webhook_url: webhook, use_webhook: useWebhook });
-      const next = { digest, webhook_url: webhook.trim() || null, use_webhook: useWebhook };
+      const next = { enabled, digest, webhook_url: webhook.trim() || null, use_webhook: useWebhook };
       setSaved(next);
       setWebhook(webhook.trim());
       onSaved(next);
@@ -58,11 +60,23 @@ export function TicketAlertsSection({ slug, owner, initial, onSaved }: { slug: s
       id="tickets"
       title="Ticket alerts"
       description="New bug reports from your users. A ticket your team files itself sends nothing."
+      action={
+        <AlertSwitch
+          slug={slug}
+          route="ticket"
+          name="Ticket alerts"
+          on={enabled}
+          onChange={(on) => {
+            setEnabled(on);
+            onSaved({ ...saved, enabled: on });
+          }}
+        />
+      }
       onSubmit={() => void save()}
-      footerNote={changed ? "Save to test the new webhook." : notice}
+      footerNote={!enabled ? "Off. Nothing is sent. The settings stay for when you turn it back on." : changed ? "Save to test the new webhook." : notice}
       footer={
         <>
-          <Button type="button" variant="outline" disabled={changed || testing || !saved.use_webhook} onClick={() => void test()}>
+          <Button type="button" variant="outline" disabled={!enabled || changed || testing || !saved.use_webhook} onClick={() => void test()}>
             {testing ? <Spinner data-icon="inline-start" /> : <Send data-icon="inline-start" />}
             Send a test
           </Button>
@@ -73,6 +87,7 @@ export function TicketAlertsSection({ slug, owner, initial, onSaved }: { slug: s
         </>
       }
     >
+      <fieldset disabled={!enabled} className="contents">
       <FieldGroup className="gap-5">
         <Field orientation="horizontal">
           <Checkbox id="ticket-digest" checked={digest} onCheckedChange={(v) => setDigest(v === true)} />
@@ -105,6 +120,7 @@ export function TicketAlertsSection({ slug, owner, initial, onSaved }: { slug: s
         )}
         {error && !error.fields.webhook_url && <p className="text-sm text-destructive">{error.message}</p>}
       </FieldGroup>
+      </fieldset>
     </SettingsSection>
   );
 }
