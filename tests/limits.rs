@@ -179,9 +179,18 @@ async fn an_incident_takes_50_updates_and_a_project_20_open_manual_incidents() {
     ))
     .await;
     sql(&app, &format!("INSERT INTO status_updates (incident_id, label, message) {} SELECT 1, 'investigating', 'u' || i FROM n;", upto(caps::UPDATES_PER_INCIDENT))).await;
-    let err = monita::incidents::post_update(&app.state.db, 1, 1, "identified", "found", 1, now())
-        .await
-        .unwrap_err();
+    let err = monita::incidents::post_update(
+        &app.state.db,
+        common::BASE_URL,
+        1,
+        1,
+        "identified",
+        "found",
+        1,
+        now(),
+    )
+    .await
+    .unwrap_err();
     assert!(
         matches!(err, monita::incidents::UpdateError::TooManyUpdates),
         "{err}"

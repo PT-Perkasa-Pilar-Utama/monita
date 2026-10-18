@@ -41,7 +41,7 @@ pub fn previews(name: &str, slug: &str, base_url: &str, at: i64) -> Vec<Preview>
         source_name: "Checkout API".into(),
         severity: "critical".into(),
         duration_s: 754,
-        deleted: false,
+        ended: crate::incidents::Ended::Recovered,
     };
     let mut out = Vec::new();
     for (event, label, ev) in [

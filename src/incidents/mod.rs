@@ -9,6 +9,7 @@ pub mod engine;
 pub mod history;
 mod manual;
 mod store;
+mod updates;
 
 use std::collections::HashMap;
 
@@ -19,6 +20,7 @@ use engine::Effect;
 
 pub use manual::{NewIncident, open_manual};
 pub use store::{IncidentRow, ItemRef, UpdateRow};
+pub use updates::{allowed_labels, post_update};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum SourceKind {
@@ -63,6 +65,14 @@ pub enum Signal {
     Ping,
 }
 
+/// How an automatic incident ended. Only Recovered means the source works again.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Ended {
+    Recovered,
+    Deleted,
+    ByHand,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Event {
     Opened {
@@ -79,8 +89,8 @@ pub enum Event {
         source_name: String,
         severity: String,
         duration_s: i64,
-        /// The source was deleted while down, so "up" would be wrong.
-        deleted: bool,
+        /// Why it ended: a passing check, a deleted source, or a tech lead's Resolved update.
+        ended: Ended,
     },
 }
 
@@ -137,7 +147,7 @@ pub async fn observe(
                     source_name: source.name.clone(),
                     severity,
                     duration_s: now - started,
-                    deleted: false,
+                    ended: Ended::Recovered,
                 })
             }
             None => {
@@ -172,7 +182,7 @@ pub async fn source_deleted(
                 source_name: source.name.clone(),
                 severity,
                 duration_s: now - started,
-                deleted: true,
+                ended: Ended::Deleted,
             })
         }
         None => None,
@@ -237,8 +247,6 @@ pub enum UpdateError {
     MessageTooLong,
     #[error("Pick critical or warning.")]
     BadSeverity,
-    #[error("Monita resolves this incident when its check passes.")]
-    AutoResolves,
     #[error("A closed incident takes only Resolved updates.")]
     Closed,
     #[error("An incident takes {} updates at most.", caps::UPDATES_PER_INCIDENT)]
@@ -265,62 +273,6 @@ fn check_message(message: &str) -> Result<(), UpdateError> {
     } else {
         Ok(())
     }
-}
-
-/// The labels a TL may post. A closed incident takes follow-up notes as Resolved (AC-19.03); an
-/// open automatic incident cannot be marked Resolved, because only a passing check ends it.
-pub fn allowed_labels(origin: &str, closed: bool) -> &'static [&'static str] {
-    match (closed, origin) {
-        (true, _) => &LABELS[3..],
-        (false, "auto") => &LABELS[..3],
-        _ => &LABELS,
-    }
-}
-
-/// US-19. A message is required. Resolved closes a manual incident.
-pub async fn post_update(
-    db: &Db,
-    project_id: i64,
-    incident_id: i64,
-    label: &str,
-    message: &str,
-    author: i64,
-    now: i64,
-) -> Result<bool, UpdateError> {
-    check_message(message)?;
-    let message = message.trim();
-    if !LABELS.contains(&label) {
-        return Err(UpdateError::BadLabel);
-    }
-    db.write(async |c| {
-        let Some((origin, resolved_at)) = store::origin_and_end(c, project_id, incident_id).await?
-        else {
-            return Ok(Ok(false));
-        };
-        if store::count_updates(c, incident_id).await? >= caps::UPDATES_PER_INCIDENT {
-            return Ok(Err(UpdateError::TooManyUpdates));
-        }
-        if !allowed_labels(&origin, resolved_at.is_some()).contains(&label) {
-            return Ok(Err(if resolved_at.is_some() {
-                UpdateError::Closed
-            } else {
-                UpdateError::AutoResolves
-            }));
-        }
-        store::add_update(
-            c,
-            incident_id,
-            &origin,
-            resolved_at,
-            label,
-            message,
-            Some(author),
-            now,
-        )
-        .await?;
-        Ok(Ok(true))
-    })
-    .await?
 }
 
 /// Names of the project's monitors and heartbeats, for item lists and the manual form. Read

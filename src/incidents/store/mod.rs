@@ -144,6 +144,34 @@ pub async fn resolve_auto(
     Ok((started, severity))
 }
 
+/// Closes an automatic incident a tech lead resolved, and lets its source start over: no fail
+/// streak and no open incident. Returns its start time and the severity it opened with.
+pub async fn release_auto(c: &Connection, id: i64, now: i64) -> anyhow::Result<(i64, String)> {
+    let (started, severity) = {
+        let mut rows = c
+            .query(
+                "SELECT started_at, severity FROM incidents WHERE id = ?1",
+                [id],
+            )
+            .await?;
+        match rows.next().await? {
+            Some(r) => (r.get::<i64>(0)?, r.get::<String>(1)?),
+            None => anyhow::bail!("incident {id} is gone"),
+        }
+    };
+    c.execute(
+        "UPDATE incidents SET resolved_at = ?1 WHERE id = ?2 AND resolved_at IS NULL",
+        (now, id),
+    )
+    .await?;
+    c.execute(
+        "UPDATE incident_sources SET fail_streak = 0, open_incident_id = NULL WHERE open_incident_id = ?1",
+        [id],
+    )
+    .await?;
+    Ok((started, severity))
+}
+
 pub async fn resolve_with(c: &Connection, id: i64, message: &str, now: i64) -> anyhow::Result<()> {
     c.execute(
         "UPDATE incidents SET resolved_at = ?1 WHERE id = ?2 AND resolved_at IS NULL",

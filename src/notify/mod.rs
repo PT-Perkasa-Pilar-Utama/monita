@@ -14,7 +14,7 @@ mod tickets;
 use turso::Connection;
 
 use crate::{
-    incidents::Event,
+    incidents::{Ended, Event},
     platform::{db::Db, now, time},
 };
 
@@ -161,11 +161,15 @@ pub(super) fn compose(
             severity,
             duration_s,
             source_name,
-            deleted,
+            ended,
             ..
         } => {
             let url = format!("{base_url}/projects/{slug}/incidents/{incident_id}");
-            let how = if *deleted { "was deleted" } else { "is up" };
+            let how = match ended {
+                Ended::Recovered => "is up",
+                Ended::Deleted => "was deleted",
+                Ended::ByHand => "was marked resolved by a tech lead",
+            };
             let text = format!(
                 "[RESOLVED] {name} / {source_name} {how} after {}",
                 time::duration(*duration_s)

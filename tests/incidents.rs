@@ -487,8 +487,8 @@ async fn status_updates_need_a_message_and_work_after_close() {
     assert_eq!(ok.status(), 204);
     assert_eq!(
         incident(&app, &tl, 1).await["labels"],
-        json!(["investigating", "identified", "monitoring"]),
-        "an open automatic incident offers every label but Resolved"
+        json!(["investigating", "identified", "monitoring", "resolved"]),
+        "an open automatic incident offers every label, Resolved included"
     );
     let watching = app
         .api_post(
@@ -498,25 +498,6 @@ async fn status_updates_need_a_message_and_work_after_close() {
         )
         .await;
     assert_eq!(watching.status(), 204);
-    let note = app
-        .api_post(
-            "/api/ui/projects/payments/incidents/1/updates",
-            json!({ "label": "resolved", "message": "Looks fixed" }),
-            Some(&tl),
-        )
-        .await;
-    assert_eq!(
-        note.status(),
-        422,
-        "only a passing check resolves an automatic incident"
-    );
-    assert!(
-        note.text()
-            .await
-            .unwrap()
-            .contains("Monita resolves this incident when its check passes.")
-    );
-
     up.store(true, Ordering::SeqCst);
     check_once(&app).await;
     let after = app
@@ -783,4 +764,70 @@ async fn reset_state_waits_for_running_checks_so_no_stale_result_lands() {
 async fn incident(app: &TestApp, tl: &str, id: i64) -> Value {
     let path = format!("/api/ui/projects/payments/incidents/{id}");
     json_of(app.api_get(&path, Some(tl)).await).await["data"].take()
+}
+
+#[tokio::test]
+async fn a_tech_lead_resolves_an_automatic_incident_and_its_monitor_starts_over() {
+    let app = TestApp::spawn("test").await;
+    let tl = setup(&app).await;
+    let route = "/api/ui/projects/payments/alerts/warning";
+    let body = json!({ "emails": "warn@x.co", "webhook_url": "" });
+    app.api_send(reqwest::Method::PUT, route, body, Some(&tl))
+        .await;
+    let (url, up) = switchable().await;
+    monitor(&app, &url, "warning").await;
+    up.store(false, Ordering::SeqCst);
+    check_once(&app).await;
+    check_once(&app).await;
+    assert_eq!(
+        count(
+            &app,
+            "SELECT count(*) FROM incidents WHERE resolved_at IS NULL"
+        )
+        .await,
+        1
+    );
+
+    let res = app
+        .api_post(
+            "/api/ui/projects/payments/incidents/1/updates",
+            json!({ "label": "resolved", "message": "We retired this endpoint." }),
+            Some(&tl),
+        )
+        .await;
+    assert_eq!(res.status(), 204);
+    assert_eq!(
+        count(
+            &app,
+            "SELECT count(*) FROM incidents WHERE resolved_at IS NULL"
+        )
+        .await,
+        0,
+        "closed by hand"
+    );
+    monita::notify::deliver_due(&app.state).await.unwrap();
+    let subjects: Vec<String> = alerts(&app).into_iter().map(|m| m.subject).collect();
+    assert_eq!(subjects.len(), 2, "opened, then resolved");
+    assert!(
+        subjects[1].contains("was marked resolved by a tech lead"),
+        "{subjects:?}"
+    );
+
+    // Still failing: the monitor starts over, so one failure opens nothing and the second does.
+    check_once(&app).await;
+    assert_eq!(
+        count(&app, "SELECT count(*) FROM incidents").await,
+        1,
+        "one failure opens nothing"
+    );
+    check_once(&app).await;
+    assert_eq!(
+        count(
+            &app,
+            "SELECT count(*) FROM incidents WHERE resolved_at IS NULL"
+        )
+        .await,
+        1,
+        "two failures open a new one"
+    );
 }

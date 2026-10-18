@@ -39,7 +39,7 @@ fn field_of(e: &UpdateError) -> Option<&'static str> {
         NoItems => Some("items"),
         BadSeverity => Some("severity"),
         EmptyMessage | MessageTooLong => Some("message"),
-        BadLabel | AutoResolves | Closed => Some("label"),
+        BadLabel | Closed => Some("label"),
         TooManyUpdates | TooManyOpen | Other(_) => None,
     }
 }
@@ -151,7 +151,18 @@ async fn post_update(
     Body(f): Body<UpdateForm>,
 ) -> UiResult {
     let p = projects::find_for(&state.db, &user, &slug).await?;
-    match super::post_update(&state.db, p.id, id, &f.label, &f.message, user.id, now()).await {
+    match super::post_update(
+        &state.db,
+        &state.config.base_url,
+        p.id,
+        id,
+        &f.label,
+        &f.message,
+        user.id,
+        now(),
+    )
+    .await
+    {
         Ok(true) => Ok(StatusCode::NO_CONTENT.into_response()),
         Ok(false) => Err(UiError::NotFound),
         Err(e) => Err(e.into()),
