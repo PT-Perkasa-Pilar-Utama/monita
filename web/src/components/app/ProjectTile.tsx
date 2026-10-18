@@ -10,12 +10,13 @@ import { day } from "@/lib/time";
 import type { Project } from "@/lib/types";
 
 /** The public status page, in a new tab. A sibling of the card's link, never inside it. */
-function StatusLink({ slug }: { slug: string }): ReactElement {
-  const label = "Open the status page in a new tab";
+function StatusLink({ slug, labelled }: { slug: string; labelled: boolean }): ReactElement {
+  const title = "Open the status page in a new tab";
   return (
-    <Button asChild variant="ghost" size="icon-sm" className="relative z-10">
-      <a href={`/status/${slug}`} target="_blank" rel="noreferrer" aria-label={label} title={label}>
-        <ExternalLink />
+    <Button asChild variant="ghost" size={labelled ? "sm" : "icon-sm"} className="relative z-10">
+      <a href={`/status/${slug}`} target="_blank" rel="noreferrer" title={title} aria-label={labelled ? undefined : title}>
+        {labelled && "Status page"}
+        <ExternalLink data-icon={labelled ? "inline-end" : undefined} />
       </a>
     </Button>
   );
@@ -37,7 +38,7 @@ export function ProjectCard({ p }: { p: Project }): ReactElement {
       <p className="line-clamp-2 min-h-10 px-5 pb-4 text-[13px] text-muted-foreground">{p.description || "No description."}</p>
       <div className="mt-auto flex items-center justify-between gap-3 rounded-b-xl border-t bg-paper py-2 pr-3 pl-5 text-[13px]">
         <span className="text-muted-foreground">Created {day(p.created_at)}</span>
-        <StatusLink slug={p.slug} />
+        <StatusLink slug={p.slug} labelled />
       </div>
     </Card>
   );
@@ -64,9 +65,7 @@ export function ProjectTable({ projects, loading, skeletons }: { projects: Proje
           <TableHead>Project</TableHead>
           <TableHead className="max-md:hidden">Owner</TableHead>
           <TableHead className="max-sm:hidden">Created</TableHead>
-          <TableHead className="w-12">
-            <span className="sr-only">Status page</span>
-          </TableHead>
+          <TableHead className="w-28 text-right">Status page</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -94,7 +93,7 @@ export function ProjectTable({ projects, loading, skeletons }: { projects: Proje
                 <TableCell className="text-muted-foreground max-md:hidden">{p.owner_email}</TableCell>
                 <TableCell className="text-muted-foreground max-sm:hidden">{day(p.created_at)}</TableCell>
                 <TableCell className="py-0 text-right" onClick={(e) => e.stopPropagation()}>
-                  <StatusLink slug={p.slug} />
+                  <StatusLink slug={p.slug} labelled={false} />
                 </TableCell>
               </TableRow>
             ))}
