@@ -1,7 +1,8 @@
 import { useState } from "react";
 import type { ReactElement } from "react";
+import { Delivery, HowAlertsWork } from "@/components/app/AlertsGuide";
 import { SettingsPage, SettingsSection } from "@/components/app/SettingsSection";
-import { SeverityBadge } from "@/components/app/Tone";
+import { TicketAlertsSection } from "@/components/app/TicketAlertsSection";
 import { Send } from "@/components/icons";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -10,12 +11,11 @@ import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { api, ApiError, errorText } from "@/lib/api";
 import { useProject } from "@/lib/project";
-import type { AlertRoute } from "@/lib/types";
+import type { AlertRoute, TicketAlerts } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 import { toast } from "sonner";
 
@@ -26,7 +26,7 @@ const COPY = {
   },
   warning: {
     title: "Warning alerts",
-    description: "Monitors and heartbeats set to warning alert these recipients. This webhook also gets every new ticket from a user.",
+    description: "Monitors and heartbeats set to warning alert these recipients when an incident opens and when it resolves.",
   },
 } as const;
 
@@ -113,7 +113,7 @@ function RouteSection({ slug, route }: { slug: string; route: AlertRoute }): Rea
         <Field orientation="horizontal">
           <Checkbox id={`use-${s}`} checked={useWebhook} onCheckedChange={(v) => setUseWebhook(v === true)} />
           <FieldLabel htmlFor={`use-${s}`} className="font-normal">
-            {s === "warning" ? "Send warning incidents and new tickets to a webhook" : "Also send to a webhook"}
+            Also send to a webhook
           </FieldLabel>
         </Field>
         {useWebhook && (
@@ -141,51 +141,13 @@ function RouteSection({ slug, route }: { slug: string; route: AlertRoute }): Rea
 type Preview = {
   event: string;
   label: string;
-  severity: "critical" | "warning";
+  // The settings that send it.
+  route: "critical" | "warning" | "ticket";
   email: { subject: string; body: string } | null;
   webhook: unknown;
 };
 
 const CODE = "overflow-x-auto rounded-lg border bg-paper p-4 font-mono text-[13px] leading-relaxed whitespace-pre-wrap break-words";
-
-/** Critical against warning, and when either fires. */
-function HowAlertsWork(): ReactElement {
-  return (
-    <SettingsSection
-      id="how"
-      title="How alerts work"
-      description="You choose critical or warning on each monitor and heartbeat. Its incidents alert that severity's recipients."
-    >
-      <div className="flex flex-col gap-4 text-sm">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Severity</TableHead>
-              <TableHead>Use it for</TableHead>
-              <TableHead>Sends by default</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            <TableRow>
-              <TableCell><SeverityBadge severity="critical" /></TableCell>
-              <TableCell className="whitespace-normal">An outage that needs someone now, such as the checkout or the login.</TableCell>
-              <TableCell>Email and webhook</TableCell>
-            </TableRow>
-            <TableRow>
-              <TableCell><SeverityBadge severity="warning" /></TableCell>
-              <TableCell className="whitespace-normal">A problem that can wait for working hours, such as a slow report or a nightly job.</TableCell>
-              <TableCell>Email</TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
-        <p className="text-muted-foreground">
-          An incident opens after 2 failed checks in a row, a missed heartbeat or a fail ping, and closes on the next good one. Each recipient gets one alert when it opens and
-          one when it closes. A manual incident sends no alert; it shows on the status page. A new ticket calls the warning webhook only.
-        </p>
-      </div>
-    </SettingsSection>
-  );
-}
 
 /** Each kind of alert as Monita sends it, built by the server. */
 function WhatRecipientsGet({ slug, webhooks }: { slug: string; webhooks: Record<string, string | null> }): ReactElement {
@@ -215,14 +177,14 @@ function WhatRecipientsGet({ slug, webhooks }: { slug: string; webhooks: Record<
                 {p.email.body}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">This alert sends no email.</p>
+              <p className="text-sm text-muted-foreground">{p.event === "ticket.created" ? "Each ticket sends no email of its own. The owner's daily digest lists the new ones." : "This alert sends no email."}</p>
             )}
           </div>
           <div className="flex flex-col gap-2">
             <h3 className="text-sm font-semibold">Webhook</h3>
             <div className={CODE}>
               <span className="text-muted-foreground">POST </span>
-              {webhooks[p.severity] ?? "your webhook URL"}
+              {webhooks[p.route] ?? "your webhook URL"}
               {"\n"}
               <span className="text-muted-foreground">Content-Type: application/json</span>
               {"\n\n"}
@@ -231,10 +193,10 @@ function WhatRecipientsGet({ slug, webhooks }: { slug: string; webhooks: Record<
             <p className="text-sm text-muted-foreground">
               {p.event === "ticket.created" ? (
                 <>
-                  Goes to the webhook in <a href="#warning" className="text-link underline-offset-2 hover:underline">Warning alerts</a> when it is on. A ticket the team files itself sends nothing.
+                  Goes to the webhook in <a href="#tickets" className="text-link underline-offset-2 hover:underline">Ticket alerts</a> when it is on. The owner's daily digest lists new tickets by email instead.
                 </>
               ) : (
-                <>Goes to the {p.severity} webhook when it is on.</>
+                <>Goes to the {p.route} webhook when it is on.</>
               )}{" "}
               <code className="font-mono">at</code> is Unix seconds, UTC.
             </p>
@@ -245,24 +207,17 @@ function WhatRecipientsGet({ slug, webhooks }: { slug: string; webhooks: Record<
   );
 }
 
-function Delivery(): ReactElement {
-  return (
-    <SettingsSection id="delivery" title="Webhook delivery" description="Alerts leave from a queue, so a slow email server or webhook never delays a check.">
-      <ul className="flex list-disc flex-col gap-2 pl-5 text-sm">
-        <li>Monita sends a POST with a JSON body. Slack and Google Chat show its <code className="font-mono">text</code> field.</li>
-        <li>A 2xx answer within 10 seconds counts as delivered. A redirect counts as a failure.</li>
-        <li>A failed call is tried again after 1, 5 and 15 minutes. After the fourth failure Monita gives up and writes the error to its log.</li>
-        <li>The webhook URL is a secret. Monita leaves it out of its logs and error messages.</li>
-      </ul>
-    </SettingsSection>
-  );
-}
-
-/** Settings, Alerts: who gets critical and warning alerts, and what they get. */
+/** Settings, Alerts: who gets critical, warning and ticket alerts, and what they get. */
 export function Alerts(): ReactElement {
   const { project: p } = useProject();
   const routes = useApi<AlertRoute[]>(`/projects/${p.slug}/alerts`);
-  const webhooks = Object.fromEntries((routes.data ?? []).map((r) => [r.severity, r.use_webhook ? r.webhook_url : null]));
+  const tickets = useApi<TicketAlerts>(`/projects/${p.slug}/ticket-alerts`);
+  const [ticketHook, setTicketHook] = useState<TicketAlerts | null>(null);
+  const t = ticketHook ?? tickets.data;
+  const webhooks: Record<string, string | null> = {
+    ...Object.fromEntries((routes.data ?? []).map((r) => [r.severity, r.use_webhook ? r.webhook_url : null])),
+    ticket: t?.use_webhook ? t.webhook_url : null,
+  };
   return (
     <SettingsPage
       title="Alerts"
@@ -270,6 +225,7 @@ export function Alerts(): ReactElement {
         { id: "how", label: "How alerts work" },
         { id: "critical", label: "Critical alerts" },
         { id: "warning", label: "Warning alerts" },
+        { id: "tickets", label: "Ticket alerts" },
         { id: "preview", label: "What recipients get" },
         { id: "delivery", label: "Webhook delivery" },
       ]}
@@ -287,6 +243,11 @@ export function Alerts(): ReactElement {
         </>
       ) : (
         routes.data.map((r) => <RouteSection key={r.severity} slug={p.slug} route={r} />)
+      )}
+      {tickets.data ? (
+        <TicketAlertsSection slug={p.slug} owner={p.owner_email} initial={tickets.data} onSaved={setTicketHook} />
+      ) : (
+        <Skeleton className="h-56 rounded-xl" />
       )}
       <WhatRecipientsGet slug={p.slug} webhooks={webhooks} />
       <Delivery />

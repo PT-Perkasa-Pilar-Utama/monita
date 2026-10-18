@@ -90,11 +90,11 @@ export function ConnectApp({ slug }: { slug: string }): ReactElement {
           </Step>
           <Step n={6} title="Hear about new tickets">
             <p>
-              Each new ticket from a user calls the webhook in{" "}
-              <Link className="text-link underline-offset-2 hover:underline" to={`${settings}/alerts#warning`}>
-                Warning alerts
+              Choose in{" "}
+              <Link className="text-link underline-offset-2 hover:underline" to={`${settings}/alerts#tickets`}>
+                Ticket alerts
               </Link>
-              . The project owner also gets one email a day that lists new tickets in Triage.
+              : a daily email to the project owner that lists new tickets in Triage, a webhook call for each new ticket, both or neither.
             </p>
           </Step>
         </ol>

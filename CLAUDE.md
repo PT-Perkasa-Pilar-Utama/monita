@@ -164,7 +164,7 @@ Each line was argued in review and decided. Do not reopen one without a new fact
 
 - [ ] An incident opens after 2 failed checks in a row; a missed heartbeat or `/ping/{token}/fail` opens it at once; the first pass closes an auto incident; manual incidents close only on a TL "Resolved" update.
 - [ ] Status update labels: investigating, identified, monitoring, resolved.
-- [ ] Ticket stages: triage, backlog, in_progress, done. Done needs close_reason fixed, wont_fix or duplicate. Triage is private. A reporter files with a ref ID; the team files from the board (`created_by`, no ref ID, no caps, no webhook). A board column shows 25; Done links to a paged list.
+- [ ] Ticket stages: triage, backlog, in_progress, done. Done needs close_reason fixed, wont_fix or duplicate. Triage is private. A reporter files with a ref ID; the team files from the board (`created_by`, no ref ID, no caps, no webhook). Ticket alerts (`ticket_alerts`) are apart from severities: owner digest on by default, own webhook off by default. A board column shows 25; Done links to a paged list.
 - [ ] Severity: critical (email + webhook by default), warning (email only).
 - [ ] Monitor intervals: 30, 60, 180, 300 s. Default timeout 10 s, expected `2xx`.
 - [ ] Ref IDs: `POST /api/v1/ref-ids`, project from the API key, `single_use` flag. Caps: 5 per ref ID per day, 100 per project per day.
