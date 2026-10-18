@@ -93,3 +93,12 @@ pub async fn sweep_chunk(c: &Connection, raw_cutoff: i64) -> anyhow::Result<u64>
         .await?;
     Ok(results + pings)
 }
+
+pub async fn delete_summaries(c: &Connection, kind: SourceKind, id: i64) -> anyhow::Result<()> {
+    c.execute(
+        "DELETE FROM daily_summaries WHERE source_kind = ?1 AND source_id = ?2",
+        (kind.as_str(), id),
+    )
+    .await?;
+    Ok(())
+}

@@ -345,3 +345,13 @@ pub async fn count_live_keys(c: &Connection, project_id: i64) -> anyhow::Result<
     .await?
     .unwrap_or(0))
 }
+
+/// Deletes the project. Its keys, routes, icon, monitors, heartbeats, incidents, ref IDs and
+/// tickets cascade with it.
+// ponytail: one cascading DELETE; a project with months of check results holds the writer for
+// that long. Delete check_results in batches first if that proves too slow.
+pub async fn delete_project(c: &Connection, id: i64) -> anyhow::Result<()> {
+    c.execute("DELETE FROM projects WHERE id = ?1", [id])
+        .await?;
+    Ok(())
+}

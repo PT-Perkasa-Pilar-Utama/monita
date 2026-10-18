@@ -336,3 +336,12 @@ async fn item_names_on(c: &Connection, project_id: i64) -> anyhow::Result<Vec<(I
         .map(|(kind, id, name)| (ItemRef { kind, id }, name))
         .collect())
 }
+
+/// Before a project is deleted, inside the same write: forgets its sources' fail streaks. Its
+/// incidents cascade with the project, so no alert goes out.
+pub async fn forget_sources(c: &Connection, sources: &[(SourceKind, i64)]) -> anyhow::Result<()> {
+    for (kind, id) in sources {
+        store::forget_source(c, *kind, *id).await?;
+    }
+    Ok(())
+}

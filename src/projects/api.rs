@@ -1,5 +1,6 @@
 //! Projects as JSON for the frontend. Contract: docs/api-specs/03-projects.md.
 
+use axum::response::IntoResponse;
 use axum::{
     Router,
     extract::{Path, Query, State},
@@ -9,7 +10,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{Project, ProjectError, ProjectInput, TabCounts};
 use crate::{
-    accounts::CurrentUser,
+    accounts::{AdminUser, CurrentUser},
     app::AppState,
     platform::ui::{Body, UiError, UiResult, created, data},
 };
@@ -17,7 +18,7 @@ use crate::{
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/api/ui/projects", get(list).post(create))
-        .route("/api/ui/projects/{slug}", get(detail))
+        .route("/api/ui/projects/{slug}", get(detail).delete(delete))
         .route("/api/ui/projects/{slug}/overview", get(overview))
         .merge(super::settings_api::router())
 }
@@ -136,6 +137,7 @@ pub fn form_error(e: ProjectError) -> UiError {
         ProjectError::LongDescription => "description",
         ProjectError::BadIcon(_) => "icon",
         ProjectError::InvalidCidr(_) => "cidrs",
+        ProjectError::ConfirmMismatch => "confirm",
         ProjectError::Full(_) | ProjectError::Other(_) => "",
     };
     match e {
@@ -182,4 +184,25 @@ async fn overview(
 ) -> UiResult {
     let p = super::find_for(&state.db, &user, &slug).await?;
     Ok(data(super::overview::read(&state.db, p.id).await?))
+}
+
+#[derive(Deserialize, Default)]
+#[serde(default)]
+struct DeleteInput {
+    /// The project's name, typed again.
+    confirm: String,
+}
+
+/// Super admin only: deletes the project and everything in it. 204.
+async fn delete(
+    State(state): State<AppState>,
+    AdminUser(user): AdminUser,
+    Path(slug): Path<String>,
+    Body(f): Body<DeleteInput>,
+) -> UiResult {
+    let p = super::find_for(&state.db, &user, &slug).await?;
+    super::delete(&state.db, &p, &f.confirm)
+        .await
+        .map_err(form_error)?;
+    Ok(axum::http::StatusCode::NO_CONTENT.into_response())
 }

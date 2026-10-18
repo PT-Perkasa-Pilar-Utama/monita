@@ -37,6 +37,8 @@ pub enum ProjectError {
     BadIcon(&'static str),
     #[error("Not a valid IP or CIDR: {0}")]
     InvalidCidr(String),
+    #[error("Type the project's name exactly to delete it.")]
+    ConfirmMismatch,
     /// A hard cap in `platform::caps` is reached.
     #[error("{0}")]
     Full(String),
@@ -292,4 +294,18 @@ impl FromRequestParts<AppState> for ApiProject {
         }
         Ok(ApiProject(project))
     }
+}
+
+/// A super admin deletes a project and everything in it. `confirm` must be the project's name.
+pub async fn delete(db: &Db, project: &Project, confirm: &str) -> Result<(), ProjectError> {
+    if confirm.trim() != project.name {
+        return Err(ProjectError::ConfirmMismatch);
+    }
+    db.write(async |c| {
+        let sources = crate::checks::forget_project(c, project.id).await?;
+        crate::incidents::forget_sources(c, &sources).await?;
+        store::delete_project(c, project.id).await
+    })
+    .await?;
+    Ok(())
 }

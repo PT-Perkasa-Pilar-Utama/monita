@@ -298,6 +298,28 @@ pub async fn recent_checks(
     .await
 }
 
+/// Before its project is deleted, inside the same write: drops the daily summaries of its
+/// monitors and heartbeats, which have no foreign key, and returns those sources so the incident
+/// engine can forget them too. The project's rows cascade with it.
+pub async fn forget_project(
+    c: &turso::Connection,
+    project_id: i64,
+) -> anyhow::Result<Vec<(crate::incidents::SourceKind, i64)>> {
+    use crate::incidents::SourceKind;
+    let mut gone: Vec<(SourceKind, i64)> = store::list_monitors(c, project_id)
+        .await?
+        .iter()
+        .map(|m| (SourceKind::Monitor, m.id))
+        .collect();
+    for h in store::heartbeats::list(c, project_id).await? {
+        gone.push((SourceKind::Heartbeat, h.id));
+    }
+    for (kind, id) in &gone {
+        store::rollup::delete_summaries(c, *kind, *id).await?;
+    }
+    Ok(gone)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

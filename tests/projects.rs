@@ -568,6 +568,98 @@ async fn a_key_works_on_a_project_with_a_description_and_marks_only_itself_used(
     assert_eq!(used, [2], "{keys}");
 }
 
+/// Rows in `table` that belong to the deleted project's data.
+async fn rows(app: &TestApp, sql: &str) -> i64 {
+    monita::platform::db::query_i64(&app.state.db.read().await.unwrap(), sql, ())
+        .await
+        .unwrap()
+        .unwrap_or(0)
+}
+
+#[tokio::test]
+async fn a_super_admin_deletes_a_project_and_everything_in_it() {
+    let app = TestApp::spawn("test").await;
+    let admin = app.super_admin("admin@x.co").await;
+    let rina = app.tl("rina@x.co").await;
+    let doomed = create(&app, &rina, json!({ "name": "Doomed" })).await;
+    let kept = create(&app, &rina, json!({ "name": "Kept" })).await;
+    new_key(&app, &rina, &doomed).await;
+    app.state
+        .db
+        .write(async |c| {
+            c.execute_batch(
+                "INSERT INTO monitors (id, project_id, name, url, next_check_at) VALUES (7, 1, 'm', 'https://x.co', 9999999999);
+                 INSERT INTO heartbeats (id, project_id, name, token, period_s, grace_s) VALUES (8, 1, 'h', 'tok', 60, 0);
+                 INSERT INTO daily_summaries (source_kind, source_id, day) VALUES ('monitor', 7, '2026-10-01'), ('heartbeat', 8, '2026-10-01');
+                 INSERT INTO incident_sources (source_kind, source_id, fail_streak) VALUES ('monitor', 7, 1);
+                 INSERT INTO ref_ids (project_id, token_hash) VALUES (1, 'ref');
+                 INSERT INTO tickets (project_id, number, ref_id, title, description) VALUES (1, 1, 1, 'bug', 'd');",
+            )
+            .await?;
+            Ok(())
+        })
+        .await
+        .unwrap();
+    let path = format!("/api/ui/projects/{doomed}");
+
+    let tl = app
+        .api_send(
+            reqwest::Method::DELETE,
+            &path,
+            json!({ "confirm": "Doomed" }),
+            Some(&rina),
+        )
+        .await;
+    assert_ne!(tl.status(), 204);
+    let wrong = app
+        .api_send(
+            reqwest::Method::DELETE,
+            &path,
+            json!({ "confirm": "doomed" }),
+            Some(&admin),
+        )
+        .await;
+    assert_eq!(wrong.status(), 422);
+    assert!(json_of(wrong).await["error"]["fields"]["confirm"].is_string());
+    assert_eq!(rows(&app, "SELECT count(*) FROM projects").await, 2);
+
+    let ok = app
+        .api_send(
+            reqwest::Method::DELETE,
+            &path,
+            json!({ "confirm": "Doomed" }),
+            Some(&admin),
+        )
+        .await;
+    assert_eq!(ok.status(), 204);
+    assert_eq!(app.get(&path, Some(&admin)).await.status(), 404);
+    assert_eq!(listed(&app, &rina).await, [kept]);
+    for table in [
+        "monitors",
+        "heartbeats",
+        "daily_summaries",
+        "incident_sources",
+        "tickets",
+        "ref_ids",
+        "api_keys",
+        "alert_routes",
+    ] {
+        let left = rows(
+            &app,
+            &format!(
+                "SELECT count(*) FROM {table} WHERE {}",
+                if table == "alert_routes" {
+                    "project_id = 1"
+                } else {
+                    "1"
+                }
+            ),
+        )
+        .await;
+        assert_eq!(left, 0, "{table}");
+    }
+}
+
 #[tokio::test]
 async fn the_allowlist_is_off_by_default_and_blocks_other_ips() {
     // AC-08.01, AC-08.02
