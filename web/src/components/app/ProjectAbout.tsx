@@ -155,7 +155,11 @@ export function ProjectAbout({
             {plural(activeKeys, "active API key")}
           </Link>
         </Fact>
-        <Fact icon={Shield}>{p.ip_allowlist ? "Only allowed IP addresses may use the keys" : "Any IP address may use the keys"}</Fact>
+        <Fact icon={Shield}>
+          <Link to={`${base}/settings/allowlist`} className="hover:underline">
+            {p.ip_allowlist ? "IP allowlist on" : "IP allowlist off"}
+          </Link>
+        </Fact>
       </ul>
       <Separator />
       <ul className="flex flex-col gap-2.5">
