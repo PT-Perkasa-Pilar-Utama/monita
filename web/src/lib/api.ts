@@ -18,8 +18,9 @@ export class ApiError extends Error {
 type Method = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 /** Calls `/api/ui${path}` and returns `data`. A 401 sends the reader to sign in. */
-export async function api<T>(path: string, method: Method = "GET", body?: unknown): Promise<T> {
+export async function api<T>(path: string, method: Method = "GET", body?: unknown, cache?: RequestCache): Promise<T> {
   const init: RequestInit = { method, credentials: "same-origin", headers: { accept: "application/json" } };
+  if (cache) init.cache = cache;
   if (body !== undefined) {
     init.headers = { accept: "application/json", "content-type": "application/json" };
     init.body = JSON.stringify(body);

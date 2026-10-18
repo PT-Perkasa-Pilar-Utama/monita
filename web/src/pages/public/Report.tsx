@@ -11,11 +11,11 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { api, ApiError, errorText } from "@/lib/api";
-import type { PublicProject } from "@/lib/types";
+import type { PublicSite } from "@/lib/types";
 
 /** The reporter's bug form. A ref ID from the project's own system proves who reports. */
 export function Report(): ReactElement {
-  const project = useOutletContext<PublicProject>();
+  const project = useOutletContext<PublicSite>();
   const [form, setForm] = useState({ ref_id: "", title: "", description: "", page_url: "" });
   const [error, setError] = useState<ApiError | null>(null);
   const [busy, setBusy] = useState(false);
@@ -52,15 +52,17 @@ export function Report(): ReactElement {
         <Alert role="status">
           <CheckCircle />
           <AlertTitle>Thanks. Your report is ticket #{made}.</AlertTitle>
-          <AlertDescription>
-            <span>
-              Track it with your ref ID on the{" "}
-              <Link to={`/status/${project.slug}/mine`} className="text-link underline-offset-4 hover:underline">
-                My tickets
-              </Link>{" "}
-              page.
-            </span>
-          </AlertDescription>
+          {project.pages.mine && (
+            <AlertDescription>
+              <span>
+                Track it with your ref ID on the{" "}
+                <Link to={`/status/${project.slug}/mine`} className="text-link underline-offset-4 hover:underline">
+                  My tickets
+                </Link>{" "}
+                page.
+              </span>
+            </AlertDescription>
+          )}
         </Alert>
       ) : (
         <Card>

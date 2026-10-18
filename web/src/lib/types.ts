@@ -8,7 +8,11 @@ export type Project = {
   icon_url: string | null;
   ip_allowlist: string | null;
   created_at: number;
+  pages: PublicPages;
 };
+
+/** The public tabs besides Status, which always shows. */
+export type PublicPages = { known_issues: boolean; report: boolean; mine: boolean };
 
 export type Owner = { email: string; role: string };
 
@@ -242,6 +246,9 @@ export type PublicBoard = { tickets: PublicTicket[]; counts: Omit<StageCounts, "
 export type MyTicket = { number: number; title: string; stage: Stage; close_reason: CloseReason | null; created_at: number; updated_at: number };
 
 export type PublicProject = { name: string; slug: string };
+
+/** The public layout's project: its name and the tabs it shows. */
+export type PublicSite = PublicProject & { pages: PublicPages };
 
 /** SEC-21: an update on a public page has no author. */
 export type PublicUpdate = { label: UpdateLabel; message: string; at: number };

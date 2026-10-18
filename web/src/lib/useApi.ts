@@ -20,7 +20,8 @@ export function useApi<T>(path: string | null): Loaded<T> {
     if (path === null) return;
     let live = true;
     setLoading(true);
-    api<T>(path)
+    // A reload asks the server again, past a public page's 30-second cache.
+    api<T>(path, "GET", undefined, tick > 0 ? "no-cache" : undefined)
       .then((d) => {
         if (!live) return;
         setData(d);

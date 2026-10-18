@@ -3,8 +3,8 @@ import type { FormEvent, ReactElement } from "react";
 import { useNavigate } from "react-router-dom";
 import { IconPicker } from "@/components/app/IconPicker";
 import { SettingsPage, SettingsSection } from "@/components/app/SettingsSection";
+import { StatusPageSection } from "@/components/app/StatusPageSection";
 import { UserPicker } from "@/components/app/UserPicker";
-import { ExternalLink } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -223,23 +223,7 @@ export function General(): ReactElement {
       ]}
     >
       <ProjectSection />
-      <SettingsSection
-        id="status-page"
-        title="Status page"
-        description="Visitors see the monitors and heartbeats you make public, and the known issues."
-        footer={
-          <Button asChild variant="outline">
-            <a href={`/status/${p.slug}`} target="_blank" rel="noreferrer">
-              Open the status page
-              <ExternalLink data-icon="inline-end" />
-            </a>
-          </Button>
-        }
-      >
-        <p className="font-mono text-sm break-all">
-          {window.location.origin}/status/{p.slug}
-        </p>
-      </SettingsSection>
+      <StatusPageSection />
       <SettingsSection
         id="owner"
         title="Owner"

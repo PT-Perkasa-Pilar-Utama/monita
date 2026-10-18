@@ -2,9 +2,11 @@ import type { ReactElement } from "react";
 import { Link, useOutletContext } from "react-router-dom";
 import { IncidentCard, SystemRow, uptimeText } from "@/components/app/PublicStatus";
 import { StateBadge } from "@/components/app/Tone";
-import { ArrowRight } from "@/components/icons";
+import { ArrowRight, RefreshCw } from "@/components/icons";
 import { PageHeader } from "@/components/layout/Page";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
 import { headline, splitSystems } from "@/lib/status";
 import type { PublicProject, PublicStatus } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
@@ -22,7 +24,15 @@ export function Status(): ReactElement {
 
   return (
     <>
-      <PageHeader title={`${project.name} status`} />
+      <PageHeader
+        title={`${project.name} status`}
+        actions={
+          <Button variant="secondary" onClick={res.reload} disabled={res.loading}>
+            {res.loading ? <Spinner data-icon="inline-start" /> : <RefreshCw data-icon="inline-start" />}
+            Refresh
+          </Button>
+        }
+      />
       <p
         className={cn(
           "mb-8 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-6 py-5 text-xl font-semibold",
