@@ -69,3 +69,45 @@ async fn title_then_items_then_severity_then_message() {
     .await;
     assert!(no_message.contains("Write a message."));
 }
+
+#[tokio::test]
+async fn the_list_shows_open_resolved_or_all_incidents() {
+    let app = TestApp::spawn("test").await;
+    let tl = setup(&app).await;
+    for title in ["Slow sign-in", "Slow search"] {
+        let body = json!({ "title": title, "items": ["monitor:1"], "severity": "warning", "message": "Looking into it." });
+        let res = app
+            .api_post("/api/ui/projects/payments/incidents", body, Some(&tl))
+            .await;
+        assert!(res.status().is_success(), "{}", res.status());
+    }
+    let res = app
+        .api_post(
+            "/api/ui/projects/payments/incidents/1/updates",
+            json!({ "label": "resolved", "message": "Fixed." }),
+            Some(&tl),
+        )
+        .await;
+    assert!(res.status().is_success(), "{}", res.status());
+    for (query, titles) in [
+        ("", vec!["Slow search"]),
+        ("?state=resolved", vec!["Slow sign-in"]),
+        ("?state=all", vec!["Slow search", "Slow sign-in"]),
+    ] {
+        let list = common::json_of(
+            app.api_get(
+                &format!("/api/ui/projects/payments/incidents{query}"),
+                Some(&tl),
+            )
+            .await,
+        )
+        .await;
+        let got: Vec<&str> = list["data"]["incidents"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|i| i["title"].as_str().unwrap())
+            .collect();
+        assert_eq!(got, titles, "{query}");
+    }
+}

@@ -289,13 +289,18 @@ fn row(r: &turso::Row) -> turso::Result<IncidentRow> {
     })
 }
 
-pub async fn list(c: &Connection, project_id: i64, open: bool) -> anyhow::Result<Vec<IncidentRow>> {
-    let filter = if open {
-        "i.resolved_at IS NULL"
-    } else {
-        "i.resolved_at IS NOT NULL"
+/// `open`: Some(true) open only, Some(false) resolved only, None both.
+pub async fn list(
+    c: &Connection,
+    project_id: i64,
+    open: Option<bool>,
+) -> anyhow::Result<Vec<IncidentRow>> {
+    let filter = match open {
+        Some(true) => "i.resolved_at IS NULL",
+        Some(false) => "i.resolved_at IS NOT NULL",
+        None => "1",
     };
-    crate::platform::db::query_all(c, format!("SELECT {COLS} FROM incidents i WHERE i.project_id = ?1 AND {filter} ORDER BY i.started_at DESC LIMIT 200"), [project_id], row).await
+    crate::platform::db::query_all(c, format!("SELECT {COLS} FROM incidents i WHERE i.project_id = ?1 AND {filter} ORDER BY i.started_at DESC, i.id DESC LIMIT 200"), [project_id], row).await
 }
 
 pub async fn find(c: &Connection, project_id: i64, id: i64) -> anyhow::Result<Option<IncidentRow>> {

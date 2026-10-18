@@ -29,7 +29,7 @@ pub async fn read(db: &Db, project_id: i64) -> anyhow::Result<Overview> {
         .iter()
         .find(|(k, _)| k == "triage")
         .map_or(0, |(_, n)| *n);
-    let mut open = incidents::list(db, project_id, true).await?;
+    let mut open = incidents::list(db, project_id, Some(true)).await?;
     open.truncate(INCIDENTS);
     let keys = super::list_keys(db, project_id).await?;
     Ok(Overview {

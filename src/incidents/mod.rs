@@ -279,7 +279,12 @@ pub async fn open_count(db: &Db, project_id: i64) -> anyhow::Result<i64> {
     store::open_count(&db.read().await?, project_id).await
 }
 
-pub async fn list(db: &Db, project_id: i64, open: bool) -> anyhow::Result<Vec<IncidentRow>> {
+/// `open`: Some(true) open only, Some(false) resolved only, None both.
+pub async fn list(
+    db: &Db,
+    project_id: i64,
+    open: Option<bool>,
+) -> anyhow::Result<Vec<IncidentRow>> {
     store::list(&db.read().await?, project_id, open).await
 }
 

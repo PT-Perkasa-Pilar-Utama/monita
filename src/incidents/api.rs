@@ -57,7 +57,7 @@ impl From<UpdateError> for UiError {
 #[derive(Deserialize, Default)]
 #[serde(default)]
 struct ListQuery {
-    /// `resolved` lists resolved incidents; anything else lists open ones.
+    /// `resolved` lists resolved incidents, `all` lists both; anything else lists open ones.
     state: String,
 }
 
@@ -68,7 +68,12 @@ async fn list(
     Query(q): Query<ListQuery>,
 ) -> UiResult {
     let p = projects::find_for(&state.db, &user, &slug).await?;
-    let incidents = super::list(&state.db, p.id, q.state != "resolved").await?;
+    let open = match q.state.as_str() {
+        "resolved" => Some(false),
+        "all" => None,
+        _ => Some(true),
+    };
+    let incidents = super::list(&state.db, p.id, open).await?;
     Ok(data(serde_json::json!({ "incidents": incidents })))
 }
 
