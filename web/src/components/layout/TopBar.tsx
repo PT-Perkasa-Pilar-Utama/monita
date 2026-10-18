@@ -1,7 +1,7 @@
 import type { ReactElement, ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Mark } from "@/components/brand/Mark";
-import { BookOpen, Folder, LogOut, Moon, Server, Sun, Users } from "@/components/icons";
+import { BookOpen, Folder, LogOut, Moon, Settings, Sun } from "@/components/icons";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,20 +38,10 @@ function AreaLink({ to, label, icon, active }: { to: string; label: string; icon
   );
 }
 
-/** One click between the light and the dark theme. */
-function ThemeButton(): ReactElement {
-  const { resolved, setTheme } = useTheme();
-  const next = resolved === "dark" ? "light" : "dark";
-  return (
-    <Button variant="ghost" size="icon-sm" aria-label={`Switch to the ${next} theme`} title={`Switch to the ${next} theme`} onClick={() => setTheme(next)}>
-      {resolved === "dark" ? <Sun /> : <Moon />}
-    </Button>
-  );
-}
-
-/** The account menu: who is signed in, and sign out. */
+/** The account menu: who is signed in, admin settings, the theme, the docs and sign out. */
 function AccountMenu(): ReactElement {
   const me = useMe();
+  const { resolved, setTheme } = useTheme();
   const initial = me.email.charAt(0).toUpperCase();
   const signOut = async (): Promise<void> => {
     await api("/logout", "POST");
@@ -76,6 +66,27 @@ function AccountMenu(): ReactElement {
           <span className="break-all font-medium text-foreground">{me.email}</span>
           <span className="text-xs text-muted-foreground">{me.is_admin ? "Super admin" : "Tech lead"}</span>
         </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuGroup>
+          {me.is_admin && (
+            <DropdownMenuItem asChild>
+              <Link to="/admin/users">
+                <Settings />
+                Admin settings
+              </Link>
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuItem onSelect={() => setTheme(resolved === "dark" ? "light" : "dark")}>
+            {resolved === "dark" ? <Sun /> : <Moon />}
+            Toggle theme
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <a href={DOCS}>
+              <BookOpen />
+              Docs
+            </a>
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem variant="destructive" onSelect={() => void signOut()}>
@@ -114,19 +125,6 @@ export function TopBar({ crumb, tabs }: { crumb?: ReactNode; tabs?: ReactNode })
           )}
           <nav aria-label="Account" className="ml-auto flex items-center gap-1">
             <AreaLink to="/" label="Projects" icon={<Folder />} active={!at("/admin")} />
-            {me.is_admin && (
-              <>
-                <AreaLink to="/admin/users" label="Users" icon={<Users />} active={at("/admin/users")} />
-                <AreaLink to="/admin/settings" label="System" icon={<Server />} active={at("/admin/settings")} />
-              </>
-            )}
-            <Button asChild variant="ghost" size="sm" title="Docs">
-              <a href={DOCS}>
-                <BookOpen />
-                <span className="hidden md:inline">Docs</span>
-              </a>
-            </Button>
-            <ThemeButton />
             <AccountMenu />
           </nav>
         </div>
