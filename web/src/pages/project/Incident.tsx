@@ -33,7 +33,7 @@ const LABELS: { value: UpdateLabel; title: string; description: string }[] = [
 function unavailable(label: UpdateLabel, allowed: UpdateLabel[], closed: boolean): string | undefined {
   if (allowed.includes(label)) return undefined;
   if (closed) return "The incident is over. Only a Resolved note can follow it.";
-  return "Monita closes this incident by itself when the check passes or the heartbeat pings again.";
+  return "Monita opened this incident, so Monita closes it: on the next passing check or heartbeat ping. An incident you report yourself can be resolved here.";
 }
 
 /** Post update, in the half-width panel: a label as cards, and the message the status page shows. */
@@ -214,7 +214,7 @@ export function Incident(): ReactElement {
               <Side title="How it closes">
                 <p className="text-sm text-muted-foreground">
                   {i.origin === "auto"
-                    ? "Monita closes it by itself when the check passes or the heartbeat pings again."
+                    ? "Monita opened it, so Monita closes it on the next passing check or heartbeat ping. You can post updates in the meantime."
                     : "It stays open until you post an update labelled Resolved."}
                 </p>
               </Side>
