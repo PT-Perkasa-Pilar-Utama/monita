@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 import { AdminLayout } from "@/layouts/AdminLayout";
 import { AppLayout } from "@/layouts/AppLayout";
 import { ProjectLayout } from "@/layouts/ProjectLayout";
@@ -65,8 +65,9 @@ export default function App(): ReactElement {
           <Route path="settings" element={<General />} />
           <Route path="settings/keys" element={<Keys />} />
           <Route path="settings/allowlist" element={<Allowlist />} />
-          <Route path="alerts" element={<Alerts />} />
+          <Route path="settings/alerts" element={<Alerts />} />
         </Route>
+        <Route path="alerts" element={<Navigate to="../settings/alerts" replace />} />
       </Route>
       <Route path="/status/:slug" element={<PublicLayout />}>
         <Route index element={<Status />} />

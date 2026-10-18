@@ -1,11 +1,9 @@
 import { useState } from "react";
-import type { FormEvent, ReactElement } from "react";
-import { SeverityBadge } from "@/components/app/Tone";
+import type { ReactElement } from "react";
+import { SettingsPage, SettingsSection } from "@/components/app/SettingsSection";
 import { Send } from "@/components/icons";
-import { PageHeader } from "@/components/layout/Page";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -18,23 +16,45 @@ import type { AlertRoute } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 import { toast } from "sonner";
 
-function RouteCard({ slug, route }: { slug: string; route: AlertRoute }): ReactElement {
+const COPY = {
+  critical: {
+    title: "Critical alerts",
+    description: "Monitors and heartbeats set to critical alert these recipients when an incident opens and when it resolves.",
+  },
+  warning: {
+    title: "Warning alerts",
+    description: "Monitors and heartbeats set to warning alert these recipients. A new ticket also calls the webhook.",
+  },
+} as const;
+
+function testNotice(n: number): string {
+  if (n === 0) return "No saved recipients get this test.";
+  return n === 1 ? "Test sent to 1 recipient." : `Test sent to ${n} recipients.`;
+}
+
+function RouteSection({ slug, route }: { slug: string; route: AlertRoute }): ReactElement {
   const s = route.severity;
+  const [saved, setSaved] = useState(route);
   const [emails, setEmails] = useState(route.emails.join("\n"));
   const [webhook, setWebhook] = useState(route.webhook_url ?? "");
   const [useWebhook, setUseWebhook] = useState(route.use_webhook);
   const [error, setError] = useState<ApiError | null>(null);
   const [busy, setBusy] = useState(false);
+  const [testing, setTesting] = useState(false);
   const [notice, setNotice] = useState("");
+  const changed = emails.trim() !== saved.emails.join("\n") || webhook.trim() !== (saved.webhook_url ?? "") || useWebhook !== saved.use_webhook;
 
-  const save = async (e: FormEvent): Promise<void> => {
-    e.preventDefault();
+  const save = async (): Promise<void> => {
     setBusy(true);
     setError(null);
     setNotice("");
     try {
       await api(`/projects/${slug}/alerts/${s}`, "PUT", { emails, webhook_url: webhook, use_webhook: useWebhook });
-      toast.success(`${s === "critical" ? "Critical" : "Warning"} alerts saved.`);
+      const list = emails.split("\n").map((e) => e.trim()).filter(Boolean);
+      setSaved({ severity: s, emails: list, webhook_url: webhook.trim() || null, use_webhook: useWebhook });
+      setEmails(list.join("\n"));
+      setWebhook(webhook.trim());
+      toast.success(`${COPY[s].title} saved.`);
     } catch (err) {
       setError(err instanceof ApiError ? err : new ApiError(0, "error", errorText(err)));
     } finally {
@@ -42,68 +62,75 @@ function RouteCard({ slug, route }: { slug: string; route: AlertRoute }): ReactE
     }
   };
   const test = async (): Promise<void> => {
+    setTesting(true);
     setNotice("");
     try {
       const { sent_to: n } = await api<{ sent_to: number }>(`/projects/${slug}/alerts/${s}/test`, "POST");
-      setNotice(
-        n === 0
-          ? "No recipients set for this severity."
-          : n === 1
-            ? "Test queued for 1 recipient. It arrives within a minute."
-            : `Test queued for ${n} recipients. They arrive within a minute.`,
-      );
+      setNotice(testNotice(n));
     } catch (err) {
       toast.error(errorText(err));
+    } finally {
+      setTesting(false);
     }
   };
 
   return (
-    <Card id={s}>
-      <CardHeader className="border-b">
-        <CardTitle>
-          <SeverityBadge severity={s} />
-        </CardTitle>
-        <CardAction>
-          <Button variant="ghost" size="sm" onClick={() => void test()}>
-            <Send data-icon="inline-start" />
+    <SettingsSection
+      title={COPY[s].title}
+      description={COPY[s].description}
+      onSubmit={() => void save()}
+      footerNote={changed ? "Save to test the new recipients." : notice}
+      footer={
+        <>
+          <Button type="button" variant="outline" disabled={changed || testing} onClick={() => void test()}>
+            {testing ? <Spinner data-icon="inline-start" /> : <Send data-icon="inline-start" />}
             Send a test
           </Button>
-        </CardAction>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={(e) => void save(e)} className="flex flex-col gap-5">
-          {notice && (
-            <Alert role="status">
-              <AlertDescription>{notice}</AlertDescription>
-            </Alert>
-          )}
-          <FieldGroup className="gap-5">
-            <Field data-invalid={error?.fields.emails ? true : undefined}>
-              <FieldLabel htmlFor={`emails-${s}`}>Email addresses</FieldLabel>
-              <Textarea id={`emails-${s}`} rows={3} aria-invalid={error?.fields.emails ? true : undefined} value={emails} onChange={(e) => setEmails(e.target.value)} />
-              {error?.fields.emails && <FieldError>{error.fields.emails}</FieldError>}
-            </Field>
-            <Field data-invalid={error?.fields.webhook_url ? true : undefined}>
-              <FieldLabel htmlFor={`webhook-${s}`}>Webhook URL</FieldLabel>
-              <Input id={`webhook-${s}`} type="url" aria-invalid={error?.fields.webhook_url ? true : undefined} value={webhook} onChange={(e) => setWebhook(e.target.value)} />
-              {error?.fields.webhook_url && <FieldError>{error.fields.webhook_url}</FieldError>}
-            </Field>
-            <Field orientation="horizontal">
-              <Checkbox id={`use-${s}`} checked={useWebhook} onCheckedChange={(v) => setUseWebhook(v === true)} />
-              <FieldLabel htmlFor={`use-${s}`} className="font-normal">
-                Send {s} alerts to the webhook
-              </FieldLabel>
-            </Field>
-          </FieldGroup>
-          <div>
-            <Button type="submit" disabled={busy}>
-              {busy && <Spinner data-icon="inline-start" />}
-              Save {s} alerts
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+          <Button type="submit" disabled={busy || !changed}>
+            {busy && <Spinner data-icon="inline-start" />}
+            Save changes
+          </Button>
+        </>
+      }
+    >
+      <FieldGroup className="gap-5">
+        <Field data-invalid={error?.fields.emails ? true : undefined}>
+          <FieldLabel htmlFor={`emails-${s}`}>Email addresses, one per line</FieldLabel>
+          <Textarea
+            id={`emails-${s}`}
+            rows={3}
+            placeholder={"oncall@company.co.id\nlead@company.co.id"}
+            aria-invalid={error?.fields.emails ? true : undefined}
+            value={emails}
+            onChange={(e) => setEmails(e.target.value)}
+          />
+          {error?.fields.emails && <FieldError>{error.fields.emails}</FieldError>}
+        </Field>
+        <Field orientation="horizontal">
+          <Checkbox id={`use-${s}`} checked={useWebhook} onCheckedChange={(v) => setUseWebhook(v === true)} />
+          <FieldLabel htmlFor={`use-${s}`} className="font-normal">
+            Also send to a webhook
+          </FieldLabel>
+        </Field>
+        {useWebhook && (
+          <Field data-invalid={error?.fields.webhook_url ? true : undefined}>
+            <FieldLabel htmlFor={`webhook-${s}`} required>
+              Webhook URL
+            </FieldLabel>
+            <Input
+              id={`webhook-${s}`}
+              type="url"
+              placeholder="https://hooks.slack.com/services/…"
+              aria-invalid={error?.fields.webhook_url ? true : undefined}
+              value={webhook}
+              onChange={(e) => setWebhook(e.target.value)}
+            />
+            {error?.fields.webhook_url && <FieldError>{error.fields.webhook_url}</FieldError>}
+          </Field>
+        )}
+        {error && !error.fields.emails && !error.fields.webhook_url && <p className="text-sm text-destructive">{error.message}</p>}
+      </FieldGroup>
+    </SettingsSection>
   );
 }
 
@@ -112,22 +139,20 @@ export function Alerts(): ReactElement {
   const { project: p } = useProject();
   const routes = useApi<AlertRoute[]>(`/projects/${p.slug}/alerts`);
   return (
-    <>
-      <PageHeader title="Alerts" />
+    <SettingsPage title="Alerts">
       {routes.error && (
         <Alert variant="destructive">
           <AlertDescription>{routes.error.message}</AlertDescription>
         </Alert>
       )}
       {!routes.data ? (
-        <Skeleton className="h-64 rounded-xl" />
+        <>
+          <Skeleton className="h-72 rounded-xl" />
+          <Skeleton className="h-72 rounded-xl" />
+        </>
       ) : (
-        <div className="grid items-start gap-6 xl:grid-cols-2">
-          {routes.data.map((r) => (
-            <RouteCard key={r.severity} slug={p.slug} route={r} />
-          ))}
-        </div>
+        routes.data.map((r) => <RouteSection key={r.severity} slug={p.slug} route={r} />)
       )}
-    </>
+    </SettingsPage>
   );
 }

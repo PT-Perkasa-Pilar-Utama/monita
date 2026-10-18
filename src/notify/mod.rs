@@ -236,7 +236,7 @@ pub async fn send_test(
         let at = now();
         let mut n = 0;
         for email in &route.emails {
-            store::queue(c, "email", email, Some(&text), &format!("{text}\n\n{base_url}/projects/{slug}/alerts\n"), at).await?;
+            store::queue(c, "email", email, Some(&text), &format!("{text}\n\n{base_url}/projects/{slug}/settings/alerts\n"), at).await?;
             n += 1;
         }
         if let Some(url) = route.webhook_url.as_deref().filter(|_| route.use_webhook) {

@@ -2,10 +2,9 @@ import { useState } from "react";
 import type { FormEvent, ReactElement } from "react";
 import { ConfirmDialog } from "@/components/app/ConfirmDialog";
 import { CopyField } from "@/components/app/CopyField";
-import { TableCard } from "@/components/app/TableCard";
+import { SettingsPage, SettingsSection } from "@/components/app/SettingsSection";
 import { StateBadge } from "@/components/app/Tone";
 import { Plus } from "@/components/icons";
-import { PageHeader } from "@/components/layout/Page";
 import { TableEmpty } from "@/components/list/TableEmpty";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -59,24 +58,26 @@ export function Keys(): ReactElement {
   const list = keys.data ?? [];
   return (
     <>
-      <PageHeader
-        title="API keys"
-        actions={
-          <Button onClick={() => setOpen(true)}>
-            <Plus data-icon="inline-start" />
-            New API key
-          </Button>
-        }
-      />
+      <SettingsPage title="API keys">
       {newKey && (
-        <Alert className="mb-5">
+        <Alert>
           <AlertTitle>Key created. Copy it now: Monita shows it only once.</AlertTitle>
           <AlertDescription className="mt-2">
             <CopyField id="new-key" value={newKey} />
           </AlertDescription>
         </Alert>
       )}
-      <TableCard title={keys.data ? `${list.length} ${list.length === 1 ? "key" : "keys"}` : "Keys"}>
+      <SettingsSection
+        title="Keys"
+        description="Your backend sends a key with each call to the Monita API, for example to issue ref IDs."
+        action={
+          <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+            <Plus data-icon="inline-start" />
+            New API key
+          </Button>
+        }
+        flush
+      >
         {!keys.data ? (
           <Skeleton className="m-5 h-20" />
         ) : list.length === 0 ? (
@@ -125,7 +126,8 @@ export function Keys(): ReactElement {
             </TableBody>
           </Table>
         )}
-      </TableCard>
+      </SettingsSection>
+      </SettingsPage>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <form onSubmit={(e) => void create(e)} className="flex flex-col gap-6">

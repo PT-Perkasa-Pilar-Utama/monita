@@ -19,7 +19,7 @@ export function SettingsLayout(): ReactElement {
             {
               items: [
                 item(`${base}/settings`, "General", Settings),
-                item(`${base}/alerts`, "Alerts", Bell),
+                item(`${base}/settings/alerts`, "Alerts", Bell),
                 item(`${base}/settings/keys`, "API keys", Key),
                 item(`${base}/settings/allowlist`, "Allowlist", Shield),
               ],

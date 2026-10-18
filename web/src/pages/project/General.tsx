@@ -1,12 +1,11 @@
 import { useState } from "react";
 import type { FormEvent, ReactElement } from "react";
-import { Facts } from "@/components/app/Facts";
+import { useNavigate } from "react-router-dom";
 import { IconPicker } from "@/components/app/IconPicker";
-import { ProjectBadge } from "@/components/app/ProjectBadge";
+import { SettingsPage, SettingsSection } from "@/components/app/SettingsSection";
 import { UserPicker } from "@/components/app/UserPicker";
-import { PageHeader } from "@/components/layout/Page";
+import { ExternalLink } from "@/components/icons";
 import { Button } from "@/components/ui/button";
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
@@ -18,6 +17,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { api, ApiError, errorText } from "@/lib/api";
@@ -30,21 +30,23 @@ import { toast } from "sonner";
 
 const asApiError = (e: unknown): ApiError => (e instanceof ApiError ? e : new ApiError(0, "error", errorText(e)));
 
-function EditProject({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }): ReactElement {
+/** Name, slug, description and icon. The name and the slug never change. */
+function ProjectSection(): ReactElement {
   const { project: p, reload } = useProject();
   const [description, setDescription] = useState(p.description ?? "");
   const [icon, setIcon] = useState("");
   const [removeIcon, setRemoveIcon] = useState(false);
   const [error, setError] = useState<ApiError | null>(null);
   const [busy, setBusy] = useState(false);
-  const submit = async (e: FormEvent): Promise<void> => {
-    e.preventDefault();
+  const changed = description !== (p.description ?? "") || icon !== "" || removeIcon;
+  const save = async (): Promise<void> => {
     setBusy(true);
     setError(null);
     try {
       await api(`/projects/${p.slug}/profile`, "PUT", { description, icon, remove_icon: removeIcon ? "on" : "" });
       reload();
-      onOpenChange(false);
+      setIcon("");
+      setRemoveIcon(false);
       toast.success("Project saved.");
     } catch (err) {
       setError(asApiError(err));
@@ -53,43 +55,54 @@ function EditProject({ open, onOpenChange }: { open: boolean; onOpenChange: (o: 
     }
   };
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-6">
-          <DialogHeader>
-            <DialogTitle>Edit project</DialogTitle>
-            <DialogDescription>The name and the slug stay as they are.</DialogDescription>
-          </DialogHeader>
-          <FieldGroup className="gap-5">
-            <Field data-invalid={error?.fields.description ? true : undefined}>
-              <FieldLabel htmlFor="edit-description">Description</FieldLabel>
-              <Textarea id="edit-description" rows={3} maxLength={280} value={description} onChange={(e) => setDescription(e.target.value)} />
-              {error?.fields.description && <FieldError>{error.fields.description}</FieldError>}
-            </Field>
-            <IconPicker value={icon} onChange={setIcon} current={removeIcon ? null : p.icon_url} error={error?.fields.icon} />
-            {p.icon_url && !icon && (
-              <Field orientation="horizontal">
-                <Checkbox id="remove-icon" checked={removeIcon} onCheckedChange={(v) => setRemoveIcon(v === true)} />
-                <FieldLabel htmlFor="remove-icon" className="font-normal">
-                  Remove the icon and show the first letter
-                </FieldLabel>
-              </Field>
-            )}
-          </FieldGroup>
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button type="button" variant="ghost">
-                Cancel
-              </Button>
-            </DialogClose>
-            <Button type="submit" disabled={busy}>
-              {busy && <Spinner data-icon="inline-start" />}
-              Save project
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+    <SettingsSection
+      title="Project"
+      description="The name and the slug stay as they are."
+      onSubmit={() => void save()}
+      footerNote={`Created ${utc(p.created_at)}`}
+      footer={
+        <Button type="submit" disabled={busy || !changed}>
+          {busy && <Spinner data-icon="inline-start" />}
+          Save changes
+        </Button>
+      }
+    >
+      <FieldGroup className="gap-5">
+        <div className="grid gap-5 sm:grid-cols-2">
+          <Field>
+            <FieldLabel htmlFor="general-name">Name</FieldLabel>
+            <Input id="general-name" value={p.name} readOnly disabled />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="general-slug">Slug</FieldLabel>
+            <Input id="general-slug" value={p.slug} readOnly disabled className="font-mono" />
+          </Field>
+        </div>
+        <Field data-invalid={error?.fields.description ? true : undefined}>
+          <FieldLabel htmlFor="general-description">Description</FieldLabel>
+          <Textarea
+            id="general-description"
+            rows={3}
+            maxLength={280}
+            placeholder="What this system does and who uses it."
+            aria-invalid={error?.fields.description ? true : undefined}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+          {error?.fields.description && <FieldError>{error.fields.description}</FieldError>}
+        </Field>
+        <IconPicker value={icon} onChange={setIcon} current={removeIcon ? null : p.icon_url} error={error?.fields.icon} />
+        {p.icon_url && !icon && (
+          <Field orientation="horizontal">
+            <Checkbox id="general-remove-icon" checked={removeIcon} onCheckedChange={(v) => setRemoveIcon(v === true)} />
+            <FieldLabel htmlFor="general-remove-icon" className="font-normal">
+              Remove the icon and show the first letter
+            </FieldLabel>
+          </Field>
+        )}
+        {error && !error.fields.description && !error.fields.icon && <p className="text-sm text-destructive">{error.message}</p>}
+      </FieldGroup>
+    </SettingsSection>
   );
 }
 
@@ -140,64 +153,111 @@ function Reassign({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boo
   );
 }
 
-/** Settings, General: the project's facts, its owner, and the dialogs that change them. */
+/** Typing the name again guards the one action that cannot be undone. */
+function DeleteProject({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }): ReactElement {
+  const { project: p } = useProject();
+  const navigate = useNavigate();
+  const [confirm, setConfirm] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const submit = async (e: FormEvent): Promise<void> => {
+    e.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      await api(`/projects/${p.slug}`, "DELETE", { confirm });
+      toast.success(`${p.name} is deleted.`);
+      navigate("/", { replace: true });
+    } catch (err) {
+      setError(err instanceof ApiError ? (err.fields.confirm ?? err.message) : errorText(err));
+      setBusy(false);
+    }
+  };
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-6">
+          <DialogHeader>
+            <DialogTitle>Delete {p.name}?</DialogTitle>
+            <DialogDescription>
+              This deletes its monitors, heartbeats, incidents, tickets, API keys and status page. It cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <Field data-invalid={error ? true : undefined}>
+            <FieldLabel htmlFor="delete-confirm">Type {p.name} to confirm</FieldLabel>
+            <Input id="delete-confirm" autoComplete="off" value={confirm} onChange={(e) => setConfirm(e.target.value)} aria-invalid={error ? true : undefined} />
+            {error && <FieldError>{error}</FieldError>}
+          </Field>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="ghost">
+                Cancel
+              </Button>
+            </DialogClose>
+            <Button type="submit" variant="destructive" disabled={busy || confirm.trim() !== p.name}>
+              {busy && <Spinner data-icon="inline-start" />}
+              Delete this project
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** Settings, General: the project, its status page, its owner and, for a super admin, deletion. */
 export function General(): ReactElement {
   const me = useMe();
   const { project: p } = useProject();
-  const [editing, setEditing] = useState(false);
   const [reassigning, setReassigning] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   return (
-    <>
-      <PageHeader title="General" />
-      <div className="grid items-start gap-6 xl:grid-cols-2">
-        <Card>
-          <CardHeader className="border-b">
-            <CardTitle>Project</CardTitle>
-            <CardAction>
-              <Button variant="secondary" size="sm" onClick={() => setEditing(true)}>
-                Edit
-              </Button>
-            </CardAction>
-          </CardHeader>
-          <CardContent>
-            <Facts
-              rows={[
-                ["Icon", <ProjectBadge key="icon" name={p.name} iconUrl={p.icon_url} className="size-9 rounded-lg text-sm" />],
-                ["Name", p.name],
-                ["Description", p.description ?? <span className="text-muted-foreground">None yet</span>],
-                ["Slug", <span key="slug" className="font-mono">{p.slug}</span>],
-                [
-                  "Status page",
-                  <a key="status" href={`/status/${p.slug}`} className="font-mono text-link hover:underline">
-                    /status/{p.slug}
-                  </a>,
-                ],
-                ["Created", utc(p.created_at)],
-              ]}
-            />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="border-b">
-            <CardTitle>Owner</CardTitle>
-            {me.is_admin && (
-              <CardAction>
-                <Button variant="secondary" size="sm" onClick={() => setReassigning(true)}>
-                  Reassign
-                </Button>
-              </CardAction>
-            )}
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3">
-            <p className="font-medium">{p.owner_email}</p>
-            <CardDescription>
-              The owner manages this project. A super admin can give it to another tech lead; its monitors, keys and tickets stay as they are.
-            </CardDescription>
-          </CardContent>
-        </Card>
-      </div>
-      {editing && <EditProject open={editing} onOpenChange={setEditing} />}
+    <SettingsPage title="General">
+      <ProjectSection />
+      <SettingsSection
+        title="Status page"
+        description="Visitors see the monitors and heartbeats you make public, and the known issues."
+        footer={
+          <Button asChild variant="outline">
+            <a href={`/status/${p.slug}`} target="_blank" rel="noreferrer">
+              Open the status page
+              <ExternalLink data-icon="inline-end" />
+            </a>
+          </Button>
+        }
+      >
+        <p className="font-mono text-sm break-all">
+          {window.location.origin}/status/{p.slug}
+        </p>
+      </SettingsSection>
+      <SettingsSection
+        title="Owner"
+        description="The owner manages this project. Its monitors, keys and tickets stay when it moves to another tech lead."
+        footer={
+          me.is_admin && (
+            <Button variant="outline" onClick={() => setReassigning(true)}>
+              Reassign
+            </Button>
+          )
+        }
+      >
+        <p className="text-sm font-medium">{p.owner_email}</p>
+      </SettingsSection>
+      {me.is_admin && (
+        <SettingsSection title="Danger zone" description="Only a super admin sees this section." danger>
+          <div className="grid items-center gap-4 sm:grid-cols-[minmax(0,1fr)_auto]">
+            <div className="flex min-w-0 flex-col gap-1">
+              <strong className="text-sm font-semibold">Delete this project</strong>
+              <span className="text-sm text-muted-foreground">Its monitors, heartbeats, incidents, tickets and keys go with it. This cannot be undone.</span>
+            </div>
+            <Button variant="danger" onClick={() => setDeleting(true)}>
+              Delete this project
+            </Button>
+          </div>
+        </SettingsSection>
+      )}
       {me.is_admin && reassigning && <Reassign open={reassigning} onOpenChange={setReassigning} />}
-    </>
+      {me.is_admin && deleting && <DeleteProject open={deleting} onOpenChange={setDeleting} />}
+    </SettingsPage>
   );
 }
