@@ -1,5 +1,5 @@
 import type { FormEvent, ReactElement, ReactNode } from "react";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 /** The wide panel a create or edit form opens in, over the page it came from. */
 export function FormSheet({ open, onClose, children }: { open: boolean; onClose: () => void; children: ReactNode }): ReactElement {
@@ -28,12 +28,15 @@ export function FormSheet({ open, onClose, children }: { open: boolean; onClose:
  */
 export function FormSheetBody({
   title,
+  description,
   guide,
   onSubmit,
   footer,
   children,
 }: {
   title: string;
+  // One sentence under the title, when the form needs it.
+  description?: string;
   guide?: ReactNode;
   onSubmit: (e: FormEvent) => void;
   footer: ReactNode;
@@ -42,7 +45,10 @@ export function FormSheetBody({
   return (
     <>
       <SheetHeader className="flex-row items-center justify-between gap-4">
-        <SheetTitle>{title}</SheetTitle>
+        <div className="flex flex-col gap-1">
+          <SheetTitle>{title}</SheetTitle>
+          {description && <SheetDescription>{description}</SheetDescription>}
+        </div>
         {guide}
       </SheetHeader>
       <form

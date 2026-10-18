@@ -9,15 +9,7 @@ import { Plus } from "@/components/icons";
 import { TableEmpty } from "@/components/list/TableEmpty";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { FormSheet, FormSheetBody } from "@/components/app/FormSheet";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -136,34 +128,32 @@ export function Keys(): ReactElement {
         )}
       </TableCard>
       </SettingsPage>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
-          <form onSubmit={(e) => void create(e)} className="flex flex-col gap-6">
-            <DialogHeader>
-              <DialogTitle>New API key</DialogTitle>
-              <DialogDescription>Name the key after the program that uses it. Monita shows the key once, right after you create it.</DialogDescription>
-            </DialogHeader>
-            <Field data-invalid={error ? true : undefined}>
-              <FieldLabel htmlFor="key-name" required>
-                Key name
-              </FieldLabel>
-              <Input id="key-name" autoFocus aria-required aria-invalid={error ? true : undefined} maxLength={60} value={name} onChange={(e) => setName(e.target.value)} />
-              {error && <FieldError>{error.fields.name ?? error.message}</FieldError>}
-            </Field>
-            <DialogFooter>
-              <DialogClose asChild>
-                <Button type="button" variant="ghost">
-                  Cancel
-                </Button>
-              </DialogClose>
+      <FormSheet open={open} onClose={() => setOpen(false)}>
+        <FormSheetBody
+          title="New API key"
+          description="Name the key after the program that uses it. Monita shows the key once, right after you create it."
+          onSubmit={(e) => void create(e)}
+          footer={
+            <div className="ml-auto flex gap-2">
+              <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
+                Cancel
+              </Button>
               <Button type="submit" disabled={busy}>
                 {busy && <Spinner data-icon="inline-start" />}
                 Create key
               </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+            </div>
+          }
+        >
+            <Field data-invalid={error ? true : undefined}>
+              <FieldLabel htmlFor="key-name" required>
+                Key name
+              </FieldLabel>
+              <Input id="key-name" placeholder="billing-backend" aria-required aria-invalid={error ? true : undefined} maxLength={60} value={name} onChange={(e) => setName(e.target.value)} />
+              {error && <FieldError>{error.fields.name ?? error.message}</FieldError>}
+            </Field>
+        </FormSheetBody>
+      </FormSheet>
     </>
   );
 }

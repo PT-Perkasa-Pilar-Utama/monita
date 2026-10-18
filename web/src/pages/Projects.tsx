@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { ReactElement } from "react";
-import { NewProjectDialog } from "@/components/app/NewProjectDialog";
+import { NewProjectSheet } from "@/components/app/NewProjectSheet";
 import { ProjectCard, ProjectCardSkeletons, ProjectTable } from "@/components/app/ProjectTile";
 import { TableCard } from "@/components/app/TableCard";
 import { Plus } from "@/components/icons";
@@ -169,7 +169,7 @@ export function Projects(): ReactElement {
         )}
         {d && <Pager page={page} pageSize={d.page_size} total={d.total} noun="project" onPage={turn} disabled={loading} />}
       </div>
-      <NewProjectDialog open={creating} onOpenChange={setCreating} owners={d?.owners ?? []} />
+      <NewProjectSheet open={creating} onOpenChange={setCreating} owners={d?.owners ?? []} />
     </>
   );
 }

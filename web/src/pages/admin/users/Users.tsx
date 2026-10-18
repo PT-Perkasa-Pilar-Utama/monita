@@ -20,7 +20,7 @@ import { useSort } from "@/lib/useSort";
 import { ACTION_LABEL, availableActions, planAction, type UserAction } from "@/lib/users";
 import { toast } from "sonner";
 import { ActionDialog } from "./ActionDialog";
-import { InviteDialog } from "./InviteDialog";
+import { InviteSheet } from "./InviteSheet";
 import { UsersTable } from "./UsersTable";
 
 const PAGE = 20;
@@ -102,7 +102,7 @@ export function Users(): ReactElement {
   const plan = pending ? planAction(pending.action, pending.rows, me) : null;
   return (
     <>
-      <PageHeader title="Users" actions={<InviteDialog onInvited={(i) => (setInvited(i), res.reload())} />} />
+      <PageHeader title="Users" actions={<InviteSheet onInvited={(i) => (setInvited(i), res.reload())} />} />
       {invited && (
         <Alert role="status" className="mb-5">
           <AlertTitle>Invite sent to {invited.email}. The link works once and expires in 72 hours.</AlertTitle>

@@ -18,7 +18,7 @@ import { toast } from "sonner";
 const OPEN_STAGES = STAGES.filter(([k]) => k !== "done");
 
 /** The team files a ticket itself, with no reporter and no ref ID, in the wide panel. */
-export function NewTicketDialog({ slug, onFiled }: { slug: string; onFiled: (n: number) => void }): ReactElement {
+export function NewTicketSheet({ slug, onFiled }: { slug: string; onFiled: (n: number) => void }): ReactElement {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");

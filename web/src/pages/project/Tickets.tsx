@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { FormEvent, ReactElement } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ConnectApp } from "@/components/app/ConnectApp";
-import { NewTicketDialog } from "@/components/app/NewTicketDialog";
+import { NewTicketSheet } from "@/components/app/NewTicketSheet";
 import { ShowMore, TicketBoard, TicketCard } from "@/components/app/TicketBoard";
 import { TicketPanel } from "@/components/app/TicketPanel";
 import { ReasonBadge } from "@/components/app/Tone";
@@ -113,7 +113,7 @@ export function Tickets(): ReactElement {
         actions={
           <>
             <ConnectApp slug={p.slug} />
-            <NewTicketDialog slug={p.slug} onFiled={changed} />
+            <NewTicketSheet slug={p.slug} onFiled={changed} />
           </>
         }
       />

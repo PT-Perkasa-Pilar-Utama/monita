@@ -5,14 +5,7 @@ import { IconPicker } from "@/components/app/IconPicker";
 import { UserPicker } from "@/components/app/UserPicker";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { FormSheet, FormSheetBody } from "@/components/app/FormSheet";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
@@ -22,7 +15,7 @@ import { useMe } from "@/lib/session";
 import type { Owner, Project } from "@/lib/types";
 
 /** New project: a name, then for a super admin the owner, and an optional description and icon. */
-export function NewProjectDialog({
+export function NewProjectSheet({
   open,
   onOpenChange,
   owners,
@@ -58,12 +51,23 @@ export function NewProjectDialog({
   const general = error && Object.keys(error.fields).length === 0 ? error.message : "";
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent aria-describedby={undefined}>
-        <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-6">
-          <DialogHeader>
-            <DialogTitle>New project</DialogTitle>
-          </DialogHeader>
+    <FormSheet open={open} onClose={() => onOpenChange(false)}>
+      <FormSheetBody
+        title="New project"
+        onSubmit={(e) => void submit(e)}
+          footer={
+            <div className="ml-auto flex gap-2">
+              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={busy}>
+                {busy && <Spinner data-icon="inline-start" />}
+                Create project
+              </Button>
+            </div>
+          }
+      >
+        <div className="flex flex-col gap-5">
           {general && (
             <Alert variant="destructive">
               <AlertDescription>{general}</AlertDescription>
@@ -104,19 +108,8 @@ export function NewProjectDialog({
             </Field>
             <IconPicker value={icon} onChange={setIcon} error={fieldError("icon")} />
           </FieldGroup>
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button type="button" variant="ghost">
-                Cancel
-              </Button>
-            </DialogClose>
-            <Button type="submit" disabled={busy}>
-              {busy && <Spinner data-icon="inline-start" />}
-              Create project
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+        </div>
+      </FormSheetBody>
+    </FormSheet>
   );
 }
