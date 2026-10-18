@@ -30,10 +30,10 @@ function SheetOverlay({ className, ...props }: React.ComponentProps<typeof Sheet
   );
 }
 
-// Wide holds a form or a record at three quarters of the screen; half holds a guide.
+// Wide holds a record with a sidebar, such as a ticket, at three quarters of the screen; half holds a form or a guide.
 const SIZE = { wide: "sm:w-3/4 sm:max-w-none", half: "sm:w-1/2 sm:min-w-[36rem] sm:max-w-none" } as const;
 
-/** A panel that slides in from the right edge: `wide` for a form or a record, `half` for a guide. */
+/** A panel that slides in from the right edge: `wide` for a record with a sidebar, `half` for a form or a guide. */
 function SheetContent({ className, children, size = "wide", ...props }: React.ComponentProps<typeof SheetPrimitive.Content> & { size?: keyof typeof SIZE }): ReactElement {
   return (
     <SheetPrimitive.Portal>

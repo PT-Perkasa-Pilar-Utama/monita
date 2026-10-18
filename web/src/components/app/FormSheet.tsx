@@ -1,12 +1,12 @@
 import type { FormEvent, ReactElement, ReactNode } from "react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
-/** The wide panel a create or edit form opens in, over the page it came from. */
+/** The half-width panel a create or edit form opens in, over the page it came from. */
 export function FormSheet({ open, onClose, children }: { open: boolean; onClose: () => void; children: ReactNode }): ReactElement {
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
       <SheetContent
-        size="wide"
+        size="half"
         aria-describedby={undefined}
         onOpenAutoFocus={(e) => {
           // The first field, not the guide button in the header. A form still loading takes the panel.
@@ -60,7 +60,7 @@ export function FormSheetBody({
         }}
       >
         <div className="flex-1 overflow-y-auto px-6 py-6">
-          <div className="max-w-3xl">{children}</div>
+          {children}
         </div>
         <div className="flex flex-wrap items-center gap-2 border-t bg-paper px-6 py-3">{footer}</div>
       </form>
