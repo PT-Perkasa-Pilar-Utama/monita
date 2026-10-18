@@ -6,7 +6,8 @@ use crate::platform::{caps, db::Db};
 const LAST_DIGEST_TICKET: &str = "last_digest_ticket_id";
 
 /// US-30: one email per project to its owner, listing tickets created after the last digest
-/// that are still in Triage. No email when there are none. Returns emails queued.
+/// that are still in Triage. No email when there are none, or when Ticket alerts turn the
+/// digest off. Returns emails queued.
 pub async fn digest(db: &Db, base_url: &str, now: i64) -> anyhow::Result<usize> {
     let after = crate::platform::settings::get_raw(&db.read().await?, LAST_DIGEST_TICKET)
         .await?
@@ -41,6 +42,9 @@ async fn queue_one(
     base_url: &str,
     now: i64,
 ) -> anyhow::Result<usize> {
+    if !store::ticket_alerts(c, p.id).await?.digest {
+        return Ok(0);
+    }
     let (fresh, total) = crate::tickets::new_in_triage_after(c, p.id, after).await?;
     if fresh.is_empty() {
         return Ok(0);

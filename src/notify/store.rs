@@ -157,6 +157,55 @@ pub async fn create_routes(c: &Connection, project_id: i64) -> anyhow::Result<()
         [project_id],
     )
     .await?;
+    c.execute(
+        "INSERT INTO ticket_alerts (project_id) VALUES (?1)",
+        [project_id],
+    )
+    .await?;
+    Ok(())
+}
+
+/// Who hears about new tickets: the owner's daily digest, and a webhook per ticket.
+#[derive(serde::Serialize, Debug, PartialEq, Eq)]
+pub struct TicketAlerts {
+    pub digest: bool,
+    pub webhook_url: Option<String>,
+    pub use_webhook: bool,
+}
+
+/// A project with no row has the defaults: digest on, webhook off.
+pub async fn ticket_alerts(c: &Connection, project_id: i64) -> anyhow::Result<TicketAlerts> {
+    let mut rows = c
+        .query(
+            "SELECT digest, webhook_url, use_webhook FROM ticket_alerts WHERE project_id = ?1",
+            [project_id],
+        )
+        .await?;
+    Ok(match rows.next().await? {
+        Some(r) => TicketAlerts {
+            digest: r.get::<i64>(0)? == 1,
+            webhook_url: r.get(1)?,
+            use_webhook: r.get::<i64>(2)? == 1,
+        },
+        None => TicketAlerts {
+            digest: true,
+            webhook_url: None,
+            use_webhook: false,
+        },
+    })
+}
+
+pub async fn save_ticket_alerts(
+    c: &Connection,
+    project_id: i64,
+    a: &TicketAlerts,
+) -> anyhow::Result<()> {
+    c.execute(
+        "INSERT INTO ticket_alerts (project_id, digest, webhook_url, use_webhook) VALUES (?1, ?2, ?3, ?4)
+         ON CONFLICT (project_id) DO UPDATE SET digest = excluded.digest, webhook_url = excluded.webhook_url, use_webhook = excluded.use_webhook",
+        (project_id, a.digest, a.webhook_url.as_deref(), a.use_webhook),
+    )
+    .await?;
     Ok(())
 }
 

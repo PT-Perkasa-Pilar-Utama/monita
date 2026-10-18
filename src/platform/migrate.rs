@@ -16,6 +16,7 @@ const MIGRATIONS: &[(i64, &str)] = &[
     ),
     (5, include_str!("../../migrations/0005_project_profile.sql")),
     (6, include_str!("../../migrations/0006_team_tickets.sql")),
+    (7, include_str!("../../migrations/0007_ticket_alerts.sql")),
 ];
 
 pub async fn run(db: &Db) -> anyhow::Result<()> {
@@ -169,5 +170,53 @@ mod tests {
             })
             .await;
         assert!(bad.is_err(), "done without close_reason must fail");
+    }
+
+    #[tokio::test]
+    async fn ticket_alerts_keep_the_warning_webhook_a_project_had_on() {
+        let dir = tempfile::tempdir().unwrap();
+        let db = Db::open(&dir.path().join("t.db")).await.unwrap();
+        db.write_without_fk(async |c| {
+            c.execute(
+                "CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY, applied_at INTEGER NOT NULL)",
+                (),
+            )
+            .await?;
+            for &(version, sql) in &MIGRATIONS[..6] {
+                c.execute_batch(sql).await?;
+                c.execute(
+                    "INSERT INTO schema_migrations (version, applied_at) VALUES (?1, 0)",
+                    [version],
+                )
+                .await?;
+            }
+            c.execute_batch(
+                "INSERT INTO users (id, email, role) VALUES (1, 'a@x.co', 'tl');
+                 INSERT INTO projects (id, owner_id, name, slug) VALUES (1, 1, 'On', 'on'), (2, 1, 'Off', 'off'), (3, 1, 'Bare', 'bare');
+                 INSERT INTO alert_routes (project_id, severity, webhook_url, use_webhook) VALUES
+                   (1, 'warning', 'https://hook/on', 1), (2, 'warning', 'https://hook/off', 0);",
+            )
+            .await?;
+            Ok(())
+        })
+        .await
+        .unwrap();
+        run(&db).await.unwrap();
+        let rows = crate::platform::db::query_all(
+            &db.read().await.unwrap(),
+            "SELECT project_id, digest, coalesce(webhook_url, ''), use_webhook FROM ticket_alerts ORDER BY project_id",
+            (),
+            |r| Ok((r.get::<i64>(0)?, r.get::<i64>(1)?, r.get::<String>(2)?, r.get::<i64>(3)?)),
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            rows,
+            vec![
+                (1, 1, "https://hook/on".to_string(), 1),
+                (2, 1, "https://hook/off".to_string(), 0),
+                (3, 1, String::new(), 0),
+            ]
+        );
     }
 }

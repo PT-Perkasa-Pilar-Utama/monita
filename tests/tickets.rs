@@ -389,16 +389,23 @@ async fn the_digest_lists_new_triage_tickets_once_and_skips_quiet_projects() {
     );
 }
 
+/// Webhook calls a test server got, by path name.
+type Calls = Arc<Mutex<Vec<(String, Value)>>>;
+
 #[tokio::test]
-async fn each_new_ticket_calls_the_warning_webhook_when_it_is_on() {
+async fn each_new_ticket_calls_the_ticket_webhook_and_never_the_warning_one() {
     // AC-30.03
-    let got: Arc<Mutex<Vec<Value>>> = Arc::default();
+    let got: Calls = Arc::default();
     let sink = Router::new()
         .route(
-            "/hook",
+            "/{name}",
             post(
-                |State(g): State<Arc<Mutex<Vec<Value>>>>, body: String| async move {
-                    g.lock().unwrap().push(serde_json::from_str(&body).unwrap());
+                |State(g): State<Calls>,
+                 axum::extract::Path(name): axum::extract::Path<String>,
+                 body: String| async move {
+                    g.lock()
+                        .unwrap()
+                        .push((name, serde_json::from_str(&body).unwrap()));
                     "ok"
                 },
             ),
@@ -410,31 +417,71 @@ async fn each_new_ticket_calls_the_warning_webhook_when_it_is_on() {
 
     let app = TestApp::spawn("test").await;
     let s = setup(&app).await;
-    let hook = format!("http://{addr}/hook");
+    let alerts = "/api/ui/projects/payments/ticket-alerts";
+    assert_eq!(
+        read(&app, alerts, Some(&s.tl)).await,
+        json!({"digest": true, "webhook_url": null, "use_webhook": false}),
+        "a new project: digest on, webhook off"
+    );
+    let put = |body: Value| app.api_send(reqwest::Method::PUT, alerts, body, Some(&s.tl));
     app.api_send(
         reqwest::Method::PUT,
         "/api/ui/projects/payments/alerts/warning",
-        serde_json::json!({ "webhook_url": &hook }),
+        json!({ "webhook_url": format!("http://{addr}/warning"), "use_webhook": true }),
         Some(&s.tl),
     )
     .await;
     let rid = ref_id(&app, &s.key, false).await;
     submit(&app, &rid, "Off: no webhook").await;
-    app.api_send(
-        reqwest::Method::PUT,
-        "/api/ui/projects/payments/alerts/warning",
-        serde_json::json!({ "webhook_url": &hook, "use_webhook": true }),
-        Some(&s.tl),
-    )
-    .await;
+
+    let res = put(json!({"digest": true, "use_webhook": true})).await;
+    assert_eq!(res.status(), 422, "a webhook switched on needs its URL");
+    let hook = format!("http://{addr}/tickets");
+    assert_eq!(
+        put(json!({"digest": true, "webhook_url": &hook, "use_webhook": true}))
+            .await
+            .status(),
+        204
+    );
     submit(&app, &rid, "On: webhook").await;
+    let team = json!({"title": "Filed by the team", "description": "x", "stage": "backlog"});
+    app.api_post("/api/ui/projects/payments/tickets", team, Some(&s.tl))
+        .await;
+
     monita::notify::deliver_due(&app.state).await.unwrap();
     tokio::time::sleep(Duration::from_millis(200)).await;
     let calls = got.lock().unwrap().clone();
-    assert_eq!(calls.len(), 1);
-    assert_eq!(calls[0]["event"], "ticket.created");
-    assert_eq!(calls[0]["ticket_number"], 2);
-    assert_eq!(calls[0]["text"], "[TICKET] Payments #2: On: webhook");
+    assert_eq!(
+        calls.len(),
+        1,
+        "one reporter ticket while on; the team's sends nothing"
+    );
+    assert_eq!(calls[0].0, "tickets", "the warning webhook gets no tickets");
+    assert_eq!(calls[0].1["event"], "ticket.created");
+    assert_eq!(calls[0].1["ticket_number"], 2);
+    assert_eq!(calls[0].1["text"], "[TICKET] Payments #2: On: webhook");
+}
+
+#[tokio::test]
+async fn the_digest_skips_a_project_that_turned_it_off() {
+    let app = TestApp::spawn("test").await;
+    let s = setup(&app).await;
+    let rid = ref_id(&app, &s.key, false).await;
+    submit(&app, &rid, "Checkout broken").await;
+    let off = json!({"digest": false, "webhook_url": "", "use_webhook": false});
+    let res = app
+        .api_send(
+            reqwest::Method::PUT,
+            "/api/ui/projects/payments/ticket-alerts",
+            off,
+            Some(&s.tl),
+        )
+        .await;
+    assert_eq!(res.status(), 204);
+    let queued = monita::notify::digest(&app.state.db, common::BASE_URL, now())
+        .await
+        .unwrap();
+    assert_eq!(queued, 0);
 }
 
 #[tokio::test]

@@ -11,8 +11,8 @@ pub struct Preview {
     /// The webhook `event` field: `incident.opened`, `incident.resolved`, `ticket.created`, `test`.
     pub event: &'static str,
     pub label: &'static str,
-    /// Which route it goes to.
-    pub severity: &'static str,
+    /// The settings that send it: `critical`, `warning` or `ticket`.
+    pub route: &'static str,
     /// `None` when this kind sends no email.
     pub email: Option<EmailPreview>,
     pub webhook: serde_json::Value,
@@ -54,7 +54,7 @@ pub fn previews(name: &str, slug: &str, base_url: &str, at: i64) -> Vec<Preview>
         out.push(Preview {
             event,
             label,
-            severity: "critical",
+            route: "critical",
             email: Some(EmailPreview {
                 subject: msg.subject,
                 body: msg.text,
@@ -65,7 +65,7 @@ pub fn previews(name: &str, slug: &str, base_url: &str, at: i64) -> Vec<Preview>
     out.push(Preview {
         event: "ticket.created",
         label: "New ticket",
-        severity: "warning",
+        route: "ticket",
         email: None,
         webhook: ticket_json(
             name,
@@ -80,7 +80,7 @@ pub fn previews(name: &str, slug: &str, base_url: &str, at: i64) -> Vec<Preview>
     out.push(Preview {
         event: "test",
         label: "Test",
-        severity: "critical",
+        route: "critical",
         email: Some(EmailPreview { subject, body }),
         webhook,
     });
@@ -115,7 +115,7 @@ mod tests {
             "[CRITICAL] Payments / Checkout API is down"
         );
         assert!(all[2].email.is_none(), "a ticket sends no email");
-        assert_eq!(all[2].severity, "warning");
+        assert_eq!(all[2].route, "ticket");
         assert!(
             all[3]
                 .email

@@ -9,6 +9,7 @@ mod digest;
 mod mailer;
 mod preview;
 mod store;
+mod tickets;
 
 use turso::Connection;
 
@@ -21,7 +22,8 @@ pub use delivery::{deliver_due, spawn_delivery};
 pub use digest::digest;
 pub use mailer::{Mailer, SentEmail};
 pub use preview::{Preview, previews};
-pub use store::Route;
+pub use store::{Route, TicketAlerts};
+pub use tickets::{save_ticket_alerts, send_ticket, send_ticket_test, ticket_alerts};
 
 /// AC-15.02: a new project's two routes. Critical calls its webhook once one is set; warning does not.
 pub async fn create_routes(c: &Connection, project_id: i64) -> anyhow::Result<()> {
@@ -197,27 +199,6 @@ pub async fn send(c: &Connection, ev: &Event, base_url: &str) -> anyhow::Result<
         store::queue(c, "webhook", url, None, &msg.json.to_string(), at).await?;
     }
     Ok(())
-}
-
-/// AC-30.03: one webhook call per new ticket, on the warning route, when its webhook is on.
-pub async fn send_ticket(
-    c: &Connection,
-    project_id: i64,
-    number: i64,
-    title: &str,
-    base_url: &str,
-) -> anyhow::Result<()> {
-    let Some(route) = store::route(c, project_id, "warning").await? else {
-        return Ok(());
-    };
-    let (true, Some(url)) = (route.use_webhook, route.webhook_url.as_deref()) else {
-        return Ok(());
-    };
-    let Some((name, slug)) = crate::projects::name_slug(c, project_id).await? else {
-        return Ok(());
-    };
-    let body = ticket_json(&name, &slug, number, title, base_url, now());
-    store::queue(c, "webhook", url, None, &body.to_string(), now()).await
 }
 
 /// The webhook body for a new ticket. Tickets send no email.

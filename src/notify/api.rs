@@ -23,6 +23,14 @@ pub fn router() -> Router<AppState> {
         .route("/api/ui/projects/{slug}/alerts/{severity}", put(save))
         .route("/api/ui/projects/{slug}/alerts/{severity}/test", post(test))
         .route("/api/ui/projects/{slug}/alerts-preview", get(preview))
+        .route(
+            "/api/ui/projects/{slug}/ticket-alerts",
+            get(ticket_alerts).put(save_ticket_alerts),
+        )
+        .route(
+            "/api/ui/projects/{slug}/ticket-alerts/test",
+            post(test_ticket_alerts),
+        )
 }
 
 fn severity_ok(s: &str) -> Result<(), UiError> {
@@ -110,4 +118,49 @@ async fn preview(
         &state.config.base_url,
         crate::platform::now(),
     )))
+}
+
+async fn ticket_alerts(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(slug): Path<String>,
+) -> UiResult {
+    let p = projects::find_for(&state.db, &user, &slug).await?;
+    Ok(data(super::ticket_alerts(&state.db, p.id).await?))
+}
+
+#[derive(Deserialize)]
+struct TicketAlertsInput {
+    #[serde(default)]
+    digest: bool,
+    #[serde(default)]
+    webhook_url: String,
+    #[serde(default)]
+    use_webhook: bool,
+}
+
+/// The owner's daily digest and the webhook per new ticket, each on or off.
+async fn save_ticket_alerts(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(slug): Path<String>,
+    Body(f): Body<TicketAlertsInput>,
+) -> UiResult {
+    let p = projects::find_for(&state.db, &user, &slug).await?;
+    match super::save_ticket_alerts(&state.db, p.id, f.digest, &f.webhook_url, f.use_webhook).await
+    {
+        Ok(()) => Ok(StatusCode::NO_CONTENT.into_response()),
+        Err(RouteError::Other(e)) => Err(e.into()),
+        Err(e) => Err(UiError::field("webhook_url", e.to_string())),
+    }
+}
+
+async fn test_ticket_alerts(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(slug): Path<String>,
+) -> UiResult {
+    let p = projects::find_for(&state.db, &user, &slug).await?;
+    let sent_to = super::send_ticket_test(&state.db, p.id, &state.config.base_url).await?;
+    Ok(data(Tested { sent_to }))
 }
