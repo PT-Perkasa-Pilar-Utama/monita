@@ -1,31 +1,20 @@
 import type { ReactElement, ReactNode } from "react";
 import { Link } from "react-router-dom";
+import { ProjectAbout, useProjectEdit } from "@/components/app/ProjectAbout";
 import { ProjectBadge } from "@/components/app/ProjectBadge";
 import { LabelBadge, SeverityBadge } from "@/components/app/Tone";
 import { TableCard } from "@/components/app/TableCard";
-import {
-  Activity,
-  AlertTriangle,
-  ChevronRight,
-  Folder,
-  Globe,
-  Heartbeat,
-  Key,
-  Plus,
-  Shield,
-  Ticket,
-  Users,
-} from "@/components/icons";
+import { Activity, ChevronRight, Heartbeat, Pencil, Save, Ticket, X } from "@/components/icons";
 import type { AppIcon } from "@/components/icons";
 import { PageHeader } from "@/components/layout/Page";
 import { TableEmpty } from "@/components/list/TableEmpty";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useProject } from "@/lib/project";
-import { ago, duration, nowSecs, utc } from "@/lib/time";
+import { ago, duration, nowSecs } from "@/lib/time";
 import type { Overview as OverviewData, StateKind } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 import { cn } from "@/lib/utils";
@@ -66,18 +55,10 @@ function Tile({ to, icon: Icon, title, children }: { to: string; icon: AppIcon; 
   );
 }
 
-function Fact({ icon: Icon, children }: { icon: AppIcon; children: ReactNode }): ReactElement {
-  return (
-    <li className="flex items-start gap-3 text-foreground/90">
-      <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-      <span className="min-w-0 break-words">{children}</span>
-    </li>
-  );
-}
-
 /** Where the project stands: a tile per area, the open incidents, and an About column. */
 export function Overview(): ReactElement {
-  const { project: p, counts } = useProject();
+  const { project: p, counts, reload } = useProject();
+  const edit = useProjectEdit({ project: p, counts }, reload);
   const o = useApi<OverviewData>(`/projects/${p.slug}/overview`);
   const base = `/projects/${p.slug}`;
   const now = nowSecs();
@@ -89,20 +70,26 @@ export function Overview(): ReactElement {
         lead={<ProjectBadge name={p.name} iconUrl={p.icon_url} className="size-10 rounded-lg text-[15px]" />}
         title={p.name}
         actions={
-          <>
-            <Button asChild>
-              <Link to={`${base}/monitors/new`}>
-                <Plus data-icon="inline-start" />
-                New monitor
-              </Link>
+          edit.editing ? (
+            <>
+              <Button variant="outline" disabled={edit.saving} onClick={edit.discard}>
+                <X data-icon="inline-start" />
+                Discard changes
+              </Button>
+              <Button disabled={edit.saving} onClick={() => void edit.save()}>
+                {edit.saving ? <Spinner data-icon="inline-start" /> : <Save data-icon="inline-start" />}
+                Save
+              </Button>
+            </>
+          ) : (
+            <Button variant="outline" onClick={edit.start}>
+              <Pencil data-icon="inline-start" />
+              Edit project
             </Button>
-            <Button asChild variant="secondary">
-              <Link to={`${base}/incidents/new`}>Report incident</Link>
-            </Button>
-          </>
+          )
         }
       />
-      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
+      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_18rem]">
         <div className="flex min-w-0 flex-col gap-6">
           {!d ? (
             <Skeleton className="h-24 rounded-xl" />
@@ -182,38 +169,7 @@ export function Overview(): ReactElement {
             )}
           </TableCard>
         </div>
-        <aside aria-labelledby="about-title" className="flex flex-col gap-4 xl:sticky xl:top-[calc(var(--bar-h)+24px)]">
-          <h2 id="about-title" className="text-xl font-semibold">
-            About
-          </h2>
-          {p.description && <p className="text-foreground/90">{p.description}</p>}
-          <ul className="flex flex-col gap-3">
-            <Fact icon={Globe}>
-              Status page{" "}
-              <a href={`/status/${p.slug}`} className="font-mono text-link hover:underline">
-                /status/{p.slug}
-              </a>
-            </Fact>
-            <Fact icon={Users}>Owned by {p.owner_email}</Fact>
-            <Fact icon={Folder}>Created {utc(p.created_at)}</Fact>
-            <Fact icon={Key}>
-              <Link to={`${base}/settings/keys`} className="text-link hover:underline">
-                {plural(d?.active_keys ?? 0, "active API key")}
-              </Link>
-            </Fact>
-            <Fact icon={Shield}>{p.ip_allowlist ? "Only allowed IP addresses may use the keys" : "Any IP address may use the keys"}</Fact>
-          </ul>
-          <Separator />
-          <ul className="flex flex-col gap-3 font-semibold">
-            <Fact icon={Activity}>{plural(counts.monitors, "monitor")}</Fact>
-            <Fact icon={Heartbeat}>{plural(counts.heartbeats, "heartbeat")}</Fact>
-            <Fact icon={AlertTriangle}>{plural(counts.incidents, "open incident")}</Fact>
-            <Fact icon={Ticket}>
-              {plural(counts.tickets, "open ticket")}
-              <span className="block text-xs font-normal text-muted-foreground">{d?.triage ?? 0} in Triage</span>
-            </Fact>
-          </ul>
-        </aside>
+        <ProjectAbout head={{ project: p, counts }} activeKeys={d?.active_keys ?? 0} triage={d?.triage ?? 0} edit={edit} />
       </div>
     </>
   );

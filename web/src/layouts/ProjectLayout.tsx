@@ -1,11 +1,10 @@
 import type { ReactElement } from "react";
 import { Link, Outlet, useParams } from "react-router-dom";
 import { ProjectBadge } from "@/components/app/ProjectBadge";
-import { AlertTriangle, Globe, Heartbeat, LayoutGrid, Activity, Settings, Ticket } from "@/components/icons";
+import { AlertTriangle, Heartbeat, LayoutGrid, Activity, Settings, Ticket } from "@/components/icons";
 import { PageFrame } from "@/components/layout/Page";
 import { PageTabs } from "@/components/layout/PageTabs";
 import { TopBar } from "@/components/layout/TopBar";
-import { Button } from "@/components/ui/button";
 import { NotFound } from "@/pages/NotFound";
 import { ProjectProvider } from "@/lib/project";
 import { SessionProvider } from "@/lib/session";
@@ -36,14 +35,6 @@ function ProjectChrome(): ReactElement | null {
         { to: `${base}/tickets`, label: "Tickets", icon: Ticket, count: counts.tickets },
         { to: `${base}/settings`, label: "Settings", icon: Settings, match: [`${base}/alerts`] },
       ]}
-      end={
-        <Button asChild variant="ghost" size="sm" className="rounded-lg">
-          <a href={`/status/${p.slug}`}>
-            <Globe data-icon="inline-start" />
-            Status page
-          </a>
-        </Button>
-      }
     />
   );
   return (
