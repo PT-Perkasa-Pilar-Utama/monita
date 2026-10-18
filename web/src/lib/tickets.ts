@@ -1,4 +1,4 @@
-import type { CloseReason, Stage } from "@/lib/types";
+import type { CloseReason, Stage, TicketBoard } from "@/lib/types";
 
 export const STAGES: [Stage, string][] = [
   ["triage", "Triage"],
@@ -16,3 +16,31 @@ export const REASONS: [CloseReason, string][] = [
 export const stageLabel = (s: Stage): string => STAGES.find(([k]) => k === s)?.[1] ?? s;
 
 export const reasonLabel = (r: CloseReason): string => REASONS.find(([k]) => k === r)?.[1] ?? r;
+
+/** What a column says under its name on the team's board. */
+export const STAGE_NOTES: Record<Stage, string> = {
+  triage: "New reports. Only your team sees them.",
+  backlog: "Accepted and not started. The public board shows it.",
+  in_progress: "Someone is working on it.",
+  done: "Closed as fixed, won't fix or duplicate.",
+};
+
+/** A card dropped on a column: nothing, a move, or a move that first needs a close reason. */
+export function dropOutcome(from: Stage, to: Stage): "none" | "move" | "ask_reason" {
+  if (from === to) return "none";
+  return to === "done" ? "ask_reason" : "move";
+}
+
+/**
+ * The board as it looks once ticket `n` sits in `to`, before the server answers: the card moves
+ * to the top of its new column, Done keeps its reason, and both column counts change by one.
+ */
+export function moveOnBoard(board: TicketBoard, n: number, to: Stage, reason: CloseReason | null, now: number): TicketBoard {
+  const t = board.tickets.find((x) => x.number === n);
+  if (!t || t.stage === to) return board;
+  const moved = { ...t, stage: to, close_reason: to === "done" ? reason : null, updated_at: now };
+  return {
+    tickets: [moved, ...board.tickets.filter((x) => x.number !== n)],
+    counts: { ...board.counts, [t.stage]: board.counts[t.stage] - 1, [to]: board.counts[to] + 1 },
+  };
+}

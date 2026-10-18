@@ -19,7 +19,6 @@ import { Monitor } from "@/pages/project/Monitor";
 import { MonitorForm } from "@/pages/project/MonitorForm";
 import { Monitors } from "@/pages/project/Monitors";
 import { Overview } from "@/pages/project/Overview";
-import { Ticket } from "@/pages/project/Ticket";
 import { Tickets } from "@/pages/project/Tickets";
 import { History } from "@/pages/public/History";
 import { KnownIssues } from "@/pages/public/KnownIssues";
@@ -59,8 +58,7 @@ export default function App(): ReactElement {
         <Route path="incidents" element={<Incidents />} />
         <Route path="incidents/new" element={<IncidentForm />} />
         <Route path="incidents/:id" element={<Incident />} />
-        <Route path="tickets" element={<Tickets />} />
-        <Route path="tickets/:number" element={<Ticket />} />
+        <Route path="tickets/:number?" element={<Tickets />} />
         <Route element={<SettingsLayout />}>
           <Route path="settings" element={<General />} />
           <Route path="settings/keys" element={<Keys />} />
