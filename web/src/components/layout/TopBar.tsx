@@ -1,7 +1,7 @@
 import type { ReactElement, ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Mark } from "@/components/brand/Mark";
-import { ChevronDown, Folder, House, LogOut, Moon, Server, Sun, Users } from "@/components/icons";
+import { BookOpen, Folder, LogOut, Moon, Server, Sun, Users } from "@/components/icons";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,9 +27,10 @@ function AreaLink({ to, label, icon, active }: { to: string; label: string; icon
       asChild
       variant="ghost"
       size="sm"
-      className={cn("rounded-lg", active && "bg-card font-semibold text-foreground shadow-xs ring-1 ring-border hover:bg-card")}
+      title={label}
+      className={cn(active && "bg-background font-semibold text-foreground ring-1 ring-border hover:bg-background")}
     >
-      <Link to={to} aria-current={active ? "true" : undefined}>
+      <Link to={to} aria-current={active ? "page" : undefined}>
         {icon}
         <span className="hidden md:inline">{label}</span>
       </Link>
@@ -37,45 +38,20 @@ function AreaLink({ to, label, icon, active }: { to: string; label: string; icon
   );
 }
 
-function AdminMenu({ active }: { active: boolean }): ReactElement {
+/** One click between the light and the dark theme. */
+function ThemeButton(): ReactElement {
+  const { resolved, setTheme } = useTheme();
+  const next = resolved === "dark" ? "light" : "dark";
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          className={cn("rounded-lg", active && "bg-card font-semibold text-foreground shadow-xs ring-1 ring-border hover:bg-card")}
-          aria-current={active ? "true" : undefined}
-        >
-          <Users />
-          <span className="hidden md:inline">Admin</span>
-          <ChevronDown />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-48">
-        <DropdownMenuGroup>
-          <DropdownMenuItem asChild>
-            <Link to="/admin/users">
-              <Users />
-              Users
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link to="/admin/settings">
-              <Server />
-              System
-            </Link>
-          </DropdownMenuItem>
-        </DropdownMenuGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <Button variant="ghost" size="icon-sm" aria-label={`Switch to the ${next} theme`} title={`Switch to the ${next} theme`} onClick={() => setTheme(next)}>
+      {resolved === "dark" ? <Sun /> : <Moon />}
+    </Button>
   );
 }
 
-/** The account menu: who is signed in, the theme switch and sign out, two clicks away. */
+/** The account menu: who is signed in, and sign out. */
 function AccountMenu(): ReactElement {
   const me = useMe();
-  const { resolved, setTheme } = useTheme();
   const initial = me.email.charAt(0).toUpperCase();
   const signOut = async (): Promise<void> => {
     await api("/logout", "POST");
@@ -95,29 +71,11 @@ function AccountMenu(): ReactElement {
           </Avatar>
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-72">
-        <DropdownMenuLabel className="flex items-center gap-3 py-2 font-normal">
-          <Avatar className="size-8">
-            <AvatarFallback className="bg-primary/15 font-semibold text-link">{initial}</AvatarFallback>
-          </Avatar>
-          <span className="flex min-w-0 flex-col">
-            <span className="break-all font-medium text-foreground">{me.email}</span>
-            <span className="text-xs text-muted-foreground">{me.is_admin ? "Super admin" : "Tech lead"}</span>
-          </span>
+      <DropdownMenuContent align="end" className="w-64">
+        <DropdownMenuLabel className="flex flex-col gap-0.5 py-2 font-normal">
+          <span className="break-all font-medium text-foreground">{me.email}</span>
+          <span className="text-xs text-muted-foreground">{me.is_admin ? "Super admin" : "Tech lead"}</span>
         </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuGroup>
-          <DropdownMenuItem asChild>
-            <Link to="/">
-              <House />
-              All projects
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => setTheme(resolved === "dark" ? "light" : "dark")}>
-            {resolved === "dark" ? <Sun /> : <Moon />}
-            Switch to the {resolved === "dark" ? "light" : "dark"} theme
-          </DropdownMenuItem>
-        </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem variant="destructive" onSelect={() => void signOut()}>
@@ -137,9 +95,9 @@ function AccountMenu(): ReactElement {
 export function TopBar({ crumb, tabs }: { crumb?: ReactNode; tabs?: ReactNode }): ReactElement {
   const me = useMe();
   const { pathname } = useLocation();
-  const admin = pathname.startsWith("/admin");
+  const at = (prefix: string): boolean => pathname.startsWith(prefix);
   return (
-    <header className="sticky top-0 z-40 border-b bg-background" data-has-tabs={tabs ? "" : undefined}>
+    <header className="sticky top-0 z-40 border-b bg-card shadow-xs" data-has-tabs={tabs ? "" : undefined}>
       <div className="px-4 sm:px-8 lg:px-12">
         <div className="mx-auto flex h-14 max-w-app items-center gap-3">
           <Link to="/" className="flex shrink-0 items-center gap-2 text-xl font-semibold tracking-tight" aria-label="Monita, all projects">
@@ -155,11 +113,20 @@ export function TopBar({ crumb, tabs }: { crumb?: ReactNode; tabs?: ReactNode })
             </>
           )}
           <nav aria-label="Account" className="ml-auto flex items-center gap-1">
-            <AreaLink to="/" label="Projects" icon={<Folder />} active={!admin} />
-            {me.is_admin && <AdminMenu active={admin} />}
-            <Button asChild variant="ghost" size="sm" className="hidden rounded-lg sm:inline-flex">
-              <a href={DOCS}>Docs</a>
+            <AreaLink to="/" label="Projects" icon={<Folder />} active={!at("/admin")} />
+            {me.is_admin && (
+              <>
+                <AreaLink to="/admin/users" label="Users" icon={<Users />} active={at("/admin/users")} />
+                <AreaLink to="/admin/settings" label="System" icon={<Server />} active={at("/admin/settings")} />
+              </>
+            )}
+            <Button asChild variant="ghost" size="sm" title="Docs">
+              <a href={DOCS}>
+                <BookOpen />
+                <span className="hidden md:inline">Docs</span>
+              </a>
             </Button>
+            <ThemeButton />
             <AccountMenu />
           </nav>
         </div>
