@@ -26,7 +26,7 @@ const COPY = {
   },
   warning: {
     title: "Warning alerts",
-    description: "Monitors and heartbeats set to warning alert these recipients. A new ticket also calls the webhook.",
+    description: "Monitors and heartbeats set to warning alert these recipients. This webhook also gets every new ticket from a user.",
   },
 } as const;
 
@@ -113,7 +113,7 @@ function RouteSection({ slug, route }: { slug: string; route: AlertRoute }): Rea
         <Field orientation="horizontal">
           <Checkbox id={`use-${s}`} checked={useWebhook} onCheckedChange={(v) => setUseWebhook(v === true)} />
           <FieldLabel htmlFor={`use-${s}`} className="font-normal">
-            Also send to a webhook
+            {s === "warning" ? "Send warning incidents and new tickets to a webhook" : "Also send to a webhook"}
           </FieldLabel>
         </Field>
         {useWebhook && (
@@ -229,7 +229,14 @@ function WhatRecipientsGet({ slug, webhooks }: { slug: string; webhooks: Record<
               {JSON.stringify(p.webhook, null, 2)}
             </div>
             <p className="text-sm text-muted-foreground">
-              Goes to the {p.severity} webhook when it is on. <code className="font-mono">at</code> is Unix seconds, UTC.
+              {p.event === "ticket.created" ? (
+                <>
+                  Goes to the webhook in <a href="#warning" className="text-link underline-offset-2 hover:underline">Warning alerts</a> when it is on. A ticket the team files itself sends nothing.
+                </>
+              ) : (
+                <>Goes to the {p.severity} webhook when it is on.</>
+              )}{" "}
+              <code className="font-mono">at</code> is Unix seconds, UTC.
             </p>
           </div>
         </div>

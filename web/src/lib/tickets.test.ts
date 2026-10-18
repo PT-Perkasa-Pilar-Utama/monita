@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { dropOutcome, moveOnBoard } from "@/lib/tickets";
+import { dropOutcome, moveOnBoard, withMore } from "@/lib/tickets";
 import type { TicketBoard, TicketRow } from "@/lib/types";
 
 test("a drop on the same column does nothing", () => {
@@ -28,6 +28,7 @@ const row = (number: number, stage: TicketRow["stage"]): TicketRow => ({
   created_at: 10,
   updated_at: 10,
   ref_revoked: false,
+  filed_by: null,
 });
 const board: TicketBoard = { tickets: [row(1, "triage"), row(2, "backlog"), row(3, "done")], counts: { triage: 1, backlog: 1, in_progress: 0, done: 1 } };
 
@@ -45,4 +46,10 @@ test("Done keeps the reason and leaving Done drops it", () => {
 test("an unknown ticket or the same column leaves the board as it is", () => {
   expect(moveOnBoard(board, 42, "done", "fixed", 99)).toBe(board);
   expect(moveOnBoard(board, 2, "backlog", null, 99)).toBe(board);
+});
+
+test("a later page adds only tickets the board does not show yet", () => {
+  const n = (number: number): { number: number } => ({ number });
+  // A move between reads shifts the pages, so page 2 can repeat a card from page 1.
+  expect(withMore([n(1), n(2)], [n(2), n(3), n(3)]).map((t) => t.number)).toEqual([1, 2, 3]);
 });

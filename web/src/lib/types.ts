@@ -215,11 +215,16 @@ export type TicketRow = {
   created_at: number;
   updated_at: number;
   ref_revoked: boolean;
+  // The team member who filed it; null for a reporter's ticket.
+  filed_by: string | null;
 };
 
 export type StageCounts = Record<Stage, number>;
 
 export type TicketBoard = { tickets: TicketRow[]; counts: StageCounts };
+
+/** One more page of one column (`?stage=&page=`). */
+export type ColumnPage<T> = { tickets: T[]; page: number; total: number; page_size: number };
 
 /** SEC-14: what a visitor may see of a ticket. */
 export type PublicTicket = { number: number; title: string; stage: Stage; created_at: number; updated_at: number };

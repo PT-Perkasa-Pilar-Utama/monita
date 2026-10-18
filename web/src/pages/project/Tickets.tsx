@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
 import type { FormEvent, ReactElement } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { TicketBoard, TicketCard } from "@/components/app/TicketBoard";
+import { ConnectApp } from "@/components/app/ConnectApp";
+import { NewTicketDialog } from "@/components/app/NewTicketDialog";
+import { ShowMore, TicketBoard, TicketCard } from "@/components/app/TicketBoard";
 import { TicketPanel } from "@/components/app/TicketPanel";
+import { ReasonBadge } from "@/components/app/Tone";
 import { PageHeader } from "@/components/layout/Page";
 import { TableEmpty } from "@/components/list/TableEmpty";
 import { Badge } from "@/components/ui/badge";
@@ -14,10 +17,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { api, ApiError, errorText } from "@/lib/api";
 import { useProject } from "@/lib/project";
-import { REASONS, STAGE_NOTES, dropOutcome, moveOnBoard, reasonLabel, stageLabel } from "@/lib/tickets";
+import { REASONS, STAGE_NOTES, dropOutcome, moveOnBoard, stageLabel, withMore } from "@/lib/tickets";
 import { ago, nowSecs } from "@/lib/time";
 import type { TicketBoard as Board, CloseReason, Stage, TicketRow } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
+import { useMorePages } from "@/lib/useMorePages";
 import { toast } from "sonner";
 
 /** A card dropped on Done waits here for its close reason. */
@@ -70,13 +74,17 @@ export function Tickets(): ReactElement {
   const navigate = useNavigate();
   const base = `/projects/${p.slug}/tickets`;
   const res = useApi<Board>(base);
+  const pages = useMorePages<TicketRow>(base);
   // The board as it looks after a drop, until the server's copy comes back.
   const [local, setLocal] = useState<Board | null>(null);
   const [closing, setClosing] = useState<TicketRow | null>(null);
   useEffect(() => setLocal(null), [res.data]);
-  const d = local ?? res.data;
+  const server = res.data && { ...res.data, tickets: withMore(res.data.tickets, pages.more) };
+  const d = local ?? server;
 
   const changed = (): void => {
+    // A move shifts every later page, so the columns fold back to their first page.
+    pages.reset();
     res.reload();
     reloadProject();
   };
@@ -100,9 +108,17 @@ export function Tickets(): ReactElement {
 
   return (
     <>
-      <PageHeader title="Tickets" />
+      <PageHeader
+        title="Tickets"
+        actions={
+          <>
+            <ConnectApp slug={p.slug} />
+            <NewTicketDialog slug={p.slug} onFiled={changed} />
+          </>
+        }
+      />
       {!d ? (
-        <Skeleton className="h-[calc(100dvh-17rem)] rounded-xl" />
+        <Skeleton className="h-[calc(100dvh-15rem)] rounded-xl" />
       ) : d.tickets.length === 0 ? (
         <Card className="py-0">
           <TableEmpty
@@ -117,6 +133,15 @@ export function Tickets(): ReactElement {
           counts={d.counts}
           notes={STAGE_NOTES}
           onMove={drop}
+          footer={(s, _shown, total) =>
+            s === "done" ? (
+              <Button asChild variant="ghost" size="sm" className="w-full text-muted-foreground">
+                <Link to={`${base}/done`}>See all {total.toLocaleString()} done tickets</Link>
+              </Button>
+            ) : (
+              <ShowMore busy={pages.busy === s} onClick={() => void pages.load(s)} />
+            )
+          }
           card={(t) => (
             <Link
               to={`${base}/${t.number}`}
@@ -128,7 +153,7 @@ export function Tickets(): ReactElement {
                 number={t.number}
                 meta={
                   <>
-                    {t.close_reason && <Badge variant="neutral">{reasonLabel(t.close_reason)}</Badge>}
+                    {t.close_reason && <ReasonBadge reason={t.close_reason} />}
                     {t.public_title && <Badge variant="outline">Public title</Badge>}
                   </>
                 }

@@ -1,29 +1,39 @@
 import { useState } from "react";
 import type { DragEvent, ReactElement, ReactNode } from "react";
+import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { stageLabel } from "@/lib/tickets";
 import type { Stage, StageCounts } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-/** A ring per column: dashed for Triage, empty for Backlog, half for In progress, full for Done. */
+/** A ring per column: dashed grey for Triage, empty for Backlog, half yellow for In progress, full green for Done. */
 export function StageRing({ stage }: { stage: Stage }): ReactElement {
   return (
     <span
       aria-hidden="true"
       className={cn(
         "inline-block size-3 shrink-0 rounded-full border-[1.5px]",
-        stage === "triage" && "border-dashed border-muted-foreground",
-        stage === "backlog" && "border-muted-foreground",
+        stage === "triage" && "border-dashed border-unknown",
+        stage === "backlog" && "border-neutral-strong",
         stage === "in_progress" && "border-issue bg-[conic-gradient(var(--issue)_0_50%,transparent_50%_100%)]",
-        stage === "done" && "border-neutral-strong bg-neutral-strong",
+        stage === "done" && "border-up bg-up",
       )}
     />
   );
 }
 
+// The count pill takes its column's colour.
+const COUNT: Record<Stage, string> = {
+  triage: "bg-muted text-muted-foreground",
+  backlog: "bg-neutral-strong/12 text-neutral-strong",
+  in_progress: "bg-issue/14 text-issue",
+  done: "bg-up/12 text-up",
+};
+
 /**
- * Columns of ticket cards, one per stage. A column shows its newest cards; the count is every
- * ticket in the stage, and a note says when the column holds more than it shows. With `onMove`
- * a card drags to another column; the drop names the whole column, not a place in it.
+ * Columns of ticket cards, one per stage. A column shows a page of its newest cards; the count is
+ * every ticket in the stage, and `footer` offers the rest. With `onMove` a card drags to another
+ * column; the drop names the whole column, not a place in it.
  */
 export function TicketBoard<T extends { number: number; stage: Stage }>({
   stages,
@@ -31,6 +41,7 @@ export function TicketBoard<T extends { number: number; stage: Stage }>({
   counts,
   card,
   notes,
+  footer,
   onMove,
 }: {
   stages: Stage[];
@@ -38,6 +49,8 @@ export function TicketBoard<T extends { number: number; stage: Stage }>({
   counts: Partial<StageCounts>;
   card: (t: T) => ReactNode;
   notes?: Partial<Record<Stage, string>>;
+  // Under the cards when the column holds more than it shows.
+  footer?: (stage: Stage, shown: number, total: number) => ReactNode;
   onMove?: (t: T, to: Stage) => void;
 }): ReactElement {
   // dataTransfer is unreadable during dragover, so the dragged card lives here.
@@ -74,46 +87,53 @@ export function TicketBoard<T extends { number: number; stage: Stage }>({
             key={s}
             aria-labelledby={`col-${s}`}
             className={cn(
-              "flex min-h-[calc(100dvh-17rem)] min-w-0 flex-col gap-2 rounded-xl border bg-paper p-2 transition-colors",
+              "flex h-[calc(100dvh-15rem)] min-h-[26rem] min-w-0 flex-col rounded-xl border bg-paper transition-colors",
               over === s && dragging?.stage !== s && "border-foreground/30 bg-accent",
             )}
             {...target(s)}
           >
-            <div className="flex flex-col gap-1 px-2 pt-1.5 pb-1">
+            <div className="flex flex-col gap-1 px-4 pt-3.5 pb-3">
               <h2 id={`col-${s}`} className="flex items-center gap-2 text-sm font-semibold">
                 <StageRing stage={s} />
                 {stageLabel(s)}
-                <span className="rounded-full bg-muted px-1.5 text-xs font-medium text-muted-foreground tabular-nums" data-count>
+                <span className={cn("rounded-full px-1.5 text-xs font-semibold tabular-nums", COUNT[s])} data-count>
                   {total.toLocaleString()}
                 </span>
               </h2>
-              {notes?.[s] && <p className="text-[13px] text-muted-foreground">{notes[s]}</p>}
+              {notes?.[s] && (
+                <p className="truncate text-[13px] text-muted-foreground" title={notes[s]}>
+                  {notes[s]}
+                </p>
+              )}
             </div>
-            {cards.map((t) => (
-              <div
-                key={t.number}
-                draggable={onMove ? true : undefined}
-                onDragStart={
-                  onMove &&
-                  ((e) => {
-                    // Safari starts a drag only once something is set.
-                    e.dataTransfer.setData("text/plain", `#${t.number}`);
-                    e.dataTransfer.effectAllowed = "move";
-                    setDragging(t);
-                  })
-                }
-                onDragEnd={onMove && end}
-                className={cn(dragging?.number === t.number && "opacity-50")}
-              >
-                {card(t)}
-              </div>
-            ))}
-            {cards.length === 0 && <p className="px-2 py-3 text-[13px] text-muted-foreground">No tickets.</p>}
-            {total > cards.length && (
-              <p className="px-2 py-1 text-xs text-muted-foreground">
-                Newest {cards.length} of {total.toLocaleString()}
-              </p>
-            )}
+            <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-2 pb-2">
+              {cards.map((t) => (
+                <div
+                  key={t.number}
+                  draggable={onMove ? true : undefined}
+                  onDragStart={
+                    onMove &&
+                    ((e) => {
+                      // Safari starts a drag only once something is set.
+                      e.dataTransfer.setData("text/plain", `#${t.number}`);
+                      e.dataTransfer.effectAllowed = "move";
+                      setDragging(t);
+                    })
+                  }
+                  onDragEnd={onMove && end}
+                  className={cn("shrink-0", dragging?.number === t.number && "opacity-50")}
+                >
+                  {card(t)}
+                </div>
+              ))}
+              {cards.length === 0 && <p className="px-2 py-3 text-[13px] text-muted-foreground">No tickets.</p>}
+              {total > cards.length &&
+                (footer?.(s, cards.length, total) ?? (
+                  <p className="px-2 py-1 text-xs text-muted-foreground">
+                    Newest {cards.length} of {total.toLocaleString()}
+                  </p>
+                ))}
+            </div>
           </section>
         );
       })}
@@ -132,5 +152,15 @@ export function TicketCard({ title, number, meta, aside }: { title: string; numb
       <span className="text-sm font-medium break-words">{title}</span>
       {meta && <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground empty:hidden">{meta}</div>}
     </div>
+  );
+}
+
+/** The foot of a column that holds more than it shows. */
+export function ShowMore({ busy, onClick }: { busy: boolean; onClick: () => void }): ReactElement {
+  return (
+    <Button type="button" variant="ghost" size="sm" className="w-full text-muted-foreground" disabled={busy} onClick={onClick}>
+      {busy && <Spinner data-icon="inline-start" />}
+      Show more
+    </Button>
   );
 }

@@ -20,10 +20,23 @@ export const reasonLabel = (r: CloseReason): string => REASONS.find(([k]) => k =
 /** What a column says under its name on the team's board. */
 export const STAGE_NOTES: Record<Stage, string> = {
   triage: "New reports. Only your team sees them.",
-  backlog: "Accepted and not started. The public board shows it.",
+  backlog: "Accepted. Shown on the public board.",
   in_progress: "Someone is working on it.",
-  done: "Closed as fixed, won't fix or duplicate.",
+  done: "Fixed, won't fix or duplicate.",
 };
+
+/** What a column says under its name on the public board. */
+export const PUBLIC_NOTES: Partial<Record<Stage, string>> = {
+  backlog: "Known, and waiting for a fix.",
+  in_progress: "The team is working on it.",
+  done: "Closed recently.",
+};
+
+/** The board's first page with later pages of some columns after it, each ticket once. */
+export function withMore<T extends { number: number }>(first: T[], more: T[]): T[] {
+  const seen = new Set(first.map((t) => t.number));
+  return [...first, ...more.filter((t) => !seen.has(t.number) && seen.add(t.number))];
+}
 
 /** A card dropped on a column: nothing, a move, or a move that first needs a close reason. */
 export function dropOutcome(from: Stage, to: Stage): "none" | "move" | "ask_reason" {

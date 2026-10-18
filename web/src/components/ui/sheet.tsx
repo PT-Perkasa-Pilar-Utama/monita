@@ -9,6 +9,10 @@ function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>): 
   return <SheetPrimitive.Root data-slot="sheet" {...props} />;
 }
 
+function SheetTrigger({ ...props }: React.ComponentProps<typeof SheetPrimitive.Trigger>): ReactElement {
+  return <SheetPrimitive.Trigger data-slot="sheet-trigger" {...props} />;
+}
+
 function SheetClose({ ...props }: React.ComponentProps<typeof SheetPrimitive.Close>): ReactElement {
   return <SheetPrimitive.Close data-slot="sheet-close" {...props} />;
 }
@@ -61,4 +65,4 @@ function SheetDescription({ className, ...props }: React.ComponentProps<typeof S
   return <SheetPrimitive.Description data-slot="sheet-description" className={cn("text-sm text-muted-foreground", className)} {...props} />;
 }
 
-export { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle };
+export { Sheet, SheetTrigger, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle };
