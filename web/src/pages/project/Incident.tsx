@@ -30,14 +30,15 @@ const LABELS: { value: UpdateLabel; title: string; description: string }[] = [
 ];
 
 /** Why a label is off for this incident, in the words the server's rule uses. */
-function unavailable(label: UpdateLabel, allowed: UpdateLabel[], closed: boolean): string | undefined {
-  if (allowed.includes(label)) return undefined;
-  if (closed) return "The incident is over. Only a Resolved note can follow it.";
-  return "Monita opened this incident, so Monita closes it: on the next passing check or heartbeat ping. An incident you report yourself can be resolved here.";
+function unavailable(label: UpdateLabel, allowed: UpdateLabel[]): string | undefined {
+  return allowed.includes(label) ? undefined : "The incident is over. Only a Resolved note can follow it.";
 }
 
+/** Resolved on an incident Monita opened closes it now; a check that still fails opens a new one. */
+const RESOLVE_AUTO = "Closes it now and tells the alert recipients. If it still fails, Monita opens a new incident.";
+
 /** Post update, in the half-width panel: a label as cards, and the message the status page shows. */
-function PostUpdate({ path, labels, closed, onPosted }: { path: string; labels: UpdateLabel[]; closed: boolean; onPosted: () => void }): ReactElement {
+function PostUpdate({ path, labels, auto, onPosted }: { path: string; labels: UpdateLabel[]; auto: boolean; onPosted: () => void }): ReactElement {
   const [open, setOpen] = useState(false);
   const first = labels.includes("monitoring") ? "monitoring" : (labels[0] ?? "resolved");
   const [label, setLabel] = useState<UpdateLabel>(first);
@@ -82,7 +83,7 @@ function PostUpdate({ path, labels, closed, onPosted }: { path: string; labels: 
           }
         >
           <FieldGroup className="gap-5">
-            <ChoiceCards id="label" legend="Label" value={label} onChange={setLabel} choices={LABELS.map((l) => ({ ...l, unavailable: unavailable(l.value, labels, closed) }))} />
+            <ChoiceCards id="label" legend="Label" value={label} onChange={setLabel} choices={LABELS.map((l) => ({ ...l, description: auto && l.value === "resolved" ? RESOLVE_AUTO : l.description, unavailable: unavailable(l.value, labels) }))} />
             {labelError && <FieldError>{labelError}</FieldError>}
             <Field data-invalid={messageError ? true : undefined}>
               <FieldLabel htmlFor="update-message" required>
@@ -141,7 +142,7 @@ export function Incident(): ReactElement {
                 key={`${i.resolved_at ?? "open"}`}
                 path={path}
                 labels={d.labels}
-                closed={i.resolved_at !== null}
+                auto={i.origin === "auto" && i.resolved_at === null}
                 onPosted={() => {
                   res.reload();
                   reloadProject();
@@ -214,7 +215,7 @@ export function Incident(): ReactElement {
               <Side title="How it closes">
                 <p className="text-sm text-muted-foreground">
                   {i.origin === "auto"
-                    ? "Monita opened it, so Monita closes it on the next passing check or heartbeat ping. You can post updates in the meantime."
+                    ? "Monita closes it on the next passing check or heartbeat ping. You can also resolve it yourself, such as when you retire the job."
                     : "It stays open until you post an update labelled Resolved."}
                 </p>
               </Side>
