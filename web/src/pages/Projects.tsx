@@ -11,6 +11,7 @@ import { Pager } from "@/components/list/Pager";
 import { TableEmpty } from "@/components/list/TableEmpty";
 import { ViewToggle } from "@/components/list/ViewToggle";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { listQuery, pageCount, pageParam, skeletonCount } from "@/lib/page";
@@ -68,7 +69,16 @@ export function Projects(): ReactElement {
   const skeletons = skeletonCount(page, d?.page_size ?? 20, d?.total);
   const none = !loading && d !== undefined && d.total === 0;
   const filtered = q !== "" || owner !== "";
-  const count = d ? `${d.total} ${d.total === 1 ? "project" : "projects"}` : "Projects";
+  const count = (
+    <span className="flex items-center gap-4">
+      <span>{d ? `${d.total} ${d.total === 1 ? "project" : "projects"}` : "Projects"}</span>
+      {filtered && (
+        <Button variant="link" size="sm" className="h-auto" onClick={clear}>
+          Clear filters
+        </Button>
+      )}
+    </span>
+  );
   const empty = filtered ? (
     <TableEmpty title="" filtered noun="projects" onClear={clear} />
   ) : (
@@ -105,7 +115,16 @@ export function Projects(): ReactElement {
   return (
     <>
       <PageHeader
-        title="Projects"
+        title={
+          <span className="flex items-center gap-3">
+            Projects
+            {filtered && (
+              <Badge variant="neutral" className="px-2.5 py-1 text-sm">
+                Filtered
+              </Badge>
+            )}
+          </span>
+        }
         actions={
           <>
             <div className="flex w-full items-center gap-2 sm:w-auto">
