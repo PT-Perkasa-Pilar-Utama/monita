@@ -125,7 +125,9 @@ pub async fn submit(
         {
             return Ok(Err(TicketError::DailyCap));
         }
-        let number = store::insert_ticket(c, r.project_id, r.id, t, now).await?;
+        let number =
+            store::insert_ticket(c, r.project_id, store::Filer::Ref(r.id), "triage", t, now)
+                .await?;
         if r.single_use {
             store::use_ref(c, r.id, now).await?;
         }
@@ -137,6 +139,55 @@ pub async fn submit(
         }))
     })
     .await?
+}
+
+/// A team member files a ticket in any column but Done. No caps and no webhook: those guard
+/// against reporter traffic, and the team already knows. Returns the ticket's number.
+pub async fn file(
+    db: &Db,
+    project_id: i64,
+    user_id: i64,
+    stage: &str,
+    t: &NewTicket,
+) -> Result<i64, TicketError> {
+    t.validate()?;
+    if !STAGES[..3].contains(&stage) {
+        return Err(TicketError::Invalid {
+            field: "stage",
+            message: "Pick Triage, Backlog or In progress.",
+        });
+    }
+    let at = now();
+    Ok(db
+        .write(async |c| {
+            store::insert_ticket(c, project_id, store::Filer::Member(user_id), stage, t, at).await
+        })
+        .await?)
+}
+
+/// Page `page` (from 1) of one column, newest change first. `caps::TICKETS_PER_COLUMN` a page.
+pub async fn column(
+    db: &Db,
+    project_id: i64,
+    stage: &str,
+    page: i64,
+) -> anyhow::Result<Vec<TicketRow>> {
+    let offset = (page.max(1) - 1) * crate::platform::caps::TICKETS_PER_COLUMN;
+    store::column_page(&db.read().await?, project_id, stage, offset).await
+}
+
+/// The public copy of `column`. Triage is never public (SEC-14), so it comes back empty.
+pub async fn public_column(
+    db: &Db,
+    project_id: i64,
+    stage: &str,
+    page: i64,
+) -> anyhow::Result<Vec<PublicTicket>> {
+    if stage == "triage" {
+        return Ok(Vec::new());
+    }
+    let offset = (page.max(1) - 1) * crate::platform::caps::TICKETS_PER_COLUMN;
+    store::public_column_page(&db.read().await?, project_id, stage, offset).await
 }
 
 /// US-29: a reporter's tickets by ref ID, also after revocation or single use. No descriptions.

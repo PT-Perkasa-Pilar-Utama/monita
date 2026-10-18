@@ -8,7 +8,7 @@ mod public;
 use axum::{
     Json, Router,
     body::Bytes,
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::{HeaderMap, HeaderValue, StatusCode, header},
     response::{IntoResponse, Response},
     routing::{get, post, put},
@@ -41,7 +41,10 @@ pub fn router() -> Router<AppState> {
         .route("/api/ui/public/{slug}/tickets", get(public::public_board))
         .route("/api/ui/public/{slug}/report", post(public::report))
         .route("/api/ui/public/{slug}/mine", post(public::mine))
-        .route("/api/ui/projects/{slug}/tickets", get(board::board))
+        .route(
+            "/api/ui/projects/{slug}/tickets",
+            get(board::board).post(board::file),
+        )
         .route(
             "/api/ui/projects/{slug}/tickets/{number}",
             get(board::detail),
@@ -70,6 +73,34 @@ impl From<TicketError> for UiError {
             TicketError::Other(e) => UiError::Internal(e),
         }
     }
+}
+
+/// `?stage=&page=` asks for one more page of one column instead of the whole board.
+#[derive(Deserialize, Default)]
+#[serde(default)]
+pub(super) struct ColumnQuery {
+    stage: Option<String>,
+    page: Option<i64>,
+}
+
+impl ColumnQuery {
+    /// The column asked for; an unknown stage is a 404, like an unknown page.
+    fn stage(&self) -> Result<Option<&'static str>, UiError> {
+        match &self.stage {
+            None => Ok(None),
+            Some(s) => crate::tickets::STAGES
+                .iter()
+                .find(|k| *k == s)
+                .map(|k| Some(*k))
+                .ok_or(UiError::NotFound),
+        }
+    }
+}
+
+/// Every ticket in one column, for a page's "of N".
+async fn stage_total(state: &AppState, project_id: i64, stage: &str) -> Result<i64, UiError> {
+    let rows = crate::tickets::stage_counts(&state.db, project_id).await?;
+    Ok(rows.iter().find(|(s, _)| s == stage).map_or(0, |(_, n)| *n))
 }
 
 /// Stage name to its ticket count; a stage with none is 0.

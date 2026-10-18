@@ -25,7 +25,7 @@ pub const OPEN_MANUAL_PER_PROJECT: i64 = 20;
 /// open manual ones naming every source.
 pub const OPEN_ITEMS: i64 = SOURCES_PER_PROJECT * (1 + OPEN_MANUAL_PER_PROJECT);
 /// Tickets a kanban or public board column shows, newest first; the column header counts all.
-pub const TICKETS_PER_COLUMN: i64 = 200;
+pub const TICKETS_PER_COLUMN: i64 = 25;
 /// Tickets one digest email lists; it says how many more wait in Triage.
 pub const DIGEST_LINES: i64 = 50;
 /// Status updates per incident on the public page, newest first.

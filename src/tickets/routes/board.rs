@@ -2,13 +2,23 @@
 
 use super::*;
 
-/// The newest tickets of each column, and how many each column holds.
+/// The newest tickets of each column, and how many each column holds. With `?stage=` it is one
+/// page of that column.
 pub(super) async fn board(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
     Path(slug): Path<String>,
+    Query(q): Query<ColumnQuery>,
 ) -> UiResult {
     let p = projects::find_for(&state.db, &user, &slug).await?;
+    if let Some(stage) = q.stage()? {
+        let page = q.page.unwrap_or(1);
+        let tickets = crate::tickets::column(&state.db, p.id, stage, page).await?;
+        let total = stage_total(&state, p.id, stage).await?;
+        return Ok(data(
+            serde_json::json!({ "tickets": tickets, "page": page, "total": total, "page_size": crate::platform::caps::TICKETS_PER_COLUMN }),
+        ));
+    }
     let (tickets, rows) = crate::tickets::board(&state.db, p.id).await?;
     Ok(data(
         serde_json::json!({ "tickets": tickets, "counts": counts(rows) }),
@@ -80,4 +90,29 @@ pub(super) async fn revoke_ref(
 ) -> UiResult {
     let p = projects::find_for(&state.db, &user, &slug).await?;
     done(crate::tickets::revoke_ref(&state.db, p.id, number).await?)
+}
+
+#[derive(Deserialize, Default)]
+#[serde(default)]
+pub(super) struct FileForm {
+    title: String,
+    description: String,
+    stage: String,
+}
+
+/// The team files a ticket itself. 201 `{number}`.
+pub(super) async fn file(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(slug): Path<String>,
+    Body(f): Body<FileForm>,
+) -> UiResult {
+    let p = projects::find_for(&state.db, &user, &slug).await?;
+    let t = NewTicket {
+        title: f.title,
+        description: f.description,
+        page_url: None,
+    };
+    let number = crate::tickets::file(&state.db, p.id, user.id, &f.stage, &t).await?;
+    Ok(created(serde_json::json!({ "number": number })))
 }

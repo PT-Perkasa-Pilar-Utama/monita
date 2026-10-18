@@ -26,6 +26,8 @@ pub struct TicketRow {
     pub created_at: i64,
     pub updated_at: i64,
     pub ref_revoked: bool,
+    /// The team member who filed it; `None` for a reporter's ticket.
+    pub filed_by: Option<String>,
 }
 
 /// SEC-14 public fields only: number, title, stage, dates. The close reason is the TL's verdict
@@ -108,12 +110,19 @@ pub async fn count_since_for_project(
     .unwrap_or(0))
 }
 
+/// Who files a ticket: a reporter through a ref ID, or a team member.
+pub enum Filer {
+    Ref(i64),
+    Member(i64),
+}
+
 /// Returns the new ticket's number. Safe as max + 1 because every write runs on the single
 /// writer connection inside one transaction (spec 05 section 5.8.5).
 pub async fn insert_ticket(
     c: &Connection,
     project_id: i64,
-    ref_id: i64,
+    by: Filer,
+    stage: &str,
     t: &NewTicket,
     at: i64,
 ) -> anyhow::Result<i64> {
@@ -124,15 +133,21 @@ pub async fn insert_ticket(
     )
     .await?
     .unwrap_or(1);
+    let (ref_id, created_by) = match by {
+        Filer::Ref(id) => (Some(id), None),
+        Filer::Member(id) => (None, Some(id)),
+    };
     c.execute(
-        "INSERT INTO tickets (project_id, number, ref_id, title, description, page_url, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?7)",
-        (project_id, number, ref_id, t.title.trim(), t.description.trim(), t.page_url.as_deref(), at),
+        "INSERT INTO tickets (project_id, number, ref_id, created_by, stage, title, description, page_url, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?9)",
+        (project_id, number, ref_id, created_by, stage, t.title.trim(), t.description.trim(), t.page_url.as_deref(), at),
     )
     .await?;
     Ok(number)
 }
 
-const COLS: &str = "t.number, t.title, t.public_title, t.description, t.page_url, t.stage, t.close_reason, t.created_at, t.updated_at, r.revoked_at IS NOT NULL";
+const COLS: &str = "t.number, t.title, t.public_title, t.description, t.page_url, t.stage, t.close_reason, t.created_at, t.updated_at, r.revoked_at IS NOT NULL, u.email";
+/// A team ticket has no ref ID, and a reporter's ticket no member, so both joins are LEFT.
+const WHO: &str = "LEFT JOIN ref_ids r ON r.id = t.ref_id LEFT JOIN users u ON u.id = t.created_by";
 
 fn row(r: &turso::Row) -> turso::Result<TicketRow> {
     Ok(TicketRow {
@@ -146,6 +161,7 @@ fn row(r: &turso::Row) -> turso::Result<TicketRow> {
         created_at: r.get(7)?,
         updated_at: r.get(8)?,
         ref_revoked: r.get::<i64>(9)? == 1,
+        filed_by: r.get(10)?,
     })
 }
 
@@ -154,7 +170,37 @@ fn row(r: &turso::Row) -> turso::Result<TicketRow> {
 const NEWEST_PER_STAGE: &str = "(SELECT *, row_number() OVER (PARTITION BY stage ORDER BY updated_at DESC, id DESC) AS rn FROM tickets WHERE project_id = ?1) t";
 
 pub async fn board(c: &Connection, project_id: i64) -> anyhow::Result<Vec<TicketRow>> {
-    crate::platform::db::query_all(c, format!("SELECT {COLS} FROM {NEWEST_PER_STAGE} JOIN ref_ids r ON r.id = t.ref_id WHERE t.rn <= ?2 ORDER BY t.updated_at DESC"), (project_id, caps::TICKETS_PER_COLUMN), row).await
+    crate::platform::db::query_all(c, format!("SELECT {COLS} FROM {NEWEST_PER_STAGE} {WHO} WHERE t.rn <= ?2 ORDER BY t.updated_at DESC"), (project_id, caps::TICKETS_PER_COLUMN), row).await
+}
+
+fn public_row(r: &turso::Row) -> turso::Result<PublicTicket> {
+    Ok(PublicTicket {
+        number: r.get(0)?,
+        title: r.get(1)?,
+        stage: r.get(2)?,
+        created_at: r.get(3)?,
+        updated_at: r.get(4)?,
+    })
+}
+
+/// One page of one column, in the board's order, for Show more and the Done list.
+pub async fn column_page(
+    c: &Connection,
+    project_id: i64,
+    stage: &str,
+    offset: i64,
+) -> anyhow::Result<Vec<TicketRow>> {
+    crate::platform::db::query_all(c, format!("SELECT {COLS} FROM tickets t {WHO} WHERE t.project_id = ?1 AND t.stage = ?2 ORDER BY t.updated_at DESC, t.id DESC LIMIT ?3 OFFSET ?4"), (project_id, stage, caps::TICKETS_PER_COLUMN, offset), row).await
+}
+
+/// The same page with public fields only (SEC-14). The caller never asks for Triage.
+pub async fn public_column_page(
+    c: &Connection,
+    project_id: i64,
+    stage: &str,
+    offset: i64,
+) -> anyhow::Result<Vec<PublicTicket>> {
+    crate::platform::db::query_all(c, "SELECT number, coalesce(public_title, title), stage, created_at, updated_at FROM tickets WHERE project_id = ?1 AND stage = ?2 AND stage != 'triage' ORDER BY updated_at DESC, id DESC LIMIT ?3 OFFSET ?4", (project_id, stage, caps::TICKETS_PER_COLUMN, offset), public_row).await
 }
 
 /// (stage, tickets in it) for the stages that have any.
@@ -174,7 +220,10 @@ pub async fn find(
     number: i64,
 ) -> anyhow::Result<Option<TicketRow>> {
     let mut rows = c
-        .query(format!("SELECT {COLS} FROM tickets t JOIN ref_ids r ON r.id = t.ref_id WHERE t.project_id = ?1 AND t.number = ?2"), (project_id, number))
+        .query(
+            format!("SELECT {COLS} FROM tickets t {WHO} WHERE t.project_id = ?1 AND t.number = ?2"),
+            (project_id, number),
+        )
         .await?;
     Ok(match rows.next().await? {
         Some(r) => Some(row(&r)?),
@@ -188,15 +237,7 @@ pub async fn public_board(c: &Connection, project_id: i64) -> anyhow::Result<Vec
         format!("SELECT t.number, coalesce(t.public_title, t.title), t.stage, t.created_at, t.updated_at FROM {NEWEST_PER_STAGE}
          WHERE t.stage != 'triage' AND t.rn <= ?2 ORDER BY t.updated_at DESC"),
         (project_id, caps::TICKETS_PER_COLUMN),
-        |r| {
-            Ok(PublicTicket {
-                number: r.get(0)?,
-                title: r.get(1)?,
-                stage: r.get(2)?,
-                created_at: r.get(3)?,
-                updated_at: r.get(4)?,
-            })
-        },
+        public_row,
     )
     .await
 }

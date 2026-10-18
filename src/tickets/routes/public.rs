@@ -19,8 +19,20 @@ pub(super) async fn project(State(state): State<AppState>, Path(slug): Path<Stri
 pub(super) async fn public_board(
     State(state): State<AppState>,
     Path(slug): Path<String>,
+    Query(q): Query<ColumnQuery>,
 ) -> UiResult {
     let p = public_project(&state, &slug).await?;
+    if let Some(stage) = q.stage()? {
+        let page = q.page.unwrap_or(1);
+        let tickets = crate::tickets::public_column(&state.db, p.id, stage, page).await?;
+        let total = if stage == "triage" {
+            0
+        } else {
+            stage_total(&state, p.id, stage).await?
+        };
+        let body = serde_json::json!({ "tickets": tickets, "page": page, "total": total, "page_size": crate::platform::caps::TICKETS_PER_COLUMN });
+        return Ok(crate::platform::ui::public_cache(data(body)));
+    }
     let (mut tickets, rows) = crate::tickets::public_board(&state.db, p.id).await?;
     // SEC-14, second layer: the SQL leaves Triage out, and so does this, count included.
     tickets.retain(|t| t.stage != "triage");

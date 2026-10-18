@@ -438,7 +438,7 @@ async fn each_new_ticket_calls_the_warning_webhook_when_it_is_on() {
 }
 
 #[tokio::test]
-async fn boards_show_the_newest_200_of_each_column() {
+async fn a_column_shows_25_and_pages_the_rest_on_both_boards() {
     let app = TestApp::spawn("test").await;
     let s = setup(&app).await;
     app.state
@@ -449,8 +449,8 @@ async fn boards_show_the_newest_200_of_each_column() {
                 (),
             )
             .await?;
-            for n in 1..=301 {
-                let (stage, reason) = if n <= 201 { ("done", Some("fixed")) } else { ("backlog", None) };
+            for n in 1..=61 {
+                let (stage, reason) = if n <= 31 { ("done", Some("fixed")) } else { ("backlog", None) };
                 c.execute(
                     "INSERT INTO tickets (project_id, number, ref_id, title, description, stage, close_reason, updated_at) VALUES (1, ?1, 1, ?2, 'd', ?3, ?4, ?1)",
                     (n, format!("Ticket {n}"), stage, reason),
@@ -461,28 +461,100 @@ async fn boards_show_the_newest_200_of_each_column() {
         })
         .await
         .unwrap();
+    let titles = |v: &Value| -> Vec<String> {
+        v["tickets"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|t| t["title"].as_str().unwrap().to_string())
+            .collect()
+    };
     for (path, cookie) in [
         ("/api/ui/projects/payments/tickets", Some(s.tl.as_str())),
         (PUBLIC_BOARD, None),
     ] {
         let board = read(&app, path, cookie).await;
-        let titles: Vec<&str> = board["tickets"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|t| t["title"].as_str().unwrap())
-            .collect();
-        assert_eq!(titles.len(), 300, "{path}");
+        let first = titles(&board);
+        assert_eq!(first.len(), 50, "{path}: 25 a column");
         assert!(
-            !titles.contains(&"Ticket 1"),
-            "{path}: the oldest Done drops off"
+            !first.contains(&"Ticket 6".to_string()),
+            "{path}: the 26th Done waits"
         );
-        assert!(titles.contains(&"Ticket 2") && titles.contains(&"Ticket 301"));
+        assert!(first.contains(&"Ticket 7".to_string()));
         assert_eq!(
-            board["counts"]["done"], 201,
+            board["counts"]["done"], 31,
             "{path}: the count is every ticket"
         );
+
+        let more = read(&app, &format!("{path}?stage=done&page=2"), cookie).await;
+        assert_eq!(
+            titles(&more),
+            [
+                "Ticket 6", "Ticket 5", "Ticket 4", "Ticket 3", "Ticket 2", "Ticket 1"
+            ],
+            "{path}: page 2 holds the rest, newest first"
+        );
+        let past = read(&app, &format!("{path}?stage=done&page=3"), cookie).await;
+        assert!(titles(&past).is_empty(), "{path}: past the end is empty");
     }
+    let res = app
+        .api_get(
+            "/api/ui/projects/payments/tickets?stage=archived",
+            Some(&s.tl),
+        )
+        .await;
+    assert_eq!(res.status(), 404, "an unknown column");
+}
+
+#[tokio::test]
+async fn the_public_column_pages_never_show_triage() {
+    let app = TestApp::spawn("test").await;
+    let s = setup(&app).await;
+    let r = ref_id(&app, &s.key, false).await;
+    assert_eq!(submit(&app, &r, "Private report").await.status(), 201);
+    let page = read(&app, &format!("{PUBLIC_BOARD}?stage=triage"), None).await;
+    assert_eq!(page["tickets"], json!([]));
+}
+
+#[tokio::test]
+async fn the_team_files_a_ticket_without_a_ref_id() {
+    let app = TestApp::spawn("test").await;
+    let s = setup(&app).await;
+    let path = "/api/ui/projects/payments/tickets";
+    let body = json!({"title": "Refund button is grey", "description": "Seen in the admin panel.", "stage": "backlog"});
+    let res = app.api_post(path, body.clone(), Some(&s.tl)).await;
+    assert_eq!(res.status(), 201);
+    assert_eq!(json_of(res).await["data"]["number"], 1);
+
+    let t = read(&app, "/api/ui/projects/payments/tickets/1", Some(&s.tl)).await;
+    assert_eq!(t["stage"], "backlog");
+    assert_eq!(t["filed_by"], "rina@x.co");
+    assert_eq!(t["ref_revoked"], false);
+    assert_eq!(
+        count(
+            &app,
+            "SELECT count(*) FROM tickets WHERE ref_id IS NULL AND created_by IS NOT NULL"
+        )
+        .await,
+        1
+    );
+    assert_eq!(
+        count(&app, "SELECT count(*) FROM ref_ids").await,
+        0,
+        "no ref ID is made up"
+    );
+
+    let done = json!({"title": "Refund button is grey", "description": "x", "stage": "done"});
+    let res = app.api_post(path, done, Some(&s.tl)).await;
+    assert_eq!(res.status(), 422);
+    assert!(json_of(res).await["error"]["fields"]["stage"].is_string());
+
+    let other = app.tl("budi@x.co").await;
+    assert_eq!(
+        app.api_post(path, body, Some(&other)).await.status(),
+        404,
+        "only the owner files"
+    );
 }
 
 #[tokio::test]
