@@ -35,38 +35,38 @@ pub fn router() -> Router<AppState> {
 const META: &[(&str, &str, &str, i64)] = &[
     (
         "check_concurrency",
-        "Checks",
-        "Monita runs at most this many checks at the same time. A check that finds no free slot waits for the next one.",
+        "Monitoring",
+        "How many checks Monita runs at once. When every slot is busy, the next check waits a moment. Raise it if you have many monitors and their checks run late.",
         50,
     ),
     (
         "rl_ip_per_min",
-        "Rate limits",
-        "One visitor IP can load public pages, send the ticket form or try to sign in this many times a minute.",
+        "Visitors and apps",
+        "How often one visitor can open a status page, send a bug report or try to sign in, each minute. This stops one person or bot from flooding Monita.",
         60,
     ),
     (
         "rl_key_per_min",
-        "Rate limits",
-        "One API key can call the API this many times a minute.",
+        "Visitors and apps",
+        "How often one of your apps can call the Monita API with its key, each minute.",
         120,
     ),
     (
         "rl_ping_per_s",
-        "Rate limits",
-        "A heartbeat accepts this many pings a second. Extra pings get 429 and are not stored.",
+        "Visitors and apps",
+        "How often one heartbeat can ping Monita, each second. Extra pings in the same second are turned away; the first one still keeps the heartbeat alive.",
         1,
     ),
     (
         "tickets_per_ref_per_day",
-        "Tickets",
-        "One reference ID can send this many tickets a day.",
+        "Bug reports",
+        "How many bug reports one user can send each day. Monita knows the user by their ref ID.",
         5,
     ),
     (
         "tickets_per_project_per_day",
-        "Tickets",
-        "One project accepts this many tickets a day from all its users.",
+        "Bug reports",
+        "How many bug reports one project accepts each day, from all its users together.",
         100,
     ),
 ];
@@ -143,38 +143,48 @@ fn server_rows(c: &Config) -> Vec<(&'static str, String)> {
     let yes_no = |b: bool| if b { "Yes" } else { "No" }.to_string();
     vec![
         (
-            "Environment",
+            "Mode",
             match c.env {
-                Env::Dev => "dev",
-                Env::Test => "test",
-                Env::Prod => "prod",
+                Env::Dev => "Development",
+                Env::Test => "Test",
+                Env::Prod => "Production",
             }
             .into(),
         ),
-        ("Public URL", c.base_url.clone()),
+        ("Address people open", c.base_url.clone()),
         ("Listens on", c.bind.to_string()),
-        ("Database file", c.db_path.display().to_string()),
+        ("Data file", c.db_path.display().to_string()),
         (
             "Backups",
             match &c.backup_dir {
-                Some(d) => format!("Nightly to {}, keeping {}", d.display(), c.backup_keep),
+                Some(d) => format!(
+                    "Every night to {}, keeping the last {}",
+                    d.display(),
+                    c.backup_keep
+                ),
                 None => "Off".into(),
             },
         ),
         (
-            "Single checks kept",
+            "Check history kept",
             format!("{} days", retention::RAW_KEEP_S / 86_400),
         ),
         (
-            "Sent alerts kept",
+            "Sent alert history kept",
             format!("{} days", retention::OUTBOX_KEEP_S / 86_400),
         ),
-        ("Pings an outside watcher", yes_no(c.ping_url.is_some())),
-        ("Behind a proxy", yes_no(c.trust_proxy)),
-        ("Daily digest", format!("{:02}:00 UTC", c.digest_utc_hour)),
         (
-            "Log format",
-            if c.log_json { "JSON" } else { "Text" }.into(),
+            "Tells an outside service it is up",
+            yes_no(c.ping_url.is_some()),
+        ),
+        ("Runs behind a proxy", yes_no(c.trust_proxy)),
+        (
+            "Daily bug report email",
+            format!("{:02}:00 UTC", c.digest_utc_hour),
+        ),
+        (
+            "Log style",
+            if c.log_json { "JSON" } else { "Plain text" }.into(),
         ),
     ]
 }
@@ -210,37 +220,37 @@ async fn view(state: &AppState) -> anyhow::Result<SystemView> {
     let users = accounts::list_users(&state.db).await?.len() as i64;
     let caps = vec![
         Cap {
-            label: "Accounts",
+            label: "User accounts",
             max: caps::USERS,
             used: Some(users),
         },
         Cap {
-            label: "Monitors per project",
+            label: "Monitors in one project",
             max: caps::MONITORS_PER_PROJECT,
             used: None,
         },
         Cap {
-            label: "Heartbeats per project",
+            label: "Heartbeats in one project",
             max: caps::HEARTBEATS_PER_PROJECT,
             used: None,
         },
         Cap {
-            label: "Live API keys per project",
+            label: "Active API keys in one project",
             max: caps::KEYS_PER_PROJECT,
             used: None,
         },
         Cap {
-            label: "Addresses per alert route",
+            label: "Email addresses in one alert setting",
             max: caps::EMAILS_PER_ROUTE as i64,
             used: None,
         },
         Cap {
-            label: "Updates per incident",
+            label: "Updates on one incident",
             max: caps::UPDATES_PER_INCIDENT,
             used: None,
         },
         Cap {
-            label: "Open reported incidents per project",
+            label: "Open incidents you reported by hand, in one project",
             max: caps::OPEN_MANUAL_PER_PROJECT,
             used: None,
         },
@@ -248,7 +258,7 @@ async fn view(state: &AppState) -> anyhow::Result<SystemView> {
     let config = &state.config;
     Ok(SystemView {
         limits,
-        groups: ["Checks", "Rate limits", "Tickets"],
+        groups: ["Monitoring", "Visitors and apps", "Bug reports"],
         mail: smtp_view(config.smtp_url.as_deref(), &config.mail_from),
         email: notify::email_health(&state.db, now - EMAIL_DAYS * 86_400).await?,
         email_days: EMAIL_DAYS,
