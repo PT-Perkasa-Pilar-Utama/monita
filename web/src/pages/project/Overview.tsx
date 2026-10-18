@@ -1,5 +1,6 @@
 import type { ReactElement, ReactNode } from "react";
 import { Link } from "react-router-dom";
+import { LinkRow, ROW_LINK } from "@/components/app/LinkRow";
 import { ProjectAbout, useProjectEdit } from "@/components/app/ProjectAbout";
 import { ProjectBadge } from "@/components/app/ProjectBadge";
 import { LabelBadge, SeverityBadge } from "@/components/app/Tone";
@@ -142,9 +143,9 @@ export function Overview(): ReactElement {
                   </TableHeader>
                   <TableBody>
                     {d.incidents.map((i) => (
-                      <TableRow key={i.id}>
+                      <LinkRow key={i.id} to={`${base}/incidents/${i.id}`}>
                         <TableCell className="whitespace-normal">
-                          <Link to={`${base}/incidents/${i.id}`} className="font-medium hover:underline">
+                          <Link to={`${base}/incidents/${i.id}`} className={ROW_LINK}>
                             {i.title}
                           </Link>
                           <div className="font-mono text-xs text-muted-foreground">
@@ -156,7 +157,7 @@ export function Overview(): ReactElement {
                         </TableCell>
                         <TableCell className="max-sm:hidden">{i.last_label && <LabelBadge label={i.last_label} />}</TableCell>
                         <TableCell className="text-right font-mono">{duration((i.resolved_at ?? now) - i.started_at)}</TableCell>
-                      </TableRow>
+                      </LinkRow>
                     ))}
                   </TableBody>
                 </Table>

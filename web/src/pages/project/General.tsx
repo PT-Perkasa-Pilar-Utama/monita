@@ -56,6 +56,7 @@ function ProjectSection(): ReactElement {
   };
   return (
     <SettingsSection
+      id="project"
       title="Project"
       description="The name and the slug stay as they are."
       onSubmit={() => void save()}
@@ -212,9 +213,18 @@ export function General(): ReactElement {
   const [reassigning, setReassigning] = useState(false);
   const [deleting, setDeleting] = useState(false);
   return (
-    <SettingsPage title="General">
+    <SettingsPage
+      title="General"
+      toc={[
+        { id: "project", label: "Project" },
+        { id: "status-page", label: "Status page" },
+        { id: "owner", label: "Owner" },
+        ...(me.is_admin ? [{ id: "danger-zone", label: "Danger zone" }] : []),
+      ]}
+    >
       <ProjectSection />
       <SettingsSection
+        id="status-page"
         title="Status page"
         description="Visitors see the monitors and heartbeats you make public, and the known issues."
         footer={
@@ -231,6 +241,7 @@ export function General(): ReactElement {
         </p>
       </SettingsSection>
       <SettingsSection
+        id="owner"
         title="Owner"
         description="The owner manages this project. Its monitors, keys and tickets stay when it moves to another tech lead."
         footer={
@@ -244,7 +255,7 @@ export function General(): ReactElement {
         <p className="text-sm font-medium">{p.owner_email}</p>
       </SettingsSection>
       {me.is_admin && (
-        <SettingsSection title="Danger zone" description="Only a super admin sees this section." danger>
+        <SettingsSection id="danger-zone" title="Danger zone" description="Only a super admin sees this section." danger>
           <div className="grid items-center gap-4 sm:grid-cols-[minmax(0,1fr)_auto]">
             <div className="flex min-w-0 flex-col gap-1">
               <strong className="text-sm font-semibold">Delete this project</strong>

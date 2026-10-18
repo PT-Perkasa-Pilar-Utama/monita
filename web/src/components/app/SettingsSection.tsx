@@ -1,14 +1,67 @@
+import { useEffect, useState } from "react";
 import type { FormEvent, ReactElement, ReactNode } from "react";
 import { PageHeader } from "@/components/layout/Page";
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
-/** A settings page: its title, then its sections in one column. */
-export function SettingsPage({ title, children }: { title: string; children: ReactNode }): ReactElement {
+export type TocItem = { id: string; label: string };
+
+/** Which section is in view: the last one whose top has passed the bar under the header. */
+function useActiveSection(ids: string[]): string {
+  const [active, setActive] = useState(ids[0] ?? "");
+  useEffect(() => {
+    const onScroll = (): void => {
+      const line = 140;
+      let current = ids[0] ?? "";
+      for (const id of ids) {
+        const el = document.getElementById(id);
+        if (el && el.getBoundingClientRect().top <= line) current = id;
+      }
+      if (window.innerHeight + window.scrollY >= document.body.scrollHeight - 2) current = ids.at(-1) ?? current;
+      setActive(current);
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [ids.join(" ")]);
+  return active;
+}
+
+/** The sections of a long settings page, beside it, as the docs show theirs. */
+function OnThisPage({ items }: { items: TocItem[] }): ReactElement {
+  const active = useActiveSection(items.map((i) => i.id));
+  return (
+    <nav aria-label="On this page" className="sticky top-[calc(var(--bar-h)+24px)] max-xl:hidden">
+      <h2 className="mb-3 text-[15px] font-semibold">On this page</h2>
+      <ul className="border-l">
+        {items.map((i) => (
+          <li key={i.id}>
+            <a
+              href={`#${i.id}`}
+              aria-current={active === i.id ? "location" : undefined}
+              className={cn(
+                "-ml-px block border-l-2 border-transparent px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground",
+                active === i.id && "border-primary text-link",
+              )}
+            >
+              {i.label}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
+}
+
+/** A settings page: its title, its sections in one column and, when given, On this page. */
+export function SettingsPage({ title, toc, children }: { title: string; toc?: TocItem[]; children: ReactNode }): ReactElement {
   return (
     <>
       <PageHeader title={title} />
-      <div className="flex max-w-3xl flex-col gap-6">{children}</div>
+      <div className={cn("grid items-start gap-10", toc && "xl:grid-cols-[minmax(0,1fr)_13rem]")}>
+        <div className="flex min-w-0 flex-col gap-6">{children}</div>
+        {toc && <OnThisPage items={toc} />}
+      </div>
     </>
   );
 }
@@ -20,6 +73,7 @@ export function SettingsPage({ title, children }: { title: string; children: Rea
  * that destroys data.
  */
 export function SettingsSection({
+  id,
   title,
   description,
   action,
@@ -30,6 +84,8 @@ export function SettingsSection({
   flush = false,
   children,
 }: {
+  // The anchor that On this page links to.
+  id?: string;
   title: ReactNode;
   description?: ReactNode;
   action?: ReactNode;
@@ -59,7 +115,7 @@ export function SettingsSection({
     </>
   );
   return (
-    <Card className={cn("gap-0 overflow-hidden py-0", danger && "border-destructive/40")}>
+    <Card id={id} className={cn("scroll-mt-[calc(var(--bar-h)+24px)] gap-0 overflow-hidden py-0", danger && "border-destructive/40")}>
       {onSubmit ? (
         <form
           onSubmit={(e) => {

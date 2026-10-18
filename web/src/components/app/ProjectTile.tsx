@@ -1,5 +1,6 @@
 import type { ReactElement } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
+import { LinkRow, ROW_LINK } from "@/components/app/LinkRow";
 import { ProjectBadge } from "@/components/app/ProjectBadge";
 import { ExternalLink } from "@/components/icons";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { day } from "@/lib/time";
 import type { Project } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 /** The public status page, in a new tab. A sibling of the card's link, never inside it. */
 function StatusLink({ slug, labelled }: { slug: string; labelled: boolean }): ReactElement {
@@ -57,7 +59,6 @@ export function ProjectCardSkeletons({ count }: { count: number }): ReactElement
 
 /** Projects as table rows; a click anywhere on a row opens the project. */
 export function ProjectTable({ projects, loading, skeletons }: { projects: Project[]; loading: boolean; skeletons: number }): ReactElement {
-  const navigate = useNavigate();
   return (
     <Table>
       <TableHeader>
@@ -78,12 +79,12 @@ export function ProjectTable({ projects, loading, skeletons }: { projects: Proje
               </TableRow>
             ))
           : projects.map((p) => (
-              <TableRow key={p.slug} className="group cursor-pointer hover:bg-accent" onClick={() => navigate(`/projects/${p.slug}`)}>
+              <LinkRow key={p.slug} to={`/projects/${p.slug}`}>
                 <TableCell className="max-w-56 sm:max-w-96">
                   <div className="flex items-center gap-3">
                     <ProjectBadge name={p.name} iconUrl={p.icon_url} className="size-8 rounded-lg text-xs" />
                     <div className="flex min-w-0 flex-col">
-                      <Link to={`/projects/${p.slug}`} className="truncate font-medium group-hover:underline" onClick={(e) => e.stopPropagation()}>
+                      <Link to={`/projects/${p.slug}`} className={cn("truncate", ROW_LINK)}>
                         {p.name}
                       </Link>
                       <span className="truncate text-xs text-muted-foreground">{p.description || "No description."}</span>
@@ -92,10 +93,10 @@ export function ProjectTable({ projects, loading, skeletons }: { projects: Proje
                 </TableCell>
                 <TableCell className="text-muted-foreground max-md:hidden">{p.owner_email}</TableCell>
                 <TableCell className="text-muted-foreground max-sm:hidden">{day(p.created_at)}</TableCell>
-                <TableCell className="py-0 text-right" onClick={(e) => e.stopPropagation()}>
+                <TableCell className="py-0 text-right">
                   <StatusLink slug={p.slug} labelled={false} />
                 </TableCell>
-              </TableRow>
+              </LinkRow>
             ))}
       </TableBody>
     </Table>

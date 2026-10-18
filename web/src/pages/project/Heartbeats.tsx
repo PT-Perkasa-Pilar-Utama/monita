@@ -1,5 +1,6 @@
 import type { ReactElement } from "react";
 import { Link } from "react-router-dom";
+import { LinkRow, ROW_LINK } from "@/components/app/LinkRow";
 import { DueBar } from "@/components/app/DueBar";
 import { ListFilters } from "@/components/app/ListFilters";
 import { Overall } from "@/components/app/Overall";
@@ -67,9 +68,9 @@ export function Heartbeats(): ReactElement {
                 </TableHeader>
                 <TableBody>
                   {rows.map((h) => (
-                    <TableRow key={h.id}>
+                    <LinkRow key={h.id} to={`${base}/${h.id}`}>
                       <TableCell className="max-w-44 whitespace-normal sm:max-w-80">
-                        <Link to={`${base}/${h.id}`} className="font-medium hover:underline">
+                        <Link to={`${base}/${h.id}`} className={ROW_LINK}>
                           {h.name}
                         </Link>
                         <div className="text-xs text-muted-foreground">{h.grace} grace time</div>
@@ -85,7 +86,7 @@ export function Heartbeats(): ReactElement {
                         <SeverityBadge severity={h.severity} />
                       </TableCell>
                       <TableCell className="text-right text-muted-foreground max-sm:hidden">{h.last_ping_at ? ago(h.last_ping_at) : "Never"}</TableCell>
-                    </TableRow>
+                    </LinkRow>
                   ))}
                 </TableBody>
               </Table>

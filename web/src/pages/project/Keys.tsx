@@ -2,7 +2,8 @@ import { useState } from "react";
 import type { FormEvent, ReactElement } from "react";
 import { ConfirmDialog } from "@/components/app/ConfirmDialog";
 import { CopyField } from "@/components/app/CopyField";
-import { SettingsPage, SettingsSection } from "@/components/app/SettingsSection";
+import { SettingsPage } from "@/components/app/SettingsSection";
+import { TableCard } from "@/components/app/TableCard";
 import { StateBadge } from "@/components/app/Tone";
 import { Plus } from "@/components/icons";
 import { TableEmpty } from "@/components/list/TableEmpty";
@@ -67,16 +68,14 @@ export function Keys(): ReactElement {
           </AlertDescription>
         </Alert>
       )}
-      <SettingsSection
-        title="Keys"
-        description="Your backend sends a key with each call to the Monita API, for example to issue ref IDs."
-        action={
-          <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+      <TableCard
+        title={keys.data ? `${list.length} ${list.length === 1 ? "key" : "keys"}` : "Keys"}
+        tools={
+          <Button size="sm" onClick={() => setOpen(true)}>
             <Plus data-icon="inline-start" />
             New API key
           </Button>
         }
-        flush
       >
         {!keys.data ? (
           <Skeleton className="m-5 h-20" />
@@ -126,7 +125,7 @@ export function Keys(): ReactElement {
             </TableBody>
           </Table>
         )}
-      </SettingsSection>
+      </TableCard>
       </SettingsPage>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>

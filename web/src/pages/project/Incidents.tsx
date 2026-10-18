@@ -1,5 +1,6 @@
 import type { ReactElement } from "react";
 import { Link } from "react-router-dom";
+import { LinkRow, ROW_LINK } from "@/components/app/LinkRow";
 import { ListFilters, type Option } from "@/components/app/ListFilters";
 import { TableCard } from "@/components/app/TableCard";
 import { LabelBadge, SeverityBadge } from "@/components/app/Tone";
@@ -77,9 +78,9 @@ export function Incidents(): ReactElement {
             </TableHeader>
             <TableBody>
               {rows.map((i) => (
-                <TableRow key={i.id}>
+                <LinkRow key={i.id} to={`${base}/${i.id}`}>
                   <TableCell className="max-w-44 whitespace-normal sm:max-w-96">
-                    <Link to={`${base}/${i.id}`} className="font-medium hover:underline">
+                    <Link to={`${base}/${i.id}`} className={ROW_LINK}>
                       {i.title}
                     </Link>
                     <div className="font-mono text-xs text-muted-foreground">
@@ -92,7 +93,7 @@ export function Incidents(): ReactElement {
                   <TableCell className="max-md:hidden">{i.last_label && <LabelBadge label={i.last_label} />}</TableCell>
                   <TableCell className="font-mono text-[13px] max-lg:hidden">{utc(i.started_at)}</TableCell>
                   <TableCell className="text-right font-mono">{duration((i.resolved_at ?? now) - i.started_at)}</TableCell>
-                </TableRow>
+                </LinkRow>
               ))}
             </TableBody>
           </Table>

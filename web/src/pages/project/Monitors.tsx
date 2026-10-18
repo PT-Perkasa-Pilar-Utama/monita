@@ -1,5 +1,6 @@
 import type { ReactElement } from "react";
 import { Link } from "react-router-dom";
+import { LinkRow, ROW_LINK } from "@/components/app/LinkRow";
 import { ListFilters } from "@/components/app/ListFilters";
 import { Overall } from "@/components/app/Overall";
 import { Sparkline } from "@/components/app/Sparkline";
@@ -68,9 +69,9 @@ export function Monitors(): ReactElement {
                 </TableHeader>
                 <TableBody>
                   {rows.map((m) => (
-                    <TableRow key={m.id}>
+                    <LinkRow key={m.id} to={`${base}/${m.id}`}>
                       <TableCell className="max-w-44 whitespace-normal sm:max-w-80">
-                        <Link to={`${base}/${m.id}`} className="font-medium hover:underline">
+                        <Link to={`${base}/${m.id}`} className={ROW_LINK}>
                           {m.name}
                         </Link>
                         <div className="truncate font-mono text-xs text-muted-foreground">{m.url}</div>
@@ -104,7 +105,7 @@ export function Monitors(): ReactElement {
                           <span className="text-muted-foreground">Waiting</span>
                         )}
                       </TableCell>
-                    </TableRow>
+                    </LinkRow>
                   ))}
                 </TableBody>
               </Table>
