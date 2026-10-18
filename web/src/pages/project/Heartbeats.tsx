@@ -17,6 +17,9 @@ import { useProject } from "@/lib/project";
 import { ago } from "@/lib/time";
 import type { HeartbeatList } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
+import { SortHead } from "@/components/list/SortHead";
+import { sortRows } from "@/lib/sort";
+import { useSort } from "@/lib/useSort";
 import { useListFilter } from "@/lib/useListFilter";
 
 /** A project's heartbeats: one sentence on their state, then a row per job with its deadline. */
@@ -26,7 +29,12 @@ export function Heartbeats(): ReactElement {
   const res = useApi<HeartbeatList>(`/projects/${p.slug}/heartbeats`);
   const [filter, setFilter, clear] = useListFilter();
   const all = res.data?.heartbeats ?? [];
-  const rows = all.filter((h) => keeps(filter, [h.name], h.state, h.severity));
+  const [sort, onSort] = useSort(["name", "state", "deadline", "every", "severity", "last"]);
+  const rows = sortRows(
+    all.filter((h) => keeps(filter, [h.name], h.state, h.severity)),
+    sort,
+    { name: (h) => h.name, state: (h) => h.state, deadline: (h) => h.deadline_at, every: (h) => h.period_s, severity: (h) => h.severity, last: (h) => h.last_ping_at },
+  );
   const newButton = (
     <Button asChild>
       <Link to={`${base}/new`}>
@@ -58,12 +66,12 @@ export function Heartbeats(): ReactElement {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Heartbeat</TableHead>
-                    <TableHead>State</TableHead>
-                    <TableHead className="max-lg:hidden">Next deadline</TableHead>
-                    <TableHead className="max-md:hidden">Every</TableHead>
-                    <TableHead className="max-md:hidden">Severity</TableHead>
-                    <TableHead className="text-right max-sm:hidden">Last ping</TableHead>
+                    <SortHead by="name" label="Heartbeat" sort={sort} onSort={onSort} />
+                    <SortHead by="state" label="State" sort={sort} onSort={onSort} />
+                    <SortHead by="deadline" label="Next deadline" sort={sort} onSort={onSort} className="max-lg:hidden" />
+                    <SortHead by="every" label="Every" sort={sort} onSort={onSort} className="max-md:hidden" />
+                    <SortHead by="severity" label="Severity" sort={sort} onSort={onSort} className="max-md:hidden" />
+                    <SortHead by="last" label="Last ping" sort={sort} onSort={onSort} className="text-right max-sm:hidden" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>

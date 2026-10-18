@@ -17,6 +17,9 @@ import { useProject } from "@/lib/project";
 import { ago } from "@/lib/time";
 import type { MonitorList } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
+import { SortHead } from "@/components/list/SortHead";
+import { sortRows } from "@/lib/sort";
+import { useSort } from "@/lib/useSort";
 import { useListFilter } from "@/lib/useListFilter";
 import { cn } from "@/lib/utils";
 
@@ -27,7 +30,12 @@ export function Monitors(): ReactElement {
   const res = useApi<MonitorList>(`/projects/${p.slug}/monitors`);
   const [filter, setFilter, clear] = useListFilter();
   const all = res.data?.monitors ?? [];
-  const rows = all.filter((m) => keeps(filter, [m.name, m.url], m.state, m.severity));
+  const [sort, onSort] = useSort(["name", "state", "every", "severity", "last"]);
+  const rows = sortRows(
+    all.filter((m) => keeps(filter, [m.name, m.url], m.state, m.severity)),
+    sort,
+    { name: (m) => m.name, state: (m) => m.state, every: (m) => m.interval_s, severity: (m) => m.severity, last: (m) => m.last?.checked_at },
+  );
   const newButton = (
     <Button asChild>
       <Link to={`${base}/new`}>
@@ -59,12 +67,12 @@ export function Monitors(): ReactElement {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Monitor</TableHead>
-                    <TableHead>State</TableHead>
+                    <SortHead by="name" label="Monitor" sort={sort} onSort={onSort} />
+                    <SortHead by="state" label="State" sort={sort} onSort={onSort} />
                     <TableHead className="max-lg:hidden">Last 24 hours</TableHead>
-                    <TableHead className="max-md:hidden">Every</TableHead>
-                    <TableHead className="max-md:hidden">Severity</TableHead>
-                    <TableHead className="text-right max-sm:hidden">Last check</TableHead>
+                    <SortHead by="every" label="Every" sort={sort} onSort={onSort} className="max-md:hidden" />
+                    <SortHead by="severity" label="Severity" sort={sort} onSort={onSort} className="max-md:hidden" />
+                    <SortHead by="last" label="Last check" sort={sort} onSort={onSort} className="text-right max-sm:hidden" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>

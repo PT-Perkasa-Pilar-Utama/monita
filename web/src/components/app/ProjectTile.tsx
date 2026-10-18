@@ -10,6 +10,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { day } from "@/lib/time";
 import type { Project } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { SortHead } from "@/components/list/SortHead";
+import type { Sort } from "@/lib/sort";
 
 /** The public status page, in a new tab. A sibling of the card's link, never inside it. */
 function StatusLink({ slug, labelled }: { slug: string; labelled: boolean }): ReactElement {
@@ -57,15 +59,27 @@ export function ProjectCardSkeletons({ count }: { count: number }): ReactElement
   );
 }
 
-/** Projects as table rows; a click anywhere on a row opens the project. */
-export function ProjectTable({ projects, loading, skeletons }: { projects: Project[]; loading: boolean; skeletons: number }): ReactElement {
+/** Projects as table rows; a click anywhere on a row opens the project. The server sorts by name or by age. */
+export function ProjectTable({
+  projects,
+  loading,
+  skeletons,
+  sort,
+  onSort,
+}: {
+  projects: Project[];
+  loading: boolean;
+  skeletons: number;
+  sort: Sort;
+  onSort: (by: string) => void;
+}): ReactElement {
   return (
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Project</TableHead>
+          <SortHead by="name" label="Project" sort={sort} onSort={onSort} />
           <TableHead className="max-md:hidden">Owner</TableHead>
-          <TableHead className="max-sm:hidden">Created</TableHead>
+          <SortHead by="created" label="Created" sort={sort} onSort={onSort} className="max-sm:hidden" />
           <TableHead className="w-28 text-right">Status page</TableHead>
         </TableRow>
       </TableHeader>

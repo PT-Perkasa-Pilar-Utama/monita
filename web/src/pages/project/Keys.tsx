@@ -28,6 +28,9 @@ import { useProject } from "@/lib/project";
 import { ago } from "@/lib/time";
 import type { ApiKey } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
+import { SortHead } from "@/components/list/SortHead";
+import { sortRows } from "@/lib/sort";
+import { useSort } from "@/lib/useSort";
 
 /** Settings, API keys: a project's keys, a new one shown once, and revoke behind a confirm. */
 export function Keys(): ReactElement {
@@ -56,7 +59,13 @@ export function Keys(): ReactElement {
     }
   };
 
-  const list = keys.data ?? [];
+  const [sort, onSort] = useSort(["name", "key", "used", "status"]);
+  const list = sortRows(keys.data ?? [], sort, {
+    name: (k) => k.name,
+    key: (k) => k.prefix,
+    used: (k) => k.last_used_at,
+    status: (k) => (k.revoked_at ? "revoked" : "active"),
+  });
   return (
     <>
       <SettingsPage title="API keys">
@@ -88,10 +97,10 @@ export function Keys(): ReactElement {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Key</TableHead>
-                <TableHead className="max-sm:hidden">Last used</TableHead>
-                <TableHead className="text-right">Status</TableHead>
+                <SortHead by="name" label="Name" sort={sort} onSort={onSort} />
+                <SortHead by="key" label="Key" sort={sort} onSort={onSort} />
+                <SortHead by="used" label="Last used" sort={sort} onSort={onSort} className="max-sm:hidden" />
+                <SortHead by="status" label="Status" sort={sort} onSort={onSort} className="text-right" />
               </TableRow>
             </TableHeader>
             <TableBody>

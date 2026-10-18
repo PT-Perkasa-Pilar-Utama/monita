@@ -145,6 +145,7 @@ export function Tickets(): ReactElement {
           card={(t) => (
             <Link
               to={`${base}/${t.number}`}
+              draggable={false}
               aria-current={String(t.number) === number ? "true" : undefined}
               className="block rounded-lg outline-none focus-visible:ring-[3px] focus-visible:ring-ring hover:[&>div]:border-foreground/25 hover:[&>div]:shadow-sm aria-[current]:[&>div]:border-foreground/40"
             >

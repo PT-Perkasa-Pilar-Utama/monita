@@ -158,7 +158,13 @@ export function Projects(): ReactElement {
           </div>
         ) : (
           <TableCard title={count} tools={filters}>
-            {none ? empty : <ProjectTable projects={projects} loading={loading} skeletons={skeletons} />}
+            {none ? empty : <ProjectTable
+                projects={projects}
+                loading={loading}
+                skeletons={skeletons}
+                sort={sort === "newest" ? { by: "created", dir: "desc" } : sort === "oldest" ? { by: "created", dir: "asc" } : { by: "name", dir: "asc" }}
+                onSort={(by) => go({ sort: by === "name" ? "" : sort === "newest" ? "oldest" : "newest" }, 1, true)}
+              />}
           </TableCard>
         )}
         {d && <Pager page={page} pageSize={d.page_size} total={d.total} noun="project" onPage={turn} disabled={loading} />}

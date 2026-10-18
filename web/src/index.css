@@ -114,6 +114,8 @@
 @layer base {
   * { @apply border-border outline-ring/50; }
   html { -webkit-text-size-adjust: 100%; }
+  /* Tailwind 4 leaves buttons on the default arrow; anything clickable shows the hand. */
+  button:not(:disabled), [role="button"]:not([aria-disabled="true"]), label[for], summary, select { cursor: pointer; }
   body {
     @apply bg-background text-foreground font-sans antialiased;
     font-size: 14px;

@@ -107,6 +107,9 @@ export function TicketBoard<T extends { number: number; stage: Stage }>({
               )}
             </div>
             <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-2 pb-2">
+              {over === s && dragging && dragging.stage !== s && (
+                <div aria-hidden="true" className="h-16 shrink-0 rounded-lg border-2 border-dashed border-foreground/25 bg-background/60" />
+              )}
               {cards.map((t) => (
                 <div
                   key={t.number}
@@ -117,6 +120,9 @@ export function TicketBoard<T extends { number: number; stage: Stage }>({
                       // Safari starts a drag only once something is set.
                       e.dataTransfer.setData("text/plain", `#${t.number}`);
                       e.dataTransfer.effectAllowed = "move";
+                      // The card itself follows the pointer, held where it was grabbed, not a link preview.
+                      const box = e.currentTarget.getBoundingClientRect();
+                      e.dataTransfer.setDragImage(e.currentTarget, e.clientX - box.left, e.clientY - box.top);
                       setDragging(t);
                     })
                   }

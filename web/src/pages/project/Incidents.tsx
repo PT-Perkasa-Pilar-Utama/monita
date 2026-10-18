@@ -15,6 +15,9 @@ import { useProject } from "@/lib/project";
 import { duration, nowSecs, utc } from "@/lib/time";
 import type { IncidentRow } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
+import { SortHead } from "@/components/list/SortHead";
+import { sortRows } from "@/lib/sort";
+import { useSort } from "@/lib/useSort";
 import { useListFilter } from "@/lib/useListFilter";
 
 // The State select picks which list the server sends: open incidents, or resolved ones.
@@ -31,8 +34,13 @@ export function Incidents(): ReactElement {
   const resolved = filter.state === "resolved";
   const res = useApi<{ incidents: IncidentRow[] }>(`${base}${resolved ? "?state=resolved" : ""}`);
   const all = res.data?.incidents ?? [];
-  const rows = all.filter((i) => keeps(filter, [i.title, `INC-${i.id}`], filter.state, i.severity));
+  const [sort, onSort] = useSort(["title", "severity", "update", "started", "duration"]);
   const now = nowSecs();
+  const rows = sortRows(
+    all.filter((i) => keeps(filter, [i.title, `INC-${i.id}`], filter.state, i.severity)),
+    sort,
+    { title: (i) => i.title, severity: (i) => i.severity, update: (i) => i.last_label, started: (i) => i.started_at, duration: (i) => (i.resolved_at ?? now) - i.started_at },
+  );
   const searching = filter.q.trim() !== "" || filter.severity !== "";
 
   return (
@@ -69,11 +77,11 @@ export function Incidents(): ReactElement {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Incident</TableHead>
-                <TableHead>Severity</TableHead>
-                <TableHead className="max-md:hidden">Latest update</TableHead>
-                <TableHead className="max-lg:hidden">Started</TableHead>
-                <TableHead className="text-right">Duration</TableHead>
+                <SortHead by="title" label="Incident" sort={sort} onSort={onSort} />
+                <SortHead by="severity" label="Severity" sort={sort} onSort={onSort} />
+                <SortHead by="update" label="Latest update" sort={sort} onSort={onSort} className="max-md:hidden" />
+                <SortHead by="started" label="Started" sort={sort} onSort={onSort} className="max-lg:hidden" />
+                <SortHead by="duration" label="Duration" sort={sort} onSort={onSort} className="text-right" />
               </TableRow>
             </TableHeader>
             <TableBody>
