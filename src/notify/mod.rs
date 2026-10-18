@@ -7,6 +7,7 @@ pub mod api;
 mod delivery;
 mod digest;
 mod mailer;
+mod preview;
 mod store;
 
 use turso::Connection;
@@ -19,6 +20,7 @@ use crate::{
 pub use delivery::{deliver_due, spawn_delivery};
 pub use digest::digest;
 pub use mailer::{Mailer, SentEmail};
+pub use preview::{Preview, previews};
 pub use store::Route;
 
 /// AC-15.02: a new project's two routes. Critical calls its webhook once one is set; warning does not.
@@ -107,13 +109,17 @@ pub async fn save_route(
     Ok(())
 }
 
-struct Composed {
+pub(super) struct Composed {
     subject: String,
     text: String,
     json: serde_json::Value,
 }
 
-fn compose(ev: &Event, project: &(String, String), base_url: &str) -> (String, Composed) {
+pub(super) fn compose(
+    ev: &Event,
+    project: &(String, String),
+    base_url: &str,
+) -> (String, Composed) {
     let (name, slug) = project;
     match ev {
         Event::Opened {
@@ -210,16 +216,42 @@ pub async fn send_ticket(
     let Some((name, slug)) = crate::projects::name_slug(c, project_id).await? else {
         return Ok(());
     };
-    let body = serde_json::json!({
+    let body = ticket_json(&name, &slug, number, title, base_url, now());
+    store::queue(c, "webhook", url, None, &body.to_string(), now()).await
+}
+
+/// The webhook body for a new ticket. Tickets send no email.
+pub(super) fn ticket_json(
+    name: &str,
+    slug: &str,
+    number: i64,
+    title: &str,
+    base_url: &str,
+    at: i64,
+) -> serde_json::Value {
+    serde_json::json!({
         "text": format!("[TICKET] {name} #{number}: {title}"),
         "event": "ticket.created",
         "project": slug,
         "ticket_number": number,
         "title": title,
         "ticket_url": format!("{base_url}/projects/{slug}/tickets/{number}"),
-        "at": now(),
-    });
-    store::queue(c, "webhook", url, None, &body.to_string(), now()).await
+        "at": at,
+    })
+}
+
+/// The test alert: its text, email body and webhook body.
+pub(super) fn test_message(
+    name: &str,
+    slug: &str,
+    severity: &str,
+    base_url: &str,
+    at: i64,
+) -> (String, String, serde_json::Value) {
+    let text = format!("[TEST] {name}: alerts for {severity} reach this channel.");
+    let body = format!("{text}\n\n{base_url}/projects/{slug}/settings/alerts\n");
+    let json = serde_json::json!({ "text": text, "event": "test", "project": slug, "severity": severity, "at": at });
+    (text, body, json)
 }
 
 /// The test button on the alerts page: one message per recipient of that severity.
@@ -230,18 +262,21 @@ pub async fn send_test(
     base_url: &str,
 ) -> anyhow::Result<usize> {
     db.write(async |c| {
-        let Some((name, slug)) = crate::projects::name_slug(c, project_id).await? else { return Ok(0) };
-        let Some(route) = store::route(c, project_id, severity).await? else { return Ok(0) };
-        let text = format!("[TEST] {name}: alerts for {severity} reach this channel.");
+        let Some((name, slug)) = crate::projects::name_slug(c, project_id).await? else {
+            return Ok(0);
+        };
+        let Some(route) = store::route(c, project_id, severity).await? else {
+            return Ok(0);
+        };
         let at = now();
+        let (text, body, json) = test_message(&name, &slug, severity, base_url, at);
         let mut n = 0;
         for email in &route.emails {
-            store::queue(c, "email", email, Some(&text), &format!("{text}\n\n{base_url}/projects/{slug}/settings/alerts\n"), at).await?;
+            store::queue(c, "email", email, Some(&text), &body, at).await?;
             n += 1;
         }
         if let Some(url) = route.webhook_url.as_deref().filter(|_| route.use_webhook) {
-            let body = serde_json::json!({ "text": text, "event": "test", "project": slug, "severity": severity, "at": at });
-            store::queue(c, "webhook", url, None, &body.to_string(), at).await?;
+            store::queue(c, "webhook", url, None, &json.to_string(), at).await?;
             n += 1;
         }
         Ok(n)

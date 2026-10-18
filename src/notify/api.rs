@@ -22,6 +22,7 @@ pub fn router() -> Router<AppState> {
         .route("/api/ui/projects/{slug}/alerts", get(list))
         .route("/api/ui/projects/{slug}/alerts/{severity}", put(save))
         .route("/api/ui/projects/{slug}/alerts/{severity}/test", post(test))
+        .route("/api/ui/projects/{slug}/alerts-preview", get(preview))
 }
 
 fn severity_ok(s: &str) -> Result<(), UiError> {
@@ -94,4 +95,19 @@ async fn test(
     let p = projects::find_for(&state.db, &user, &slug).await?;
     let sent_to = super::send_test(&state.db, p.id, &severity, &state.config.base_url).await?;
     Ok(data(Tested { sent_to }))
+}
+
+/// Sample alerts of every kind, as this project's recipients get them.
+async fn preview(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(slug): Path<String>,
+) -> UiResult {
+    let p = projects::find_for(&state.db, &user, &slug).await?;
+    Ok(data(super::previews(
+        &p.name,
+        &p.slug,
+        &state.config.base_url,
+        crate::platform::now(),
+    )))
 }
