@@ -27,7 +27,7 @@ import { Mine } from "@/pages/public/Mine";
 import { Report } from "@/pages/public/Report";
 import { Status } from "@/pages/public/Status";
 import { System } from "@/pages/admin/System";
-import { Users } from "@/pages/admin/Users";
+import { Users } from "@/pages/admin/users/Users";
 import { Invite } from "@/pages/Invite";
 import { Login } from "@/pages/Login";
 import { NotFound } from "@/pages/NotFound";
