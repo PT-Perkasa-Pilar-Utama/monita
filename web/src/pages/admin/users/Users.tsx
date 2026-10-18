@@ -102,7 +102,7 @@ export function Users(): ReactElement {
   const plan = pending ? planAction(pending.action, pending.rows, me) : null;
   return (
     <>
-      <PageHeader title="Users" actions={<InviteSheet onInvited={(i) => (setInvited(i), res.reload())} />} />
+      <PageHeader title="User management" actions={<InviteSheet onInvited={(i) => (setInvited(i), res.reload())} />} />
       {invited && (
         <Alert role="status" className="mb-5">
           <AlertTitle>Invite sent to {invited.email}. The link works once and expires in 72 hours.</AlertTitle>

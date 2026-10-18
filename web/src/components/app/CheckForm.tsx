@@ -1,32 +1,22 @@
 import type { ReactElement } from "react";
-import { Field, FieldError, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { ChoiceCards } from "@/components/app/ChoiceCards";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Choice, Severity } from "@/lib/types";
 
 /** Critical or Warning, as two cards: what each one alerts by. */
 export function SeverityField({ value, onChange }: { value: Severity; onChange: (s: Severity) => void }): ReactElement {
   return (
-    <FieldSet>
-      <FieldLegend variant="label">Severity</FieldLegend>
-      <RadioGroup value={value} onValueChange={(v) => onChange(v as Severity)} className="grid gap-3 sm:grid-cols-2">
-        {(
-          [
-            ["critical", "Critical", "email and webhook"],
-            ["warning", "Warning", "email only"],
-          ] as const
-        ).map(([v, title, how]) => (
-          <FieldLabel key={v} htmlFor={`sev-${v}`}>
-            <Field orientation="horizontal">
-              <RadioGroupItem value={v} id={`sev-${v}`} />
-              <span>
-                <strong className="font-semibold">{title}</strong> <span className="text-muted-foreground">{how}</span>
-              </span>
-            </Field>
-          </FieldLabel>
-        ))}
-      </RadioGroup>
-    </FieldSet>
+    <ChoiceCards
+      id="sev"
+      legend="Severity"
+      value={value}
+      onChange={onChange}
+      choices={[
+        { value: "critical", title: "Critical", description: "For an outage that needs someone now. Alerts by email and webhook." },
+        { value: "warning", title: "Warning", description: "For a problem that can wait for working hours. Alerts by email." },
+      ]}
+    />
   );
 }
 
