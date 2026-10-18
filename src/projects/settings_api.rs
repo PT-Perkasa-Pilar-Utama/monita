@@ -25,6 +25,7 @@ pub fn router() -> Router<AppState> {
         .route("/api/ui/projects/{slug}/keys", get(keys).post(create_key))
         .route("/api/ui/projects/{slug}/keys/{id}/revoke", post(revoke_key))
         .route("/api/ui/projects/{slug}/allowlist", put(allowlist))
+        .route("/api/ui/projects/{slug}/public-pages", put(public_pages))
 }
 
 fn no_content() -> UiResult {
@@ -137,5 +138,17 @@ async fn allowlist(
     super::set_allowlist(&state.db, p.id, &f.cidrs)
         .await
         .map_err(form_error)?;
+    no_content()
+}
+
+/// The public tabs besides Status. Each one off answers 404 on its public route too.
+async fn public_pages(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(slug): Path<String>,
+    Body(pages): Body<super::PublicPages>,
+) -> UiResult {
+    let p = super::find_for(&state.db, &user, &slug).await?;
+    super::set_pages(&state.db, p.id, pages).await?;
     no_content()
 }

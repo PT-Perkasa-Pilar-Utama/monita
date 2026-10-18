@@ -23,7 +23,7 @@ use crate::{
 };
 
 pub use profile::{ProfileInput, ProjectInput, create, find_owner, icon, slug_for, update_profile};
-pub use store::{ApiKeyRow, Project, Sort};
+pub use store::{ApiKeyRow, Project, PublicPages, Sort};
 
 #[derive(Debug, thiserror::Error)]
 pub enum ProjectError {
@@ -205,6 +205,12 @@ pub async fn list_keys(db: &Db, project_id: i64) -> anyhow::Result<Vec<ApiKeyRow
 
 pub async fn revoke_key(db: &Db, project_id: i64, key_id: i64) -> anyhow::Result<()> {
     db.write(async |c| store::revoke_key(c, project_id, key_id, now()).await)
+        .await
+}
+
+/// Which public tabs visitors see besides Status.
+pub async fn set_pages(db: &Db, project_id: i64, pages: PublicPages) -> anyhow::Result<()> {
+    db.write(async |c| store::set_pages(c, project_id, pages, now()).await)
         .await
 }
 

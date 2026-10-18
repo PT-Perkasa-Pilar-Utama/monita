@@ -34,6 +34,7 @@ pub struct ProjectView {
     pub icon_url: Option<String>,
     pub ip_allowlist: Option<String>,
     pub created_at: i64,
+    pub pages: super::PublicPages,
 }
 
 impl From<&Project> for ProjectView {
@@ -48,6 +49,7 @@ impl From<&Project> for ProjectView {
                 .map(|v| format!("/projects/{}/icon?v={v}", p.slug)),
             ip_allowlist: p.ip_allowlist.clone(),
             created_at: p.created_at,
+            pages: p.pages,
         }
     }
 }

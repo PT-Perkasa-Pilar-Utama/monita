@@ -22,6 +22,7 @@ const MIGRATIONS: &[(i64, &str)] = &[
         9,
         include_str!("../../migrations/0009_alert_and_auto_incident.sql"),
     ),
+    (10, include_str!("../../migrations/0010_public_pages.sql")),
 ];
 
 pub async fn run(db: &Db) -> anyhow::Result<()> {

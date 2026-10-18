@@ -12,7 +12,9 @@ async fn public_project(state: &AppState, slug: &str) -> Result<projects::Projec
 /// The project's name for a public page's header.
 pub(super) async fn project(State(state): State<AppState>, Path(slug): Path<String>) -> UiResult {
     let p = public_project(&state, &slug).await?;
-    Ok(data(serde_json::json!({ "name": p.name, "slug": p.slug })))
+    Ok(data(
+        serde_json::json!({ "name": p.name, "slug": p.slug, "pages": p.pages }),
+    ))
 }
 
 /// US-28. Tickets out of Triage, public fields only.
@@ -22,6 +24,9 @@ pub(super) async fn public_board(
     Query(q): Query<ColumnQuery>,
 ) -> UiResult {
     let p = public_project(&state, &slug).await?;
+    if !p.pages.known_issues {
+        return Err(UiError::NotFound);
+    }
     if let Some(stage) = q.stage()? {
         let page = q.page.unwrap_or(1);
         let tickets = crate::tickets::public_column(&state.db, p.id, stage, page).await?;
@@ -58,6 +63,9 @@ pub(super) async fn report(
     Body(f): Body<ReportForm>,
 ) -> UiResult {
     let p = public_project(&state, &slug).await?;
+    if !p.pages.report {
+        return Err(UiError::NotFound);
+    }
     let ticket = NewTicket {
         title: f.title,
         description: f.description,
@@ -87,6 +95,9 @@ pub(super) async fn mine(
     Body(f): Body<MineForm>,
 ) -> UiResult {
     let p = public_project(&state, &slug).await?;
+    if !p.pages.mine {
+        return Err(UiError::NotFound);
+    }
     let tickets = crate::tickets::mine(&state.db, &f.ref_id, Some(p.id)).await?;
     Ok(data(serde_json::json!({ "tickets": tickets })))
 }

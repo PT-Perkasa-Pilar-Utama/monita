@@ -16,6 +16,15 @@ pub struct Project {
     pub description: Option<String>,
     /// When the icon was last set; `None` when the project has none.
     pub icon_at: Option<i64>,
+    pub pages: PublicPages,
+}
+
+/// The public tabs a project shows besides Status, which always shows.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct PublicPages {
+    pub known_issues: bool,
+    pub report: bool,
+    pub mine: bool,
 }
 
 #[derive(serde::Serialize)]
@@ -28,7 +37,7 @@ pub struct ApiKeyRow {
     pub created_at: i64,
 }
 
-const COLS: &str = "p.id, p.owner_id, u.email, p.name, p.slug, p.ip_allowlist, p.created_at, u.disabled_at IS NULL, p.description, p.icon_at";
+const COLS: &str = "p.id, p.owner_id, u.email, p.name, p.slug, p.ip_allowlist, p.created_at, u.disabled_at IS NULL, p.description, p.icon_at, p.show_known_issues, p.show_report, p.show_mine";
 
 fn row(r: &turso::Row) -> turso::Result<Project> {
     Ok(Project {
@@ -42,6 +51,11 @@ fn row(r: &turso::Row) -> turso::Result<Project> {
         owner_active: r.get::<i64>(7)? == 1,
         description: r.get(8)?,
         icon_at: r.get(9)?,
+        pages: PublicPages {
+            known_issues: r.get::<i64>(10)? == 1,
+            report: r.get::<i64>(11)? == 1,
+            mine: r.get::<i64>(12)? == 1,
+        },
     })
 }
 
@@ -244,6 +258,20 @@ pub async fn set_owner(
     c.execute(
         "UPDATE projects SET owner_id = ?1, updated_at = ?2 WHERE id = ?3",
         (owner_id, at, project_id),
+    )
+    .await?;
+    Ok(())
+}
+
+pub async fn set_pages(
+    c: &Connection,
+    project_id: i64,
+    p: PublicPages,
+    at: i64,
+) -> anyhow::Result<()> {
+    c.execute(
+        "UPDATE projects SET show_known_issues = ?1, show_report = ?2, show_mine = ?3, updated_at = ?4 WHERE id = ?5",
+        (p.known_issues as i64, p.report as i64, p.mine as i64, at, project_id),
     )
     .await?;
     Ok(())

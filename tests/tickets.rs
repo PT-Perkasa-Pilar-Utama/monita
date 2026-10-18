@@ -627,3 +627,49 @@ async fn the_digest_skips_a_disabled_owner() {
         0
     );
 }
+
+#[tokio::test]
+async fn a_public_tab_turned_off_answers_404_and_the_app_api_still_files() {
+    let app = TestApp::spawn("test").await;
+    let s = setup(&app).await;
+    let res = app
+        .api_send(
+            reqwest::Method::PUT,
+            "/api/ui/projects/payments/public-pages",
+            json!({ "known_issues": true, "report": false, "mine": true }),
+            Some(&s.tl),
+        )
+        .await;
+    assert_eq!(res.status(), 204);
+    let project = read(&app, "/api/ui/public/payments", None).await;
+    assert_eq!(
+        project["pages"],
+        json!({ "known_issues": true, "report": false, "mine": true })
+    );
+
+    let rid = ref_id(&app, &s.key, false).await;
+    let form = app
+        .api_post(
+            "/api/ui/public/payments/report",
+            json!({ "ref_id": rid, "title": "Receipt shows wrong currency", "description": "", "page_url": "" }),
+            None,
+        )
+        .await;
+    assert_eq!(form.status(), 404, "the status page form is off");
+    assert_eq!(
+        submit(&app, &rid, "Checkout button does nothing")
+            .await
+            .status(),
+        201,
+        "the project's own app still files through the API"
+    );
+    assert_eq!(app.api_get(PUBLIC_BOARD, None).await.status(), 200);
+    let mine = app
+        .api_post(
+            "/api/ui/public/payments/mine",
+            json!({ "ref_id": rid }),
+            None,
+        )
+        .await;
+    assert_eq!(mine.status(), 200);
+}
