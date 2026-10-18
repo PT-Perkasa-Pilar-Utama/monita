@@ -7,6 +7,12 @@ description = "Self-hosted uptime, incident and status service"
 license = "MIT"
 publish = false
 
+[features]
+default = ["embed"]
+# Debug builds embed web/dist and static/ too, so a debug binary stands alone (e2e, CI).
+# `make dev` turns it off: the server then reads both folders from disk on each request.
+embed = ["rust-embed/debug-embed"]
+
 [dependencies]
 anyhow = "1.0"
 argon2 = "0.6"
@@ -16,7 +22,7 @@ clap = { version = "4.6", features = ["derive"] }
 reqwest = { version = "0.13", default-features = false, features = ["rustls", "http2", "charset"] }
 getrandom = "0.4"
 lettre = { version = "0.11", default-features = false, features = ["builder", "smtp-transport", "pool", "hostname", "tokio1", "tokio1-rustls", "aws-lc-rs", "rustls-platform-verifier"] }
-rust-embed = { version = "8.13", features = ["mime-guess", "debug-embed"] }
+rust-embed = { version = "8.13", features = ["mime-guess"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 sha2 = "0.11"

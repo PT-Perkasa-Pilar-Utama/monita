@@ -1,4 +1,4 @@
-.PHONY: setup web web-check run fmt check-fast check release-check e2e e2e-full release clean-stale
+.PHONY: setup web web-check run dev fmt check-fast check release-check e2e e2e-full release clean-stale
 
 # Keep the laptop usable while rustc runs: 4 jobs at low priority. CI sets CARGO_BUILD_JOBS itself.
 export CARGO_BUILD_JOBS ?= 4
@@ -19,6 +19,11 @@ web-check:
 
 run: web
 	MONITA_ENV=dev $(CARGO) run -- serve
+
+# Dev server that reads web/dist from disk: after a web change, `cd web && bun run build`
+# and refresh the browser. No Rust rebuild, no restart.
+dev: web
+	MONITA_ENV=dev $(CARGO) run --no-default-features -- serve
 
 fmt:
 	cargo fmt
