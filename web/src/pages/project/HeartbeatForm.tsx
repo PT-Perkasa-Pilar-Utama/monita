@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { FormEvent, ReactElement } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChoiceField, SeverityField } from "@/components/app/CheckForm";
+import { ChoiceField, SeverityField, WhenItFails } from "@/components/app/CheckForm";
 import { FormSheet, FormSheetBody } from "@/components/app/FormSheet";
 import { HeartbeatGuide } from "@/components/app/Guides";
 import { ConfirmDialog } from "@/components/app/ConfirmDialog";
@@ -18,7 +18,7 @@ import type { CheckOptions, HeartbeatDetail, Severity } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 import { toast } from "sonner";
 
-type Form = { name: string; period_s: number; grace_s: number; severity: Severity; is_public: boolean };
+type Form = { name: string; period_s: number; grace_s: number; severity: Severity; is_public: boolean; alert: boolean; auto_incident: boolean };
 
 
 /** New heartbeat, or edit one when the URL names it. Edit also deletes. */
@@ -38,7 +38,7 @@ function HeartbeatFormBody({ id, onClose, onSaved }: { id: string | undefined; o
     if (!o) return;
     const h = current.data?.heartbeat;
     if (id && !h) return;
-    setForm(h ? { name: h.name, period_s: h.period_s, grace_s: h.grace_s, severity: h.severity, is_public: h.is_public } : { name: "", ...o.heartbeat, is_public: false });
+    setForm(h ? { name: h.name, period_s: h.period_s, grace_s: h.grace_s, severity: h.severity, is_public: h.is_public, alert: h.alert, auto_incident: h.auto_incident } : { name: "", ...o.heartbeat, is_public: false, alert: true, auto_incident: true });
   }, [form, id, options.data, current.data]);
 
   const set = <K extends keyof Form>(k: K, v: Form[K]): void => setForm((f) => (f ? { ...f, [k]: v } : f));
@@ -120,6 +120,7 @@ function HeartbeatFormBody({ id, onClose, onSaved }: { id: string | undefined; o
                     <ChoiceField id="h-grace" label="Grace time" value={form.grace_s} choices={options.data.graces} onChange={(v) => set("grace_s", v)} error={err("grace_s")} />
                   </div>
                   <SeverityField value={form.severity} onChange={(v) => set("severity", v)} />
+                  <WhenItFails id="h" alert={form.alert} autoIncident={form.auto_incident} onChange={set} />
                   <Field orientation="horizontal">
                     <Checkbox id="h-public" checked={form.is_public} onCheckedChange={(v) => set("is_public", v === true)} />
                     <FieldLabel htmlFor="h-public" className="font-normal">

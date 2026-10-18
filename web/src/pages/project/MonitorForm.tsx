@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { FormEvent, ReactElement } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChoiceField, SeverityField } from "@/components/app/CheckForm";
+import { ChoiceField, SeverityField, WhenItFails } from "@/components/app/CheckForm";
 import { FormSheet, FormSheetBody } from "@/components/app/FormSheet";
 import { MonitorGuide } from "@/components/app/Guides";
 import { ConfirmDialog } from "@/components/app/ConfirmDialog";
@@ -28,6 +28,8 @@ type Form = {
   skip_tls_verify: boolean;
   severity: Severity;
   is_public: boolean;
+  alert: boolean;
+  auto_incident: boolean;
 };
 
 
@@ -50,8 +52,8 @@ function MonitorFormBody({ id, onClose, onSaved }: { id: string | undefined; onC
     if (id && !m) return;
     setForm(
       m
-        ? { name: m.name, url: m.url, interval_s: m.interval_s, timeout_s: String(m.timeout_s), expected_status: m.expected_status, keyword: m.keyword ?? "", skip_tls_verify: m.skip_tls_verify, severity: m.severity, is_public: m.is_public }
-        : { name: "", url: "", interval_s: o.monitor.interval_s, timeout_s: String(o.monitor.timeout_s), expected_status: o.monitor.expected_status, keyword: "", skip_tls_verify: false, severity: o.monitor.severity, is_public: false },
+        ? { name: m.name, url: m.url, interval_s: m.interval_s, timeout_s: String(m.timeout_s), expected_status: m.expected_status, keyword: m.keyword ?? "", skip_tls_verify: m.skip_tls_verify, severity: m.severity, is_public: m.is_public, alert: m.alert, auto_incident: m.auto_incident }
+        : { name: "", url: "", interval_s: o.monitor.interval_s, timeout_s: String(o.monitor.timeout_s), expected_status: o.monitor.expected_status, keyword: "", skip_tls_verify: false, severity: o.monitor.severity, is_public: false, alert: true, auto_incident: true },
     );
   }, [form, id, options.data, current.data]);
 
@@ -159,6 +161,7 @@ function MonitorFormBody({ id, onClose, onSaved }: { id: string | undefined; onC
                     {err("keyword") && <FieldError>{err("keyword")}</FieldError>}
                   </Field>
                   <SeverityField value={form.severity} onChange={(v) => set("severity", v)} />
+                  <WhenItFails id="m" alert={form.alert} autoIncident={form.auto_incident} onChange={set} />
                   <Field orientation="horizontal">
                     <Checkbox id="m-public" checked={form.is_public} onCheckedChange={(v) => set("is_public", v === true)} />
                     <FieldLabel htmlFor="m-public" className="font-normal">

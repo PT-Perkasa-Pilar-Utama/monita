@@ -45,6 +45,7 @@ export function MonitorGuide(): ReactElement {
         "A check passes when the status matches the expected status within the timeout. If you set a keyword, the body must also contain it.",
         "Two failed checks in a row open an incident. The first passing check closes it.",
         "A critical monitor alerts by email and webhook. A warning monitor alerts by email only.",
+        "With incidents off, a failure only sends a down alert, and recovery sends an up alert. The status page shows nothing.",
       ]}
       note="Monita keeps single checks for 7 days and daily summaries for good."
     />
@@ -61,6 +62,7 @@ export function HeartbeatGuide(): ReactElement {
         "Your job calls that URL when it finishes. Each call moves the deadline to the time of the call plus the period and the grace time.",
         "If no call arrives by the deadline, Monita opens an incident. The next call closes it.",
         "A call to the URL with /fail at the end opens an incident at once.",
+        "With incidents off, a miss or a fail call only sends a down alert, and the next call sends an up alert.",
       ]}
       note="The first deadline is the period plus the grace time from the moment you save."
     />
@@ -73,7 +75,7 @@ export function IncidentGuide(): ReactElement {
       label="When to report an incident"
       title="When to report an incident"
       steps={[
-        "Report a problem that no check catches, such as a slow sign-in for some users.",
+        "Report a problem that no check catches, such as a slow sign-in for some users. Report one too when a monitor with incidents off goes down and users should know.",
         "The items you pick show as Issue on the status page, not as down. Uptime does not change.",
         "The first update appears on the status page at once, without your name.",
         "A reported incident stays open until you post an update labelled Resolved.",

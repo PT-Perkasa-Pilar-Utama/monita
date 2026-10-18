@@ -60,7 +60,8 @@ function Severities(): ReactElement {
       </Table>
       <p className="text-muted-foreground">
         An incident opens after 2 failed checks in a row, a missed heartbeat or a fail ping, and closes on the next good one. Each recipient gets one alert when it opens and one
-        when it closes. A manual incident sends no alert; it shows on the status page. New tickets have their own settings in Ticket alerts.
+        when it closes. A monitor or heartbeat with incidents off sends a down alert and an up alert instead. One with alerts off sends nothing. A manual incident
+        sends no alert; it shows on the status page. New tickets have their own settings in Ticket alerts.
       </p>
     </Part>
   );

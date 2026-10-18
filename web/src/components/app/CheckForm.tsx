@@ -1,6 +1,7 @@
 import type { ReactElement } from "react";
 import { ChoiceCards } from "@/components/app/ChoiceCards";
-import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Field, FieldError, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Choice, Severity } from "@/lib/types";
 
@@ -57,5 +58,36 @@ export function ChoiceField({
       </Select>
       {error && <FieldError>{error}</FieldError>}
     </Field>
+  );
+}
+
+/** The two switches a monitor or heartbeat has for a failure. Both start on. */
+export function WhenItFails({
+  id,
+  alert,
+  autoIncident,
+  onChange,
+}: {
+  id: string;
+  alert: boolean;
+  autoIncident: boolean;
+  onChange: (k: "alert" | "auto_incident", v: boolean) => void;
+}): ReactElement {
+  return (
+    <FieldSet className="gap-3">
+      <FieldLegend variant="label">When it fails</FieldLegend>
+      <Field orientation="horizontal">
+        <Checkbox id={`${id}-alert`} checked={alert} onCheckedChange={(v) => onChange("alert", v === true)} />
+        <FieldLabel htmlFor={`${id}-alert`} className="font-normal">
+          Send alerts to the people in Alerts settings
+        </FieldLabel>
+      </Field>
+      <Field orientation="horizontal">
+        <Checkbox id={`${id}-auto`} checked={autoIncident} onCheckedChange={(v) => onChange("auto_incident", v === true)} />
+        <FieldLabel htmlFor={`${id}-auto`} className="font-normal">
+          Open an incident, which shows on the status page
+        </FieldLabel>
+      </Field>
+    </FieldSet>
   );
 }

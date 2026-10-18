@@ -80,6 +80,8 @@ export type MonitorView = {
   skip_tls_verify: boolean;
   severity: Severity;
   is_public: boolean;
+  alert: boolean;
+  auto_incident: boolean;
   created_at: number;
   next_check_at: number;
   state: StateKind;
@@ -164,6 +166,8 @@ export type HeartbeatView = {
   grace: string;
   severity: Severity;
   is_public: boolean;
+  alert: boolean;
+  auto_incident: boolean;
   last_ping_at: number | null;
   deadline_at: number | null;
   created_at: number;
