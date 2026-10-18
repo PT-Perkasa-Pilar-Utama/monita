@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { ReactElement } from "react";
 import { NewProjectSheet } from "@/components/app/NewProjectSheet";
 import { ProjectCard, ProjectCardSkeletons, ProjectTable } from "@/components/app/ProjectTile";
-import { TableCard } from "@/components/app/TableCard";
+import { FilterCount, TableCard } from "@/components/app/TableCard";
 import { Plus } from "@/components/icons";
 import { PageHeader } from "@/components/layout/Page";
 import { FilterMenu } from "@/components/list/FilterMenu";
@@ -11,7 +11,6 @@ import { Pager } from "@/components/list/Pager";
 import { TableEmpty } from "@/components/list/TableEmpty";
 import { ViewToggle } from "@/components/list/ViewToggle";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { listQuery, pageCount, pageParam, skeletonCount } from "@/lib/page";
@@ -69,16 +68,8 @@ export function Projects(): ReactElement {
   const skeletons = skeletonCount(page, d?.page_size ?? 20, d?.total);
   const none = !loading && d !== undefined && d.total === 0;
   const filtered = q !== "" || owner !== "";
-  const count = (
-    <span className="flex items-center gap-4">
-      <span>{d ? `${d.total} ${d.total === 1 ? "project" : "projects"}` : "Projects"}</span>
-      {filtered && (
-        <Button variant="link" size="sm" className="h-auto" onClick={clear}>
-          Clear filters
-        </Button>
-      )}
-    </span>
-  );
+  const countText = d ? `${d.total} ${d.total === 1 ? "project" : "projects"}` : "Projects";
+  const onClear = filtered ? clear : undefined;
   const empty = filtered ? (
     <TableEmpty title="" filtered noun="projects" onClear={clear} />
   ) : (
@@ -115,16 +106,8 @@ export function Projects(): ReactElement {
   return (
     <>
       <PageHeader
-        title={
-          <span className="flex items-center gap-3">
-            Projects
-            {filtered && (
-              <Badge variant="neutral" className="px-2.5 py-1 text-sm">
-                Filtered
-              </Badge>
-            )}
-          </span>
-        }
+        title="Projects"
+        filtered={filtered}
         actions={
           <>
             <div className="flex w-full items-center gap-2 sm:w-auto">
@@ -146,7 +129,9 @@ export function Projects(): ReactElement {
       <div className="flex flex-col gap-6 pb-4">
         {view === "card" && (
           <div className="-mb-2 flex min-h-9 flex-wrap items-center justify-between gap-2">
-            <span className="text-[13px] font-semibold">{count}</span>
+            <span className="text-[13px] font-semibold">
+              <FilterCount onClear={onClear}>{countText}</FilterCount>
+            </span>
             <div className="flex flex-wrap items-center gap-1">{filters}</div>
           </div>
         )}
@@ -157,7 +142,7 @@ export function Projects(): ReactElement {
             {loading ? <ProjectCardSkeletons count={skeletons} /> : projects.map((p) => <ProjectCard key={p.slug} p={p} />)}
           </div>
         ) : (
-          <TableCard title={count} tools={filters}>
+          <TableCard title={countText} onClear={onClear} tools={filters}>
             {none ? empty : <ProjectTable
                 projects={projects}
                 loading={loading}

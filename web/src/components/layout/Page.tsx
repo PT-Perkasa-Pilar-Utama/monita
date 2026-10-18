@@ -1,3 +1,4 @@
+import { Badge } from "@/components/ui/badge";
 import type { ReactElement, ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -36,12 +37,15 @@ export function Crumbs({ items }: { items: Crumb[] }): ReactElement {
 /** One row: a leading mark, the title and its meta line, then the page's actions at the right. */
 export function PageHeader({
   title,
+  filtered = false,
   lead,
   meta,
   actions,
   className,
 }: {
   title: ReactNode;
+  // A search or filter narrows the page's list.
+  filtered?: boolean;
   lead?: ReactNode;
   meta?: ReactNode;
   actions?: ReactNode;
@@ -52,7 +56,14 @@ export function PageHeader({
       <div className="flex min-w-0 items-center gap-3">
         {lead}
         <div className="flex min-w-0 flex-col gap-2">
-          <h1 className="text-2xl font-bold tracking-tight break-words sm:text-[32px] sm:leading-tight">{title}</h1>
+          <h1 className="flex flex-wrap items-center gap-3 text-2xl font-bold tracking-tight break-words sm:text-[32px] sm:leading-tight">
+            {title}
+            {filtered && (
+              <Badge variant="neutral" className="px-2.5 py-1 text-sm tracking-normal">
+                Filtered
+              </Badge>
+            )}
+          </h1>
           {meta && <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-muted-foreground">{meta}</div>}
         </div>
       </div>

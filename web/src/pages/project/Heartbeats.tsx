@@ -31,6 +31,7 @@ export function Heartbeats({ creating = false }: { creating?: boolean }): ReactE
   const base = `/projects/${p.slug}/heartbeats`;
   const res = useApi<HeartbeatList>(`/projects/${p.slug}/heartbeats`);
   const [filter, setFilter, clear] = useListFilter();
+  const filtered = filter.q.trim() !== "" || filter.state !== "" || filter.severity !== "";
   const all = res.data?.heartbeats ?? [];
   const [sort, onSort] = useSort(["name", "state", "deadline", "every", "severity", "last"]);
   const rows = sortRows(
@@ -51,6 +52,7 @@ export function Heartbeats({ creating = false }: { creating?: boolean }): ReactE
     <>
       <PageHeader
         title="Heartbeats"
+        filtered={filtered}
         actions={
           <>
             <HeartbeatGuide />
@@ -70,7 +72,7 @@ export function Heartbeats({ creating = false }: { creating?: boolean }): ReactE
       ) : (
         <>
           <Overall summary={res.data.summary} />
-          <TableCard title={countLabel(rows.length, all.length, "heartbeat")} tools={<ListFilters noun="heartbeats" filter={filter} onChange={setFilter} />}>
+          <TableCard title={countLabel(rows.length, all.length, "heartbeat")} onClear={filtered ? clear : undefined} tools={<ListFilters noun="heartbeats" filter={filter} onChange={setFilter} />}>
             {rows.length === 0 ? (
               <TableEmpty title="" filtered noun="heartbeats" onClear={clear} />
             ) : (

@@ -102,7 +102,7 @@ export function Users(): ReactElement {
   const plan = pending ? planAction(pending.action, pending.rows, me) : null;
   return (
     <>
-      <PageHeader title="User management" actions={<InviteSheet onInvited={(i) => (setInvited(i), res.reload())} />} />
+      <PageHeader title="User management" filtered={filtered} actions={<InviteSheet onInvited={(i) => (setInvited(i), res.reload())} />} />
       {invited && (
         <Alert role="status" className="mb-5">
           <AlertTitle>Invite sent to {invited.email}. The link works once and expires in 72 hours.</AlertTitle>
@@ -113,6 +113,7 @@ export function Users(): ReactElement {
       )}
       <div className="flex flex-col gap-4">
         <TableCard
+          onClear={filtered && chosen.length === 0 ? () => set({ q: "", role: "", status: "" }) : undefined}
           title={
             chosen.length > 0 ? (
               <span className="flex flex-wrap items-center gap-2">
@@ -158,11 +159,6 @@ export function Users(): ReactElement {
                 ]}
                 onChange={(v) => set({ status: v })}
               />
-              {filtered && (
-                <Button size="sm" variant="ghost" onClick={() => set({ q: "", role: "", status: "" })}>
-                  Clear filters
-                </Button>
-              )}
             </>
           }
         >

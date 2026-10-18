@@ -32,6 +32,7 @@ export function Monitors({ creating = false }: { creating?: boolean }): ReactEle
   const base = `/projects/${p.slug}/monitors`;
   const res = useApi<MonitorList>(`/projects/${p.slug}/monitors`);
   const [filter, setFilter, clear] = useListFilter();
+  const filtered = filter.q.trim() !== "" || filter.state !== "" || filter.severity !== "";
   const all = res.data?.monitors ?? [];
   const [sort, onSort] = useSort(["name", "state", "every", "severity", "last"]);
   const rows = sortRows(
@@ -52,6 +53,7 @@ export function Monitors({ creating = false }: { creating?: boolean }): ReactEle
     <>
       <PageHeader
         title="Monitors"
+        filtered={filtered}
         actions={
           <>
             <MonitorGuide />
@@ -71,7 +73,7 @@ export function Monitors({ creating = false }: { creating?: boolean }): ReactEle
       ) : (
         <>
           <Overall summary={res.data.summary} />
-          <TableCard title={countLabel(rows.length, all.length, "monitor")} tools={<ListFilters noun="monitors" filter={filter} onChange={setFilter} />}>
+          <TableCard title={countLabel(rows.length, all.length, "monitor")} onClear={filtered ? clear : undefined} tools={<ListFilters noun="monitors" filter={filter} onChange={setFilter} />}>
             {rows.length === 0 ? (
               <TableEmpty title="" filtered noun="monitors" onClear={clear} />
             ) : (

@@ -22,20 +22,22 @@ import { useListFilter } from "@/lib/useListFilter";
 import { IncidentFormSheet } from "@/pages/project/IncidentForm";
 import { IncidentGuide } from "@/components/app/Guides";
 
-// The State select picks which list the server sends: open incidents, or resolved ones.
+// The State select picks which list the server sends: open, resolved or all incidents.
 const STATES: Option[] = [
   { value: "", label: "Open" },
   { value: "resolved", label: "Resolved" },
+  { value: "all", label: "All" },
 ];
+const NOUN: Record<string, string> = { "": "open incident", resolved: "resolved incident", all: "incident" };
 
-/** A project's open or resolved incidents, searchable by title or INC id. */
+/** A project's incidents, open by default, searchable by title or INC id. */
 export function Incidents({ creating = false }: { creating?: boolean }): ReactElement {
   const navigate = useNavigate();
   const { project: p } = useProject();
   const base = `/projects/${p.slug}/incidents`;
   const [filter, setFilter, clear] = useListFilter();
   const resolved = filter.state === "resolved";
-  const res = useApi<{ incidents: IncidentRow[] }>(`${base}${resolved ? "?state=resolved" : ""}`);
+  const res = useApi<{ incidents: IncidentRow[] }>(`${base}${filter.state ? `?state=${filter.state}` : ""}`);
   const all = res.data?.incidents ?? [];
   const [sort, onSort] = useSort(["title", "severity", "update", "started", "duration"]);
   const now = nowSecs();
@@ -45,11 +47,14 @@ export function Incidents({ creating = false }: { creating?: boolean }): ReactEl
     { title: (i) => i.title, severity: (i) => i.severity, update: (i) => i.last_label, started: (i) => i.started_at, duration: (i) => (i.resolved_at ?? now) - i.started_at },
   );
   const searching = filter.q.trim() !== "" || filter.severity !== "";
+  // Open is the default list; Resolved or All counts as a filter, so Clear filters goes back to Open.
+  const filtered = searching || filter.state !== "";
 
   return (
     <>
       <PageHeader
         title="Incidents"
+        filtered={filtered}
         actions={
           <>
             <IncidentGuide />
@@ -63,7 +68,8 @@ export function Incidents({ creating = false }: { creating?: boolean }): ReactEl
         }
       />
       <TableCard
-        title={res.data ? countLabel(rows.length, all.length, resolved ? "resolved incident" : "open incident") : "Incidents"}
+        title={res.data ? countLabel(rows.length, all.length, NOUN[filter.state] ?? "incident") : "Incidents"}
+        onClear={filtered ? clear : undefined}
         tools={<ListFilters noun="incidents" filter={filter} onChange={setFilter} stateOptions={STATES} />}
       >
         {!res.data ? (
