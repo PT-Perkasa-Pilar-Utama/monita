@@ -64,7 +64,7 @@ Two builders (the user and Claude), 2 days, sprints 1 to 4 in `docs/business/spr
 - Handlers in `api.rs` (or `routes.rs` for the ping and `/api/v1` routes) parse, call, answer. No SQL and no business rules in handlers.
 - SQL lives in `store.rs`. Rules live in `mod.rs` or a named logic file (`engine.rs`, `probe.rs`).
 - Every write goes through `Db::write` (one writer connection, `BEGIN IMMEDIATE`). Reads use `Db::read()`. Never open a writing connection elsewhere.
-- No unbounded list. Every multi-row query has a `LIMIT` from `platform::caps`, a keyset page, or a `GROUP BY` with a fixed number of groups. A list people add to is capped at insert with the same number, so a page never hides a row. Every job reads and deletes in batches and loops until a batch comes back short.
+- No unbounded list. No page renders every row of a list that can grow: it reads one page (a page size from `platform::caps`) and paginates. Every multi-row query has a `LIMIT` from `platform::caps`, a keyset or offset page, or a `GROUP BY` with a fixed number of groups. A per-project list with an insert cap (monitors, keys) reads that same number, so it never hides a row. Projects have no cap; their list pages 20 at a time on the server. Every job reads and deletes in batches and loops until a batch comes back short.
 - `Db::write_without_fk` exists for `platform::migrate` and reset-state only.
 - No transaction stays open across a network call.
 - Frontend pages call `/api/ui/` through `web/src/lib/api.ts`. Each module's JSON lives in its `api.rs` and calls the module's interface. A refused form is 422 with `error.fields`. Public JSON lives under `/api/ui/public/`, which the per-IP limit covers.

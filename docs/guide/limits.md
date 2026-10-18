@@ -1,10 +1,10 @@
 # Limits
 
-Every list in Monita has a hard cap, so no page or job grows without bound. A list you add to refuses one more item past its cap.
+No page or job in Monita grows without bound. A list you add to refuses one more item past its cap. Projects have no cap; the project list shows 20 per page.
 
 | What | Cap |
 | --- | --- |
-| Projects per instance | 200 |
+| Projects per page of the project list | 20 |
 | Accounts per instance | 500 |
 | Monitors per project | 100 |
 | Heartbeats per project | 100 |

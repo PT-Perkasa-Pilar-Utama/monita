@@ -19,11 +19,11 @@ These numbers are the targets that [12](12-incident-engine.md) and [13](13-check
 
 ## 8.2 Limits
 
-No list is unbounded. A list people add to is refused at insert past its cap (422 with a plain message), and its read uses the same number as its `LIMIT`. Source: `src/platform/caps.rs`; tests: `tests/limits.rs`.
+No list is unbounded. No page renders every row of a list that can grow: it reads one page and paginates. A capped list is refused at insert past its cap (422 with a plain message), and its read uses the same number as its `LIMIT`. Projects have no cap. Source: `src/platform/caps.rs`; tests: `tests/limits.rs` and `tests/projects.rs`.
 
 | What | Cap | At the cap |
 | --- | --- | --- |
-| Projects per instance | 200 | New project refused |
+| Projects per page of the project list | 20 | No cap on projects; the list pages on the server, with search |
 | Accounts per instance | 500 | Invite and `admin create` refused |
 | Monitors per project | 100 | New monitor refused |
 | Heartbeats per project | 100 | New heartbeat refused |

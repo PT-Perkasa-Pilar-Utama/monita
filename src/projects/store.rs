@@ -158,20 +158,38 @@ pub async fn find_by_slug(c: &Connection, slug: &str) -> anyhow::Result<Option<P
     .pop())
 }
 
-pub async fn list_all(c: &Connection) -> anyhow::Result<Vec<Project>> {
-    many(
-        c,
-        format!("SELECT {COLS} FROM projects p JOIN users u ON u.id = p.owner_id ORDER BY p.name LIMIT ?1"),
-        [caps::PROJECTS],
-    )
-    .await
+/// Projects one owner has (`Some`) or every project (`None`), whose name, slug, owner email or
+/// description holds `q`. `q` arrives lower-cased; `lower` folds ASCII only.
+const MATCHING: &str = "FROM projects p JOIN users u ON u.id = p.owner_id \
+    WHERE (?1 IS NULL OR p.owner_id = ?1) AND (?2 = '' OR instr(lower(p.name), ?2) > 0 \
+    OR instr(lower(p.slug), ?2) > 0 OR instr(lower(u.email), ?2) > 0 \
+    OR instr(lower(coalesce(p.description, '')), ?2) > 0)";
+
+pub async fn count_matching(c: &Connection, owner: Option<i64>, q: &str) -> anyhow::Result<i64> {
+    let sql = format!("SELECT count(*) {MATCHING}");
+    Ok(crate::platform::db::query_i64(c, &sql, (owner, q))
+        .await?
+        .unwrap_or(0))
 }
 
-pub async fn list_owned(c: &Connection, owner_id: i64) -> anyhow::Result<Vec<Project>> {
+/// One page in name order; the id breaks ties so a page boundary never moves.
+pub async fn page_matching(
+    c: &Connection,
+    owner: Option<i64>,
+    q: &str,
+    limit: i64,
+    offset: i64,
+) -> anyhow::Result<Vec<Project>> {
+    let sql = format!("SELECT {COLS} {MATCHING} ORDER BY p.name, p.id LIMIT ?3 OFFSET ?4");
+    many(c, sql, (owner, q, limit, offset)).await
+}
+
+/// A keyset batch in id order, for jobs that walk every project.
+pub async fn after_id(c: &Connection, last_id: i64, limit: i64) -> anyhow::Result<Vec<Project>> {
     many(
         c,
-        format!("SELECT {COLS} FROM projects p JOIN users u ON u.id = p.owner_id WHERE p.owner_id = ?1 ORDER BY p.name LIMIT ?2"),
-        (owner_id, caps::PROJECTS),
+        format!("SELECT {COLS} FROM projects p JOIN users u ON u.id = p.owner_id WHERE p.id > ?1 ORDER BY p.id LIMIT ?2"),
+        (last_id, limit),
     )
     .await
 }
@@ -273,14 +291,6 @@ pub async fn touch_key(c: &Connection, key_id: i64, at: i64) -> anyhow::Result<(
     )
     .await?;
     Ok(())
-}
-
-pub async fn count_projects(c: &Connection) -> anyhow::Result<i64> {
-    Ok(
-        crate::platform::db::query_i64(c, "SELECT count(*) FROM projects", ())
-            .await?
-            .unwrap_or(0),
-    )
 }
 
 pub async fn count_live_keys(c: &Connection, project_id: i64) -> anyhow::Result<i64> {

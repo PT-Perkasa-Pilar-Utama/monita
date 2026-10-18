@@ -1,9 +1,10 @@
 //! Hard caps. Every list a page, an API or a job reads has a bound (CLAUDE.md, Architecture laws).
-//! A list people add to is capped at insert, and its read uses the same number as its LIMIT, so a
-//! page never hides a row. Spec 08 section 8.2 lists them.
+//! A list page reads one page at a time and pages through the rest. A capped list (monitors,
+//! keys) is capped at insert, and its read uses the same number as its LIMIT, so a page never
+//! hides a row. Spec 08 section 8.2 lists them.
 
-/// Projects in one instance.
-pub const PROJECTS: i64 = 200;
+/// Projects per page of the project list. The number of projects has no cap.
+pub const PROJECTS_PAGE: i64 = 20;
 /// Accounts in one instance, super admins and TLs.
 pub const USERS: i64 = 500;
 pub const MONITORS_PER_PROJECT: i64 = 100;

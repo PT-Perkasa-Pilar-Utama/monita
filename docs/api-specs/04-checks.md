@@ -54,7 +54,7 @@ The React page `/admin/settings` calls these routes. A tech lead gets 403 on eac
 
 | Method | Path | Access | Input | Behavior | AC |
 | --- | --- | --- | --- | --- | --- |
-| GET | `/api/ui/admin/system` | super_admin | | `mail` (server and sender from config, never the password), `email` (counts for 7 days and the newest error), `server` (the configuration as label and value), `limits` (each runtime limit with its group, help, value, default, maximum and log-scale positions), and `caps` (the fixed caps, with the project and account counts). | AC-11.03, AC-31.03 |
+| GET | `/api/ui/admin/system` | super_admin | | `mail` (server and sender from config, never the password), `email` (counts for 7 days and the newest error), `server` (the configuration as label and value), `limits` (each runtime limit with its group, help, value, default, maximum and log-scale positions), and `caps` (the fixed caps, with the account count). | AC-11.03, AC-31.03 |
 | POST | `/api/ui/admin/test-email` | super_admin | | Queue a test email to the signed-in admin through the outbox. `{sent_to}`. | |
 | PUT | `/api/ui/admin/limits` | super_admin | each `settings` key, a number or a numeric string | Every key must be a whole number from 1 to its maximum, or nothing is saved and each bad key is 422 on that key. 204. | AC-11.03, AC-31.03 |
 

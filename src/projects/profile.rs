@@ -5,7 +5,7 @@ use serde::Deserialize;
 use super::{Project, ProjectError, eligible_owners, icon::parse as parse_icon, store};
 use crate::{
     accounts::User,
-    platform::{caps, db::Db, now, token},
+    platform::{db::Db, now, token},
 };
 
 /// The random part of a generated slug: 6 base32 characters, about a billion values.
@@ -94,12 +94,6 @@ pub async fn create(db: &Db, acting: &User, input: &ProjectInput) -> Result<Proj
         .write(async |c| {
             if owner != acting.id && !crate::accounts::is_active_tl(c, owner).await? {
                 return Ok(Err(ProjectError::UnknownOwner));
-            }
-            if store::count_projects(c).await? >= caps::PROJECTS {
-                return Ok(Err(ProjectError::Full(format!(
-                    "This Monita holds {} projects, its limit.",
-                    caps::PROJECTS
-                ))));
             }
             // A taken slug needs the same name and the same suffix; three draws in a row is not
             // a real case, so it is an error rather than a loop.

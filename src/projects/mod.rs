@@ -44,18 +44,37 @@ pub enum ProjectError {
     Other(#[from] anyhow::Error),
 }
 
-pub async fn list_for(db: &Db, user: &User) -> anyhow::Result<Vec<Project>> {
-    let conn = db.read().await?;
-    if user.is_admin() {
-        store::list_all(&conn).await
-    } else {
-        store::list_owned(&conn, user.id).await
-    }
+/// One page of the projects a user may open, and how many match in all.
+pub struct ProjectPage {
+    pub projects: Vec<Project>,
+    pub total: i64,
+    pub page: i64,
 }
 
-/// Every project, for jobs that run across projects (the digest).
-pub async fn all(db: &Db) -> anyhow::Result<Vec<Project>> {
-    store::list_all(&db.read().await?).await
+/// A tech lead pages through their own projects; a super admin through every project.
+/// `page` counts from 1; a lower value reads page 1. `q` matches name, slug, owner email or
+/// description, ignoring ASCII case.
+pub async fn page_for(db: &Db, user: &User, q: &str, page: i64) -> anyhow::Result<ProjectPage> {
+    let owner = (!user.is_admin()).then_some(user.id);
+    let q: String = q.trim().to_lowercase().chars().take(100).collect();
+    let page = page.max(1);
+    let offset = (page - 1).saturating_mul(caps::PROJECTS_PAGE);
+    let conn = db.read().await?;
+    Ok(ProjectPage {
+        total: store::count_matching(&conn, owner, &q).await?,
+        projects: store::page_matching(&conn, owner, &q, caps::PROJECTS_PAGE, offset).await?,
+        page,
+    })
+}
+
+/// Projects in id order after `last_id`, at most `limit`, for a job that walks every project
+/// inside its own transaction. Loop until a batch comes back short.
+pub async fn after_id(
+    c: &turso::Connection,
+    last_id: i64,
+    limit: i64,
+) -> anyhow::Result<Vec<Project>> {
+    store::after_id(c, last_id, limit).await
 }
 
 /// The numbers beside the project tabs: monitors, heartbeats, open incidents, open tickets.

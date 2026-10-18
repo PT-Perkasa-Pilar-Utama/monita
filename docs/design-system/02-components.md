@@ -52,6 +52,7 @@ Use `Badge variant="outline"` for a neutral fact, such as "On the status page". 
 | `Overall` | `app/Overall.tsx` | One sentence above a list, with a tone bar on its left: "1 of 4 monitors is down." Takes a `ListSummary`. |
 | `PageSearch` | `list/PageSearch.tsx` | Search beside a page title, for a page of cards rather than one table. |
 | `HistoryPager` | `app/History.tsx` | "Newest" and "Older" links under a history table. |
+| `Pager` | `list/Pager.tsx` | Under a list the server reads by page: "Showing 21 to 31 of 31 projects.", Previous, "Page 2 of 2", Next. Hidden when every row fits on one page. Rules in `lib/page.ts`. |
 | `Sparkline` | `app/Sparkline.tsx` | Monitors list: 24 hourly mean response times, failed hours shaded red. The line is the brand color. |
 | `DueBar` | `app/DueBar.tsx` | Heartbeats list: the share of the wait before the deadline that has passed. Red when late. |
 | `Skeleton` | `ui/skeleton.tsx` | The loading placeholder for a card or table. |

@@ -31,7 +31,7 @@ All pages open with `PageHeader`. A detail or form page puts `Crumbs` above it.
 
 | Page | Recipe |
 | --- | --- |
-| Projects | `PageHeader` (`PageSearch`, New project) then a grid of project cards. New project opens `NewProjectDialog`. |
+| Projects | `PageHeader` (`PageSearch`, New project) then a grid of 20 project cards and a `Pager`. The search and the page live in the URL (`?q=&page=`) and run on the server. New project opens `NewProjectDialog`. |
 | Overview | `PageHeader` (`ProjectBadge` lead, New monitor, Report incident) then two columns: area tiles and an Open incidents `TableCard`, beside a sticky About `aside`. |
 | List (monitors, heartbeats, incidents) | `PageHeader` (title, primary action) then `Overall`, then `TableCard` (count and `ListFilters`) holding a `Table`. Monitor rows carry a `Sparkline`. Heartbeat rows carry a `DueBar`. |
 | Detail (monitor, heartbeat) | `Crumbs`, `PageHeader` (title, `meta` badges, Edit), `StatCards`, `ChartCard`, then `AvailabilityCard` beside a Settings card of `Facts`, then a checks `TableCard` with `HistoryPager`. |

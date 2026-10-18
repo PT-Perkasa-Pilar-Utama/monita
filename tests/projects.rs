@@ -354,6 +354,79 @@ async fn the_project_list_holds_only_the_users_projects_and_all_for_a_super_admi
     assert_eq!(listed(&app, &admin).await.len(), 3);
 }
 
+/// One page of the project list as (slugs, total, page).
+async fn page_of(app: &TestApp, cookie: &str, query: &str) -> (Vec<String>, i64, i64) {
+    let res = app
+        .get(&format!("/api/ui/projects{query}"), Some(cookie))
+        .await;
+    assert_eq!(res.status(), 200);
+    let d = json_of(res).await["data"].clone();
+    assert_eq!(d["page_size"], 20);
+    let slugs = d["projects"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|p| p["name"].as_str().unwrap().to_string())
+        .collect();
+    (
+        slugs,
+        d["total"].as_i64().unwrap(),
+        d["page"].as_i64().unwrap(),
+    )
+}
+
+#[tokio::test]
+async fn the_project_list_pages_20_at_a_time_in_name_order() {
+    let app = TestApp::spawn("test").await;
+    let admin = app.super_admin("admin@x.co").await;
+    let rina = app.tl("rina@x.co").await;
+    let budi = app.tl("budi@x.co").await;
+    for i in (1..=22).rev() {
+        create(&app, &rina, json!({ "name": format!("Svc {i:02}") })).await;
+    }
+    create(&app, &budi, json!({ "name": "Shop" })).await;
+
+    let (first, total, page) = page_of(&app, &rina, "").await;
+    assert_eq!((first.len(), total, page), (20, 22, 1));
+    assert_eq!(first[0], "Svc 01");
+    assert_eq!(
+        page_of(&app, &rina, "?page=2").await,
+        (vec!["Svc 21".into(), "Svc 22".into()], 22, 2)
+    );
+    assert_eq!(page_of(&app, &rina, "?page=0").await.0, first);
+    assert_eq!(page_of(&app, &rina, "?page=abc").await.0, first);
+    assert_eq!(page_of(&app, &rina, "?page=99").await, (vec![], 22, 99));
+    assert_eq!(page_of(&app, &admin, "").await.1, 23);
+}
+
+#[tokio::test]
+async fn the_project_list_searches_every_page_on_the_server() {
+    let app = TestApp::spawn("test").await;
+    let admin = app.super_admin("admin@x.co").await;
+    let rina = app.tl("rina@x.co").await;
+    let budi = app.tl("budi@x.co").await;
+    for i in 1..=22 {
+        create(&app, &rina, json!({ "name": format!("Svc {i:02}") })).await;
+    }
+    create(
+        &app,
+        &budi,
+        json!({ "name": "Shop", "description": "Handles refunds" }),
+    )
+    .await;
+    create(&app, &budi, json!({ "name": "Svc Budi" })).await;
+
+    let (names, total, _) = page_of(&app, &rina, "?q=%20SVC%202%20").await;
+    assert_eq!(
+        (names, total),
+        (vec!["Svc 20".into(), "Svc 21".into(), "Svc 22".into()], 3)
+    );
+    assert_eq!(page_of(&app, &admin, "?q=budi%40").await.1, 2);
+    assert_eq!(page_of(&app, &admin, "?q=refund").await.0, ["Shop"]);
+    assert_eq!(page_of(&app, &rina, "?q=budi").await.1, 0);
+    assert_eq!(page_of(&app, &admin, "?q=%25").await.1, 0);
+}
+
 #[tokio::test]
 async fn a_tl_cannot_reassign() {
     let app = TestApp::spawn("test").await;

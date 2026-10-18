@@ -22,7 +22,6 @@ use crate::{
     app::AppState,
     checks::retention,
     notify::{self, EmailHealth},
-    projects,
 };
 
 pub fn router() -> Router<AppState> {
@@ -208,14 +207,8 @@ async fn view(state: &AppState) -> anyhow::Result<SystemView> {
         })
         .collect();
     let now = now();
-    let projects = projects::all(&state.db).await?.len() as i64;
     let users = accounts::list_users(&state.db).await?.len() as i64;
     let caps = vec![
-        Cap {
-            label: "Projects",
-            max: caps::PROJECTS,
-            used: Some(projects),
-        },
         Cap {
             label: "Accounts",
             max: caps::USERS,

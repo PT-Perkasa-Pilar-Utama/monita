@@ -2,10 +2,10 @@
 
 use axum::{
     Router,
-    extract::{Path, State},
+    extract::{Path, Query, State},
     routing::get,
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use super::{Project, ProjectError, ProjectInput, TabCounts};
 use crate::{
@@ -61,8 +61,20 @@ pub struct OwnerView {
 #[derive(Serialize)]
 struct ProjectList {
     projects: Vec<ProjectView>,
+    /// Projects that match the search, on every page.
+    total: i64,
+    page: i64,
+    page_size: i64,
     /// Empty for a tech lead, who always owns what they create.
     owners: Vec<OwnerView>,
+}
+
+#[derive(Deserialize, Default)]
+#[serde(default)]
+struct ListQuery {
+    /// Counts from 1; a missing or bad value reads page 1.
+    page: String,
+    q: String,
 }
 
 pub async fn owners(
@@ -82,11 +94,19 @@ pub async fn owners(
         .collect())
 }
 
-/// A tech lead gets their own projects; a super admin gets every project.
-async fn list(State(state): State<AppState>, CurrentUser(user): CurrentUser) -> UiResult {
-    let projects = super::list_for(&state.db, &user).await?;
+/// One page: a tech lead's own projects, or every project for a super admin.
+async fn list(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Query(q): Query<ListQuery>,
+) -> UiResult {
+    let page = q.page.trim().parse().unwrap_or(1);
+    let found = super::page_for(&state.db, &user, &q.q, page).await?;
     Ok(data(ProjectList {
-        projects: projects.iter().map(ProjectView::from).collect(),
+        projects: found.projects.iter().map(ProjectView::from).collect(),
+        total: found.total,
+        page: found.page,
+        page_size: crate::platform::caps::PROJECTS_PAGE,
         owners: owners(&state, &user).await?,
     }))
 }

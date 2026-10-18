@@ -1,5 +1,5 @@
 //! Hard caps (src/platform/caps.rs, spec 08 section 8.2): a capped list refuses one more row at
-//! insert, and every job works through a backlog in batches.
+//! insert, an uncapped one pages, and every job works through a backlog in batches.
 
 mod common;
 
@@ -45,35 +45,41 @@ async fn tl_with_project(app: &TestApp) -> String {
 }
 
 #[tokio::test]
-async fn a_full_instance_refuses_another_project() {
+async fn an_instance_has_no_project_cap() {
     let app = TestApp::spawn("test").await;
     let tl = tl_with_project(&app).await;
-    let more = caps::PROJECTS - 1;
     sql(
         &app,
         &format!(
             "INSERT INTO projects (owner_id, name, slug) {} SELECT 1, 'P' || i, 'p-' || i FROM n;",
-            upto(more)
+            upto(250)
         ),
     )
     .await;
     let res = app
-        .api_post(
-            "/api/ui/projects",
-            serde_json::json!({ "name": "One more" }),
-            Some(&tl),
-        )
+        .api_post("/api/ui/projects", json!({ "name": "One more" }), Some(&tl))
         .await;
-    assert_eq!(res.status(), 422);
-    assert!(
-        common::json_of(res).await["error"]["message"]
-            .as_str()
-            .unwrap()
-            .contains("200 projects")
-    );
+    assert_eq!(res.status(), 201);
+    assert_eq!(count(&app, "SELECT count(*) FROM projects").await, 252);
+}
+
+#[tokio::test]
+async fn the_digest_reaches_a_project_past_the_first_batch() {
+    let app = TestApp::spawn("test").await;
+    tl_with_project(&app).await;
+    let last = caps::JOB_BATCH + 1;
+    sql(&app, &format!(
+        "INSERT INTO projects (owner_id, name, slug) {} SELECT 1, 'P' || i, 'p-' || i FROM n;
+         INSERT INTO ref_ids (project_id, token_hash) VALUES ({last}, 'ref');
+         INSERT INTO tickets (project_id, number, ref_id, title, description) VALUES ({last}, 1, 1, 'bug', 'd');",
+        upto(caps::JOB_BATCH)
+    ))
+    .await;
     assert_eq!(
-        count(&app, "SELECT count(*) FROM projects").await,
-        caps::PROJECTS
+        monita::notify::digest(&app.state.db, common::BASE_URL, now())
+            .await
+            .unwrap(),
+        1
     );
 }
 
