@@ -9,7 +9,6 @@ import {
   Dialog,
   DialogClose,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -60,11 +59,10 @@ export function NewProjectDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent aria-describedby={undefined}>
         <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-6">
           <DialogHeader>
             <DialogTitle>New project</DialogTitle>
-            <DialogDescription>Monita makes the project's address from its name.</DialogDescription>
           </DialogHeader>
           {general && (
             <Alert variant="destructive">
@@ -82,6 +80,7 @@ export function NewProjectDialog({
                 aria-required
                 aria-invalid={fieldError("name") ? true : undefined}
                 maxLength={80}
+                placeholder="Payments Gateway"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
@@ -96,6 +95,7 @@ export function NewProjectDialog({
                 id="project-description"
                 rows={3}
                 maxLength={280}
+                placeholder="What this system does and who uses it."
                 aria-invalid={fieldError("description") ? true : undefined}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
