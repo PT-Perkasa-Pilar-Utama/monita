@@ -50,7 +50,7 @@ export function ConnectApp({ slug }: { slug: string }): ReactElement {
           Connect your app
         </Button>
       </SheetTrigger>
-      <SheetContent aria-describedby={undefined} className="sm:max-w-2xl">
+      <SheetContent size="half" aria-describedby={undefined}>
         <SheetHeader>
           <SheetTitle>Connect your app</SheetTitle>
           <p className="text-sm text-muted-foreground">Your users report bugs from inside your app. Monita never learns who they are.</p>

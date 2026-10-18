@@ -1,9 +1,9 @@
 import { useState } from "react";
 import type { FormEvent, ReactElement } from "react";
+import { FormSheet, FormSheetBody } from "@/components/app/FormSheet";
 import { StageRing } from "@/components/app/TicketBoard";
 import { Plus } from "@/components/icons";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Field, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
@@ -17,7 +17,7 @@ import { toast } from "sonner";
 // Done needs a close reason, so a new ticket starts in one of the other three.
 const OPEN_STAGES = STAGES.filter(([k]) => k !== "done");
 
-/** The team files a ticket itself, with no reporter and no ref ID. */
+/** The team files a ticket itself, with no reporter and no ref ID, in the wide panel. */
 export function NewTicketDialog({ slug, onFiled }: { slug: string; onFiled: (n: number) => void }): ReactElement {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
@@ -31,8 +31,7 @@ export function NewTicketDialog({ slug, onFiled }: { slug: string; onFiled: (n: 
     setStage("backlog");
     setError(null);
   };
-  const submit = async (e: FormEvent): Promise<void> => {
-    e.preventDefault();
+  const submit = async (_e: FormEvent): Promise<void> => {
     setBusy(true);
     setError(null);
     try {
@@ -49,18 +48,27 @@ export function NewTicketDialog({ slug, onFiled }: { slug: string; onFiled: (n: 
   };
   const err = (k: string): string | undefined => error?.fields[k];
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus data-icon="inline-start" />
-          New ticket
-        </Button>
-      </DialogTrigger>
-      <DialogContent aria-describedby={undefined} className="sm:max-w-2xl">
-        <form onSubmit={(e) => void submit(e)} noValidate className="flex flex-col gap-6">
-          <DialogHeader>
-            <DialogTitle>New ticket</DialogTitle>
-          </DialogHeader>
+    <>
+      <Button onClick={() => setOpen(true)}>
+        <Plus data-icon="inline-start" />
+        New ticket
+      </Button>
+      <FormSheet open={open} onClose={() => setOpen(false)}>
+        <FormSheetBody
+          title="New ticket"
+          onSubmit={(e) => void submit(e)}
+          footer={
+            <div className="ml-auto flex gap-2">
+              <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={busy}>
+                {busy && <Spinner data-icon="inline-start" />}
+                File ticket
+              </Button>
+            </div>
+          }
+        >
           <FieldGroup className="gap-5">
             <Field data-invalid={err("title") ? true : undefined}>
               <FieldLabel htmlFor="ticket-title" required>
@@ -83,7 +91,8 @@ export function NewTicketDialog({ slug, onFiled }: { slug: string; onFiled: (n: 
               </FieldLabel>
               <Textarea
                 id="ticket-description"
-                rows={8}
+                rows={12}
+                className="min-h-56"
                 placeholder="What happens, where, and how to make it happen again."
                 aria-required
                 aria-invalid={err("description") ? true : undefined}
@@ -106,19 +115,8 @@ export function NewTicketDialog({ slug, onFiled }: { slug: string; onFiled: (n: 
             </FieldSet>
             {error && Object.keys(error.fields).length === 0 && <p className="text-sm text-destructive">{error.message}</p>}
           </FieldGroup>
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button type="button" variant="ghost">
-                Cancel
-              </Button>
-            </DialogClose>
-            <Button type="submit" disabled={busy}>
-              {busy && <Spinner data-icon="inline-start" />}
-              File ticket
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+        </FormSheetBody>
+      </FormSheet>
+    </>
   );
 }

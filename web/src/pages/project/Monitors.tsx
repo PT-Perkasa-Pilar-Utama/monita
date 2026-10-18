@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { LinkRow, ROW_LINK } from "@/components/app/LinkRow";
 import { ListFilters } from "@/components/app/ListFilters";
 import { Overall } from "@/components/app/Overall";
@@ -22,9 +22,12 @@ import { sortRows } from "@/lib/sort";
 import { useSort } from "@/lib/useSort";
 import { useListFilter } from "@/lib/useListFilter";
 import { cn } from "@/lib/utils";
+import { MonitorGuide } from "@/components/app/Guides";
+import { MonitorFormSheet } from "@/pages/project/MonitorForm";
 
 /** A project's monitors: one sentence on their state, then a row per monitor with its last day. */
-export function Monitors(): ReactElement {
+export function Monitors({ creating = false }: { creating?: boolean }): ReactElement {
+  const navigate = useNavigate();
   const { project: p } = useProject();
   const base = `/projects/${p.slug}/monitors`;
   const res = useApi<MonitorList>(`/projects/${p.slug}/monitors`);
@@ -47,7 +50,15 @@ export function Monitors(): ReactElement {
 
   return (
     <>
-      <PageHeader title="Monitors" actions={newButton} />
+      <PageHeader
+        title="Monitors"
+        actions={
+          <>
+            <MonitorGuide />
+            {newButton}
+          </>
+        }
+      />
       {!res.data ? (
         <Skeleton className="h-64 rounded-xl" />
       ) : all.length === 0 ? (
@@ -121,6 +132,7 @@ export function Monitors(): ReactElement {
           </TableCard>
         </>
       )}
+      <MonitorFormSheet open={creating} onClose={() => navigate(base)} />
     </>
   );
 }

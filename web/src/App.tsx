@@ -9,14 +9,11 @@ import { Alerts } from "@/pages/project/Alerts";
 import { Allowlist } from "@/pages/project/Allowlist";
 import { General } from "@/pages/project/General";
 import { Heartbeat } from "@/pages/project/Heartbeat";
-import { HeartbeatForm } from "@/pages/project/HeartbeatForm";
 import { Incident } from "@/pages/project/Incident";
-import { IncidentForm } from "@/pages/project/IncidentForm";
 import { Incidents } from "@/pages/project/Incidents";
 import { Heartbeats } from "@/pages/project/Heartbeats";
 import { Keys } from "@/pages/project/Keys";
 import { Monitor } from "@/pages/project/Monitor";
-import { MonitorForm } from "@/pages/project/MonitorForm";
 import { Monitors } from "@/pages/project/Monitors";
 import { Overview } from "@/pages/project/Overview";
 import { DoneTickets } from "@/pages/project/DoneTickets";
@@ -49,15 +46,15 @@ export default function App(): ReactElement {
       <Route path="/projects/:slug" element={<ProjectLayout />}>
         <Route index element={<Overview />} />
         <Route path="monitors" element={<Monitors />} />
-        <Route path="monitors/new" element={<MonitorForm key="new" />} />
+        <Route path="monitors/new" element={<Monitors creating />} />
         <Route path="monitors/:id" element={<Monitor />} />
-        <Route path="monitors/:id/edit" element={<MonitorForm key="edit" />} />
+        <Route path="monitors/:id/edit" element={<Monitor editing />} />
         <Route path="heartbeats" element={<Heartbeats />} />
-        <Route path="heartbeats/new" element={<HeartbeatForm key="new" />} />
+        <Route path="heartbeats/new" element={<Heartbeats creating />} />
         <Route path="heartbeats/:id" element={<Heartbeat />} />
-        <Route path="heartbeats/:id/edit" element={<HeartbeatForm key="edit" />} />
+        <Route path="heartbeats/:id/edit" element={<Heartbeat editing />} />
         <Route path="incidents" element={<Incidents />} />
-        <Route path="incidents/new" element={<IncidentForm />} />
+        <Route path="incidents/new" element={<Incidents creating />} />
         <Route path="incidents/:id" element={<Incident />} />
         <Route path="tickets/done" element={<DoneTickets />} />
         <Route path="tickets/:number?" element={<Tickets />} />

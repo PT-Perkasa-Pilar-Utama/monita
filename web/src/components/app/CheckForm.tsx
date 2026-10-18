@@ -1,5 +1,4 @@
-import type { ReactElement, ReactNode } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { ReactElement } from "react";
 import { Field, FieldError, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -68,27 +67,5 @@ export function ChoiceField({
       </Select>
       {error && <FieldError>{error}</FieldError>}
     </Field>
-  );
-}
-
-/** The column beside a create or edit form: what the thing will do, in numbered sentences. */
-export function FormAside({ title, steps, note }: { title: string; steps: ReactNode[]; note: string }): ReactElement {
-  return (
-    <Card className="bg-paper xl:sticky xl:top-[calc(var(--bar-h)+24px)]">
-      <CardHeader>
-        <CardTitle className="text-[15px]">{title}</CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        <ol className="flex flex-col gap-3">
-          {steps.map((s, i) => (
-            <li key={i} className="flex gap-3">
-              <span className="grid size-6 shrink-0 place-items-center rounded-full bg-muted text-xs font-semibold">{i + 1}</span>
-              <span className="text-foreground/90">{s}</span>
-            </li>
-          ))}
-        </ol>
-        <p className="text-xs text-muted-foreground">{note}</p>
-      </CardContent>
-    </Card>
   );
 }

@@ -143,7 +143,7 @@ export function AlertsGuide({ slug, webhooks }: { slug: string; webhooks: Record
           How alerts work
         </Button>
       </SheetTrigger>
-      <SheetContent aria-describedby={undefined} className="sm:max-w-2xl">
+      <SheetContent size="half" aria-describedby={undefined}>
         <SheetHeader>
           <SheetTitle>How alerts work</SheetTitle>
         </SheetHeader>

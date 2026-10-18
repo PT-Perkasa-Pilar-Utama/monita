@@ -30,15 +30,19 @@ function SheetOverlay({ className, ...props }: React.ComponentProps<typeof Sheet
   );
 }
 
-/** A panel that slides in from the right edge. */
-function SheetContent({ className, children, ...props }: React.ComponentProps<typeof SheetPrimitive.Content>): ReactElement {
+// Wide holds a form or a record at three quarters of the screen; half holds a guide.
+const SIZE = { wide: "sm:w-3/4 sm:max-w-none", half: "sm:w-1/2 sm:min-w-[36rem] sm:max-w-none" } as const;
+
+/** A panel that slides in from the right edge: `wide` for a form or a record, `half` for a guide. */
+function SheetContent({ className, children, size = "wide", ...props }: React.ComponentProps<typeof SheetPrimitive.Content> & { size?: keyof typeof SIZE }): ReactElement {
   return (
     <SheetPrimitive.Portal>
       <SheetOverlay />
       <SheetPrimitive.Content
         data-slot="sheet-content"
         className={cn(
-          "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right fixed inset-y-0 right-0 z-50 flex h-full w-full flex-col border-l shadow-lg outline-none duration-200 sm:max-w-4xl",
+          "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right fixed inset-y-0 right-0 z-50 flex h-full w-full flex-col border-l shadow-lg outline-none duration-200",
+          SIZE[size],
           className,
         )}
         {...props}

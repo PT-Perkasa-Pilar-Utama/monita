@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { LinkRow, ROW_LINK } from "@/components/app/LinkRow";
 import { DueBar } from "@/components/app/DueBar";
 import { ListFilters } from "@/components/app/ListFilters";
@@ -11,7 +11,7 @@ import { PageHeader } from "@/components/layout/Page";
 import { TableEmpty } from "@/components/list/TableEmpty";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 import { countLabel, keeps } from "@/lib/filter";
 import { useProject } from "@/lib/project";
 import { ago } from "@/lib/time";
@@ -21,9 +21,12 @@ import { SortHead } from "@/components/list/SortHead";
 import { sortRows } from "@/lib/sort";
 import { useSort } from "@/lib/useSort";
 import { useListFilter } from "@/lib/useListFilter";
+import { HeartbeatGuide } from "@/components/app/Guides";
+import { HeartbeatFormSheet } from "@/pages/project/HeartbeatForm";
 
 /** A project's heartbeats: one sentence on their state, then a row per job with its deadline. */
-export function Heartbeats(): ReactElement {
+export function Heartbeats({ creating = false }: { creating?: boolean }): ReactElement {
+  const navigate = useNavigate();
   const { project: p } = useProject();
   const base = `/projects/${p.slug}/heartbeats`;
   const res = useApi<HeartbeatList>(`/projects/${p.slug}/heartbeats`);
@@ -46,7 +49,15 @@ export function Heartbeats(): ReactElement {
 
   return (
     <>
-      <PageHeader title="Heartbeats" actions={newButton} />
+      <PageHeader
+        title="Heartbeats"
+        actions={
+          <>
+            <HeartbeatGuide />
+            {newButton}
+          </>
+        }
+      />
       {!res.data ? (
         <Skeleton className="h-64 rounded-xl" />
       ) : all.length === 0 ? (
@@ -102,6 +113,7 @@ export function Heartbeats(): ReactElement {
           </TableCard>
         </>
       )}
+      <HeartbeatFormSheet open={creating} onClose={() => navigate(base)} />
     </>
   );
 }

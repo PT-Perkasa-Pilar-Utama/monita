@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { Facts } from "@/components/app/Facts";
 import { HistoryPager } from "@/components/app/History";
 import { AvailabilityCard, ChartCard, StatCards } from "@/components/app/Insight";
@@ -18,9 +18,11 @@ import { utc } from "@/lib/time";
 import type { MonitorDetail } from "@/lib/types";
 import { useDetail } from "@/lib/useDetail";
 import { NotFound } from "@/pages/NotFound";
+import { MonitorFormSheet } from "@/pages/project/MonitorForm";
 
 /** One monitor: four numbers, the response-time chart, availability, settings and its checks. */
-export function Monitor(): ReactElement {
+export function Monitor({ editing = false }: { editing?: boolean }): ReactElement {
+  const navigate = useNavigate();
   const { project: p } = useProject();
   const { id = "" } = useParams();
   const base = `/projects/${p.slug}/monitors`;
@@ -117,6 +119,7 @@ export function Monitor(): ReactElement {
           </div>
         </>
       )}
+      <MonitorFormSheet open={editing} id={id} onClose={() => navigate(`${base}/${id}`)} onSaved={res.reload} />
     </>
   );
 }

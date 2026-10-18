@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { CopyField } from "@/components/app/CopyField";
 import { Facts } from "@/components/app/Facts";
 import { HistoryPager } from "@/components/app/History";
@@ -19,9 +19,11 @@ import { utc } from "@/lib/time";
 import type { HeartbeatDetail } from "@/lib/types";
 import { useDetail } from "@/lib/useDetail";
 import { NotFound } from "@/pages/NotFound";
+import { HeartbeatFormSheet } from "@/pages/project/HeartbeatForm";
 
 /** One heartbeat: its ping URL, four numbers, the ping chart, availability and its pings. */
-export function Heartbeat(): ReactElement {
+export function Heartbeat({ editing = false }: { editing?: boolean }): ReactElement {
+  const navigate = useNavigate();
   const { project: p } = useProject();
   const { id = "" } = useParams();
   const base = `/projects/${p.slug}/heartbeats`;
@@ -123,6 +125,7 @@ export function Heartbeat(): ReactElement {
           </div>
         </>
       )}
+      <HeartbeatFormSheet open={editing} id={id} onClose={() => navigate(`${base}/${id}`)} onSaved={res.reload} />
     </>
   );
 }

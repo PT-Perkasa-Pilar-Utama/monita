@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { LinkRow, ROW_LINK } from "@/components/app/LinkRow";
 import { ListFilters, type Option } from "@/components/app/ListFilters";
 import { TableCard } from "@/components/app/TableCard";
@@ -9,7 +9,7 @@ import { PageHeader } from "@/components/layout/Page";
 import { TableEmpty } from "@/components/list/TableEmpty";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 import { countLabel, keeps } from "@/lib/filter";
 import { useProject } from "@/lib/project";
 import { duration, nowSecs, utc } from "@/lib/time";
@@ -19,6 +19,8 @@ import { SortHead } from "@/components/list/SortHead";
 import { sortRows } from "@/lib/sort";
 import { useSort } from "@/lib/useSort";
 import { useListFilter } from "@/lib/useListFilter";
+import { IncidentFormSheet } from "@/pages/project/IncidentForm";
+import { IncidentGuide } from "@/components/app/Guides";
 
 // The State select picks which list the server sends: open incidents, or resolved ones.
 const STATES: Option[] = [
@@ -27,7 +29,8 @@ const STATES: Option[] = [
 ];
 
 /** A project's open or resolved incidents, searchable by title or INC id. */
-export function Incidents(): ReactElement {
+export function Incidents({ creating = false }: { creating?: boolean }): ReactElement {
+  const navigate = useNavigate();
   const { project: p } = useProject();
   const base = `/projects/${p.slug}/incidents`;
   const [filter, setFilter, clear] = useListFilter();
@@ -48,12 +51,15 @@ export function Incidents(): ReactElement {
       <PageHeader
         title="Incidents"
         actions={
-          <Button asChild>
-            <Link to={`${base}/new`}>
-              <Plus data-icon="inline-start" />
-              Report incident
-            </Link>
-          </Button>
+          <>
+            <IncidentGuide />
+            <Button asChild>
+              <Link to={`${base}/new`}>
+                <Plus data-icon="inline-start" />
+                Report incident
+              </Link>
+            </Button>
+          </>
         }
       />
       <TableCard
@@ -107,6 +113,7 @@ export function Incidents(): ReactElement {
           </Table>
         )}
       </TableCard>
+      <IncidentFormSheet open={creating} onClose={() => navigate(base)} />
     </>
   );
 }
