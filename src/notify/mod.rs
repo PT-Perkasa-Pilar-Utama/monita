@@ -111,6 +111,15 @@ pub async fn save_route(
     Ok(())
 }
 
+/// Turns `critical`, `warning` or `ticket` alerts on or off. False for an unknown name.
+pub async fn set_enabled(db: &Db, project_id: i64, route: &str, on: bool) -> anyhow::Result<bool> {
+    if !matches!(route, "critical" | "warning" | "ticket") {
+        return Ok(false);
+    }
+    db.write(async |c| store::set_enabled(c, project_id, route, on).await)
+        .await
+}
+
 pub(super) struct Composed {
     subject: String,
     text: String,
@@ -186,7 +195,10 @@ pub async fn send(c: &Connection, ev: &Event, base_url: &str) -> anyhow::Result<
         return Ok(());
     };
     let (severity, msg) = compose(ev, &project, base_url);
-    let Some(route) = store::route(c, project_id, &severity).await? else {
+    let Some(route) = store::route(c, project_id, &severity)
+        .await?
+        .filter(|r| r.enabled)
+    else {
         return Ok(());
     };
     let at = now();
@@ -246,7 +258,10 @@ pub async fn send_test(
         let Some((name, slug)) = crate::projects::name_slug(c, project_id).await? else {
             return Ok(0);
         };
-        let Some(route) = store::route(c, project_id, severity).await? else {
+        let Some(route) = store::route(c, project_id, severity)
+            .await?
+            .filter(|r| r.enabled)
+        else {
             return Ok(0);
         };
         let at = now();

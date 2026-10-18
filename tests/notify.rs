@@ -139,3 +139,81 @@ async fn two_delivery_passes_never_send_one_message_twice() {
     tokio::time::sleep(Duration::from_millis(1_500)).await;
     assert_eq!(hits.load(Ordering::SeqCst), 1);
 }
+
+#[tokio::test]
+async fn an_alert_switched_off_sends_nothing_and_keeps_its_recipients() {
+    let app = TestApp::spawn("test").await;
+    let tl = app.tl("rina@x.co").await;
+    app.project(&tl, "Payments", "payments").await;
+    let route = "/api/ui/projects/payments/alerts/critical";
+    let body =
+        serde_json::json!({"emails": "oncall@x.co", "webhook_url": "", "use_webhook": false});
+    app.api_send(reqwest::Method::PUT, route, body, Some(&tl))
+        .await;
+    let switch_path = format!("{route}/enabled");
+    let switch = |on: bool| {
+        app.api_send(
+            reqwest::Method::PUT,
+            &switch_path,
+            serde_json::json!({ "enabled": on }),
+            Some(&tl),
+        )
+    };
+    assert_eq!(switch(false).await.status(), 204);
+
+    let opened = monita::incidents::Event::Opened {
+        incident_id: 1,
+        project_id: 1,
+        source_name: "API".into(),
+        title: "API is down".into(),
+        severity: "critical".into(),
+        cause: "HTTP 503".into(),
+    };
+    let send = async || {
+        app.state
+            .db
+            .write(async |c| {
+                monita::notify::send(c, &opened, common::BASE_URL).await?;
+                Ok(())
+            })
+            .await
+            .unwrap();
+    };
+    send().await;
+    let outbox = async || {
+        query_i64(
+            &app.state.db.read().await.unwrap(),
+            "SELECT count(*) FROM outbox WHERE recipient = 'oncall@x.co'",
+            (),
+        )
+        .await
+        .unwrap()
+        .unwrap_or(0)
+    };
+    assert_eq!(outbox().await, 0, "off: no alert");
+    let routes = common::json_of(
+        app.api_get("/api/ui/projects/payments/alerts", Some(&tl))
+            .await,
+    )
+    .await;
+    assert_eq!(
+        routes["data"][0]["emails"],
+        serde_json::json!(["oncall@x.co"]),
+        "recipients stay"
+    );
+    assert_eq!(routes["data"][0]["enabled"], false);
+
+    assert_eq!(switch(true).await.status(), 204);
+    send().await;
+    assert_eq!(outbox().await, 1, "back on: the alert goes out");
+
+    let bad = app
+        .api_send(
+            reqwest::Method::PUT,
+            "/api/ui/projects/payments/alerts/info/enabled",
+            serde_json::json!({ "enabled": false }),
+            Some(&tl),
+        )
+        .await;
+    assert_eq!(bad.status(), 404);
+}

@@ -42,7 +42,8 @@ async fn queue_one(
     base_url: &str,
     now: i64,
 ) -> anyhow::Result<usize> {
-    if !store::ticket_alerts(c, p.id).await?.digest {
+    let a = store::ticket_alerts(c, p.id).await?;
+    if !(a.enabled && a.digest) {
         return Ok(0);
     }
     let (fresh, total) = crate::tickets::new_in_triage_after(c, p.id, after).await?;

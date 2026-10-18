@@ -23,6 +23,7 @@ pub async fn save_ticket_alerts(
         return Err(RouteError::BadWebhook);
     }
     let a = TicketAlerts {
+        enabled: true,
         digest,
         webhook_url: (!webhook.is_empty()).then(|| webhook.to_string()),
         use_webhook,
@@ -41,7 +42,7 @@ pub async fn send_ticket(
     base_url: &str,
 ) -> anyhow::Result<()> {
     let a = store::ticket_alerts(c, project_id).await?;
-    let (true, Some(url)) = (a.use_webhook, a.webhook_url.as_deref()) else {
+    let (true, Some(url)) = (a.enabled && a.use_webhook, a.webhook_url.as_deref()) else {
         return Ok(());
     };
     let Some((name, slug)) = crate::projects::name_slug(c, project_id).await? else {
@@ -56,7 +57,7 @@ pub async fn send_ticket(
 pub async fn send_ticket_test(db: &Db, project_id: i64, base_url: &str) -> anyhow::Result<usize> {
     db.write(async |c| {
         let a = store::ticket_alerts(c, project_id).await?;
-        let (true, Some(url)) = (a.use_webhook, a.webhook_url.as_deref()) else {
+        let (true, Some(url)) = (a.enabled && a.use_webhook, a.webhook_url.as_deref()) else {
             return Ok(0);
         };
         let Some((name, slug)) = crate::projects::name_slug(c, project_id).await? else {

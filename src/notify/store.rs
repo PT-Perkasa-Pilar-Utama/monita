@@ -8,6 +8,8 @@ pub struct Route {
     pub emails: Vec<String>,
     pub webhook_url: Option<String>,
     pub use_webhook: bool,
+    /// Off sends nothing and keeps the recipients for when it comes back on.
+    pub enabled: bool,
 }
 
 pub struct OutboxRow {
@@ -36,11 +38,12 @@ fn route_row(r: &turso::Row) -> turso::Result<Route> {
             .collect(),
         webhook_url: r.get(2)?,
         use_webhook: r.get::<i64>(3)? == 1,
+        enabled: r.get::<i64>(4)? == 1,
     })
 }
 
 pub async fn routes(c: &Connection, project_id: i64) -> anyhow::Result<Vec<Route>> {
-    crate::platform::db::query_all(c, "SELECT severity, emails, webhook_url, use_webhook FROM alert_routes WHERE project_id = ?1 ORDER BY severity LIMIT 2", [project_id], route_row).await
+    crate::platform::db::query_all(c, "SELECT severity, emails, webhook_url, use_webhook, enabled FROM alert_routes WHERE project_id = ?1 ORDER BY severity LIMIT 2", [project_id], route_row).await
 }
 
 pub async fn route(
@@ -50,7 +53,7 @@ pub async fn route(
 ) -> anyhow::Result<Option<Route>> {
     let mut rows = c
         .query(
-            "SELECT severity, emails, webhook_url, use_webhook FROM alert_routes WHERE project_id = ?1 AND severity = ?2",
+            "SELECT severity, emails, webhook_url, use_webhook, enabled FROM alert_routes WHERE project_id = ?1 AND severity = ?2",
             (project_id, severity),
         )
         .await?;
@@ -168,6 +171,7 @@ pub async fn create_routes(c: &Connection, project_id: i64) -> anyhow::Result<()
 /// Who hears about new tickets: the owner's daily digest, and a webhook per ticket.
 #[derive(serde::Serialize, Debug, PartialEq, Eq)]
 pub struct TicketAlerts {
+    pub enabled: bool,
     pub digest: bool,
     pub webhook_url: Option<String>,
     pub use_webhook: bool,
@@ -177,17 +181,19 @@ pub struct TicketAlerts {
 pub async fn ticket_alerts(c: &Connection, project_id: i64) -> anyhow::Result<TicketAlerts> {
     let mut rows = c
         .query(
-            "SELECT digest, webhook_url, use_webhook FROM ticket_alerts WHERE project_id = ?1",
+            "SELECT digest, webhook_url, use_webhook, enabled FROM ticket_alerts WHERE project_id = ?1",
             [project_id],
         )
         .await?;
     Ok(match rows.next().await? {
         Some(r) => TicketAlerts {
+            enabled: r.get::<i64>(3)? == 1,
             digest: r.get::<i64>(0)? == 1,
             webhook_url: r.get(1)?,
             use_webhook: r.get::<i64>(2)? == 1,
         },
         None => TicketAlerts {
+            enabled: true,
             digest: true,
             webhook_url: None,
             use_webhook: false,
@@ -262,4 +268,27 @@ pub async fn email_latest(c: &Connection) -> anyhow::Result<(Option<i64>, Option
     )
     .await?;
     Ok((sent, error.into_iter().next()))
+}
+
+/// Turns one alert setting on or off: `critical`, `warning` or `ticket`. False for an unknown one.
+pub async fn set_enabled(
+    c: &Connection,
+    project_id: i64,
+    route: &str,
+    on: bool,
+) -> anyhow::Result<bool> {
+    let n = if route == "ticket" {
+        c.execute(
+            "INSERT INTO ticket_alerts (project_id, enabled) VALUES (?1, ?2) ON CONFLICT (project_id) DO UPDATE SET enabled = excluded.enabled",
+            (project_id, on),
+        )
+        .await?
+    } else {
+        c.execute(
+            "UPDATE alert_routes SET enabled = ?1 WHERE project_id = ?2 AND severity = ?3",
+            (on, project_id, route),
+        )
+        .await?
+    };
+    Ok(n > 0)
 }

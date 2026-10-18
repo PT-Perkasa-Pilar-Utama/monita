@@ -28,6 +28,10 @@ pub fn router() -> Router<AppState> {
             get(ticket_alerts).put(save_ticket_alerts),
         )
         .route(
+            "/api/ui/projects/{slug}/alerts/{route}/enabled",
+            put(set_enabled),
+        )
+        .route(
             "/api/ui/projects/{slug}/ticket-alerts/test",
             post(test_ticket_alerts),
         )
@@ -163,4 +167,24 @@ async fn test_ticket_alerts(
     let p = projects::find_for(&state.db, &user, &slug).await?;
     let sent_to = super::send_ticket_test(&state.db, p.id, &state.config.base_url).await?;
     Ok(data(Tested { sent_to }))
+}
+
+#[derive(Deserialize)]
+struct EnabledInput {
+    enabled: bool,
+}
+
+/// Turns `critical`, `warning` or `ticket` alerts on or off; the recipients stay.
+async fn set_enabled(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path((slug, route)): Path<(String, String)>,
+    Body(f): Body<EnabledInput>,
+) -> UiResult {
+    let p = projects::find_for(&state.db, &user, &slug).await?;
+    if super::set_enabled(&state.db, p.id, &route, f.enabled).await? {
+        Ok(StatusCode::NO_CONTENT.into_response())
+    } else {
+        Err(UiError::NotFound)
+    }
 }
