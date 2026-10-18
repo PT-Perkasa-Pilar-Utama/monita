@@ -80,10 +80,13 @@ function AccountMenu(): ReactElement {
             {resolved === "dark" ? <Sun /> : <Moon />}
             Toggle theme
           </DropdownMenuItem>
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuGroup>
           <DropdownMenuItem asChild>
             <a href={DOCS}>
               <BookOpen />
-              Docs
+              Documentation
             </a>
           </DropdownMenuItem>
         </DropdownMenuGroup>
@@ -123,7 +126,7 @@ export function TopBar({ crumb, tabs }: { crumb?: ReactNode; tabs?: ReactNode })
               {crumb}
             </>
           )}
-          <nav aria-label="Account" className="ml-auto flex items-center gap-1">
+          <nav aria-label="Account" className="ml-auto flex items-center gap-3">
             <AreaLink to="/" label="Projects" icon={<Folder />} active={!at("/admin")} />
             <AccountMenu />
           </nav>
