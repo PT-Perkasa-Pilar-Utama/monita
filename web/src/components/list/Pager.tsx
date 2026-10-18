@@ -11,6 +11,7 @@ export function Pager({
   total,
   noun,
   onPage,
+  disabled = false,
 }: {
   page: number;
   pageSize: number;
@@ -18,6 +19,8 @@ export function Pager({
   // The rows' singular noun: "project".
   noun: string;
   onPage: (page: number) => void;
+  // While the next page loads: the pager stays in place, its buttons off.
+  disabled?: boolean;
 }): ReactElement | null {
   if (total <= pageSize) return null;
   const pages = pageCount(total, pageSize);
@@ -25,14 +28,14 @@ export function Pager({
     <nav aria-label={`Pages of ${noun}s`} className="flex flex-wrap items-center justify-between gap-3 text-sm">
       <span className="text-muted-foreground">{rangeLabel(page, pageSize, total, noun)}</span>
       <div className="flex items-center gap-2">
-        <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => onPage(page - 1)}>
+        <Button variant="outline" size="sm" disabled={disabled || page <= 1} onClick={() => onPage(page - 1)}>
           <ChevronLeft data-icon="inline-start" />
           Previous
         </Button>
         <span className="text-muted-foreground tabular-nums">
           Page {page} of {pages}
         </span>
-        <Button variant="outline" size="sm" disabled={page >= pages} onClick={() => onPage(page + 1)}>
+        <Button variant="outline" size="sm" disabled={disabled || page >= pages} onClick={() => onPage(page + 1)}>
           Next
           <ChevronRight data-icon="inline-end" />
         </Button>

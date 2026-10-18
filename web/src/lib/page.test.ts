@@ -27,3 +27,19 @@ test("the query keeps a search and a later page, and leaves out the defaults", (
   expect(listQuery("  pay ", 1)).toBe("?q=pay");
   expect(listQuery("a&b", 3)).toBe("?q=a%26b&page=3");
 });
+
+import { restoreQuery, skeletonCount } from "@/lib/page";
+
+test("a bare visit opens the query used last, and a URL query wins", () => {
+  expect(restoreQuery("", "?page=2")).toBe("?page=2");
+  expect(restoreQuery("?q=pay", "?page=2")).toBe("?q=pay");
+  expect(restoreQuery("", "")).toBe("");
+  expect(restoreQuery("", "junk")).toBe("");
+});
+
+test("placeholders fill the page that loads, and 6 stand in before the total is known", () => {
+  expect(skeletonCount(1, 20, undefined)).toBe(6);
+  expect(skeletonCount(1, 20, 32)).toBe(20);
+  expect(skeletonCount(2, 20, 32)).toBe(12);
+  expect(skeletonCount(1, 20, 0)).toBe(1);
+});

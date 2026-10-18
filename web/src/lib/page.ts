@@ -28,3 +28,15 @@ export function listQuery(q: string, page: number): string {
   const s = out.toString();
   return s ? `?${s}` : "";
 }
+
+/** The list query to show: the URL's when it has one, else the one used last. */
+export function restoreQuery(search: string, remembered: string): string {
+  if (search && search !== "?") return search;
+  return remembered.startsWith("?") ? remembered : "";
+}
+
+/** Placeholders while a page loads: the rows that page will hold when the total is known, else 6. */
+export function skeletonCount(page: number, pageSize: number, total: number | undefined): number {
+  if (total === undefined) return 6;
+  return Math.min(pageSize, Math.max(1, total - (page - 1) * pageSize));
+}
