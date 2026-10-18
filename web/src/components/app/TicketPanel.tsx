@@ -19,7 +19,7 @@ import { useApi } from "@/lib/useApi";
 import { toast } from "sonner";
 
 /** A titled block of the panel's right column. */
-function Side({ title, children }: { title: string; children: ReactNode }): ReactElement {
+function Side({ title, children }: { title: ReactNode; children: ReactNode }): ReactElement {
   return (
     <section className="flex flex-col gap-3 border-b pb-5 last:border-b-0">
       <h3 className="text-[13px] font-semibold text-muted-foreground">{title}</h3>
@@ -38,7 +38,10 @@ function ColumnPicker({ t, move }: { t: TicketRow; move: (to: Stage, reason: Clo
   useEffect(() => setStage(t.stage), [t.stage]);
   const save = async (to: Stage, reason: CloseReason | null): Promise<void> => {
     setBusy(true);
-    setError(await move(to, reason));
+    const refused = await move(to, reason);
+    setError(refused);
+    // A refused move leaves the ticket where it was, so the radios go back too.
+    if (refused) setStage(t.stage);
     setBusy(false);
   };
   const pickStage = (v: string): void => {
@@ -63,7 +66,13 @@ function ColumnPicker({ t, move }: { t: TicketRow; move: (to: Stage, reason: Clo
         </RadioGroup>
       </Side>
       {stage === "done" && (
-        <Side title="Close reason">
+        <Side
+          title={
+            <>
+              Close reason <span aria-hidden="true" className="text-destructive">*</span>
+            </>
+          }
+        >
           <RadioGroup
             value={t.stage === "done" ? (t.close_reason ?? "") : ""}
             onValueChange={(v) => void save("done", v as CloseReason)}
