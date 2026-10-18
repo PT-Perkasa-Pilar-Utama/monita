@@ -328,7 +328,7 @@ async fn disabling_a_tl_kills_their_pending_invite() {
 }
 
 #[tokio::test]
-async fn reinvite_and_disable_refuse_anyone_but_an_active_tl() {
+async fn an_admin_acts_on_others_but_never_on_their_own_account() {
     let app = TestApp::spawn("test").await;
     let admin = app.super_admin("admin@x.co").await;
     app.tl("rina@x.co").await;
@@ -342,8 +342,17 @@ async fn reinvite_and_disable_refuse_anyone_but_an_active_tl() {
                 Some(&admin),
             )
             .await;
-        assert_eq!(res.status(), 404, "{action} on a super admin");
+        assert_eq!(res.status(), 422, "{action} on yourself");
     }
+    let res = app
+        .api_send(
+            reqwest::Method::PUT,
+            &format!("/api/ui/admin/users/{admin_id}/role"),
+            json!({"role": "tl"}),
+            Some(&admin),
+        )
+        .await;
+    assert_eq!(res.status(), 422, "demoting yourself");
     app.api_post(
         &format!("/api/ui/admin/users/{tl_id}/disable"),
         json!({}),
@@ -357,7 +366,94 @@ async fn reinvite_and_disable_refuse_anyone_but_an_active_tl() {
             Some(&admin),
         )
         .await;
-    assert_eq!(res.status(), 404, "a disabled TL gets no new invite");
+    assert_eq!(res.status(), 404, "a disabled user gets no new invite");
+}
+
+#[tokio::test]
+async fn a_promotion_and_a_demotion_hold_from_the_next_request() {
+    let app = TestApp::spawn("test").await;
+    let admin = app.super_admin("admin@x.co").await;
+    let rina = app.tl("rina@x.co").await;
+    let rina_id = user_id(&app, "rina@x.co").await;
+    let users = "/api/ui/admin/users";
+    assert_eq!(app.api_get(users, Some(&rina)).await.status(), 403);
+    let role_path = format!("/api/ui/admin/users/{rina_id}/role");
+    let set = |role: &'static str| {
+        app.api_send(
+            reqwest::Method::PUT,
+            &role_path,
+            json!({ "role": role }),
+            Some(&admin),
+        )
+    };
+    assert_eq!(set("super_admin").await.status(), 204);
+    assert_eq!(
+        app.api_get(users, Some(&rina)).await.status(),
+        200,
+        "the same session is admin now"
+    );
+    assert_eq!(set("tl").await.status(), 204);
+    assert_eq!(app.api_get(users, Some(&rina)).await.status(), 403);
+    assert_eq!(set("owner").await.status(), 422, "an unknown role");
+}
+
+#[tokio::test]
+async fn a_disabled_super_admin_signs_in_again_once_enabled() {
+    let app = TestApp::spawn("test").await;
+    let admin = app.super_admin("admin@x.co").await;
+    let res = app
+        .api_post(
+            "/api/ui/admin/users",
+            json!({"email": "budi@x.co", "role": "super_admin"}),
+            Some(&admin),
+        )
+        .await;
+    assert_eq!(res.status(), 201);
+    let link = json_of(res).await["data"]["link"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    app.accept(link.strip_prefix(BASE_URL).unwrap(), PASSWORD)
+        .await;
+    let budi_id = user_id(&app, "budi@x.co").await;
+    let disable = format!("/api/ui/admin/users/{budi_id}/disable");
+    assert_eq!(
+        app.api_post(&disable, json!({}), Some(&admin))
+            .await
+            .status(),
+        204,
+        "another super admin"
+    );
+    let refused = app
+        .api_post(
+            "/api/ui/login",
+            json!({"email": "budi@x.co", "password": PASSWORD}),
+            None,
+        )
+        .await;
+    assert_ne!(refused.status(), 204, "disabled");
+    let enable = format!("/api/ui/admin/users/{budi_id}/enable");
+    assert_eq!(
+        app.api_post(&enable, json!({}), Some(&admin))
+            .await
+            .status(),
+        204
+    );
+    let back = app.login("budi@x.co", PASSWORD).await;
+    assert_eq!(
+        app.api_get("/api/ui/admin/users", Some(&back))
+            .await
+            .status(),
+        200,
+        "still a super admin"
+    );
+    assert_eq!(
+        app.api_post(&enable, json!({}), Some(&admin))
+            .await
+            .status(),
+        404,
+        "already enabled"
+    );
 }
 
 #[tokio::test]

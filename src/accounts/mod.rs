@@ -1,6 +1,7 @@
 //! accounts module: users, invites, sessions.
 //! Spec: docs/technical-specs/05-module-definitions.md section 5.1 and 09.
 
+mod admin;
 pub mod admin_api;
 pub mod api;
 mod auth;
@@ -10,6 +11,7 @@ mod store;
 use crate::platform::{db::Db, now, page::PageError, token};
 use password::{hash_password, verify_password};
 
+pub use admin::{AdminError, disable, enable, reset_sign_in, set_role};
 pub use auth::{AdminUser, CurrentUser, clear_cookie, session_cookie, session_token};
 pub use store::UserRow;
 
@@ -32,7 +34,7 @@ impl Role {
         }
     }
 
-    fn parse(s: &str) -> Option<Self> {
+    pub fn parse(s: &str) -> Option<Self> {
         match s {
             "super_admin" => Some(Role::SuperAdmin),
             "tl" => Some(Role::Tl),
@@ -171,12 +173,22 @@ pub async fn logout(db: &Db, raw_token: &str) -> anyhow::Result<()> {
 
 /// US-02: creates a TL with no password and queues the invite email. Returns the invite link.
 pub async fn invite_tl(db: &Db, base_url: &str, email: &str) -> Result<String, AccountError> {
+    invite(db, base_url, email, Role::Tl).await
+}
+
+/// Creates a user of `role` with no password and queues the invite email. Returns the link.
+pub async fn invite(
+    db: &Db,
+    base_url: &str,
+    email: &str,
+    role: Role,
+) -> Result<String, AccountError> {
     let email = normalize_email(email)?;
     let raw = token::random_token();
     let link = format!("{base_url}/invite/{raw}");
     let hash = token::hash(&raw);
     db.write(async |c| {
-        let id = match store::insert_user(c, &email, Role::Tl, None).await? {
+        let id = match store::insert_user(c, &email, role, None).await? {
             Ok(id) => id,
             Err(e) => return Ok(Err(e)),
         };
@@ -188,8 +200,8 @@ pub async fn invite_tl(db: &Db, base_url: &str, email: &str) -> Result<String, A
     Ok(link)
 }
 
-/// US-04: a new invite for an existing user. Older invites and all sessions stop working.
-/// Returns the TL's email and the new link.
+/// US-04: a new invite for an existing user, which resets their sign-in. Older invites and
+/// all sessions stop working. Returns the user's email and the new link.
 pub async fn reinvite(
     db: &Db,
     base_url: &str,
@@ -200,7 +212,7 @@ pub async fn reinvite(
     let hash = token::hash(&raw);
     let email = db
         .write(async |c| {
-            let Some(email) = store::active_tl_email(c, user_id).await? else {
+            let Some(email) = store::active_email(c, user_id).await? else {
                 return Ok(None);
             };
             store::replace_invite(c, user_id, &hash, now() + INVITE_TTL_S).await?;
@@ -264,18 +276,6 @@ pub async fn is_active_tl(c: &turso::Connection, user_id: i64) -> anyhow::Result
 /// Deletes up to `limit` sessions and `limit` invites; returns how many. The caller loops.
 pub async fn purge_expired(c: &turso::Connection, now: i64, limit: i64) -> anyhow::Result<u64> {
     store::purge_expired(c, now, limit).await
-}
-
-/// Disabling is final: the user's invites go too, and only an active TL can be disabled.
-pub async fn disable(db: &Db, user_id: i64) -> Result<(), PageError> {
-    if db
-        .write(async |c| store::disable_tl(c, user_id, now()).await)
-        .await?
-    {
-        Ok(())
-    } else {
-        Err(PageError::NotFound)
-    }
 }
 
 #[cfg(test)]

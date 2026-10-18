@@ -191,7 +191,7 @@ async fn a_project_goes_only_to_an_active_tl() {
         .find(|u| u.email == "budi@x.co")
         .unwrap()
         .id;
-    monita::accounts::disable(&app.state.db, budi_id)
+    monita::accounts::disable(&app.state.db, 0, budi_id)
         .await
         .unwrap();
     for owner in ["budi@x.co", "nobody@x.co", ""] {

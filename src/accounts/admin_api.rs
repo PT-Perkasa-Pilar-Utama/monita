@@ -6,11 +6,11 @@ use axum::{
     extract::{Path, State},
     http::StatusCode,
     response::IntoResponse,
-    routing::{get, post},
+    routing::{get, post, put},
 };
 use serde::{Deserialize, Serialize};
 
-use super::{AccountError, AdminUser, UserRow};
+use super::{AccountError, AdminError, AdminUser, Role, UserRow};
 use crate::{
     app::AppState,
     platform::ui::{Body, UiError, UiResult, created, data},
@@ -21,6 +21,8 @@ pub fn router() -> Router<AppState> {
         .route("/api/ui/admin/users", get(list).post(invite))
         .route("/api/ui/admin/users/{id}/invite", post(reinvite))
         .route("/api/ui/admin/users/{id}/disable", post(disable))
+        .route("/api/ui/admin/users/{id}/enable", post(enable))
+        .route("/api/ui/admin/users/{id}/role", put(set_role))
 }
 
 /// A user as the page shows them. Never the password hash.
@@ -71,6 +73,25 @@ struct Invited {
 #[serde(default)]
 struct InviteForm {
     email: String,
+    /// `tl` (the default) or `super_admin`.
+    role: String,
+}
+
+fn role_of(raw: &str) -> Result<Role, UiError> {
+    match raw {
+        "" => Ok(Role::Tl),
+        r => Role::parse(r).ok_or_else(|| UiError::field("role", "Pick tech lead or super admin.")),
+    }
+}
+
+impl From<AdminError> for UiError {
+    fn from(e: AdminError) -> Self {
+        match e {
+            AdminError::Yourself => UiError::invalid(e.to_string()),
+            AdminError::NotFound => UiError::NotFound,
+            AdminError::Other(e) => UiError::Internal(e),
+        }
+    }
 }
 
 /// US-02. 201 with the link; a bad or taken email is 422 on `email`.
@@ -79,7 +100,8 @@ async fn invite(
     _: AdminUser,
     Body(f): Body<InviteForm>,
 ) -> UiResult {
-    match super::invite_tl(&state.db, &state.config.base_url, &f.email).await {
+    let role = role_of(&f.role)?;
+    match super::invite(&state.db, &state.config.base_url, &f.email, role).await {
         Ok(link) => Ok(created(Invited {
             email: f.email.trim().to_lowercase(),
             link,
@@ -89,14 +111,47 @@ async fn invite(
     }
 }
 
-/// A new link for an active tech lead; the old one stops working.
-async fn reinvite(State(state): State<AppState>, _: AdminUser, Path(id): Path<i64>) -> UiResult {
-    let (email, link) = super::reinvite(&state.db, &state.config.base_url, id).await?;
+/// A new link for another active user; it resets their sign-in and the old link stops working.
+async fn reinvite(
+    State(state): State<AppState>,
+    AdminUser(me): AdminUser,
+    Path(id): Path<i64>,
+) -> UiResult {
+    let (email, link) = super::reset_sign_in(&state.db, &state.config.base_url, me.id, id).await?;
     Ok(data(Invited { email, link }))
 }
 
 /// US-04. Signs them out at once. 204.
-async fn disable(State(state): State<AppState>, _: AdminUser, Path(id): Path<i64>) -> UiResult {
-    super::disable(&state.db, id).await?;
+async fn disable(
+    State(state): State<AppState>,
+    AdminUser(me): AdminUser,
+    Path(id): Path<i64>,
+) -> UiResult {
+    super::disable(&state.db, me.id, id).await?;
+    Ok(StatusCode::NO_CONTENT.into_response())
+}
+
+/// Undoes a disable. 204.
+async fn enable(State(state): State<AppState>, _: AdminUser, Path(id): Path<i64>) -> UiResult {
+    super::enable(&state.db, id).await?;
+    Ok(StatusCode::NO_CONTENT.into_response())
+}
+
+#[derive(Deserialize, Default)]
+#[serde(default)]
+struct RoleForm {
+    role: String,
+}
+
+/// Makes another active user a super admin or a tech lead. 204.
+async fn set_role(
+    State(state): State<AppState>,
+    AdminUser(me): AdminUser,
+    Path(id): Path<i64>,
+    Body(f): Body<RoleForm>,
+) -> UiResult {
+    let role = Role::parse(&f.role)
+        .ok_or_else(|| UiError::field("role", "Pick tech lead or super admin."))?;
+    super::set_role(&state.db, me.id, id, role).await?;
     Ok(StatusCode::NO_CONTENT.into_response())
 }

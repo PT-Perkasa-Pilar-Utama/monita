@@ -92,10 +92,43 @@ pub async fn list_users(c: &Connection) -> anyhow::Result<Vec<UserRow>> {
     .await
 }
 
-pub async fn disable_tl(c: &Connection, user_id: i64, at: i64) -> anyhow::Result<bool> {
+pub async fn active_email(c: &Connection, user_id: i64) -> anyhow::Result<Option<String>> {
+    let mut rows = c
+        .query(
+            "SELECT email FROM users WHERE id = ?1 AND disabled_at IS NULL",
+            [user_id],
+        )
+        .await?;
+    Ok(match rows.next().await? {
+        Some(r) => Some(r.get(0)?),
+        None => None,
+    })
+}
+
+pub async fn set_role(c: &Connection, user_id: i64, role: Role, at: i64) -> anyhow::Result<bool> {
     let n = c
         .execute(
-            "UPDATE users SET disabled_at = ?1, updated_at = ?1 WHERE id = ?2 AND role = 'tl' AND disabled_at IS NULL",
+            "UPDATE users SET role = ?1, updated_at = ?2 WHERE id = ?3 AND disabled_at IS NULL",
+            (role.as_str(), at, user_id),
+        )
+        .await?;
+    Ok(n > 0)
+}
+
+pub async fn enable_user(c: &Connection, user_id: i64, at: i64) -> anyhow::Result<bool> {
+    let n = c
+        .execute(
+            "UPDATE users SET disabled_at = NULL, updated_at = ?1 WHERE id = ?2 AND disabled_at IS NOT NULL",
+            (at, user_id),
+        )
+        .await?;
+    Ok(n > 0)
+}
+
+pub async fn disable_user(c: &Connection, user_id: i64, at: i64) -> anyhow::Result<bool> {
+    let n = c
+        .execute(
+            "UPDATE users SET disabled_at = ?1, updated_at = ?1 WHERE id = ?2 AND disabled_at IS NULL",
             (at, user_id),
         )
         .await?;

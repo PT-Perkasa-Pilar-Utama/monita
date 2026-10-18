@@ -617,7 +617,7 @@ async fn the_digest_skips_a_disabled_owner() {
         .find(|u| u.email == "rina@x.co")
         .unwrap()
         .id;
-    monita::accounts::disable(&app.state.db, rina)
+    monita::accounts::disable(&app.state.db, 0, rina)
         .await
         .unwrap();
     assert_eq!(
