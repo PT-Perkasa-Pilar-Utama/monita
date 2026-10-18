@@ -38,29 +38,33 @@ pub struct UpdateRow {
     pub created_at: i64,
 }
 
+/// A source's engine state, its open automatic incident, and when it went down. A source is down
+/// while either is set: `down_since` alone means it is down without an incident.
 pub async fn load_source(
     c: &Connection,
     kind: SourceKind,
     id: i64,
-) -> anyhow::Result<(SourceState, Option<i64>)> {
+) -> anyhow::Result<(SourceState, Option<i64>, Option<i64>)> {
     let mut rows = c
         .query(
-            "SELECT fail_streak, open_incident_id FROM incident_sources WHERE source_kind = ?1 AND source_id = ?2",
+            "SELECT fail_streak, open_incident_id, down_since FROM incident_sources WHERE source_kind = ?1 AND source_id = ?2",
             (kind.as_str(), id),
         )
         .await?;
     Ok(match rows.next().await? {
         Some(r) => {
             let open: Option<i64> = r.get(1)?;
+            let since: Option<i64> = r.get(2)?;
             (
                 SourceState {
                     fail_streak: r.get::<i64>(0)? as u32,
-                    open: open.is_some(),
+                    open: open.is_some() || since.is_some(),
                 },
                 open,
+                since,
             )
         }
-        None => (SourceState::default(), None),
+        None => (SourceState::default(), None, None),
     })
 }
 
@@ -70,11 +74,12 @@ pub async fn save_source(
     id: i64,
     s: SourceState,
     open: Option<i64>,
+    down_since: Option<i64>,
 ) -> anyhow::Result<()> {
     c.execute(
-        "INSERT INTO incident_sources (source_kind, source_id, fail_streak, open_incident_id) VALUES (?1, ?2, ?3, ?4)
-         ON CONFLICT (source_kind, source_id) DO UPDATE SET fail_streak = excluded.fail_streak, open_incident_id = excluded.open_incident_id",
-        (kind.as_str(), id, i64::from(s.fail_streak), open),
+        "INSERT INTO incident_sources (source_kind, source_id, fail_streak, open_incident_id, down_since) VALUES (?1, ?2, ?3, ?4, ?5)
+         ON CONFLICT (source_kind, source_id) DO UPDATE SET fail_streak = excluded.fail_streak, open_incident_id = excluded.open_incident_id, down_since = excluded.down_since",
+        (kind.as_str(), id, i64::from(s.fail_streak), open, down_since),
     )
     .await?;
     Ok(())
@@ -165,7 +170,7 @@ pub async fn release_auto(c: &Connection, id: i64, now: i64) -> anyhow::Result<(
     )
     .await?;
     c.execute(
-        "UPDATE incident_sources SET fail_streak = 0, open_incident_id = NULL WHERE open_incident_id = ?1",
+        "UPDATE incident_sources SET fail_streak = 0, open_incident_id = NULL, down_since = NULL WHERE open_incident_id = ?1",
         [id],
     )
     .await?;

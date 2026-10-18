@@ -216,6 +216,8 @@ mod tests {
             grace_s: 600,
             severity: "warning".into(),
             is_public: false,
+            alert: true,
+            auto_incident: true,
             last_ping_at: last,
             deadline_at: deadline,
             created_at: 0,

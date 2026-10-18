@@ -59,6 +59,10 @@ pub struct MonitorInput {
     pub skip_tls_verify: bool,
     pub severity: String,
     pub is_public: bool,
+    /// A failure alerts the severity's recipients.
+    pub alert: bool,
+    /// A failure opens an incident on its own. Off: only an alert, and you report one by hand.
+    pub auto_incident: bool,
 }
 
 pub type FieldErrors = BTreeMap<&'static str, &'static str>;
@@ -71,6 +75,8 @@ impl MonitorInput {
             timeout_ms: 10_000,
             expected_status: "2xx".into(),
             severity: "warning".into(),
+            alert: true,
+            auto_incident: true,
             ..Self::default()
         }
     }
@@ -150,7 +156,7 @@ pub struct Summary {
 /// The Overview's monitor and heartbeat cards, in that order.
 pub async fn summaries(db: &Db, project_id: i64) -> anyhow::Result<[Summary; 2]> {
     use crate::incidents::SourceKind;
-    let states = crate::incidents::states_for(db, project_id).await?;
+    let states = crate::incidents::team_states_for(db, project_id).await?;
     let state = |kind, id| states.get(&(kind, id)).copied();
     let monitors = list_monitors(db, project_id).await?;
     let monitors: Vec<_> = monitors
@@ -270,6 +276,15 @@ pub async fn source_names(
     project_id: i64,
 ) -> anyhow::Result<Vec<(crate::incidents::SourceKind, i64, String)>> {
     store::source_names(c, project_id).await
+}
+
+/// Whether a source's failures alert, on the caller's connection. A deleted source counts as on.
+pub async fn alert_on(
+    c: &turso::Connection,
+    kind: crate::incidents::SourceKind,
+    id: i64,
+) -> anyhow::Result<bool> {
+    store::alert_on(c, kind, id).await
 }
 
 pub async fn list_monitors(db: &Db, project_id: i64) -> anyhow::Result<Vec<Monitor>> {

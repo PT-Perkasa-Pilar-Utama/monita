@@ -270,3 +270,38 @@ pub async fn open_count(c: &Connection, project_id: i64) -> anyhow::Result<i64> 
     .await?
     .unwrap_or(0))
 }
+
+/// Of `refs`, the sources down with no incident: their auto-incident is off.
+pub async fn down_without_incident(
+    c: &Connection,
+    refs: &[ItemRef],
+) -> anyhow::Result<Vec<ItemRef>> {
+    let mut out = Vec::new();
+    for kind in [SourceKind::Monitor, SourceKind::Heartbeat] {
+        let ids: Vec<i64> = refs
+            .iter()
+            .filter(|r| r.kind == kind)
+            .map(|r| r.id)
+            .collect();
+        if ids.is_empty() {
+            continue;
+        }
+        let mut rows = c
+            .query(
+                format!(
+                    "SELECT source_id FROM incident_sources WHERE source_kind = ?1 AND down_since IS NOT NULL
+                     AND open_incident_id IS NULL AND source_id IN ({})",
+                    id_list(ids.into_iter())
+                ),
+                [kind.as_str()],
+            )
+            .await?;
+        while let Some(r) = rows.next().await? {
+            out.push(ItemRef {
+                kind,
+                id: r.get(0)?,
+            });
+        }
+    }
+    Ok(out)
+}

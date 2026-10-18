@@ -17,6 +17,8 @@ pub struct Monitor {
     pub skip_tls_verify: bool,
     pub severity: String,
     pub is_public: bool,
+    pub alert: bool,
+    pub auto_incident: bool,
     pub next_check_at: i64,
     pub last: Option<CheckRow>,
     pub created_at: i64,
@@ -34,6 +36,8 @@ impl Monitor {
             skip_tls_verify: self.skip_tls_verify,
             severity: self.severity.clone(),
             is_public: self.is_public,
+            alert: self.alert,
+            auto_incident: self.auto_incident,
         }
     }
 
@@ -44,6 +48,8 @@ impl Monitor {
             project_id: self.project_id,
             name: self.name.clone(),
             severity: self.severity.clone(),
+            alert: self.alert,
+            auto_incident: self.auto_incident,
         }
     }
 
@@ -68,7 +74,7 @@ pub struct CheckRow {
     pub error: Option<String>,
 }
 
-const COLS: &str = "m.id, m.project_id, m.name, m.url, m.interval_s, m.timeout_ms, m.expected_status, m.keyword, m.skip_tls_verify, m.severity, m.is_public, m.next_check_at, c.checked_at, c.ok, c.status_code, c.latency_ms, c.error, m.created_at, c.id";
+const COLS: &str = "m.id, m.project_id, m.name, m.url, m.interval_s, m.timeout_ms, m.expected_status, m.keyword, m.skip_tls_verify, m.severity, m.is_public, m.next_check_at, c.checked_at, c.ok, c.status_code, c.latency_ms, c.error, m.created_at, c.id, m.alert, m.auto_incident";
 const FROM: &str = "FROM monitors m LEFT JOIN check_results c ON c.id = (SELECT id FROM check_results WHERE monitor_id = m.id ORDER BY checked_at DESC, id DESC LIMIT 1)";
 
 fn monitor(r: &turso::Row) -> turso::Result<Monitor> {
@@ -95,6 +101,8 @@ fn monitor(r: &turso::Row) -> turso::Result<Monitor> {
         skip_tls_verify: r.get::<i64>(8)? == 1,
         severity: r.get(9)?,
         is_public: r.get::<i64>(10)? == 1,
+        alert: r.get::<i64>(19)? == 1,
+        auto_incident: r.get::<i64>(20)? == 1,
         next_check_at: r.get(11)?,
         last,
         created_at: r.get(17)?,
@@ -125,7 +133,19 @@ pub async fn insert_monitor(
         ),
     )
     .await?;
-    Ok(c.last_insert_rowid())
+    let id = c.last_insert_rowid();
+    set_switches(c, id, m).await?;
+    Ok(id)
+}
+
+/// Whether a monitor's failures alert and open an incident, beside the main write.
+async fn set_switches(c: &Connection, id: i64, m: &MonitorInput) -> anyhow::Result<()> {
+    c.execute(
+        "UPDATE monitors SET alert = ?1, auto_incident = ?2 WHERE id = ?3",
+        (m.alert, m.auto_incident, id),
+    )
+    .await?;
+    Ok(())
 }
 
 pub async fn update_monitor(
@@ -158,6 +178,9 @@ pub async fn update_monitor(
             ),
         )
         .await?;
+    if changed > 0 {
+        set_switches(c, id, m).await?;
+    }
     Ok(changed > 0)
 }
 
@@ -249,6 +272,25 @@ pub async fn source_names(
         |r| Ok((kind_at(r, 0)?, r.get(1)?, r.get(2)?)),
     )
     .await
+}
+
+/// Whether a monitor's or heartbeat's failures alert; a deleted one counts as on.
+pub async fn alert_on(
+    c: &Connection,
+    kind: crate::incidents::SourceKind,
+    id: i64,
+) -> anyhow::Result<bool> {
+    let table = match kind {
+        crate::incidents::SourceKind::Monitor => "monitors",
+        crate::incidents::SourceKind::Heartbeat => "heartbeats",
+    };
+    let on = crate::platform::db::query_i64(
+        c,
+        &format!("SELECT alert FROM {table} WHERE id = ?1"),
+        [id],
+    )
+    .await?;
+    Ok(on.unwrap_or(1) == 1)
 }
 
 /// A read-only probe, so an idle tick never waits for the writer.

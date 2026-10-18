@@ -46,6 +46,8 @@ struct HeartbeatView {
     grace: String,
     severity: String,
     is_public: bool,
+    alert: bool,
+    auto_incident: bool,
     last_ping_at: Option<i64>,
     deadline_at: Option<i64>,
     created_at: i64,
@@ -65,6 +67,8 @@ fn view(h: Heartbeat, state: &'static str, now: i64) -> HeartbeatView {
         grace_s: h.grace_s,
         severity: h.severity,
         is_public: h.is_public,
+        alert: h.alert,
+        auto_incident: h.auto_incident,
         last_ping_at: h.last_ping_at,
         deadline_at: h.deadline_at,
         created_at: h.created_at,
@@ -86,7 +90,7 @@ async fn list(
 ) -> UiResult {
     let p = projects::find_for(&state.db, &user, &slug).await?;
     let all = heartbeat::list(&state.db, p.id).await?;
-    let states = incidents::states_for(&state.db, p.id).await?;
+    let states = incidents::team_states_for(&state.db, p.id).await?;
     let state_of = |h: &Heartbeat| {
         h.state(states.get(&(SourceKind::Heartbeat, h.id)).copied())
             .0
@@ -131,7 +135,7 @@ async fn detail(
     let older = (pings.len() as i64 == caps::PINGS_PAGE)
         .then(|| pings.last().map(|r| format!("{}.{}", r.received_at, r.id)))
         .flatten();
-    let incident = incidents::states_for(&state.db, p.id)
+    let incident = incidents::team_states_for(&state.db, p.id)
         .await?
         .get(&(SourceKind::Heartbeat, id))
         .copied();
@@ -178,6 +182,9 @@ struct HeartbeatForm {
     grace_s: String,
     severity: String,
     is_public: bool,
+    /// Missing means on, so a client that never sends it keeps alerts and incidents.
+    alert: Option<bool>,
+    auto_incident: Option<bool>,
 }
 
 impl From<HeartbeatForm> for HeartbeatInput {
@@ -188,6 +195,8 @@ impl From<HeartbeatForm> for HeartbeatInput {
             grace_s: f.grace_s.trim().parse().unwrap_or(-1),
             severity: f.severity,
             is_public: f.is_public,
+            alert: f.alert.unwrap_or(true),
+            auto_incident: f.auto_incident.unwrap_or(true),
         }
     }
 }

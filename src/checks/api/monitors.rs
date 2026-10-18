@@ -55,6 +55,8 @@ struct MonitorView {
     skip_tls_verify: bool,
     severity: String,
     is_public: bool,
+    alert: bool,
+    auto_incident: bool,
     created_at: i64,
     next_check_at: i64,
     /// `up`, `down`, `issue` or `unknown` (waiting for the first check).
@@ -81,6 +83,8 @@ fn view(m: Monitor, state: &'static str) -> MonitorView {
         skip_tls_verify: m.skip_tls_verify,
         severity: m.severity,
         is_public: m.is_public,
+        alert: m.alert,
+        auto_incident: m.auto_incident,
         created_at: m.created_at,
         next_check_at: m.next_check_at,
         state,
@@ -122,7 +126,7 @@ async fn list(
 ) -> UiResult {
     let p = projects::find_for(&state.db, &user, &slug).await?;
     let monitors = checks::list_monitors(&state.db, p.id).await?;
-    let states = incidents::states_for(&state.db, p.id).await?;
+    let states = incidents::team_states_for(&state.db, p.id).await?;
     let mut days: HashMap<i64, Day> = overview::last_day(&state.db, p.id, now()).await?;
     let state_of = |m: &Monitor| {
         checks::item_state(
@@ -174,7 +178,7 @@ async fn detail(
     let older = (rows.len() as i64 == PAGE)
         .then(|| rows.last().map(|c| format!("{}.{}", c.checked_at, c.id)))
         .flatten();
-    let incident = incidents::states_for(&state.db, p.id)
+    let incident = incidents::team_states_for(&state.db, p.id)
         .await?
         .get(&(SourceKind::Monitor, id))
         .copied();
@@ -228,6 +232,9 @@ struct MonitorForm {
     skip_tls_verify: bool,
     severity: String,
     is_public: bool,
+    /// Missing means on, so a client that never sends it keeps alerts and incidents.
+    alert: Option<bool>,
+    auto_incident: Option<bool>,
 }
 
 impl From<MonitorForm> for MonitorInput {
@@ -249,6 +256,8 @@ impl From<MonitorForm> for MonitorInput {
             skip_tls_verify: f.skip_tls_verify,
             severity: f.severity,
             is_public: f.is_public,
+            alert: f.alert.unwrap_or(true),
+            auto_incident: f.auto_incident.unwrap_or(true),
         }
     }
 }

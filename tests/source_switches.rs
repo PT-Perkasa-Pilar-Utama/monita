@@ -1,0 +1,182 @@
+//! Per-monitor switches: "Send alerts when it fails" and "Open an incident when it fails".
+
+mod common;
+
+use std::sync::{
+    Arc,
+    atomic::{AtomicBool, Ordering},
+};
+use std::time::Duration;
+
+use axum::{Router, extract::State, http::StatusCode, routing::get};
+use common::{TestApp, json_of};
+use monita::{
+    checks::{self, MonitorInput},
+    platform::db::query_i64,
+};
+
+/// `/health` answers 200 or 503 depending on the switch.
+async fn switchable() -> (String, Arc<AtomicBool>) {
+    let up = Arc::new(AtomicBool::new(true));
+    let app = Router::new()
+        .route(
+            "/health",
+            get(|State(up): State<Arc<AtomicBool>>| async move {
+                if up.load(Ordering::SeqCst) {
+                    StatusCode::OK
+                } else {
+                    StatusCode::SERVICE_UNAVAILABLE
+                }
+            }),
+        )
+        .with_state(up.clone());
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+    (format!("http://{addr}/health"), up)
+}
+
+async fn count(app: &TestApp, sql: &str) -> i64 {
+    query_i64(&app.state.db.read().await.unwrap(), sql, ())
+        .await
+        .unwrap()
+        .unwrap_or(0)
+}
+
+/// Makes every monitor due and waits for one more check result.
+async fn check_once(app: &TestApp) {
+    let sql = "SELECT count(*) FROM check_results";
+    let before = count(app, sql).await;
+    app.state
+        .db
+        .write(async |c| {
+            c.execute("UPDATE monitors SET next_check_at = 0", ())
+                .await?;
+            Ok(())
+        })
+        .await
+        .unwrap();
+    for _ in 0..50 {
+        if count(app, sql).await > before {
+            return;
+        }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    panic!("no check ran");
+}
+
+/// Alert subjects sent so far; the invite email is left out.
+async fn subjects(app: &TestApp) -> Vec<String> {
+    monita::notify::deliver_due(&app.state).await.unwrap();
+    app.state
+        .mailer
+        .sent()
+        .into_iter()
+        .filter(|m| m.to == "oncall@x.co")
+        .map(|m| m.subject)
+        .collect()
+}
+
+/// A tech lead, a project with oncall@x.co on critical alerts, and one public critical monitor.
+async fn setup(app: &TestApp, alert: bool, auto_incident: bool) -> (String, Arc<AtomicBool>) {
+    let tl = app.tl("rina@x.co").await;
+    app.project(&tl, "Payments", "payments").await;
+    let res = app
+        .api_send(
+            reqwest::Method::PUT,
+            "/api/ui/projects/payments/alerts/critical",
+            serde_json::json!({ "emails": "oncall@x.co", "webhook_url": "", "use_webhook": false }),
+            Some(&tl),
+        )
+        .await;
+    assert_eq!(res.status(), 204);
+    let (url, up) = switchable().await;
+    let m = MonitorInput {
+        name: "API health".into(),
+        url,
+        severity: "critical".into(),
+        is_public: true,
+        alert,
+        auto_incident,
+        ..MonitorInput::defaults()
+    };
+    checks::create_monitor(&app.state.db, 1, &m).await.unwrap();
+    (tl, up)
+}
+
+#[tokio::test]
+async fn without_auto_incident_a_failure_alerts_down_and_up_and_opens_nothing() {
+    let app = TestApp::spawn("test").await;
+    let (tl, up) = setup(&app, true, false).await;
+
+    up.store(false, Ordering::SeqCst);
+    check_once(&app).await;
+    check_once(&app).await;
+    assert_eq!(count(&app, "SELECT count(*) FROM incidents").await, 0);
+    assert_eq!(
+        subjects(&app).await,
+        ["[DOWN] Payments / API health is down"]
+    );
+    let team = json_of(
+        app.api_get("/api/ui/projects/payments/monitors", Some(&tl))
+            .await,
+    )
+    .await;
+    assert_eq!(
+        team["data"]["monitors"][0]["state"], "down",
+        "the team sees it"
+    );
+    let public = json_of(app.get("/api/ui/public/payments/status", None).await).await;
+    assert!(
+        !public.to_string().contains("\"down\""),
+        "no incident, so the status page shows no outage"
+    );
+
+    check_once(&app).await;
+    assert_eq!(subjects(&app).await.len(), 1, "one alert per outage");
+
+    up.store(true, Ordering::SeqCst);
+    check_once(&app).await;
+    let sent = subjects(&app).await;
+    assert_eq!(sent.len(), 2);
+    assert!(
+        sent[1].starts_with("[UP] Payments / API health is up after"),
+        "{}",
+        sent[1]
+    );
+    assert_eq!(count(&app, "SELECT count(*) FROM incidents").await, 0);
+}
+
+#[tokio::test]
+async fn with_alerts_off_an_incident_opens_and_closes_without_a_message() {
+    let app = TestApp::spawn("test").await;
+    let (_tl, up) = setup(&app, false, true).await;
+
+    up.store(false, Ordering::SeqCst);
+    check_once(&app).await;
+    check_once(&app).await;
+    assert_eq!(
+        count(
+            &app,
+            "SELECT count(*) FROM incidents WHERE resolved_at IS NULL"
+        )
+        .await,
+        1
+    );
+    up.store(true, Ordering::SeqCst);
+    check_once(&app).await;
+    assert_eq!(
+        count(
+            &app,
+            "SELECT count(*) FROM incidents WHERE resolved_at IS NOT NULL"
+        )
+        .await,
+        1
+    );
+    assert!(subjects(&app).await.is_empty());
+    assert_eq!(
+        count(&app, "SELECT count(*) FROM outbox").await,
+        1,
+        "the invite only"
+    );
+}

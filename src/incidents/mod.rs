@@ -54,6 +54,10 @@ pub struct Source {
     pub project_id: i64,
     pub name: String,
     pub severity: String,
+    /// Its failures alert. Off: Monita tracks it and tells nobody.
+    pub alert: bool,
+    /// Its failures open an incident. Off: it goes Down on the team's pages and alerts only.
+    pub auto_incident: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -92,6 +96,25 @@ pub enum Event {
         /// Why it ended: a passing check, a deleted source, or a tech lead's Resolved update.
         ended: Ended,
     },
+    /// A source went down and does not open incidents: the alert alone tells the team.
+    Down {
+        project_id: i64,
+        kind: SourceKind,
+        source_id: i64,
+        source_name: String,
+        title: String,
+        severity: String,
+        cause: String,
+    },
+    /// That source works again.
+    Up {
+        project_id: i64,
+        kind: SourceKind,
+        source_id: i64,
+        source_name: String,
+        severity: String,
+        duration_s: i64,
+    },
 }
 
 fn title_and_cause(source: &Source, sig: &Signal) -> (String, String) {
@@ -111,57 +134,82 @@ fn title_and_cause(source: &Source, sig: &Signal) -> (String, String) {
     }
 }
 
-/// Applies one signal for a source. Idempotent for a repeated failure while open.
+/// Applies one signal for a source. Idempotent for a repeated failure while down. A source with
+/// `auto_incident` off goes down and up without an incident; one with `alert` off returns no event,
+/// so nobody is told.
 pub async fn observe(
     c: &Connection,
     source: &Source,
     sig: &Signal,
     now: i64,
 ) -> anyhow::Result<Option<Event>> {
-    let (state, open_id) = store::load_source(c, source.kind, source.id).await?;
+    let (state, open_id, down_since) = store::load_source(c, source.kind, source.id).await?;
     let (next, effect) = engine::step(state, sig);
     let mut opened = open_id;
+    let mut since = down_since;
     let event = match effect {
         None => None,
         Some(Effect::Open) => {
+            since = Some(now);
             let (title, cause) = title_and_cause(source, sig);
-            let id = store::open_auto(c, source, &title, &cause, now).await?;
-            opened = Some(id);
-            Some(Event::Opened {
-                incident_id: id,
-                project_id: source.project_id,
-                source_name: source.name.clone(),
-                title,
-                severity: source.severity.clone(),
-                cause,
-            })
-        }
-        Some(Effect::Resolve) => match open_id {
-            Some(id) => {
-                // The opened alert went to the incident's severity; the source's may have changed since.
-                let (started, severity) = store::resolve_auto(c, id, None, now).await?;
-                opened = None;
-                Some(Event::Resolved {
+            if source.auto_incident {
+                let id = store::open_auto(c, source, &title, &cause, now).await?;
+                opened = Some(id);
+                Some(Event::Opened {
                     incident_id: id,
                     project_id: source.project_id,
                     source_name: source.name.clone(),
-                    severity,
-                    duration_s: now - started,
-                    ended: Ended::Recovered,
+                    title,
+                    severity: source.severity.clone(),
+                    cause,
+                })
+            } else {
+                Some(Event::Down {
+                    project_id: source.project_id,
+                    kind: source.kind,
+                    source_id: source.id,
+                    source_name: source.name.clone(),
+                    title,
+                    severity: source.severity.clone(),
+                    cause,
                 })
             }
-            None => {
-                opened = None;
-                None
+        }
+        Some(Effect::Resolve) => {
+            since = None;
+            opened = None;
+            match (open_id, down_since) {
+                (Some(id), _) => {
+                    // The opened alert went to the incident's severity; the source's may have changed since.
+                    let (started, severity) = store::resolve_auto(c, id, None, now).await?;
+                    Some(Event::Resolved {
+                        incident_id: id,
+                        project_id: source.project_id,
+                        source_name: source.name.clone(),
+                        severity,
+                        duration_s: now - started,
+                        ended: Ended::Recovered,
+                    })
+                }
+                (None, Some(at)) => Some(Event::Up {
+                    project_id: source.project_id,
+                    kind: source.kind,
+                    source_id: source.id,
+                    source_name: source.name.clone(),
+                    severity: source.severity.clone(),
+                    duration_s: now - at,
+                }),
+                (None, None) => None,
             }
-        },
+        }
     };
     let next_open_id = if next.open { opened } else { None };
+    let next_since = if next.open { since } else { None };
     // A passing check on a healthy source changes nothing; skip the write.
-    if (next, next_open_id) != (state, open_id) {
-        store::save_source(c, source.kind, source.id, next, next_open_id).await?;
+    if (next, next_open_id, next_since) != (state, open_id, down_since) {
+        store::save_source(c, source.kind, source.id, next, next_open_id, next_since).await?;
     }
-    Ok(event)
+    Ok(event.filter(|_| source.alert))
 }
 
 /// A deleted monitor or heartbeat closes its open automatic incident, so nothing stays open forever.
@@ -171,7 +219,7 @@ pub async fn source_deleted(
     source: &Source,
     now: i64,
 ) -> anyhow::Result<Option<Event>> {
-    let (_, open_id) = store::load_source(c, source.kind, source.id).await?;
+    let (_, open_id, _) = store::load_source(c, source.kind, source.id).await?;
     let event = match open_id {
         Some(id) => {
             let message = "The monitor or heartbeat was deleted.";
@@ -188,7 +236,7 @@ pub async fn source_deleted(
         None => None,
     };
     store::forget_source(c, source.kind, source.id).await?;
-    Ok(event)
+    Ok(event.filter(|_| source.alert))
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -204,6 +252,26 @@ pub async fn states_for(
     project_id: i64,
 ) -> anyhow::Result<HashMap<(SourceKind, i64), ItemState>> {
     store::states_for(&db.read().await?, project_id).await
+}
+
+/// What the team's own pages show: `states_for`, plus Down for a source that is down with no
+/// incident because its auto-incident is off. The public status page keeps `states_for`, so only
+/// an incident someone opened reaches visitors.
+pub async fn team_states_for(
+    db: &Db,
+    project_id: i64,
+) -> anyhow::Result<HashMap<(SourceKind, i64), ItemState>> {
+    let c = db.read().await?;
+    let mut out = store::states_for(&c, project_id).await?;
+    let refs: Vec<ItemRef> = item_names_on(&c, project_id)
+        .await?
+        .into_iter()
+        .map(|(r, _)| r)
+        .collect();
+    for r in store::down_without_incident(&c, &refs).await? {
+        out.insert((r.kind, r.id), ItemState::Down);
+    }
+    Ok(out)
 }
 
 /// Open incidents of a project, for the project's tab bar.

@@ -14,27 +14,33 @@ pub fn allowed_labels(_origin: &str, closed: bool) -> &'static [&'static str] {
 
 /// A tech lead's Resolved on an open automatic incident. The source starts over: a monitor needs
 /// two new failed checks to open the next incident, and a heartbeat needs a ping and then a miss.
-/// Returns the event, so whoever heard "opened" also hears the end.
+/// Returns the event, so whoever heard "opened" also hears the end; `None` when the source's
+/// alerts are off, as they were when it opened.
 async fn resolve_by_hand(
     c: &Connection,
     project_id: i64,
     incident_id: i64,
     now: i64,
-) -> anyhow::Result<Event> {
+) -> anyhow::Result<Option<Event>> {
     let (started, severity) = store::release_auto(c, incident_id, now).await?;
     let item = store::items(c, incident_id).await?.into_iter().next();
+    if let Some(it) = &item
+        && !crate::checks::alert_on(c, it.kind, it.id).await?
+    {
+        return Ok(None);
+    }
     let names = item_names_on(c, project_id).await?;
     let source_name = item
         .and_then(|it| names.into_iter().find(|(r, _)| *r == it).map(|(_, n)| n))
         .unwrap_or_else(|| "A deleted monitor or heartbeat".into());
-    Ok(Event::Resolved {
+    Ok(Some(Event::Resolved {
         incident_id,
         project_id,
         source_name,
         severity,
         duration_s: now - started,
         ended: Ended::ByHand,
-    })
+    }))
 }
 
 /// US-19. A message is required. Resolved closes the incident; an automatic one alerts its end.
@@ -76,8 +82,11 @@ pub async fn post_update(
             now,
         )
         .await?;
-        if label == "resolved" && origin == "auto" && resolved_at.is_none() {
-            let ev = resolve_by_hand(c, project_id, incident_id, now).await?;
+        if label == "resolved"
+            && origin == "auto"
+            && resolved_at.is_none()
+            && let Some(ev) = resolve_by_hand(c, project_id, incident_id, now).await?
+        {
             crate::notify::send(c, &ev, base_url).await?;
         }
         Ok(Ok(true))

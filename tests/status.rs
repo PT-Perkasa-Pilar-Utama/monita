@@ -50,7 +50,7 @@ async fn setup(app: &TestApp) -> String {
                  INSERT INTO check_results (monitor_id, checked_at, ok) VALUES (1, {t}, 0), (2, {t}, 1);
                  INSERT INTO incidents (id, project_id, origin, title, severity, cause, started_at) VALUES (1, 1, 'auto', 'Checkout is down', 'critical', 'dns error: db-7.corp.internal', {start});
                  INSERT INTO incident_items VALUES (1, 'monitor', 1);
-                 INSERT INTO incident_sources VALUES ('monitor', 1, 2, 1);
+                 INSERT INTO incident_sources VALUES ('monitor', 1, 2, 1, NULL);
                  INSERT INTO status_updates (incident_id, label, message, author_id, created_at) VALUES
                    (1, 'investigating', 'Detected: dns error: db-7.corp.internal.', NULL, {start}),
                    (1, 'identified', 'A DNS change rolled back.', 1, {t});

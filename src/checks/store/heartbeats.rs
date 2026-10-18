@@ -5,7 +5,7 @@ use turso::Connection;
 use crate::checks::heartbeat::{Heartbeat, HeartbeatInput, PingKind, PingRow};
 use crate::platform::caps;
 
-const COLS: &str = "h.id, h.project_id, h.name, h.token, h.period_s, h.grace_s, h.severity, h.is_public, h.last_ping_at, h.deadline_at, h.created_at";
+const COLS: &str = "h.id, h.project_id, h.name, h.token, h.period_s, h.grace_s, h.severity, h.is_public, h.last_ping_at, h.deadline_at, h.created_at, h.alert, h.auto_incident";
 
 fn row(r: &turso::Row) -> turso::Result<Heartbeat> {
     Ok(Heartbeat {
@@ -17,6 +17,8 @@ fn row(r: &turso::Row) -> turso::Result<Heartbeat> {
         grace_s: r.get(5)?,
         severity: r.get(6)?,
         is_public: r.get::<i64>(7)? == 1,
+        alert: r.get::<i64>(11)? == 1,
+        auto_incident: r.get::<i64>(12)? == 1,
         last_ping_at: r.get(8)?,
         deadline_at: r.get(9)?,
         created_at: r.get(10)?,
@@ -43,7 +45,9 @@ pub async fn insert(
         (project_id, input.name.trim(), tok, input.period_s, input.grace_s, input.severity.as_str(), input.is_public, deadline),
     )
     .await?;
-    Ok(c.last_insert_rowid())
+    let id = c.last_insert_rowid();
+    set_switches(c, id, input).await?;
+    Ok(id)
 }
 
 pub async fn update(
@@ -61,7 +65,20 @@ pub async fn update(
             (input.name.trim(), input.period_s, input.grace_s, input.severity.as_str(), input.is_public, id, project_id),
         )
         .await?;
+    if changed > 0 {
+        set_switches(c, id, input).await?;
+    }
     Ok(changed > 0)
+}
+
+/// Whether a heartbeat's misses and fail pings alert and open an incident, beside the main write.
+async fn set_switches(c: &Connection, id: i64, input: &HeartbeatInput) -> anyhow::Result<()> {
+    c.execute(
+        "UPDATE heartbeats SET alert = ?1, auto_incident = ?2 WHERE id = ?3",
+        (input.alert, input.auto_incident, id),
+    )
+    .await?;
+    Ok(())
 }
 
 pub async fn delete(c: &Connection, project_id: i64, id: i64) -> anyhow::Result<()> {

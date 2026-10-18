@@ -57,6 +57,8 @@ pub struct Heartbeat {
     pub grace_s: i64,
     pub severity: String,
     pub is_public: bool,
+    pub alert: bool,
+    pub auto_incident: bool,
     pub last_ping_at: Option<i64>,
     pub deadline_at: Option<i64>,
     pub created_at: i64,
@@ -74,6 +76,8 @@ impl Heartbeat {
             project_id: self.project_id,
             name: self.name.clone(),
             severity: self.severity.clone(),
+            alert: self.alert,
+            auto_incident: self.auto_incident,
         }
     }
 
@@ -84,6 +88,8 @@ impl Heartbeat {
             grace_s: self.grace_s,
             severity: self.severity.clone(),
             is_public: self.is_public,
+            alert: self.alert,
+            auto_incident: self.auto_incident,
         }
     }
 }
@@ -95,6 +101,10 @@ pub struct HeartbeatInput {
     pub grace_s: i64,
     pub severity: String,
     pub is_public: bool,
+    /// A missed deadline or a fail ping alerts the severity's recipients.
+    pub alert: bool,
+    /// A missed deadline or a fail ping opens an incident on its own.
+    pub auto_incident: bool,
 }
 
 impl Default for HeartbeatInput {
@@ -105,6 +115,8 @@ impl Default for HeartbeatInput {
             grace_s: 1_800,
             severity: "warning".into(),
             is_public: false,
+            alert: true,
+            auto_incident: true,
         }
     }
 }

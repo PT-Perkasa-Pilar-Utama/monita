@@ -186,14 +186,76 @@ pub(super) fn compose(
                 },
             )
         }
+        Event::Down {
+            kind,
+            source_id,
+            source_name,
+            title,
+            severity,
+            cause,
+            ..
+        } => {
+            let url = source_url(base_url, slug, *kind, *source_id);
+            let text = format!("[DOWN] {name} / {title}: {cause}");
+            (
+                severity.clone(),
+                Composed {
+                    subject: format!("[DOWN] {name} / {title}"),
+                    json: serde_json::json!({
+                        "text": text, "event": "source.down", "project": slug, "source": source_name,
+                        "severity": severity, "cause": cause, "source_url": url, "at": now(),
+                    }),
+                    text: format!(
+                        "{text}\n\nNo incident was opened. Report one if users should know.\n{url}\n"
+                    ),
+                },
+            )
+        }
+        Event::Up {
+            kind,
+            source_id,
+            source_name,
+            severity,
+            duration_s,
+            ..
+        } => {
+            let url = source_url(base_url, slug, *kind, *source_id);
+            let text = format!(
+                "[UP] {name} / {source_name} is up after {}",
+                time::duration(*duration_s)
+            );
+            (
+                severity.clone(),
+                Composed {
+                    subject: text.clone(),
+                    json: serde_json::json!({
+                        "text": text, "event": "source.up", "project": slug, "source": source_name,
+                        "severity": severity, "duration_s": duration_s, "source_url": url, "at": now(),
+                    }),
+                    text: format!("{text}\n\n{url}\n"),
+                },
+            )
+        }
     }
+}
+
+/// The page of a monitor or a heartbeat, for an alert with no incident to link.
+fn source_url(base_url: &str, slug: &str, kind: crate::incidents::SourceKind, id: i64) -> String {
+    let path = match kind {
+        crate::incidents::SourceKind::Monitor => "monitors",
+        crate::incidents::SourceKind::Heartbeat => "heartbeats",
+    };
+    format!("{base_url}/projects/{slug}/{path}/{id}")
 }
 
 /// US-16. Queues one email per address and one webhook call for the event's severity.
 /// Call it inside the same write transaction as `incidents::observe`.
 pub async fn send(c: &Connection, ev: &Event, base_url: &str) -> anyhow::Result<()> {
     let project_id = match ev {
-        Event::Opened { project_id, .. } | Event::Resolved { project_id, .. } => *project_id,
+        Event::Opened { project_id, .. }
+        | Event::Resolved { project_id, .. }
+        | Event::Down { project_id, .. }
+        | Event::Up { project_id, .. } => *project_id,
     };
     let Some(project) = crate::projects::name_slug(c, project_id).await? else {
         return Ok(());
