@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 import { ConfirmDialog } from "@/components/app/ConfirmDialog";
-import { ColumnPicker, type Move, PublicSide, Side } from "@/components/app/TicketSide";
+import { ColumnPicker, type Move, PublicPreview, PublicTitle, Side } from "@/components/app/TicketSide";
 import { ReasonBadge, StageBadge } from "@/components/app/Tone";
 import { UserRound } from "@/components/icons";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,7 @@ function Body({ t, path, onChanged }: { t: TicketRow; path: string; onChanged: (
         <SheetTitle className="text-2xl leading-tight break-words">
           {t.title} <span className="font-normal text-muted-foreground">#{t.number}</span>
         </SheetTitle>
+        <PublicTitle t={t} path={path} onSaved={onChanged} />
         <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           <StageBadge stage={t.stage} />
           {t.close_reason && <ReasonBadge reason={t.close_reason} />}
@@ -63,7 +64,7 @@ function Body({ t, path, onChanged }: { t: TicketRow; path: string; onChanged: (
         </div>
         <aside className="flex flex-col gap-5">
           <ColumnPicker t={t} move={move} />
-          <PublicSide t={t} path={path} onSaved={onChanged} />
+          <PublicPreview t={t} />
           {t.filed_by ? (
             <Side title="Filed by">
               <p className="text-sm break-all">{t.filed_by}, from the board</p>

@@ -93,8 +93,21 @@ export function ColumnPicker({ t, move }: { t: TicketRow; move: Move }): ReactEl
   );
 }
 
-/** How the public board shows the ticket, and the title that board uses. The title edits in place. */
-export function PublicSide({ t, path, onSaved }: { t: TicketRow; path: string; onSaved: () => void }): ReactElement {
+/** How the public board shows the ticket. */
+export function PublicPreview({ t }: { t: TicketRow }): ReactElement {
+  return (
+    <Side title="On the public board">
+      {t.stage === "triage" ? (
+        <p className="text-sm text-muted-foreground">Hidden until it leaves Triage.</p>
+      ) : (
+        <TicketCard title={t.public_title ?? t.title} number={t.number} aside={ago(t.updated_at)} meta={<span>Reported {day(t.created_at)}</span>} />
+      )}
+    </Side>
+  );
+}
+
+/** The public board's title, under the reporter's own in the header. It edits in place. */
+export function PublicTitle({ t, path, onSaved }: { t: TicketRow; path: string; onSaved: () => void }): ReactElement {
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(t.public_title ?? "");
   const [error, setError] = useState<string | null>(null);
@@ -120,51 +133,36 @@ export function PublicSide({ t, path, onSaved }: { t: TicketRow; path: string; o
       setBusy(false);
     }
   };
+  if (!editing) {
+    return (
+      <p className="flex min-w-0 items-center gap-1.5 text-sm">
+        <span className="shrink-0 text-muted-foreground">Public title</span>
+        <span className="min-w-0 truncate">{t.public_title ?? <span className="text-muted-foreground">same as the title</span>}</span>
+        <Button type="button" variant="ghost" size="icon" className="size-7 shrink-0" aria-label="Edit the public title" onClick={() => setEditing(true)}>
+          <Pencil />
+        </Button>
+      </p>
+    );
+  }
   return (
-    <>
-      <Side title="On the public board">
-        {t.stage === "triage" ? (
-          <p className="text-sm text-muted-foreground">Hidden until it leaves Triage.</p>
-        ) : (
-          <TicketCard title={t.public_title ?? t.title} number={t.number} aside={ago(t.updated_at)} meta={<span>Reported {day(t.created_at)}</span>} />
-        )}
-      </Side>
-      <Side
-        title={
-          <span className="flex items-center justify-between gap-2">
-            Public title
-            {!editing && (
-              <Button type="button" variant="ghost" size="icon" className="size-7" aria-label="Edit the public title" onClick={() => setEditing(true)}>
-                <Pencil />
-              </Button>
-            )}
-          </span>
-        }
-      >
-        {editing ? (
-          <form onSubmit={(e) => void save(e)} noValidate className="flex flex-col gap-2">
-            <Field data-invalid={error ? true : undefined}>
-              <FieldLabel htmlFor="public-title" className="sr-only">
-                Public title, when the reporter's title says too much
-              </FieldLabel>
-              <Input id="public-title" autoFocus maxLength={120} placeholder={t.title} aria-invalid={error ? true : undefined} value={title} onChange={(e) => setTitle(e.target.value)} />
-              {error && <FieldError>{error}</FieldError>}
-            </Field>
-            <p className="text-[13px] text-muted-foreground">Leave it empty to show the reporter's title.</p>
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="ghost" size="sm" onClick={cancel}>
-                Cancel
-              </Button>
-              <Button type="submit" size="sm" disabled={busy || title.trim() === (t.public_title ?? "")}>
-                {busy && <Spinner data-icon="inline-start" />}
-                Save public title
-              </Button>
-            </div>
-          </form>
-        ) : (
-          <p className="text-sm break-words">{t.public_title ?? <span className="text-muted-foreground">Same as the reporter's title</span>}</p>
-        )}
-      </Side>
-    </>
+    <form onSubmit={(e) => void save(e)} noValidate className="flex flex-col gap-1.5">
+      <Field data-invalid={error ? true : undefined}>
+        <FieldLabel htmlFor="public-title">Public title, when the reporter's title says too much</FieldLabel>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Input id="public-title" autoFocus maxLength={120} placeholder={t.title} aria-invalid={error ? true : undefined} value={title} onChange={(e) => setTitle(e.target.value)} />
+          <div className="flex shrink-0 gap-2">
+            <Button type="button" variant="ghost" onClick={cancel}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={busy || title.trim() === (t.public_title ?? "")}>
+              {busy && <Spinner data-icon="inline-start" />}
+              Save public title
+            </Button>
+          </div>
+        </div>
+        {error && <FieldError>{error}</FieldError>}
+      </Field>
+      <p className="text-[13px] text-muted-foreground">Leave it empty to show the reporter's title.</p>
+    </form>
   );
 }
