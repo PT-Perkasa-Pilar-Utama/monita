@@ -70,8 +70,10 @@ export function Projects(): ReactElement {
         title="Projects"
         actions={
           <>
-            <ViewToggle value={view} onChange={setView} />
-            <PageSearch value={draft} onChange={setDraft} placeholder="Search projects" />
+            <div className="flex w-full items-center gap-2 sm:w-auto">
+              <ViewToggle value={view} onChange={setView} />
+              <PageSearch value={draft} onChange={setDraft} placeholder="Search projects" />
+            </div>
             <Button onClick={() => setCreating(true)}>
               <Plus data-icon="inline-start" />
               New project

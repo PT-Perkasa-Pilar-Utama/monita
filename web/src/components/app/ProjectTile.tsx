@@ -92,7 +92,7 @@ export function ProjectTable({ projects, loading, skeletons }: { projects: Proje
                   </div>
                 </TableCell>
                 <TableCell className="text-muted-foreground max-md:hidden">{p.owner_email}</TableCell>
-                <TableCell className="text-muted-foreground tabular-nums max-sm:hidden">{day(p.created_at)}</TableCell>
+                <TableCell className="text-muted-foreground max-sm:hidden">{day(p.created_at)}</TableCell>
                 <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                   <StatusLink slug={p.slug} label="Open" />
                 </TableCell>
