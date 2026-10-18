@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import type { FormEvent, ReactElement, ReactNode } from "react";
+import type { FormEvent, ReactElement } from "react";
+import { Side } from "@/components/app/Side";
 import { StageRing, TicketCard } from "@/components/app/TicketBoard";
 import { Pencil } from "@/components/icons";
 import { Button } from "@/components/ui/button";
@@ -14,16 +15,6 @@ import type { CloseReason, Stage, TicketRow } from "@/lib/types";
 import { toast } from "sonner";
 
 export type Move = (to: Stage, reason: CloseReason | null) => Promise<string | null>;
-
-/** A titled block of the panel's right column, as GitHub's issue sidebar has them. */
-export function Side({ title, children }: { title: ReactNode; children: ReactNode }): ReactElement {
-  return (
-    <section className="flex flex-col gap-2.5 border-b pb-5 last:border-b-0">
-      <h3 className="text-[13px] font-semibold text-muted-foreground">{title}</h3>
-      {children}
-    </section>
-  );
-}
 
 /** The column, saved on pick. Done waits for its close reason, picked just under it. */
 export function ColumnPicker({ t, move }: { t: TicketRow; move: Move }): ReactElement {

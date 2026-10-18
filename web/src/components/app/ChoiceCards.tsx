@@ -3,7 +3,13 @@ import { FieldLegend, FieldSet } from "@/components/ui/field";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { cn } from "@/lib/utils";
 
-export type CardChoice<T extends string> = { value: T; title: string; description: string };
+export type CardChoice<T extends string> = {
+  value: T;
+  title: string;
+  description: string;
+  // Why the choice is off right now; the card shows it in place of the description.
+  unavailable?: string | undefined;
+};
 
 /**
  * A short set of options as cards: the name on its own line and one plain sentence under it.
@@ -28,6 +34,7 @@ export function ChoiceCards<T extends string>({
       <RadioGroup value={value} onValueChange={(v) => onChange(v as T)} className="grid gap-3 sm:grid-cols-2">
         {choices.map((c) => {
           const on = c.value === value;
+          const off = c.unavailable !== undefined;
           return (
             <label
               key={c.value}
@@ -35,12 +42,13 @@ export function ChoiceCards<T extends string>({
               className={cn(
                 "flex cursor-pointer items-start gap-3 rounded-lg border bg-card p-4 transition-colors hover:border-foreground/30",
                 on && "border-foreground ring-1 ring-foreground",
+                off && "cursor-not-allowed border-dashed bg-transparent hover:border-border",
               )}
             >
-              <RadioGroupItem value={c.value} id={`${id}-${c.value}`} className="mt-0.5" />
+              <RadioGroupItem value={c.value} id={`${id}-${c.value}`} disabled={off} className="mt-0.5" />
               <span className="flex flex-col gap-1">
-                <span className="text-sm leading-none font-medium">{c.title}</span>
-                <span className="text-[13px] leading-snug text-muted-foreground">{c.description}</span>
+                <span className={cn("text-sm leading-none font-medium", off && "text-muted-foreground")}>{c.title}</span>
+                <span className="text-[13px] leading-snug text-muted-foreground">{c.unavailable ?? c.description}</span>
               </span>
             </label>
           );

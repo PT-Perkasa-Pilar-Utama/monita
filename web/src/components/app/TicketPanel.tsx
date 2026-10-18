@@ -1,6 +1,7 @@
 import type { ReactElement } from "react";
 import { ConfirmDialog } from "@/components/app/ConfirmDialog";
-import { ColumnPicker, type Move, PublicPreview, PublicTitle, Side } from "@/components/app/TicketSide";
+import { Side } from "@/components/app/Side";
+import { ColumnPicker, type Move, PublicPreview, PublicTitle } from "@/components/app/TicketSide";
 import { ReasonBadge, StageBadge } from "@/components/app/Tone";
 import { UserRound } from "@/components/icons";
 import { Button } from "@/components/ui/button";
