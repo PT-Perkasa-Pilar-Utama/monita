@@ -22,10 +22,10 @@ test("the range names the rows on the page, and the last page ends at the total"
   expect(rangeLabel(1, 20, 0, "project")).toBe("No projects.");
 });
 
-test("the query keeps a search and a later page, and leaves out the defaults", () => {
-  expect(listQuery("", 1)).toBe("");
-  expect(listQuery("  pay ", 1)).toBe("?q=pay");
-  expect(listQuery("a&b", 3)).toBe("?q=a%26b&page=3");
+test("the query keeps a search, filters and a later page, and leaves out the defaults", () => {
+  expect(listQuery({ q: "", page: 1 })).toBe("");
+  expect(listQuery({ q: "  pay ", page: 1, owner: "" })).toBe("?q=pay");
+  expect(listQuery({ q: "a&b", page: 3, sort: "newest" })).toBe("?q=a%26b&page=3&sort=newest");
 });
 
 import { restoreQuery, skeletonCount } from "@/lib/page";

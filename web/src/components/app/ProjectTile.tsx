@@ -2,6 +2,7 @@ import type { ReactElement } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ProjectBadge } from "@/components/app/ProjectBadge";
 import { ExternalLink } from "@/components/icons";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -9,17 +10,14 @@ import { day } from "@/lib/time";
 import type { Project } from "@/lib/types";
 
 /** The public status page, in a new tab. A sibling of the card's link, never inside it. */
-function StatusLink({ slug, label }: { slug: string; label: string }): ReactElement {
+function StatusLink({ slug }: { slug: string }): ReactElement {
+  const label = "Open the status page in a new tab";
   return (
-    <a
-      href={`/status/${slug}`}
-      target="_blank"
-      rel="noreferrer"
-      className="relative z-10 inline-flex items-center gap-1.5 rounded-md text-[13px] font-medium text-link hover:underline focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:outline-none"
-    >
-      {label}
-      <ExternalLink className="size-3.5" />
-    </a>
+    <Button asChild variant="ghost" size="icon-sm" className="relative z-10">
+      <a href={`/status/${slug}`} target="_blank" rel="noreferrer" aria-label={label} title={label}>
+        <ExternalLink />
+      </a>
+    </Button>
   );
 }
 
@@ -37,9 +35,9 @@ export function ProjectCard({ p }: { p: Project }): ReactElement {
         </div>
       </div>
       <p className="line-clamp-2 min-h-10 px-5 pb-4 text-[13px] text-muted-foreground">{p.description || "No description."}</p>
-      <div className="mt-auto flex items-center justify-between gap-3 rounded-b-xl border-t bg-paper px-5 py-3 text-[13px]">
+      <div className="mt-auto flex items-center justify-between gap-3 rounded-b-xl border-t bg-paper py-2 pr-3 pl-5 text-[13px]">
         <span className="text-muted-foreground">Created {day(p.created_at)}</span>
-        <StatusLink slug={p.slug} label="Status page" />
+        <StatusLink slug={p.slug} />
       </div>
     </Card>
   );
@@ -66,7 +64,9 @@ export function ProjectTable({ projects, loading, skeletons }: { projects: Proje
           <TableHead>Project</TableHead>
           <TableHead className="max-md:hidden">Owner</TableHead>
           <TableHead className="max-sm:hidden">Created</TableHead>
-          <TableHead className="text-right">Status page</TableHead>
+          <TableHead className="w-12">
+            <span className="sr-only">Status page</span>
+          </TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -93,8 +93,8 @@ export function ProjectTable({ projects, loading, skeletons }: { projects: Proje
                 </TableCell>
                 <TableCell className="text-muted-foreground max-md:hidden">{p.owner_email}</TableCell>
                 <TableCell className="text-muted-foreground max-sm:hidden">{day(p.created_at)}</TableCell>
-                <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                  <StatusLink slug={p.slug} label="Open" />
+                <TableCell className="py-0 text-right" onClick={(e) => e.stopPropagation()}>
+                  <StatusLink slug={p.slug} />
                 </TableCell>
               </TableRow>
             ))}

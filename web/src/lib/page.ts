@@ -20,11 +20,16 @@ export function rangeLabel(page: number, pageSize: number, total: number, noun: 
   return `Showing ${from} to ${to} of ${total} ${plural}.`;
 }
 
-/** The query string for a search and a page; an empty search and page 1 are left out. */
-export function listQuery(q: string, page: number): string {
+/** A list's URL state: the search, its filters and the page. */
+export type ListParams = { q: string; page: number } & Record<string, string | number>;
+
+/** The query string for a list's state; empty values and page 1 are left out. */
+export function listQuery(p: ListParams): string {
   const out = new URLSearchParams();
-  if (q.trim()) out.set("q", q.trim());
-  if (page > 1) out.set("page", String(page));
+  for (const [k, v] of Object.entries(p)) {
+    const s = String(v).trim();
+    if (s && !(k === "page" && Number(v) <= 1)) out.set(k, s);
+  }
   const s = out.toString();
   return s ? `?${s}` : "";
 }

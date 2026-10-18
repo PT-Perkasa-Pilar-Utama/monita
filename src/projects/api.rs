@@ -67,6 +67,8 @@ struct ProjectList {
     page_size: i64,
     /// Empty for a tech lead, who always owns what they create.
     owners: Vec<OwnerView>,
+    /// The owner filter's choices: who owns a project. Empty for a tech lead.
+    owner_options: Vec<String>,
 }
 
 #[derive(Deserialize, Default)]
@@ -75,6 +77,10 @@ struct ListQuery {
     /// Counts from 1; a missing or bad value reads page 1.
     page: String,
     q: String,
+    /// An owner's email; empty for any.
+    owner: String,
+    /// `newest` or `oldest`; anything else sorts by name.
+    sort: String,
 }
 
 pub async fn owners(
@@ -101,13 +107,24 @@ async fn list(
     Query(q): Query<ListQuery>,
 ) -> UiResult {
     let page = q.page.trim().parse().unwrap_or(1);
-    let found = super::page_for(&state.db, &user, &q.q, page).await?;
+    let sort = match q.sort.as_str() {
+        "newest" => super::Sort::Newest,
+        "oldest" => super::Sort::Oldest,
+        _ => super::Sort::Name,
+    };
+    let found = super::page_for(&state.db, &user, &q.q, &q.owner, sort, page).await?;
+    let owner_options = if user.is_admin() {
+        super::owner_emails(&state.db).await?
+    } else {
+        Vec::new()
+    };
     Ok(data(ProjectList {
         projects: found.projects.iter().map(ProjectView::from).collect(),
         total: found.total,
         page: found.page,
         page_size: crate::platform::caps::PROJECTS_PAGE,
         owners: owners(&state, &user).await?,
+        owner_options,
     }))
 }
 

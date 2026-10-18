@@ -158,30 +158,71 @@ pub async fn find_by_slug(c: &Connection, slug: &str) -> anyhow::Result<Option<P
     .pop())
 }
 
-/// Projects one owner has (`Some`) or every project (`None`), whose name, slug, owner email or
-/// description holds `q`. `q` arrives lower-cased; `lower` folds ASCII only.
+/// Projects one owner has (`?1`, NULL for every project), owned by `?3` (an email, '' for any),
+/// whose name, slug, owner email or description holds `?2`. `?2` arrives lower-cased; `lower`
+/// folds ASCII only.
 const MATCHING: &str = "FROM projects p JOIN users u ON u.id = p.owner_id \
-    WHERE (?1 IS NULL OR p.owner_id = ?1) AND (?2 = '' OR instr(lower(p.name), ?2) > 0 \
+    WHERE (?1 IS NULL OR p.owner_id = ?1) AND (?3 = '' OR u.email = ?3) \
+    AND (?2 = '' OR instr(lower(p.name), ?2) > 0 \
     OR instr(lower(p.slug), ?2) > 0 OR instr(lower(u.email), ?2) > 0 \
     OR instr(lower(coalesce(p.description, '')), ?2) > 0)";
 
-pub async fn count_matching(c: &Connection, owner: Option<i64>, q: &str) -> anyhow::Result<i64> {
-    let sql = format!("SELECT count(*) {MATCHING}");
-    Ok(crate::platform::db::query_i64(c, &sql, (owner, q))
-        .await?
-        .unwrap_or(0))
+/// The project list's sort orders. The id breaks ties so a page boundary never moves.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Sort {
+    Name,
+    Newest,
+    Oldest,
 }
 
-/// One page in name order; the id breaks ties so a page boundary never moves.
+impl Sort {
+    fn order_by(self) -> &'static str {
+        match self {
+            Sort::Name => "p.name, p.id",
+            Sort::Newest => "p.created_at DESC, p.id DESC",
+            Sort::Oldest => "p.created_at, p.id",
+        }
+    }
+}
+
+pub struct Filter<'a> {
+    pub owner_id: Option<i64>,
+    pub q: &'a str,
+    pub owner_email: &'a str,
+    pub sort: Sort,
+}
+
+pub async fn count_matching(c: &Connection, f: &Filter<'_>) -> anyhow::Result<i64> {
+    let sql = format!("SELECT count(*) {MATCHING}");
+    Ok(
+        crate::platform::db::query_i64(c, &sql, (f.owner_id, f.q, f.owner_email))
+            .await?
+            .unwrap_or(0),
+    )
+}
+
 pub async fn page_matching(
     c: &Connection,
-    owner: Option<i64>,
-    q: &str,
+    f: &Filter<'_>,
     limit: i64,
     offset: i64,
 ) -> anyhow::Result<Vec<Project>> {
-    let sql = format!("SELECT {COLS} {MATCHING} ORDER BY p.name, p.id LIMIT ?3 OFFSET ?4");
-    many(c, sql, (owner, q, limit, offset)).await
+    let sql = format!(
+        "SELECT {COLS} {MATCHING} ORDER BY {} LIMIT ?4 OFFSET ?5",
+        f.sort.order_by()
+    );
+    many(c, sql, (f.owner_id, f.q, f.owner_email, limit, offset)).await
+}
+
+/// Who owns at least one project, for the owner filter. Bounded by the account cap.
+pub async fn owner_emails(c: &Connection) -> anyhow::Result<Vec<String>> {
+    crate::platform::db::query_all(
+        c,
+        "SELECT DISTINCT u.email FROM projects p JOIN users u ON u.id = p.owner_id ORDER BY u.email LIMIT ?1",
+        [caps::USERS],
+        |r| r.get(0),
+    )
+    .await
 }
 
 /// A keyset batch in id order, for jobs that walk every project.

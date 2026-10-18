@@ -428,6 +428,57 @@ async fn the_project_list_searches_every_page_on_the_server() {
 }
 
 #[tokio::test]
+async fn the_project_list_filters_by_owner_and_sorts_by_age() {
+    let app = TestApp::spawn("test").await;
+    let admin = app.super_admin("admin@x.co").await;
+    let rina = app.tl("rina@x.co").await;
+    let budi = app.tl("budi@x.co").await;
+    for (cookie, name) in [(&rina, "Beta"), (&budi, "Alpha"), (&rina, "Gamma")] {
+        create(&app, cookie, json!({ "name": name })).await;
+    }
+    sql_ages(&app).await;
+
+    let rows = page_of(&app, &admin, "?owner=rina%40x.co").await;
+    assert_eq!((rows.0, rows.1), (vec!["Beta".into(), "Gamma".into()], 2));
+    assert_eq!(
+        page_of(&app, &admin, "?sort=newest").await.0,
+        ["Gamma", "Alpha", "Beta"]
+    );
+    assert_eq!(
+        page_of(&app, &admin, "?sort=oldest").await.0,
+        ["Beta", "Alpha", "Gamma"]
+    );
+    assert_eq!(
+        page_of(&app, &admin, "?sort=junk").await.0,
+        ["Alpha", "Beta", "Gamma"]
+    );
+    let list = json_of(app.get("/api/ui/projects", Some(&admin)).await).await;
+    assert_eq!(
+        list["data"]["owner_options"],
+        json!(["budi@x.co", "rina@x.co"])
+    );
+    let list = json_of(app.get("/api/ui/projects", Some(&rina)).await).await;
+    assert_eq!(list["data"]["owner_options"], json!([]));
+}
+
+/// Spreads the projects' creation times: Beta oldest, then Alpha, then Gamma.
+async fn sql_ages(app: &TestApp) {
+    app.state
+        .db
+        .write(async |c| {
+            c.execute_batch(
+                "UPDATE projects SET created_at = 100 WHERE name = 'Beta';
+                 UPDATE projects SET created_at = 200 WHERE name = 'Alpha';
+                 UPDATE projects SET created_at = 300 WHERE name = 'Gamma';",
+            )
+            .await?;
+            Ok(())
+        })
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
 async fn a_tl_cannot_reassign() {
     let app = TestApp::spawn("test").await;
     let rina = app.tl("rina@x.co").await;

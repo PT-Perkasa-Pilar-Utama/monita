@@ -13,7 +13,15 @@ export type Project = {
 export type Owner = { email: string; role: string };
 
 /** One page of the project list; `total` counts every project that matches the search. */
-export type ProjectList = { projects: Project[]; total: number; page: number; page_size: number; owners: Owner[] };
+export type ProjectList = {
+  projects: Project[];
+  total: number;
+  page: number;
+  page_size: number;
+  owners: Owner[];
+  /** Who owns a project, for a super admin's owner filter; empty for a tech lead. */
+  owner_options: string[];
+};
 
 export type TabCounts = { monitors: number; heartbeats: number; incidents: number; tickets: number };
 

@@ -23,7 +23,7 @@ use crate::{
 };
 
 pub use profile::{ProfileInput, ProjectInput, create, find_owner, icon, slug_for, update_profile};
-pub use store::{ApiKeyRow, Project};
+pub use store::{ApiKeyRow, Project, Sort};
 
 #[derive(Debug, thiserror::Error)]
 pub enum ProjectError {
@@ -53,18 +53,35 @@ pub struct ProjectPage {
 
 /// A tech lead pages through their own projects; a super admin through every project.
 /// `page` counts from 1; a lower value reads page 1. `q` matches name, slug, owner email or
-/// description, ignoring ASCII case.
-pub async fn page_for(db: &Db, user: &User, q: &str, page: i64) -> anyhow::Result<ProjectPage> {
-    let owner = (!user.is_admin()).then_some(user.id);
+/// description, ignoring ASCII case. `owner` is an owner's email, or empty for any.
+pub async fn page_for(
+    db: &Db,
+    user: &User,
+    q: &str,
+    owner: &str,
+    sort: Sort,
+    page: i64,
+) -> anyhow::Result<ProjectPage> {
     let q: String = q.trim().to_lowercase().chars().take(100).collect();
+    let f = store::Filter {
+        owner_id: (!user.is_admin()).then_some(user.id),
+        q: &q,
+        owner_email: owner.trim(),
+        sort,
+    };
     let page = page.max(1);
     let offset = (page - 1).saturating_mul(caps::PROJECTS_PAGE);
     let conn = db.read().await?;
     Ok(ProjectPage {
-        total: store::count_matching(&conn, owner, &q).await?,
-        projects: store::page_matching(&conn, owner, &q, caps::PROJECTS_PAGE, offset).await?,
+        total: store::count_matching(&conn, &f).await?,
+        projects: store::page_matching(&conn, &f, caps::PROJECTS_PAGE, offset).await?,
         page,
     })
+}
+
+/// Emails that own a project, for a super admin's owner filter.
+pub async fn owner_emails(db: &Db) -> anyhow::Result<Vec<String>> {
+    store::owner_emails(&db.read().await?).await
 }
 
 /// Projects in id order after `last_id`, at most `limit`, for a job that walks every project
