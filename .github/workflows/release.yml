@@ -1,52 +1,70 @@
 name: release
 
-# A `v*` tag push builds Linux and macOS binaries for amd64 and arm64, boots each, and opens a
-# draft release with the archives, their checksums and a build-provenance attestation. Write the
-# notes with the release-notes skill, then publish the draft. The tag must match the version in
-# Cargo.toml.
+# A `v*` tag push builds Linux, macOS and Windows binaries for amd64 and arm64, boots each, and
+# opens a draft release with the archives, their checksums and a build-provenance attestation.
+# Write the notes with the release-notes skill, then publish the draft. The tag must match the
+# version in Cargo.toml.
 #
 # Run it by hand with an existing tag to add the archives that release lacks. It builds the
 # tag's source, keeps every archive already published byte for byte, and appends the new
-# checksums.
+# checksums. Run it by hand with `build_only` on a branch to build and boot every target from
+# that branch without touching any release.
 on:
   push:
     tags: ["v*"]
   workflow_dispatch:
     inputs:
       tag:
-        description: "An existing release tag, such as v1.0.0"
-        required: true
+        description: "An existing release tag, such as v1.0.0. Leave empty with build_only."
+        required: false
+      build_only:
+        description: "Build and boot every target from the chosen branch; release nothing"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
+
+defaults:
+  run:
+    shell: bash
 
 jobs:
   build:
     name: build ${{ matrix.os }} ${{ matrix.arch }}
     strategy:
-      fail-fast: true
+      # A trial build reports every target; a release stops at the first failure.
+      fail-fast: ${{ !inputs.build_only }}
       matrix:
         include:
-          - { os: linux, arch: amd64, runner: ubuntu-latest, target: x86_64-unknown-linux-musl }
-          - { os: linux, arch: arm64, runner: ubuntu-24.04-arm, target: aarch64-unknown-linux-musl }
-          - { os: darwin, arch: arm64, runner: macos-latest, target: aarch64-apple-darwin }
+          - { os: linux, arch: amd64, runner: ubuntu-latest, target: x86_64-unknown-linux-musl, ext: tar.gz }
+          - { os: linux, arch: arm64, runner: ubuntu-24.04-arm, target: aarch64-unknown-linux-musl, ext: tar.gz }
+          - { os: darwin, arch: arm64, runner: macos-latest, target: aarch64-apple-darwin, ext: tar.gz }
           # Cross-built on Apple silicon; it boots under Rosetta when the runner has it.
-          - { os: darwin, arch: amd64, runner: macos-latest, target: x86_64-apple-darwin }
+          - { os: darwin, arch: amd64, runner: macos-latest, target: x86_64-apple-darwin, ext: tar.gz }
+          - { os: windows, arch: amd64, runner: windows-latest, target: x86_64-pc-windows-msvc, ext: zip }
+          - { os: windows, arch: arm64, runner: windows-11-arm, target: aarch64-pc-windows-msvc, ext: zip }
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 40
+    timeout-minutes: 45
     env:
       TAG: ${{ inputs.tag || github.ref_name }}
+      BUILD_ONLY: ${{ inputs.build_only && 'yes' || 'no' }}
       TARGET: ${{ matrix.target }}
-      ARCHIVE: monita_${{ matrix.os }}_${{ matrix.arch }}.tar.gz
+      ARCHIVE: monita_${{ matrix.os }}_${{ matrix.arch }}.${{ matrix.ext }}
+      BIN: monita${{ matrix.os == 'windows' && '.exe' || '' }}
+      # aws-lc-sys ships assembled x86 objects, so the Windows runner needs no NASM.
+      AWS_LC_SYS_PREBUILT_NASM: "1"
     steps:
       - name: tag is a version
+        if: env.BUILD_ONLY == 'no'
         run: |
           echo "$TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$' || { echo "::error::$TAG is not a vX.Y.Z tag"; exit 1; }
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: refs/tags/${{ env.TAG }}
+          ref: ${{ inputs.build_only && github.sha || format('refs/tags/{0}', inputs.tag || github.ref_name) }}
           persist-credentials: false
       - name: tag matches Cargo.toml
+        if: env.BUILD_ONLY == 'no'
         run: |
           version=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -1)
           test "$TAG" = "v$version" || { echo "::error::tag $TAG does not match Cargo.toml version $version"; exit 1; }
@@ -60,25 +78,28 @@ jobs:
           sudo apt-get update && sudo apt-get install -y musl-tools
           echo "CC_$(echo "$TARGET" | tr - _)=musl-gcc" >> "$GITHUB_ENV"
       - run: rustup target add "$TARGET"
-      # No build cache: a tag build must not restore anything a branch run wrote.
-      - run: make web
+      # The same steps as `make web`; not every runner has make. No build cache: a tag build must
+      # not restore anything a branch run wrote.
+      - name: build the web pages
+        run: cd web && bun install --frozen-lockfile && bun run build
       - run: cargo build --release --locked --target "$TARGET"
         env:
           CARGO_BUILD_JOBS: 4
       - name: boot the binary
         run: |
-          bin="target/$TARGET/release/monita"
+          bin="target/$TARGET/release/$BIN"
           if [ "$TARGET" = x86_64-apple-darwin ] && ! arch -x86_64 /usr/bin/true 2>/dev/null; then
             echo "::notice::no Rosetta on this runner; the Intel macOS binary was built but not booted"
             exit 0
           fi
           MONITA_ENV=test MONITA_BIND=127.0.0.1:18080 MONITA_DB_PATH="$RUNNER_TEMP/smoke.db" "$bin" serve &
           pid=$!
+          stop() { kill "$pid" 2>/dev/null || true; if [ "$RUNNER_OS" = Windows ]; then taskkill //F //IM "$BIN" >/dev/null 2>&1 || true; fi; }
           for i in $(seq 1 30); do
-            if curl -fs http://127.0.0.1:18080/healthz; then kill "$pid"; exit 0; fi
+            if curl -fs http://127.0.0.1:18080/healthz; then stop; exit 0; fi
             sleep 1
           done
-          kill "$pid" || true
+          stop
           echo "::error::the $TARGET binary did not answer /healthz"
           exit 1
       - name: package
@@ -87,10 +108,12 @@ jobs:
           # No version in the name, so releases/latest/download/<archive> always works. The fonts
           # are embedded in the binary; their licences ship beside it. Only Linux gets the
           # systemd unit: `monita service` runs on Linux only.
-          unit=""
-          if [ "$RUNNER_OS" = Linux ]; then unit=deploy/monita.service; fi
-          tar -czf "dist/$ARCHIVE" -C "target/$TARGET/release" monita \
-            -C "$GITHUB_WORKSPACE" LICENSE licenses deploy/monita.env.example $unit
+          cp "target/$TARGET/release/$BIN" "$BIN"
+          case "$RUNNER_OS" in
+            Linux) tar -czf "dist/$ARCHIVE" "$BIN" LICENSE licenses deploy/monita.env.example deploy/monita.service ;;
+            macOS) tar -czf "dist/$ARCHIVE" "$BIN" LICENSE licenses deploy/monita.env.example ;;
+            Windows) 7z a -tzip "dist/$ARCHIVE" "$BIN" LICENSE licenses deploy/monita.env.example ;;
+          esac
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ${{ env.ARCHIVE }}
@@ -100,6 +123,7 @@ jobs:
   publish:
     name: draft the release, or add to it
     needs: build
+    if: ${{ !inputs.build_only }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -119,13 +143,13 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         run: |
           gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets -q '.assets[].name' > published.txt
-          for f in dist/*.tar.gz; do
+          for f in dist/monita_*; do
             if grep -qx "$(basename "$f")" published.txt; then
               echo "keeps the published $(basename "$f")"
               rm "$f"
             fi
           done
-          if ! ls dist/*.tar.gz >/dev/null 2>&1; then
+          if ! ls dist/monita_* >/dev/null 2>&1; then
             echo "::notice::$TAG already has every archive"
             exit 0
           fi
@@ -134,20 +158,20 @@ jobs:
           fi
       - name: checksums
         run: |
-          ls dist/*.tar.gz >/dev/null 2>&1 || exit 0
-          (cd dist && sha256sum ./*.tar.gz > new.txt)
+          ls dist/monita_* >/dev/null 2>&1 || exit 0
+          (cd dist && sha256sum ./monita_* > new.txt)
           cat old/checksums.txt dist/new.txt 2>/dev/null | sort -k2 -u > dist/checksums.txt
           rm dist/new.txt
           cat dist/checksums.txt
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
-        if: hashFiles('dist/*.tar.gz') != ''
+        if: hashFiles('dist/monita_*') != ''
         with:
-          subject-path: dist/*.tar.gz
+          subject-path: dist/monita_*
       - name: draft the release
         if: github.event_name == 'push'
         run: gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --draft --title "$TAG" --notes "Draft. Write the notes with the release-notes skill, then publish." dist/*
       - name: add the new archives
-        if: github.event_name == 'workflow_dispatch' && hashFiles('dist/*.tar.gz') != ''
+        if: github.event_name == 'workflow_dispatch' && hashFiles('dist/monita_*') != ''
         run: |
-          gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" dist/*.tar.gz
+          gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" dist/monita_*
           gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber dist/checksums.txt

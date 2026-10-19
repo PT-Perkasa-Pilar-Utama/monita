@@ -30,8 +30,10 @@ Download the archive for your system from [Releases](https://github.com/PT-Perka
 | Linux, Arm (Graviton, Ampere, Raspberry Pi 4 and later with a 64-bit OS) | `monita_linux_arm64.tar.gz` |
 | macOS, Apple silicon | `monita_darwin_arm64.tar.gz` |
 | macOS, Intel | `monita_darwin_amd64.tar.gz` |
+| Windows, x86 | `monita_windows_amd64.zip` |
+| Windows, Arm | `monita_windows_arm64.zip` |
 
-The Linux binaries are static. `monita service` needs systemd, so it runs on Linux only. On macOS, run `monita serve` yourself. The macOS binaries are not signed: a copy downloaded in a browser needs `xattr -d com.apple.quarantine monita` before it starts. `curl` downloads do not.
+The Linux binaries are static. `monita service` needs systemd, so it runs on Linux only. On macOS and Windows, run `monita serve` yourself. On Windows, keep the settings in a file and name it: `monita.exe serve --env-file monita.env`. Start from `monita.env.example` in the archive, and set `MONITA_DB_PATH` to a folder of your own, such as `C:\monita\monita.db`. Windows does not use Unix file modes, so protect that folder with its own permissions. The Windows binaries are not signed either, so SmartScreen may ask before the first start. The macOS binaries are not signed: a copy downloaded in a browser needs `xattr -d com.apple.quarantine monita` before it starts. `curl` downloads do not.
 
 Check the archive against `checksums.txt`, then install it:
 

@@ -46,7 +46,7 @@ with sample data. You can click through it, but it does not save anything you en
 ## Install
 
 Monita needs a 64-bit Linux server with systemd (x86 or Arm), 512 MB of memory and 5 GB of disk.
-Releases also carry macOS builds for Apple silicon and Intel, for trying it on a laptop.
+Releases also carry macOS and Windows builds for amd64 and arm64, for trying it on a laptop.
 For 500 monitors, give it 2 vCPU, 1 GB of memory and 20 GB of disk.
 
 Download the archive from

@@ -2,7 +2,6 @@
 
 use std::{
     net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr},
-    os::unix::fs::PermissionsExt,
     path::{Path, PathBuf},
     process::Command,
     time::Duration,
@@ -96,11 +95,7 @@ pub async fn install(config: &Config, env_file: Option<&Path>) -> anyhow::Result
     for dir in folders(config)? {
         std::fs::create_dir_all(&dir)
             .with_context(|| format!("could not create {}", dir.display()))?;
-        std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o700))?;
-        std::os::unix::fs::chown(&dir, Some(uid), Some(gid))?;
-        for entry in std::fs::read_dir(&dir)? {
-            std::os::unix::fs::chown(entry?.path(), Some(uid), Some(gid))?;
-        }
+        hand_over(&dir, uid, gid)?;
     }
     std::fs::write(UNIT_PATH, text)
         .with_context(|| format!("could not write {UNIT_PATH}; run as root"))?;
@@ -113,6 +108,24 @@ pub async fn install(config: &Config, env_file: Option<&Path>) -> anyhow::Result
         checked(Command::new("systemctl").args(args))?;
     }
     wait_healthy(config.bind).await
+}
+
+/// Gives the folder and what it holds to the service user, mode 0700.
+#[cfg(unix)]
+fn hand_over(dir: &Path, uid: u32, gid: u32) -> anyhow::Result<()> {
+    use std::os::unix::fs::{PermissionsExt, chown};
+    std::fs::set_permissions(dir, std::fs::Permissions::from_mode(0o700))?;
+    chown(dir, Some(uid), Some(gid))?;
+    for entry in std::fs::read_dir(dir)? {
+        chown(entry?.path(), Some(uid), Some(gid))?;
+    }
+    Ok(())
+}
+
+/// Never reached: `install` stops at `linux()` first. It lets the binary build for Windows.
+#[cfg(not(unix))]
+fn hand_over(_: &Path, _: u32, _: u32) -> anyhow::Result<()> {
+    bail!("monita service runs on Linux with systemd only")
 }
 
 pub fn uninstall() -> anyhow::Result<()> {
