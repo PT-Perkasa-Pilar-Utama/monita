@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-10-19
+
 ### Added
 
 - `SECURITY.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `GOVERNANCE.md`, `ROADMAP.md`, this changelog, issue forms, a pull request template and code owners.
@@ -55,6 +57,7 @@ The first stable release. See the [release notes](https://github.com/PT-Perkasa-
 
 The first release: HTTP monitors, heartbeats, automatic and manual incidents, email and webhook alerts through an outbox, public status pages with a status JSON, bug tickets with ref IDs, and the `monita` command line for setup and the systemd service.
 
-[Unreleased]: https://github.com/PT-Perkasa-Pilar-Utama/monita/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/PT-Perkasa-Pilar-Utama/monita/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/PT-Perkasa-Pilar-Utama/monita/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/PT-Perkasa-Pilar-Utama/monita/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/PT-Perkasa-Pilar-Utama/monita/releases/tag/v0.1.0

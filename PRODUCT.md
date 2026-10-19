@@ -63,7 +63,7 @@ The motto from the scope decision is: easy to integrate, simple features, lightw
 - Measured on an Apple M1 on 2026-10-19 with a debug build: 500 monitors at a 60 s interval used 49 MB of memory and 1 to 8 % of one core. `docs/guide/install.md` turns this into the server requirements.
 - Measured on macOS arm64 on 2026-10-17: the release binary is 25,789,648 bytes, and memory use stayed between 20.5 and 23.3 MiB while 100 monitors ran every 30 seconds for 142 seconds. The v0.1.0 Linux release (x86-64, static) is 31,508,016 bytes, in a 12,919,831-byte archive, which is above the 30 MB target in NFR-07. Memory on Linux has not been measured.
 - A teammate can supply one real quote later. No quote exists yet; future pages must not invent one.
-- v0.1.0 was released on GitHub on 2026-10-17 with a Linux x86-64 archive. v1.0.0 is tagged on 2026-10-19; from v1.0.0 the archive is `monita_linux_amd64.tar.gz`, so `releases/latest/download/monita_linux_amd64.tar.gz` always fetches the newest.
+- v0.1.0 was released on GitHub on 2026-10-17 with a Linux x86-64 archive. v1.0.0 is tagged on 2026-10-19; from v1.0.0 the archive is `monita_linux_amd64.tar.gz`, so `releases/latest/download/monita_linux_amd64.tar.gz` always fetches the newest. v1.0.1 (2026-10-19) adds archives for Linux arm64, macOS and Windows on amd64 and arm64; v1.0.0 got the Linux arm64 and macOS ones too, built from its tag.
 - There are no customers, user counts, testimonials, benchmarks against other tools, or press. Future pages must not invent them.
 
 ## Product Principles
