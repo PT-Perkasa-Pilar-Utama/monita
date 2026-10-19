@@ -9,7 +9,7 @@ An HTTP monitor requests a URL on a fixed interval and checks the answer.
 | Check every | 30 seconds, 1 minute, 3 minutes, 5 minutes | 1 minute |
 | Timeout in seconds | 1 to 30 | 10 |
 | The status code matches | Classes such as `2xx`, codes such as `200`, or both: `2xx,301` | `2xx` |
-| The response contains this text | Text the body must contain, with the same capitals; Monita reads up to 1 MB of the body | none |
+| The body has this exact text somewhere | Plain text, matched with the same capitals and spaces anywhere in the first 1 MB of the body. Monita does not read JSON keys: for `{"status": "ok"}` enter `"status": "ok"`. | none |
 | TLS | Verified. Tick **The certificate may be self-signed** for internal hosts. | verified |
 | Severity | Critical: email and webhook. Warning: email only. | warning |
 

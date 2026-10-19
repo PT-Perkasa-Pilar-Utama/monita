@@ -43,6 +43,12 @@ const STATUS_EXAMPLES: [string, string][] = [
   ["3xx", "Any redirect. Monita does not follow it, so the redirect itself is the answer."],
 ];
 
+const TEXT_EXAMPLES: [string, string, string][] = [
+  ['{"status": "ok"}', '"status": "ok"', "Passes."],
+  ['{"status": "ok"}', '"status":"ok"', "Fails. The space is missing."],
+  ['{"status": "OK"}', '"status": "ok"', "Fails. The capitals differ."],
+];
+
 /** What the "A check passes when" fields accept, with examples, so the form needs none. */
 function PassRules(): ReactElement {
   return (
@@ -65,8 +71,27 @@ function PassRules(): ReactElement {
         </TableBody>
       </Table>
       <span>
-        If you enter text for the response, the body must also contain it exactly, with the same capitals. Monita reads the first megabyte. Example: <code className="font-mono">"status":"ok"</code>.
+        The body text is optional. Monita reads the first megabyte of the body as plain text and looks for your text anywhere in it, with the same capitals and spaces. It
+        does not read JSON keys.
       </span>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>The body is</TableHead>
+            <TableHead>You enter</TableHead>
+            <TableHead>The check</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {TEXT_EXAMPLES.map(([body, text, result]) => (
+            <TableRow key={text}>
+              <TableCell className="font-mono">{body}</TableCell>
+              <TableCell className="font-mono">{text}</TableCell>
+              <TableCell className="whitespace-normal">{result}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </span>
   );
 }

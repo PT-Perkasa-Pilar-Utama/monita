@@ -150,20 +150,22 @@ function MonitorFormBody({ id, onClose, onSaved }: { id: string | undefined; onC
                   </div>
                   <FieldSet className="gap-3">
                     <FieldLegend variant="label">A check passes when</FieldLegend>
-                    <Field data-invalid={err("expected_status") ? true : undefined}>
-                      <FieldLabel htmlFor="m-status" className="font-normal" required>
-                        The status code matches
-                      </FieldLabel>
-                      <Input id="m-status" aria-required aria-invalid={err("expected_status") ? true : undefined} className="font-mono" value={form.expected_status} onChange={(e) => set("expected_status", e.target.value)} />
-                      {err("expected_status") && <FieldError>{err("expected_status")}</FieldError>}
-                    </Field>
-                    <Field data-invalid={err("keyword") ? true : undefined}>
-                      <FieldLabel htmlFor="m-keyword" className="font-normal">
-                        The response contains this text
-                      </FieldLabel>
-                      <Input id="m-keyword" maxLength={200} aria-invalid={err("keyword") ? true : undefined} className="font-mono" value={form.keyword} onChange={(e) => set("keyword", e.target.value)} />
-                      {err("keyword") && <FieldError>{err("keyword")}</FieldError>}
-                    </Field>
+                    <div className="grid gap-5 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+                      <Field data-invalid={err("expected_status") ? true : undefined}>
+                        <FieldLabel htmlFor="m-status" className="font-normal" required>
+                          The status code matches
+                        </FieldLabel>
+                        <Input id="m-status" aria-required aria-invalid={err("expected_status") ? true : undefined} className="font-mono" value={form.expected_status} onChange={(e) => set("expected_status", e.target.value)} />
+                        {err("expected_status") && <FieldError>{err("expected_status")}</FieldError>}
+                      </Field>
+                      <Field data-invalid={err("keyword") ? true : undefined}>
+                        <FieldLabel htmlFor="m-keyword" className="font-normal">
+                          The body has this exact text somewhere
+                        </FieldLabel>
+                        <Input id="m-keyword" maxLength={200} aria-invalid={err("keyword") ? true : undefined} className="font-mono" value={form.keyword} onChange={(e) => set("keyword", e.target.value)} />
+                        {err("keyword") && <FieldError>{err("keyword")}</FieldError>}
+                      </Field>
+                    </div>
                     <Field orientation="horizontal">
                       <Checkbox id="m-tls" checked={form.skip_tls_verify} onCheckedChange={(v) => set("skip_tls_verify", v === true)} />
                       <FieldLabel htmlFor="m-tls" className="font-normal">
