@@ -83,6 +83,7 @@ export function SettingsSection({
   onSubmit,
   danger = false,
   flush = false,
+  reference = false,
   children,
 }: {
   // The anchor that On this page links to.
@@ -97,10 +98,12 @@ export function SettingsSection({
   danger?: boolean;
   // The content runs edge to edge, for a table.
   flush?: boolean;
+  // The section explains or hands out something and changes nothing, so a supervisor uses it too.
+  reference?: boolean;
   children?: ReactNode;
 }): ReactElement {
   // A supervisor sees the values in disabled fields, with no actions to change them.
-  const canEdit = useCanEdit();
+  const canEdit = useCanEdit() || reference;
   const shownFooter = canEdit ? footer : undefined;
   const body = (
     <>
