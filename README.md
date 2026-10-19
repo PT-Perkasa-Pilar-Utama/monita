@@ -45,11 +45,13 @@ with sample data. You can click through it, but it does not save anything you en
 
 ## Install
 
-Monita needs a 64-bit x86 Linux server with systemd, 512 MB of memory and 5 GB of disk.
+Monita needs a 64-bit Linux server with systemd (x86 or Arm), 512 MB of memory and 5 GB of disk.
+Releases also carry macOS builds for Apple silicon and Intel, for trying it on a laptop.
 For 500 monitors, give it 2 vCPU, 1 GB of memory and 20 GB of disk.
 
 Download the archive from
-[Releases](https://github.com/PT-Perkasa-Pilar-Utama/monita/releases), unpack it, and install the binary:
+[Releases](https://github.com/PT-Perkasa-Pilar-Utama/monita/releases), unpack it, and install the binary.
+On an Arm server, use `monita_linux_arm64.tar.gz`:
 
 ```sh
 curl -fsSLO https://github.com/PT-Perkasa-Pilar-Utama/monita/releases/latest/download/monita_linux_amd64.tar.gz

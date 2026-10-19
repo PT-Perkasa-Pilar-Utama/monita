@@ -9,7 +9,7 @@ Monita runs as one systemd service on a Linux VM. These steps assume Ubuntu or D
 | CPU | 1 vCPU | 2 vCPU |
 | Memory | 512 MB | 1 GB |
 | Disk | 5 GB | 20 GB |
-| System | 64-bit x86 Linux with systemd | Same |
+| System | 64-bit Linux with systemd, x86 or Arm | Same |
 
 - The release binary is static. It needs no other libraries, no database server and no runtime.
 - The disk holds the database and 7 backups. Each backup is a full copy of the database, so plan for 8 times its size.
@@ -22,11 +22,22 @@ Measured load: 500 monitors on a 60 s interval used 49 MB of memory and 1 to 8 %
 
 ### From a release
 
-Download the archive from [Releases](https://github.com/PT-Perkasa-Pilar-Utama/monita/releases). Check it against `checksums.txt`, then install it:
+Download the archive for your system from [Releases](https://github.com/PT-Perkasa-Pilar-Utama/monita/releases):
+
+| System | Archive |
+| --- | --- |
+| Linux, x86 | `monita_linux_amd64.tar.gz` |
+| Linux, Arm (Graviton, Ampere, Raspberry Pi 4 and later with a 64-bit OS) | `monita_linux_arm64.tar.gz` |
+| macOS, Apple silicon | `monita_darwin_arm64.tar.gz` |
+| macOS, Intel | `monita_darwin_amd64.tar.gz` |
+
+The Linux binaries are static. `monita service` needs systemd, so it runs on Linux only. On macOS, run `monita serve` yourself. The macOS binaries are not signed: a copy downloaded in a browser needs `xattr -d com.apple.quarantine monita` before it starts. `curl` downloads do not.
+
+Check the archive against `checksums.txt`, then install it:
 
 ```sh
 sha256sum -c checksums.txt --ignore-missing
-tar -xzf monita_*linux_amd64.tar.gz
+tar -xzf monita_linux_amd64.tar.gz
 sudo install -m 0755 monita /usr/local/bin/monita
 monita --version
 ```

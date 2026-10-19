@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - `SECURITY.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `GOVERNANCE.md`, `ROADMAP.md`, this changelog, issue forms, a pull request template and code owners.
 - `docs/GLOSSARY.md`, which replaces the README's Terms table.
+- Release archives for Linux on arm64 and for macOS on Apple silicon and Intel, beside Linux on amd64. The v1.0.0 release has them too, built from its tag.
 
 ### Changed
 

@@ -1,46 +1,77 @@
 name: release
 
-# A `v*` tag push builds the static binary, boots it, and opens a draft release with the archive,
-# its checksum and a build-provenance attestation. Write the notes with the release-notes skill,
-# then publish the draft. The tag must match the version in Cargo.toml.
+# A `v*` tag push builds Linux and macOS binaries for amd64 and arm64, boots each, and opens a
+# draft release with the archives, their checksums and a build-provenance attestation. Write the
+# notes with the release-notes skill, then publish the draft. The tag must match the version in
+# Cargo.toml.
+#
+# Run it by hand with an existing tag to add the archives that release lacks. It builds the
+# tag's source, keeps every archive already published byte for byte, and appends the new
+# checksums.
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "An existing release tag, such as v1.0.0"
+        required: true
 
 permissions:
   contents: read
 
 jobs:
-  release:
-    name: build and draft the release
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    permissions:
-      contents: write
-      id-token: write
-      attestations: write
+  build:
+    name: build ${{ matrix.os }} ${{ matrix.arch }}
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - { os: linux, arch: amd64, runner: ubuntu-latest, target: x86_64-unknown-linux-musl }
+          - { os: linux, arch: arm64, runner: ubuntu-24.04-arm, target: aarch64-unknown-linux-musl }
+          - { os: darwin, arch: arm64, runner: macos-latest, target: aarch64-apple-darwin }
+          # Cross-built on Apple silicon; it boots under Rosetta when the runner has it.
+          - { os: darwin, arch: amd64, runner: macos-latest, target: x86_64-apple-darwin }
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 40
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+      TARGET: ${{ matrix.target }}
+      ARCHIVE: monita_${{ matrix.os }}_${{ matrix.arch }}.tar.gz
     steps:
+      - name: tag is a version
+        run: |
+          echo "$TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$' || { echo "::error::$TAG is not a vX.Y.Z tag"; exit 1; }
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: refs/tags/${{ env.TAG }}
           persist-credentials: false
       - name: tag matches Cargo.toml
-        env:
-          TAG: ${{ github.ref_name }}
         run: |
           version=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -1)
           test "$TAG" = "v$version" || { echo "::error::tag $TAG does not match Cargo.toml version $version"; exit 1; }
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: "1.4.2"
-      - run: sudo apt-get update && sudo apt-get install -y musl-tools
-      - run: rustup target add x86_64-unknown-linux-musl
+      # aws-lc-sys compiles C. On arm64 the cc crate would look for aarch64-linux-musl-gcc, which
+      # musl-tools does not ship, so both Linux targets name musl-gcc.
+      - if: matrix.os == 'linux'
+        run: |
+          sudo apt-get update && sudo apt-get install -y musl-tools
+          echo "CC_$(echo "$TARGET" | tr - _)=musl-gcc" >> "$GITHUB_ENV"
+      - run: rustup target add "$TARGET"
       # No build cache: a tag build must not restore anything a branch run wrote.
-      - run: make release
+      - run: make web
+      - run: cargo build --release --locked --target "$TARGET"
         env:
           CARGO_BUILD_JOBS: 4
       - name: boot the binary
         run: |
-          bin=target/x86_64-unknown-linux-musl/release/monita
+          bin="target/$TARGET/release/monita"
+          if [ "$TARGET" = x86_64-apple-darwin ] && ! arch -x86_64 /usr/bin/true 2>/dev/null; then
+            echo "::notice::no Rosetta on this runner; the Intel macOS binary was built but not booted"
+            exit 0
+          fi
           MONITA_ENV=test MONITA_BIND=127.0.0.1:18080 MONITA_DB_PATH="$RUNNER_TEMP/smoke.db" "$bin" serve &
           pid=$!
           for i in $(seq 1 30); do
@@ -48,21 +79,75 @@ jobs:
             sleep 1
           done
           kill "$pid" || true
-          echo "::error::the release binary did not answer /healthz"
+          echo "::error::the $TARGET binary did not answer /healthz"
           exit 1
       - name: package
         run: |
           mkdir dist
-          # No version in the name, so releases/latest/download/monita_linux_amd64.tar.gz always works.
-          # The fonts are embedded in the binary; their licences ship beside it.
-          tar -czf dist/monita_linux_amd64.tar.gz -C target/x86_64-unknown-linux-musl/release monita \
-            -C "$GITHUB_WORKSPACE" LICENSE licenses deploy/monita.service deploy/monita.env.example
-          (cd dist && sha256sum ./*.tar.gz > checksums.txt)
+          # No version in the name, so releases/latest/download/<archive> always works. The fonts
+          # are embedded in the binary; their licences ship beside it. Only Linux gets the
+          # systemd unit: `monita service` runs on Linux only.
+          unit=""
+          if [ "$RUNNER_OS" = Linux ]; then unit=deploy/monita.service; fi
+          tar -czf "dist/$ARCHIVE" -C "target/$TARGET/release" monita \
+            -C "$GITHUB_WORKSPACE" LICENSE licenses deploy/monita.env.example $unit
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ env.ARCHIVE }}
+          path: dist/${{ env.ARCHIVE }}
+          if-no-files-found: error
+
+  publish:
+    name: draft the release, or add to it
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: monita_*
+          merge-multiple: true
+          path: dist
+      - name: keep what the release already has
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets -q '.assets[].name' > published.txt
+          for f in dist/*.tar.gz; do
+            if grep -qx "$(basename "$f")" published.txt; then
+              echo "keeps the published $(basename "$f")"
+              rm "$f"
+            fi
+          done
+          if ! ls dist/*.tar.gz >/dev/null 2>&1; then
+            echo "::notice::$TAG already has every archive"
+            exit 0
+          fi
+          if grep -qx checksums.txt published.txt; then
+            gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern checksums.txt --dir old
+          fi
+      - name: checksums
+        run: |
+          ls dist/*.tar.gz >/dev/null 2>&1 || exit 0
+          (cd dist && sha256sum ./*.tar.gz > new.txt)
+          cat old/checksums.txt dist/new.txt 2>/dev/null | sort -k2 -u > dist/checksums.txt
+          rm dist/new.txt
+          cat dist/checksums.txt
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        if: hashFiles('dist/*.tar.gz') != ''
         with:
           subject-path: dist/*.tar.gz
       - name: draft the release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.ref_name }}
-        run: gh release create "$TAG" --draft --title "$TAG" --notes "Draft. Write the notes with the release-notes skill, then publish." dist/*
+        if: github.event_name == 'push'
+        run: gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --draft --title "$TAG" --notes "Draft. Write the notes with the release-notes skill, then publish." dist/*
+      - name: add the new archives
+        if: github.event_name == 'workflow_dispatch' && hashFiles('dist/*.tar.gz') != ''
+        run: |
+          gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" dist/*.tar.gz
+          gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber dist/checksums.txt
