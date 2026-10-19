@@ -2,7 +2,8 @@ import { useEffect } from "react";
 import type { ReactElement } from "react";
 import { Link, Outlet, useParams } from "react-router-dom";
 import { ProjectBadge } from "@/components/app/ProjectBadge";
-import { AlertTriangle, Heartbeat, LayoutGrid, Activity, Settings, Ticket } from "@/components/icons";
+import { AlertTriangle, ExternalLink, Globe, Heartbeat, LayoutGrid, Activity, Settings, Ticket } from "@/components/icons";
+import { Button } from "@/components/ui/button";
 import { PageFrame } from "@/components/layout/Page";
 import { PageTabs } from "@/components/layout/PageTabs";
 import { TopBar } from "@/components/layout/TopBar";
@@ -44,6 +45,15 @@ function ProjectChrome(): ReactElement | null {
         { to: `${base}/tickets`, label: "Tickets", icon: Ticket, count: counts.tickets },
         { to: `${base}/settings`, label: "Settings", icon: Settings },
       ]}
+      end={
+        <Button asChild variant="outline" size="sm">
+          <a href={`/status/${p.slug}`} target="_blank" rel="noreferrer" aria-label="Status page, opens in a new tab">
+            <Globe data-icon="inline-start" />
+            <span className="max-sm:hidden">Status page</span>
+            <ExternalLink data-icon="inline-end" className="max-sm:hidden" />
+          </a>
+        </Button>
+      }
     />
   );
   return (

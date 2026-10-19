@@ -16,7 +16,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useProject } from "@/lib/project";
 import { ago, duration, nowSecs } from "@/lib/time";
-import type { Overview as OverviewData, StateKind } from "@/lib/types";
+import type { AlertRoute, Overview as OverviewData, StateKind } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 import { cn } from "@/lib/utils";
 
@@ -61,6 +61,7 @@ export function Overview(): ReactElement {
   const { project: p, counts, reload } = useProject();
   const edit = useProjectEdit({ project: p, counts }, reload);
   const o = useApi<OverviewData>(`/projects/${p.slug}/overview`);
+  const alerts = useApi<AlertRoute[]>(`/projects/${p.slug}/alerts`);
   const base = `/projects/${p.slug}`;
   const now = nowSecs();
   const d = o.data;
@@ -170,7 +171,7 @@ export function Overview(): ReactElement {
             )}
           </TableCard>
         </div>
-        <ProjectAbout head={{ project: p, counts }} activeKeys={d?.active_keys ?? 0} triage={d?.triage ?? 0} edit={edit} />
+        <ProjectAbout head={{ project: p, counts }} activeKeys={d?.active_keys ?? 0} triage={d?.triage ?? 0} alerts={alerts.data} edit={edit} />
       </div>
     </>
   );

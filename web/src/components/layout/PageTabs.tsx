@@ -70,7 +70,7 @@ export function PageTabs({
             </li>
           ))}
         </ul>
-        {end && <div className="ml-auto hidden shrink-0 sm:block">{end}</div>}
+        {end && <div className="ml-auto shrink-0 pl-3">{end}</div>}
       </div>
     </nav>
   );

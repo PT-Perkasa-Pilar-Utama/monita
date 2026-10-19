@@ -2,15 +2,15 @@ import { useState } from "react";
 import type { ReactElement, ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { IconPicker } from "@/components/app/IconPicker";
-import { Activity, AlertTriangle, ExternalLink, Folder, Globe, Heartbeat, Key, Shield, Ticket, Users } from "@/components/icons";
+import { Activity, AlertTriangle, Bell, Folder, Globe, Heartbeat, Key, Shield, Ticket, Users } from "@/components/icons";
 import type { AppIcon } from "@/components/icons";
-import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { api, ApiError, errorText } from "@/lib/api";
-import type { ProjectHead } from "@/lib/types";
+import { alertLine, allowlistSize, publicTabs } from "@/lib/projectFacts";
+import type { AlertRoute, ProjectHead } from "@/lib/types";
 import { stamp } from "@/lib/time";
 import { toast } from "sonner";
 
@@ -89,11 +89,14 @@ export function ProjectAbout({
   head,
   activeKeys,
   triage,
+  alerts,
   edit,
 }: {
   head: ProjectHead;
   activeKeys: number;
   triage: number;
+  /** The project's alert routes; undefined while they load. */
+  alerts: AlertRoute[] | undefined;
   edit: ProjectEdit;
 }): ReactElement {
   const { project: p, counts } = head;
@@ -137,17 +140,6 @@ export function ProjectAbout({
         <p className="text-sm text-muted-foreground">No description.</p>
       )}
       <ul className="flex flex-col gap-2.5">
-        <Fact icon={Globe}>
-          <span className="flex items-center justify-between gap-2">
-            Status page
-            <Button asChild variant="outline" size="sm" className="-my-1.5 h-7">
-              <a href={`/status/${p.slug}`} target="_blank" rel="noreferrer" title="Open the status page in a new tab">
-                Open
-                <ExternalLink data-icon="inline-end" />
-              </a>
-            </Button>
-          </span>
-        </Fact>
         <Fact icon={Users}>Owned by {p.owner_email}</Fact>
         <Fact icon={Folder}>Created {stamp(p.created_at)}</Fact>
         <Fact icon={Key}>
@@ -155,10 +147,38 @@ export function ProjectAbout({
             {plural(activeKeys, "active API key")}
           </Link>
         </Fact>
-        <Fact icon={Shield}>
-          <Link to={`${base}/settings/allowlist`} className="hover:underline">
-            {p.ip_allowlist ? "IP allowlist on" : "IP allowlist off"}
+      </ul>
+      <Separator />
+      <ul className="flex flex-col gap-3">
+        <Fact icon={Globe}>
+          <Link to={`${base}/settings/status-page`} className="text-link hover:underline">
+            Status page tabs
           </Link>
+          <span className="block text-muted-foreground">{publicTabs(p.pages).join(", ")}</span>
+        </Fact>
+        <Fact icon={Bell}>
+          <Link to={`${base}/settings/alerts`} className="text-link hover:underline">
+            Alerts
+          </Link>
+          {alerts ? (
+            alerts.map((r) => (
+              <span key={r.severity} className="block text-muted-foreground">
+                {alertLine(r)}
+              </span>
+            ))
+          ) : (
+            <span className="block text-muted-foreground">Loading</span>
+          )}
+        </Fact>
+        <Fact icon={Shield}>
+          <Link to={`${base}/settings/allowlist`} className="text-link hover:underline">
+            IP allowlist
+          </Link>
+          <span className="block text-muted-foreground">
+            {allowlistSize(p.ip_allowlist) === 0
+              ? "Off. Every address can call the API."
+              : `On. ${allowlistSize(p.ip_allowlist) === 1 ? "1 address or range" : `${allowlistSize(p.ip_allowlist)} addresses or ranges`} may call the API.`}
+          </span>
         </Fact>
       </ul>
       <Separator />
