@@ -3,9 +3,9 @@ import { Badge } from "@/components/ui/badge";
 import { reasonLabel, stageLabel } from "@/lib/tickets";
 import type { CloseReason, Severity, Stage, StateKind, UpdateLabel } from "@/lib/types";
 
-const STATE: Record<StateKind, string> = { up: "Up", down: "Down", issue: "Issue", unknown: "Waiting" };
+const STATE: Record<StateKind, string> = { up: "Up", down: "Down", issue: "Issue", unknown: "No data yet" };
 
-/** A monitor's or heartbeat's state: Up, Down, Issue, or Waiting before its first result. */
+/** A monitor's or heartbeat's state: Up, Down, Issue, or No data yet before its first check or ping. */
 export function StateBadge({ kind, label, id }: { kind: StateKind; label?: string; id?: string }): ReactElement {
   return (
     <Badge id={id} variant={kind}>

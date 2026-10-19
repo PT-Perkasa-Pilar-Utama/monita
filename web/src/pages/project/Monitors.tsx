@@ -123,7 +123,7 @@ export function Monitors({ creating = false }: { creating?: boolean }): ReactEle
                             <div className="text-xs text-muted-foreground">{ago(m.last.checked_at)}</div>
                           </>
                         ) : (
-                          <span className="text-muted-foreground">Waiting</span>
+                          <span className="text-muted-foreground">Not checked yet</span>
                         )}
                       </TableCell>
                     </LinkRow>

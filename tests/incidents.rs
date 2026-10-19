@@ -869,3 +869,34 @@ async fn a_heartbeat_resolved_by_hand_gets_a_new_deadline() {
     );
     assert_eq!(hb["due"]["late"], false);
 }
+
+#[tokio::test]
+async fn migration_12_gives_an_up_heartbeat_without_a_deadline_a_new_one() {
+    let app = TestApp::spawn("test").await;
+    setup(&app).await;
+    for name in ["resolved", "down"] {
+        let input = HeartbeatInput {
+            name: name.into(),
+            ..HeartbeatInput::default()
+        };
+        heartbeat::create(&app.state.db, 1, &input).await.unwrap();
+    }
+    // 1 lost its deadline to a hand resolve before the fix; 2 is down with incidents off.
+    app.state
+        .db
+        .write(async |c| {
+            c.execute("UPDATE heartbeats SET deadline_at = NULL", ())
+                .await?;
+            c.execute("INSERT INTO incident_sources (source_kind, source_id, fail_streak, open_incident_id, down_since) VALUES ('heartbeat', 2, 0, NULL, 100)", ()).await?;
+            c.execute_batch(include_str!("../migrations/0012_rearm_resolved_heartbeats.sql"))
+                .await?;
+            Ok(())
+        })
+        .await
+        .unwrap();
+    let t = monita::platform::now();
+    let rearmed = format!("SELECT count(*) FROM heartbeats WHERE id = 1 AND deadline_at > {t}");
+    assert_eq!(count(&app, &rearmed).await, 1, "re-armed");
+    let waits = "SELECT count(*) FROM heartbeats WHERE id = 2 AND deadline_at IS NULL";
+    assert_eq!(count(&app, waits).await, 1, "a down one waits for its ping");
+}

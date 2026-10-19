@@ -33,7 +33,7 @@ export const STATE_OPTIONS: Option[] = [
   { value: "up", label: "Up" },
   { value: "down", label: "Down" },
   { value: "issue", label: "Issue" },
-  { value: "unknown", label: "Waiting" },
+  { value: "unknown", label: "No data yet" },
 ];
 
 export const SEVERITY_OPTIONS: Option[] = [

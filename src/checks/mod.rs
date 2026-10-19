@@ -33,7 +33,7 @@ pub fn item_state(
         Some(crate::incidents::ItemState::Down) => ("down", "Down"),
         Some(crate::incidents::ItemState::Issue) => ("issue", "Issue"),
         Some(crate::incidents::ItemState::Up) => ("up", "Up"),
-        None if !seen => ("unknown", "Waiting"),
+        None if !seen => ("unknown", "No data yet"),
         None => ("up", "Up"),
     }
 }
@@ -187,7 +187,7 @@ pub async fn public_items(db: &Db, project_id: i64) -> anyhow::Result<Vec<Public
 }
 
 /// AC-11.01: a random point inside the interval, so checks spread out. Never sooner than 5 s, so
-/// the TL sees the new monitor as Waiting before its first result.
+/// the TL sees the new monitor as "No data yet" before its first result.
 fn first_check_offset(interval_s: i64) -> i64 {
     const FLOOR_S: i64 = 5;
     FLOOR_S + token::random_below((interval_s - FLOOR_S).max(1) as u64) as i64
