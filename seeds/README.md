@@ -14,6 +14,7 @@ curl -s -X POST http://127.0.0.1:7466/admin/reset-state -H 'x-reset-token: dev' 
 | --- | --- | --- |
 | `admin@monita.test` | super admin | `monita-dev-password` |
 | `tl@monita.test` | tech lead | `monita-dev-password` |
+| `supervisor@monita.test` | supervisor | `monita-dev-password` |
 | `rina@monita.test` | tech lead, `demo.sql` only | `monita-dev-password` |
 
 `dev.sql` also creates the project `demo`, owned by the tech lead. `qa.sql` creates no project: each e2e test creates its own.

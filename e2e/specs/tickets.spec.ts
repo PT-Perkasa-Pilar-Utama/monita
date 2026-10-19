@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { apiProject } from "../lib/api";
 import { createProject } from "../lib/project";
 import { authFile } from "../lib/roles";
 
@@ -65,4 +66,38 @@ test("@US-23 @US-24 @US-25 @US-26 @US-28 @US-29 a reported bug goes public only 
   await expect(v2.getByText("Receipt shows the wrong currency")).toBeVisible();
   await expect(v2.getByText(/In progress/)).toBeVisible();
   await fresh.close();
+});
+
+test("the team files a ticket, issues a ref ID, drags it across to Done, and Done keeps its own list", async ({ page }) => {
+  const slug = await apiProject(page, "Board");
+  await page.goto(`/projects/${slug}/tickets`);
+
+  await page.getByRole("button", { name: "New ticket" }).click();
+  await page.locator("#ticket-title").fill("Export button stays grey");
+  await page.locator("#ticket-description").fill("Seen on the March report.");
+  await page.getByRole("button", { name: "File ticket" }).click();
+  await expect(page.getByText("Ticket #1 filed.")).toBeVisible();
+
+  await page.getByRole("button", { name: "Issue a ref ID" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Issue ref ID" }).click();
+  await expect(page.locator("#issued-ref-id")).toHaveText(/^rf_[a-z2-7]{26}$/);
+  await page.keyboard.press("Escape");
+
+  // A team-filed ticket starts in Backlog.
+  const column = (stage: string) => page.locator(`section[aria-labelledby='col-${stage}']`);
+  const card = page.getByRole("link", { name: /Export button stays grey/ });
+  await expect(column("backlog").getByText("Export button stays grey")).toBeVisible();
+  await card.dragTo(column("in_progress"));
+  await expect(page.getByText("Moved #1 to In progress.")).toBeVisible();
+  await card.dragTo(column("done"));
+  const closing = page.getByRole("dialog", { name: "Move #1 to Done" });
+  await expect(closing.getByRole("button", { name: "Move to Done" })).toBeDisabled();
+  await closing.getByRole("radio", { name: "Fixed" }).click();
+  await closing.getByRole("button", { name: "Move to Done" }).click();
+  await expect(column("done").getByText("Export button stays grey")).toBeVisible();
+
+  // Done keeps its own paged list.
+  await page.goto(`/projects/${slug}/tickets/done`);
+  await expect(page.getByRole("heading", { name: "Done tickets" })).toBeVisible();
+  await expect(page.getByText("Export button stays grey")).toBeVisible();
 });

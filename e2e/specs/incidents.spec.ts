@@ -53,7 +53,8 @@ test("@US-14 @US-17 @US-18 @US-19 a failing job opens an incident, the TL update
   await expect(page.locator("#state")).toContainText("Resolved");
   // AC-18.02: the facts name the start, the end and how long it lasted.
   for (const fact of ["Started", "Ended", "Lasted"]) await expect(page.locator("dt", { hasText: fact })).toBeVisible();
-  await expect(page.locator("dt", { hasText: "Ended" }).locator("+ dd")).toHaveText(/UTC$/);
+  // admin.spec.ts may hold another offset for a moment on a shared server.
+  await expect(page.locator("dt", { hasText: "Ended" }).locator("+ dd")).toHaveText(/UTC([+-][\d:]+)?$/);
 });
 
 test("@US-20 TL reports an incident by hand and resolves it", async ({ page }) => {

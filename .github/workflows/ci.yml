@@ -84,7 +84,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [smoke, flows]
+        shard: [smoke, flows, people]
     env:
       E2E_SHARD: ${{ matrix.shard }}
     steps:

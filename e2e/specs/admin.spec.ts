@@ -1,0 +1,67 @@
+import { expect, test } from "@playwright/test";
+import { apiSend } from "../lib/api";
+import { authFile } from "../lib/roles";
+
+test.use({ storageState: authFile("admin") });
+
+test("a limit can be discarded, then saved, and holds after a reload", async ({ page }) => {
+  await page.goto("/admin/limits");
+  const cap = page.locator("#limit-tickets_per_project_per_day");
+  const before = await cap.inputValue();
+  await cap.fill("150");
+  await page.getByRole("button", { name: "Discard changes" }).click();
+  await expect(cap).toHaveValue(before);
+  await cap.fill("150");
+  await page.getByRole("button", { name: "Save limits" }).click();
+  await page.reload();
+  await expect(cap).toHaveValue("150");
+  // Other specs share this server: put the limit back.
+  await cap.fill(before);
+  await page.getByRole("button", { name: "Save limits" }).click();
+  await expect(page.getByRole("button", { name: "Save limits" })).toBeDisabled();
+});
+
+test("the time zone moves every time shown, until it is set back", async ({ page }) => {
+  await page.goto("/admin/time-zone");
+  await page.locator("#tz").click();
+  await page.getByRole("option", { name: /Jakarta/ }).click();
+  await page.locator("#time-zone").getByRole("button", { name: "Save changes" }).click();
+  await expect(page.locator("#time-zone")).toContainText(/Now it is .* UTC\+7\./);
+  await apiSend(page, "PUT", "/api/ui/admin/time-zone", { utc_offset_min: 0 }, 204);
+});
+
+test("Test connection names the mail server that did not answer", async ({ page }) => {
+  await page.goto("/admin/email");
+  await page.locator("#mail-host").fill("127.0.0.1");
+  await page.locator("#mail-port").fill("9");
+  await page.locator("#mail-from").fill("Monita <monita@monita.test>");
+  await page.getByRole("button", { name: "Test connection" }).click();
+  await expect(page.getByRole("status")).toContainText("Monita could not connect.", { timeout: 15_000 });
+});
+
+test("a supervisor is invited, and a project owner cannot become one", async ({ page }) => {
+  const email = `sup-${Date.now()}@monita.test`;
+  await page.goto("/admin/users");
+  await page.getByRole("button", { name: "Invite new user" }).click();
+  await page.locator("#invite-email").fill(email);
+  await page.getByRole("radio", { name: /Supervisor/ }).click();
+  await page.getByRole("button", { name: "Send invite" }).click();
+  await expect(page.getByRole("status")).toContainText(`Invite sent to ${email}`);
+  await expect(page.getByRole("row", { name: new RegExp(email) }).getByText("Supervisor")).toBeVisible();
+
+  // tl@monita.test owns at least this project, so the role change is refused.
+  await apiSend(page, "POST", "/api/ui/projects", { name: "Owned", homepage_url: "https://app.example.com", owner_email: "tl@monita.test" }, 201);
+  await page.getByRole("button", { name: "Actions for tl@monita.test" }).click();
+  await page.getByRole("menuitem", { name: "Make supervisor" }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Make supervisor" }).click();
+  await expect(page.getByText(/owns projects/)).toBeVisible();
+  await expect(page.getByRole("row", { name: /tl@monita\.test/ }).getByText("Tech lead")).toBeVisible();
+});
+
+test("Admin in the header opens the admin page opened last", async ({ page }) => {
+  await page.goto("/admin/email");
+  await expect(page.getByRole("heading", { name: "Outgoing email" })).toBeVisible();
+  await page.goto("/");
+  await page.getByRole("link", { name: "Admin", exact: true }).click();
+  await expect(page).toHaveURL(/\/admin\/email$/);
+});

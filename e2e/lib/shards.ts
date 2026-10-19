@@ -9,13 +9,16 @@ export const PROJECTS: ProjectSpec[] = [
   // Reads only: health, static pages, the design system.
   { name: "smoke", testMatch: /\/smoke\.spec\.ts$/ },
   // Story flows. Each test creates its own project with a unique slug, so they run in parallel.
-  { name: "flows", testMatch: /\/(accounts|projects|checks|heartbeats|incidents|status|tickets)\.spec\.ts$/ },
+  { name: "flows", testMatch: /\/(projects|checks|heartbeats|incidents|status|tickets|home|changelog|footers)\.spec\.ts$/ },
+  // Accounts, roles, admin pages and project settings: who may do what, and the forms that set it.
+  { name: "people", testMatch: /\/(accounts|admin|supervisor|settings)\.spec\.ts$/ },
 ];
 
 /** One CI job per shard, on its own runner with a fresh Monita and database. */
 export const SHARDS = {
   smoke: ["smoke"],
   flows: ["flows"],
+  people: ["people"],
 } as const satisfies Record<string, readonly string[]>;
 
 export type Shard = keyof typeof SHARDS;

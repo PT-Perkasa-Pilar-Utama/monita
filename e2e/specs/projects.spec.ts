@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { apiProject } from "../lib/api";
 import { createProject } from "../lib/project";
 import { authFile } from "../lib/roles";
 
@@ -51,4 +52,19 @@ test("@US-06 the page shrinks a picked icon before it reaches the server", async
   expect((await icon.body()).length).toBeLessThanOrEqual(32 * 1024);
   await page.goto("/");
   await expect(page.getByText("The shop's storefront.")).toBeVisible();
+});
+
+test("the project list pages 20 at a time and searches on the server", async ({ page }) => {
+  const stamp = `Fleet${Date.now()}`;
+  for (let n = 1; n <= 21; n++) await apiProject(page, `${stamp} ${String(n).padStart(2, "0")}`);
+  await page.goto("/");
+  await page.getByLabel("Search projects").fill(stamp);
+  const pages = page.getByRole("navigation", { name: "Pages of projects" });
+  await expect(pages).toContainText("21");
+  await pages.getByRole("button", { name: "Next" }).click();
+  await expect(page).toHaveURL(/[?&]page=2/);
+  await expect(page.getByText(`${stamp} 21`)).toBeVisible();
+  await page.getByLabel("Search projects").fill(`${stamp} 07`);
+  await expect(pages).toHaveCount(0);
+  await expect(page.getByText(`${stamp} 07`)).toBeVisible();
 });
