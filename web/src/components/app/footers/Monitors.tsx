@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 import { ARM, Mascot } from "@/components/brand/Mascot";
-import { Frame, TextLine, Window } from "./Frame";
+import { Flow, Frame, TextLine, Window } from "./Frame";
 
 const GLYPHS = (
   <>
@@ -35,13 +35,15 @@ export function MonitorsFooter(): ReactElement {
           />
         ))}
       </Window>
-      <path d="M333 108 C 310 92, 285 92, 260 112" fill="none" strokeWidth="2.5" strokeLinecap="round" strokeDasharray="4 7" className="animate-[monita-ping_1.1s_linear_infinite] stroke-primary/60" />
+      {/* Monita asks the website, and the website answers. */}
+      <Flow d="M332 94 C 312 76, 286 76, 264 96" />
+      <Flow d="M262 150 C 292 162, 320 152, 336 126" answer />
       <g className="stroke-muted-foreground" strokeWidth="2.5" strokeLinecap="round">
-        <circle cx="296" cy="60" r="13" className="fill-card" />
-        <line x1="296" y1="47" x2="296" y2="42" />
-        <line x1="291" y1="41" x2="301" y2="41" />
-        <line x1="296" y1="60" x2="296" y2="52" />
-        <line x1="296" y1="60" x2="302" y2="64" />
+        <circle cx="298" cy="46" r="13" className="fill-card" />
+        <line x1="298" y1="33" x2="298" y2="28" />
+        <line x1="293" y1="27" x2="303" y2="27" />
+        <line x1="298" y1="46" x2="298" y2="38" />
+        <line x1="298" y1="46" x2="304" y2="50" />
       </g>
       <line x1="362" y1="117" x2="375" y2="130" strokeWidth="6" strokeLinecap="round" className="stroke-muted-foreground" />
       <circle cx="349" cy="104" r="17" strokeWidth="4" className="fill-card stroke-muted-foreground" />

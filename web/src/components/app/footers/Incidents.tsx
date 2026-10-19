@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 import { ARM, Mascot } from "@/components/brand/Mascot";
-import { Frame, TextLine, Window } from "./Frame";
+import { Flow, Frame, TextLine, Window } from "./Frame";
 
 const GLYPHS = (
   <>
@@ -24,6 +24,10 @@ export function IncidentsFooter(): ReactElement {
       <Window>
         <TextLine x={80} y={72} w={110} />
         <line x1="44" y1="104" x2="44" y2="164" strokeWidth="1.5" className="stroke-input" />
+        {/* Each step leads to the next, top to bottom. */}
+        {[114, 134, 154].map((y) => (
+          <path key={y} d={`M41 ${y - 1.5}l3 3 3-3`} fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="stroke-muted-foreground" />
+        ))}
         {STEPS.map(([label, done], n) => {
           const y = 104 + n * 20;
           return (
@@ -38,11 +42,8 @@ export function IncidentsFooter(): ReactElement {
           );
         })}
       </Window>
-      {/* The megaphone, held out to the left, and what it says. */}
-      <g className="stroke-primary/60" strokeWidth="2.5" strokeLinecap="round" fill="none">
-        <path d="M322 110 Q 314 124 322 138" className="animate-[monita-beat_1.6s_ease-in-out_infinite]" />
-        <path d="M306 100 Q 292 124 306 148" className="animate-[monita-beat_1.6s_ease-in-out_0.3s_infinite]" />
-      </g>
+      {/* Moni posts each update to the status page. */}
+      <Flow d="M334 116 C 310 100, 288 100, 264 112" />
       <path d="M374 116 L340 102 L340 146 L374 132 Z" strokeWidth="2.5" strokeLinejoin="round" className="fill-card stroke-muted-foreground" />
       <rect x="374" y="114" width="8" height="20" rx="2" className="fill-muted-foreground" />
       <Mascot x={440} y={124} />

@@ -20,14 +20,21 @@ export function Frame({ id, glyphs, children }: { id: string; glyphs: ReactNode;
   return (
     <footer aria-hidden="true" className="relative mt-auto h-[200px] shrink-0 overflow-hidden border-t bg-paper max-sm:h-[150px]">
       {/* The tiles' currentColor comes from here, where the patterns are defined. */}
-      <svg className="absolute size-0 text-input">
+      <svg className="absolute size-0 text-muted-foreground">
         <defs>
           <pattern id="footer-dots" width="16" height="16" patternUnits="userSpaceOnUse">
-            <circle cx="8" cy="8" r="1" fill="currentColor" />
+            <circle cx="8" cy="8" r="1.2" fill="currentColor" opacity="0.3" />
           </pattern>
-          <pattern id={`${id}-glyphs`} width="180" height="120" patternUnits="userSpaceOnUse" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <pattern id={`${id}-glyphs`} width="180" height="120" patternUnits="userSpaceOnUse" fill="none" stroke="currentColor" strokeOpacity="0.45" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
             {glyphs}
           </pattern>
+          {/* Arrowheads for a scene's flow lines: brand for what Monita sends, green for an answer. */}
+          <marker id="arrow-brand" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="12" markerHeight="12" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
+            <path d="M1 1L9 5L1 9" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="stroke-primary" />
+          </marker>
+          <marker id="arrow-up" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="12" markerHeight="12" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
+            <path d="M1 1L9 5L1 9" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="stroke-up" />
+          </marker>
         </defs>
       </svg>
       <div className="absolute inset-x-0 top-0 bottom-5 flex max-sm:bottom-[15px]">
@@ -54,6 +61,22 @@ export function Window({ children }: { children?: ReactNode }): ReactElement {
       ))}
       {children}
     </g>
+  );
+}
+
+/** A dashed flow line, drawn from where the flow starts to where it lands, with an arrowhead at
+ * the end. The dashes march the same way. `answer` makes it green, for a reply. */
+export function Flow({ d, answer = false }: { d: string; answer?: boolean }): ReactElement {
+  return (
+    <path
+      d={d}
+      fill="none"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeDasharray="4 7"
+      markerEnd={answer ? "url(#arrow-up)" : "url(#arrow-brand)"}
+      className={`animate-[monita-ping_1.1s_linear_infinite] ${answer ? "stroke-up/70" : "stroke-primary/70"}`}
+    />
   );
 }
 

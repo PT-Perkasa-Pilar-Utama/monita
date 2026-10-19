@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 import { ARM, Mascot } from "@/components/brand/Mascot";
-import { Frame, TextLine, Window } from "./Frame";
+import { Flow, Frame, TextLine, Window } from "./Frame";
 
 const GLYPHS = (
   <>
@@ -11,11 +11,11 @@ const GLYPHS = (
 );
 
 const CONFETTI: [number, number, number, string][] = [
-  [292, 54, 20, "fill-mascot-line"],
-  [316, 74, -30, "fill-up"],
-  [338, 48, 45, "fill-muted-foreground"],
-  [272, 82, -15, "fill-up"],
-  [356, 70, 10, "fill-mascot-line"],
+  [292, 40, 20, "fill-mascot-line"],
+  [318, 30, -30, "fill-up"],
+  [342, 42, 45, "fill-muted-foreground"],
+  [270, 52, -15, "fill-up"],
+  [356, 26, 10, "fill-mascot-line"],
 ];
 
 /** Changelog: a release goes out; Moni waves its flag over the notes. */
@@ -42,6 +42,8 @@ export function ChangelogFooter(): ReactElement {
       {CONFETTI.map(([x, y, r, cls]) => (
         <rect key={`${x}${y}`} x={x} y={y} width="8" height="4" rx="1" transform={`rotate(${r} ${x + 4} ${y + 2})`} className={cls} />
       ))}
+      {/* The release goes out under Moni's flag. */}
+      <Flow d="M262 104 C 296 88, 330 80, 366 76" />
       {/* The flag, on a pole in Moni's hand. */}
       <line x1="378" y1="134" x2="378" y2="52" strokeWidth="3" strokeLinecap="round" className="stroke-muted-foreground" />
       <path d="M378 54 L410 64 L378 74 Z" className="fill-mascot-line" />

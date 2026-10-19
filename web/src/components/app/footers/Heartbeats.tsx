@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 import { ARM, Mascot } from "@/components/brand/Mascot";
-import { Frame, TextLine, Window } from "./Frame";
+import { Flow, Frame, TextLine, Window } from "./Frame";
 
 /** A heart about 20 units wide, centred on (x, y). */
 function Heart({ x, y, scale = 1, className }: { x: number; y: number; scale?: number; className: string }): ReactElement {
@@ -37,8 +37,9 @@ export function HeartbeatsFooter(): ReactElement {
         <line x1="244" y1="64" x2="244" y2="55" />
         <line x1="244" y1="64" x2="251" y2="68" />
       </g>
-      <path d="M262 132 C 300 92, 336 92, 366 116" fill="none" strokeWidth="2.5" strokeLinecap="round" strokeDasharray="4 7" className="animate-[monita-ping_1.1s_linear_infinite] stroke-primary/60" />
-      <Heart x={306} y={100} scale={0.7} className="fill-up/70" />
+      {/* The job calls Monita when it finishes. */}
+      <Flow d="M262 132 C 296 94, 326 92, 350 106" answer />
+      <Heart x={304} y={92} scale={0.7} className="fill-up/70" />
       <Heart x={366} y={112} scale={1.4} className="animate-[monita-beat_1.2s_ease-in-out_infinite] fill-up" />
       <Mascot x={440} y={124} />
       <path d="M396 136 Q 384 140 376 124" strokeWidth="4" strokeLinecap="round" className={ARM} />

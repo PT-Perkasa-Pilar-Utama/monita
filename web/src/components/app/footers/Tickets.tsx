@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 import { ARM, Mascot } from "@/components/brand/Mascot";
-import { Frame } from "./Frame";
+import { Flow, Frame } from "./Frame";
 
 /** A ticket: a card with a notch on each side. */
 const TICKET = "M0 0h30v6a4 4 0 0 0 0 8v6H0v-6a4 4 0 0 0 0-8Z";
@@ -34,8 +34,11 @@ export function TicketsFooter(): ReactElement {
           </g>
         );
       })}
-      <path d="M352 104 C 330 62, 270 56, 228 86" fill="none" strokeWidth="2.5" strokeLinecap="round" strokeDasharray="4 7" className="animate-[monita-ping_1.1s_linear_infinite] stroke-primary/60" />
-      <path d="M236 80l-9 6 10 3" fill="none" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="stroke-primary/60" />
+      {/* A ticket moves left to right, Triage to Done. */}
+      {[0, 1, 2].map((c) => (
+        <path key={c} d={`M${82 + c * 56} 79l3 3-3 3`} fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="stroke-muted-foreground" />
+      ))}
+      <Flow d="M350 100 C 330 60, 272 54, 234 82" />
       <path transform="translate(352 104) rotate(-12)" d={TICKET} strokeWidth="2" className="fill-card stroke-muted-foreground" />
       <circle cx="367" cy="113" r="3" transform="rotate(-12 367 113)" className="fill-up" />
       <Mascot x={440} y={124} />
