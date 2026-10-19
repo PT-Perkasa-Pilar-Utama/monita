@@ -51,7 +51,19 @@ async fn list(
     Path(slug): Path<String>,
 ) -> UiResult {
     let p = projects::find_for(&state.db, &user, &slug).await?;
-    Ok(data(super::routes(&state.db, p.id).await?))
+    let mut routes = super::routes(&state.db, p.id).await?;
+    if user.is_read_only() {
+        for r in &mut routes {
+            r.webhook_url = hidden(r.webhook_url.take());
+        }
+    }
+    Ok(data(routes))
+}
+
+/// A webhook URL is its own credential: whoever holds it can post to the team's channel. A
+/// supervisor sees that one is set, never the address.
+fn hidden(url: Option<String>) -> Option<String> {
+    url.map(|_| "(hidden)".to_string())
 }
 
 #[derive(Deserialize)]
@@ -130,7 +142,11 @@ async fn ticket_alerts(
     Path(slug): Path<String>,
 ) -> UiResult {
     let p = projects::find_for(&state.db, &user, &slug).await?;
-    Ok(data(super::ticket_alerts(&state.db, p.id).await?))
+    let mut alerts = super::ticket_alerts(&state.db, p.id).await?;
+    if user.is_read_only() {
+        alerts.webhook_url = hidden(alerts.webhook_url.take());
+    }
+    Ok(data(alerts))
 }
 
 #[derive(Deserialize)]

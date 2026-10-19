@@ -107,7 +107,7 @@ async fn a_supervisor_reads_every_project_and_the_admin_pages_but_changes_nothin
 }
 
 #[tokio::test]
-async fn a_supervisor_never_sees_a_ping_url_a_header_value_or_a_request_body() {
+async fn a_supervisor_never_sees_a_ping_url_a_webhook_url_a_header_value_or_a_body() {
     let app = TestApp::spawn("test").await;
     let admin = app.super_admin("admin@x.co").await;
     let tl = app.tl("rina@x.co").await;
@@ -143,6 +143,40 @@ async fn a_supervisor_never_sees_a_ping_url_a_header_value_or_a_request_body() {
     assert_eq!(listed["data"]["monitors"][0]["headers"], "X-Key: (hidden)");
     let owner = json_of(app.api_get(&path, Some(&tl)).await).await;
     assert_eq!(owner["data"]["monitor"]["headers"], "X-Key: s3cret");
+
+    let hook = "https://hooks.example.com/services/T0/B0/s3cret";
+    for path in [
+        "/api/ui/projects/payments/alerts/critical",
+        "/api/ui/projects/payments/ticket-alerts",
+    ] {
+        let saved = app
+            .api_send(
+                Method::PUT,
+                path,
+                json!({ "emails": "", "webhook_url": hook, "use_webhook": true, "digest": true }),
+                Some(&tl),
+            )
+            .await;
+        assert_eq!(saved.status(), 204, "{path}");
+    }
+    let routes = json_of(
+        app.api_get("/api/ui/projects/payments/alerts", Some(&sup))
+            .await,
+    )
+    .await;
+    assert!(!routes.to_string().contains("s3cret"), "{routes}");
+    let tickets = json_of(
+        app.api_get("/api/ui/projects/payments/ticket-alerts", Some(&sup))
+            .await,
+    )
+    .await;
+    assert_eq!(tickets["data"]["webhook_url"], "(hidden)");
+    let owner = json_of(
+        app.api_get("/api/ui/projects/payments/ticket-alerts", Some(&tl))
+            .await,
+    )
+    .await;
+    assert_eq!(owner["data"]["webhook_url"], hook);
 
     let hb_path = format!("/api/ui/projects/payments/heartbeats/{hb_id}");
     let seen = json_of(app.api_get(&hb_path, Some(&sup)).await).await;

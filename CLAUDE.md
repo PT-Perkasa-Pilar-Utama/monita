@@ -54,7 +54,7 @@ site/                 landing page and docs site builder    docs/guide/ user doc
 | tickets | ref_ids, tickets | `issue_ref_id`, `submit` |
 | platform | settings, schema_migrations | `Db`, `ui` (envelope, `Body`, `public_cache`), `now`, config |
 
-Roles: `super_admin`, `tl`, `supervisor`. A TL manages only projects they own; a non-owner gets 404. A supervisor sees what a super admin sees and changes nothing: `CurrentUser` answers 403 to any method but GET and HEAD, and a supervisor never gets a heartbeat ping URL, a header value or a request body. A project owner cannot become a supervisor. Matrix: technical-specs 09 section 9.3.
+Roles: `super_admin`, `tl`, `supervisor`. A TL manages only projects they own; a non-owner gets 404. A supervisor sees what a super admin sees and changes nothing: `CurrentUser` answers 403 to any method but GET and HEAD, and a supervisor never gets a heartbeat ping URL, a webhook URL, a check's header values, sign-in name or request body. A project owner cannot become a supervisor. Matrix: technical-specs 09 section 9.3.
 
 ## Work model
 

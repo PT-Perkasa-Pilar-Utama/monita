@@ -84,8 +84,8 @@ struct LastCheck {
     summary: String,
 }
 
-/// What a supervisor sees of a request: header names and whether a body is sent, never the
-/// values, which often carry credentials (technical-specs 07: owner and super admin only).
+/// What a supervisor sees of a request: header names and whether a body or a sign-in name is
+/// sent, never the values, which often carry credentials (technical-specs 07: owner and super admin only).
 const HIDDEN: &str = "(hidden)";
 
 fn hide_values(headers: &str) -> String {
@@ -126,7 +126,9 @@ fn view(m: Monitor, state: &'static str, read_only: bool) -> MonitorView {
         auth_kind: m.auth_kind,
         auth_secret_id: m.auth_secret_id,
         auth_secret_name: None,
-        auth_user: m.auth_user,
+        auth_user: m
+            .auth_user
+            .map(|u| if read_only { HIDDEN.to_string() } else { u }),
         auth_header: m.auth_header,
         created_at: m.created_at,
         next_check_at: m.next_check_at,
