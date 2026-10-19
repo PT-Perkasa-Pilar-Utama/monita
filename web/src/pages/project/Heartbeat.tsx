@@ -1,12 +1,12 @@
 import type { ReactElement } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { CopyField } from "@/components/app/CopyField";
-import { Facts } from "@/components/app/Facts";
+import { HeartbeatDetails } from "@/components/app/HeartbeatDetails";
 import { HistoryPager } from "@/components/app/History";
 import { AvailabilityCard, ChartCard, StatCards } from "@/components/app/Insight";
 import { TableCard } from "@/components/app/TableCard";
 import { SeverityBadge, StateBadge } from "@/components/app/Tone";
-import { Pencil } from "@/components/icons";
+import { Pencil, Terminal } from "@/components/icons";
 import { Crumbs, PageHeader } from "@/components/layout/Page";
 import { TableEmpty } from "@/components/list/TableEmpty";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +15,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useProject } from "@/lib/project";
-import { whenItFails } from "@/lib/checks";
 import { stamp } from "@/lib/time";
 import type { HeartbeatDetail } from "@/lib/types";
 import { useDetail } from "@/lib/useDetail";
@@ -23,7 +22,7 @@ import { NotFound } from "@/pages/NotFound";
 import { HeartbeatFormSheet } from "@/pages/project/HeartbeatForm";
 
 /** One heartbeat: four numbers led by when the next ping is due, the ping chart, availability
- * beside its ping URL and settings, and its pings with what each reported. */
+ * and its pings with what each reported. Details holds the ping URL, commands and settings. */
 export function Heartbeat({ editing = false }: { editing?: boolean }): ReactElement {
   const navigate = useNavigate();
   const { project: p } = useProject();
@@ -35,19 +34,6 @@ export function Heartbeat({ editing = false }: { editing?: boolean }): ReactElem
   const h = d?.heartbeat;
   // Until the job first calls, the ping URL is the one thing to do, so it leads the page.
   const fresh = h?.last === null;
-  const ping = d ? (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-[15px]">Ping URL</CardTitle>
-        <CardDescription>
-          Call it with GET, HEAD or POST when the job succeeds. Add /fail to the end when it fails; Monita shows the first 1 KB of the body as the cause.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <CopyField id="ping-url" value={d.ping_url} />
-      </CardContent>
-    </Card>
-  ) : null;
 
   return (
     <>
@@ -69,39 +55,44 @@ export function Heartbeat({ editing = false }: { editing?: boolean }): ReactElem
               </>
             }
             actions={
-              <Button asChild variant="secondary">
-                <Link to={`${base}/${h.id}/edit`}>
-                  <Pencil data-icon="inline-start" />
-                  Edit
-                </Link>
-              </Button>
+              <>
+                <HeartbeatDetails h={h} pingUrl={d.ping_url} />
+                <Button asChild variant="secondary">
+                  <Link to={`${base}/${h.id}/edit`}>
+                    <Pencil data-icon="inline-start" />
+                    Edit
+                  </Link>
+                </Button>
+              </>
             }
           />
           <div className="flex flex-col gap-6">
-            {fresh && ping}
+            {fresh && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-[15px]">The job has not called yet</CardTitle>
+                  <CardDescription>Call this URL when the job succeeds. Details has commands to copy and a starter script.</CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <div className="min-w-0 flex-1">
+                    <CopyField id="ping-url-start" value={d.ping_url} />
+                  </div>
+                  <HeartbeatDetails
+                    h={h}
+                    pingUrl={d.ping_url}
+                    trigger={
+                      <Button variant="outline">
+                        <Terminal data-icon="inline-start" />
+                        How to call it
+                      </Button>
+                    }
+                  />
+                </CardContent>
+              </Card>
+            )}
             <StatCards stats={d.stats} />
             <ChartCard insight={d.insight} />
-            <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
-              <AvailabilityCard insight={d.insight} />
-              <div className="flex min-w-0 flex-col gap-6">
-                {!fresh && ping}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-[15px]">Settings</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <Facts
-                      rows={[
-                        ["Runs every", h.every],
-                        ["Can be late by", h.grace],
-                        ["When it fails", whenItFails(h.alert, h.auto_incident)],
-                        ["Created", stamp(h.created_at)],
-                      ]}
-                    />
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
+            <AvailabilityCard insight={d.insight} />
             <TableCard title="Pings, last 7 days">
               {d.pings.length === 0 ? (
                 <TableEmpty title="Waiting for the first ping" description="Call the ping URL when the job next finishes." />
