@@ -1,8 +1,9 @@
 import type { ReactElement } from "react";
 import { Mascot } from "@/components/brand/Mascot";
 
-/** The ground line, in the scene's units. */
-const GROUND = 206;
+/** Where feet touch, in the scene's units: the bottom edge, where the wrapper draws the ground line
+ * across the full width. */
+const GROUND = 219;
 
 /** Where a Moni of this size stands so its feet touch the ground. */
 const standY = (scale: number): number => GROUND - 56 * scale;
@@ -37,11 +38,25 @@ const TOSS = "M571 116Q620 26 669 116";
  * a tower of uptime blocks and bubbles. Decoration only; reduced motion stills it.
  */
 export function Playground(): ReactElement {
+  // It fills the height its parent gives it. A phone crops the sides so the Monis stay big; a
+  // wider screen shows the whole scene and leaves the sides empty.
   return (
-    <svg aria-hidden="true" viewBox="0 0 1200 220" preserveAspectRatio="xMidYMax slice" className="block h-[160px] w-full sm:aspect-[1200/220] sm:h-auto">
+    <div className="relative size-full border-b border-input">
+      <svg aria-hidden="true" viewBox="0 0 1200 220" preserveAspectRatio="xMidYMax slice" className="absolute inset-0 size-full sm:hidden">
+        <Scene />
+      </svg>
+      <svg aria-hidden="true" viewBox="0 0 1200 220" preserveAspectRatio="xMidYMax meet" className="absolute inset-0 size-full max-sm:hidden">
+        <Scene />
+      </svg>
+    </div>
+  );
+}
+
+function Scene(): ReactElement {
+  return (
+    <>
       <Cloud x={70} y={46} />
       <Cloud x={980} y={34} />
-      <line x1="0" y1={GROUND} x2="1200" y2={GROUND} strokeWidth="1.5" className="stroke-input" />
 
       {/* A kite with the mark on it. */}
       <path d="M212 120Q252 108 262 64" fill="none" strokeWidth="1.5" className="stroke-muted-foreground" />
@@ -119,7 +134,7 @@ export function Playground(): ReactElement {
         <Arm d="M-34 -8Q-52 -18 -58 -34" />
         <Arm d={ARM_DOWN} />
       </Mascot>
-    </svg>
+    </>
   );
 }
 
