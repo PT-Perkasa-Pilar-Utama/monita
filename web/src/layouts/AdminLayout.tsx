@@ -1,7 +1,9 @@
+import { useEffect } from "react";
 import type { ReactElement } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { Clock, Mail, Server, Timer, Users } from "@/components/icons";
 import { SideNav, SidebarFrame } from "@/components/layout/SideNav";
+import { rememberAdminPage } from "@/lib/adminPage";
 import { useMe } from "@/lib/session";
 import { NotFound } from "@/pages/NotFound";
 
@@ -9,6 +11,9 @@ import { NotFound } from "@/pages/NotFound";
 export function AdminLayout(): ReactElement {
   const me = useMe();
   const { pathname } = useLocation();
+  useEffect(() => {
+    if (me.is_admin) rememberAdminPage(pathname);
+  }, [me.is_admin, pathname]);
   if (!me.is_admin) return <NotFound />;
   const item = (to: string, label: string, icon: typeof Users) => ({ to, label, icon, active: pathname === to });
   return (

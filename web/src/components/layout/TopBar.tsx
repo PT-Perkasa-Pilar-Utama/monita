@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useTheme } from "@/components/layout/ThemeProvider";
 import { api } from "@/lib/api";
+import { lastAdminPage } from "@/lib/adminPage";
 import { lastProject } from "@/lib/lastProject";
 import { useMe } from "@/lib/session";
 import { cn } from "@/lib/utils";
@@ -46,8 +47,8 @@ function AreaLink({ to, label, icon, active, external, className }: { to: string
   );
 }
 
-/** The header's areas: Projects, Incidents and Tickets across your projects, Admin settings for a
- * super admin, and the documentation. */
+/** The header's areas: Projects, Incidents and Tickets across your projects, Admin for a super
+ * admin (it opens the admin page opened last), and the documentation. */
 function AreaLinks(): ReactElement {
   const me = useMe();
   const { pathname } = useLocation();
@@ -58,7 +59,7 @@ function AreaLinks(): ReactElement {
       <AreaLink to="/incidents" label="Incidents" icon={<AlertTriangle />} active={at("/incidents")} />
       <AreaLink to="/tickets" label="Tickets" icon={<Ticket />} active={at("/tickets")} />
       {/* On a phone these two move into the account menu, so the project name keeps its room. */}
-      {me.is_admin && <AreaLink to="/admin/users" label="Admin settings" icon={<Settings />} active={at("/admin")} className="max-sm:hidden" />}
+      {me.is_admin && <AreaLink to={at("/admin") ? pathname : lastAdminPage()} label="Admin" icon={<Settings />} active={at("/admin")} className="max-sm:hidden" />}
       <AreaLink to={DOCS} label="Documentation" icon={<BookOpen />} active={false} external className="max-sm:hidden" />
     </>
   );
@@ -67,6 +68,7 @@ function AreaLinks(): ReactElement {
 /** The account menu: who is signed in, the theme and sign out. */
 function AccountMenu(): ReactElement {
   const me = useMe();
+  const { pathname } = useLocation();
   const { resolved, setTheme } = useTheme();
   const initial = me.email.charAt(0).toUpperCase();
   const signOut = async (): Promise<void> => {
@@ -96,9 +98,9 @@ function AccountMenu(): ReactElement {
         <DropdownMenuGroup>
           {me.is_admin && (
             <DropdownMenuItem asChild className="sm:hidden">
-              <Link to="/admin/users">
+              <Link to={pathname.startsWith("/admin/") ? pathname : lastAdminPage()}>
                 <Settings />
-                Admin settings
+                Admin
               </Link>
             </DropdownMenuItem>
           )}
