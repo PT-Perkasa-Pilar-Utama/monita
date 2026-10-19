@@ -1,3 +1,4 @@
+import { RefreshButton } from "@/components/app/RefreshButton";
 import type { ReactElement } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { CopyField } from "@/components/app/CopyField";
@@ -56,6 +57,7 @@ export function Heartbeat({ editing = false }: { editing?: boolean }): ReactElem
             }
             actions={
               <>
+                <RefreshButton onClick={res.refresh} busy={res.refreshing} />
                 <HeartbeatDetails h={h} pingUrl={d.ping_url} />
                 <Button asChild variant="secondary">
                   <Link to={`${base}/${h.id}/edit`}>

@@ -1,3 +1,4 @@
+import { RefreshButton } from "@/components/app/RefreshButton";
 import type { ReactElement } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { LinkRow, ROW_LINK } from "@/components/app/LinkRow";
@@ -56,6 +57,7 @@ export function Heartbeats({ creating = false }: { creating?: boolean }): ReactE
         filtered={filtered}
         actions={
           <>
+            <RefreshButton onClick={res.refresh} busy={res.refreshing} />
             <HeartbeatGuide />
             {newButton}
           </>

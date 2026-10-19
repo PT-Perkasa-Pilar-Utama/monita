@@ -1,3 +1,4 @@
+import { RefreshButton } from "@/components/app/RefreshButton";
 import { useEffect, useState } from "react";
 import type { ReactElement } from "react";
 import { NewProjectSheet } from "@/components/app/NewProjectSheet";
@@ -115,6 +116,7 @@ export function Projects(): ReactElement {
               <ViewToggle value={view} onChange={setView} />
               <PageSearch value={draft} onChange={setDraft} placeholder="Search projects" />
             </div>
+            <RefreshButton onClick={list.refresh} busy={list.refreshing} />
             <Button onClick={() => setCreating(true)}>
               <Plus data-icon="inline-start" />
               New project
