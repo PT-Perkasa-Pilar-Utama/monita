@@ -58,6 +58,14 @@ pub struct Target<'a> {
     pub expected_status: &'a str,
     pub keyword: Option<&'a str>,
     pub skip_tls_verify: bool,
+    pub auth: Option<Auth<'a>>,
+}
+
+/// How a check signs in, with the secret's value.
+pub enum Auth<'a> {
+    Bearer(&'a str),
+    Basic { user: &'a str, password: &'a str },
+    Header { name: &'a str, value: &'a str },
 }
 
 /// The methods a monitor may send. Only POST and PUT carry a body.
@@ -133,6 +141,12 @@ pub async fn probe(t: &Target<'_>, clients: &Clients) -> CheckResult {
     for (name, value) in &t.headers {
         request = request.header(name.as_str(), value.as_str());
     }
+    request = match t.auth {
+        None => request,
+        Some(Auth::Bearer(token)) => request.bearer_auth(token),
+        Some(Auth::Basic { user, password }) => request.basic_auth(user, Some(password)),
+        Some(Auth::Header { name, value }) => request.header(name, value),
+    };
     if let Some(body) = t
         .body
         .filter(|_| method == reqwest::Method::POST || method == reqwest::Method::PUT)

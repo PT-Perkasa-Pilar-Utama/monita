@@ -5,6 +5,7 @@ pub mod api;
 mod cause;
 pub mod chart;
 pub mod heartbeat;
+mod input;
 pub(crate) mod insight;
 pub(crate) mod overview;
 pub mod ping_routes;
@@ -14,11 +15,10 @@ pub mod scheduler;
 pub mod series;
 mod store;
 
-use std::collections::BTreeMap;
-
 use crate::platform::{caps, db::Db, now, token};
 
-pub use probe::{Clients, Target, probe, status_matches};
+pub use input::{FieldErrors, MonitorInput, valid_expected_status};
+pub use probe::{Auth, Clients, Target, probe, status_matches};
 pub use store::{CheckRow, Monitor};
 
 pub const INTERVALS_S: [i64; 4] = [30, 60, 180, 300];
@@ -45,129 +45,6 @@ pub struct CheckResult {
     pub status_code: Option<u16>,
     pub latency_ms: i64,
     pub error: Option<String>,
-}
-
-/// A validated monitor form. Field errors are keyed by form field name.
-#[derive(Clone, Debug, Default)]
-pub struct MonitorInput {
-    pub name: String,
-    pub url: String,
-    pub interval_s: i64,
-    pub timeout_ms: i64,
-    pub expected_status: String,
-    pub keyword: Option<String>,
-    pub skip_tls_verify: bool,
-    pub severity: String,
-    pub is_public: bool,
-    /// A failure alerts the severity's recipients.
-    pub alert: bool,
-    /// A failure opens an incident on its own. Off: only an alert, and you report one by hand.
-    pub auto_incident: bool,
-    /// Failed checks in a row that count as down: 1, 2, 3 or 5.
-    pub fails_to_open: i64,
-    /// GET, HEAD, POST or PUT; empty reads as GET.
-    pub method: String,
-    /// `Name: value` lines, as entered.
-    pub headers: String,
-    /// Sent with POST and PUT only.
-    pub body: Option<String>,
-}
-
-pub type FieldErrors = BTreeMap<&'static str, &'static str>;
-
-impl MonitorInput {
-    /// The defaults of AC-09.02.
-    pub fn defaults() -> Self {
-        Self {
-            interval_s: 60,
-            timeout_ms: 10_000,
-            expected_status: "2xx".into(),
-            severity: "warning".into(),
-            alert: true,
-            auto_incident: true,
-            fails_to_open: 2,
-            ..Self::default()
-        }
-    }
-
-    pub fn validate(&self) -> FieldErrors {
-        let mut e = FieldErrors::new();
-        if self.name.trim().is_empty() || self.name.chars().count() > 80 {
-            e.insert("name", "Enter a name of up to 80 characters.");
-        }
-        let url = self.url.trim();
-        if !crate::platform::valid_http_url(url) {
-            e.insert("url", "The URL must start with http:// or https://.");
-        }
-        if !INTERVALS_S.contains(&self.interval_s) {
-            e.insert("interval_s", "Pick one of the listed intervals.");
-        }
-        if !(1_000..=30_000).contains(&self.timeout_ms) {
-            e.insert("timeout_ms", "Use 1 to 30 seconds.");
-        }
-        if !valid_expected_status(&self.expected_status) {
-            e.insert(
-                "expected_status",
-                "Use a class such as 2xx, or a list of codes such as 200,204.",
-            );
-        }
-        if self
-            .keyword
-            .as_ref()
-            .is_some_and(|k| k.chars().count() > 200)
-        {
-            e.insert("keyword", "Use at most 200 characters.");
-        }
-        if !matches!(self.severity.as_str(), "critical" | "warning") {
-            e.insert("severity", "Pick critical or warning.");
-        }
-        if !crate::incidents::engine::FAILS_CHOICES
-            .iter()
-            .any(|&n| i64::from(n) == self.fails_to_open)
-        {
-            e.insert("fails_to_open", "Pick 1, 2, 3 or 5 failed checks.");
-        }
-        if !probe::METHODS.contains(&self.method()) {
-            e.insert("method", "Pick GET, HEAD, POST or PUT.");
-        }
-        if let Err(m) = probe::parse_headers(&self.headers) {
-            e.insert("headers", m);
-        }
-        match &self.body {
-            Some(b) if !matches!(self.method(), "POST" | "PUT") && !b.is_empty() => {
-                e.insert(
-                    "body",
-                    "Only POST and PUT send a body. Pick one, or clear the body.",
-                );
-            }
-            Some(b) if b.len() > 65_536 => {
-                e.insert("body", "The body can be at most 64 KB.");
-            }
-            _ => {}
-        }
-        e
-    }
-
-    pub fn method(&self) -> &str {
-        if self.method.is_empty() {
-            "GET"
-        } else {
-            &self.method
-        }
-    }
-}
-
-/// `2xx`, `200`, or a comma list such as `200,204,301`.
-pub fn valid_expected_status(s: &str) -> bool {
-    let s = s.trim();
-    !s.is_empty()
-        && s.split(',').all(|part| {
-            let p = part.trim().as_bytes();
-            p.len() == 3
-                && (b'1'..=b'5').contains(&p[0])
-                && ((p[1] == b'x' && p[2] == b'x')
-                    || (p[1].is_ascii_digit() && p[2].is_ascii_digit()))
-        })
 }
 
 /// A monitor or heartbeat marked public, for the status page (US-21).
@@ -234,21 +111,47 @@ fn first_check_offset(interval_s: i64) -> i64 {
     FLOOR_S + token::random_below((interval_s - FLOOR_S).max(1) as u64) as i64
 }
 
+/// What saving a monitor form did, once the form validated.
+#[derive(Debug, PartialEq, Eq)]
+pub enum Saved {
+    /// The monitor's id.
+    Done(i64),
+    /// The project already has `caps::MONITORS_PER_PROJECT` monitors.
+    Full,
+    NotFound,
+    /// `auth_secret_id` is not a secret of this project.
+    ForeignSecret,
+}
+
+/// Whether the form's secret belongs to the project, on the writer's connection.
+async fn own_secret(
+    c: &turso::Connection,
+    project_id: i64,
+    input: &MonitorInput,
+) -> anyhow::Result<bool> {
+    match input.auth_secret_id.filter(|_| input.auth_kind() != "none") {
+        Some(id) => crate::projects::secrets::exists(c, project_id, id).await,
+        None => Ok(true),
+    }
+}
+
 /// AC-09.01, AC-11.01: the first check lands at a random point inside the interval.
-/// `None` when the project already has `caps::MONITORS_PER_PROJECT` monitors.
 pub async fn create_monitor(
     db: &Db,
     project_id: i64,
     input: &MonitorInput,
-) -> anyhow::Result<Option<i64>> {
+) -> anyhow::Result<Saved> {
     let next = now() + first_check_offset(input.interval_s);
     db.write(async |c| {
         if store::count_monitors(c, project_id).await? >= caps::MONITORS_PER_PROJECT {
-            return Ok(None);
+            return Ok(Saved::Full);
+        }
+        if !own_secret(c, project_id, input).await? {
+            return Ok(Saved::ForeignSecret);
         }
         store::insert_monitor(c, project_id, input, next)
             .await
-            .map(Some)
+            .map(Saved::Done)
     })
     .await
 }
@@ -259,10 +162,47 @@ pub async fn update_monitor(
     project_id: i64,
     id: i64,
     input: &MonitorInput,
-) -> anyhow::Result<bool> {
+) -> anyhow::Result<Saved> {
     let next = now() + first_check_offset(input.interval_s);
-    db.write(async |c| store::update_monitor(c, project_id, id, input, next).await)
-        .await
+    db.write(async |c| {
+        if !own_secret(c, project_id, input).await? {
+            return Ok(Saved::ForeignSecret);
+        }
+        Ok(
+            if store::update_monitor(c, project_id, id, input, next).await? {
+                Saved::Done(id)
+            } else {
+                Saved::NotFound
+            },
+        )
+    })
+    .await
+}
+
+/// The error of a check whose secret is gone. It names no value.
+pub const SECRET_GONE: &str =
+    "The secret this monitor signs in with was deleted. Pick one in Edit.";
+
+/// Probes one claimed monitor, with its secret's value when it signs in. `Err` only when the
+/// secret could not be read: the check is skipped then, not failed.
+pub async fn run_check(db: &Db, clients: &Clients, m: &Monitor) -> anyhow::Result<CheckResult> {
+    if m.auth_kind == "none" {
+        return Ok(probe(&m.target(None), clients).await);
+    }
+    let secret = match m.auth_secret_id {
+        Some(id) => crate::projects::secrets::value_of(&db.read().await?, m.project_id, id).await?,
+        None => None,
+    };
+    Ok(match secret {
+        Some(value) => probe(&m.target(Some(&value)), clients).await,
+        None => CheckResult {
+            checked_at: now(),
+            ok: false,
+            status_code: None,
+            latency_ms: 0,
+            error: Some(SECRET_GONE.into()),
+        },
+    })
 }
 
 /// Also closes the monitor's open incident and alerts that it ended.
@@ -395,44 +335,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn a_name_limit_counts_characters_not_bytes() {
-        let input = MonitorInput {
-            name: "é".repeat(80),
-            url: "https://x.co".into(),
-            ..MonitorInput::defaults()
-        };
-        assert!(!input.validate().contains_key("name"));
-    }
-
-    #[test]
     fn the_first_check_lands_inside_the_interval_but_not_at_once() {
         for _ in 0..200 {
             let o = first_check_offset(30);
             assert!((5..30).contains(&o), "{o}");
         }
-    }
-
-    #[test]
-    fn expected_status_accepts_classes_and_lists() {
-        assert!(valid_expected_status("2xx"));
-        assert!(valid_expected_status("200, 204,301"));
-        assert!(!valid_expected_status("2x0"));
-        assert!(!valid_expected_status("600"));
-        assert!(!valid_expected_status("ok"));
-        assert!(!valid_expected_status(""));
-    }
-
-    #[test]
-    fn defaults_pass_validation_once_name_and_url_are_set() {
-        let mut m = MonitorInput::defaults();
-        assert!(m.validate().contains_key("name"));
-        m.name = "API health".into();
-        m.url = "https://pay.internal/api/health".into();
-        assert!(m.validate().is_empty());
-        m.interval_s = 45;
-        assert_eq!(
-            m.validate().keys().copied().collect::<Vec<_>>(),
-            vec!["interval_s"]
-        );
     }
 }

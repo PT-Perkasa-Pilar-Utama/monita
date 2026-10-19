@@ -114,6 +114,7 @@ async fn probe_judges_status_keyword_and_timeout() {
                 expected_status: "2xx",
                 keyword,
                 skip_tls_verify: false,
+                auth: None,
             };
             probe(&t, &clients).await
         }
@@ -157,6 +158,7 @@ async fn a_monitor_that_expects_a_redirect_sees_it_and_others_follow_it() {
         expected_status,
         keyword: None,
         skip_tls_verify: false,
+        auth: None,
     };
     let seen = probe(&check("301"), &clients).await;
     assert!(seen.ok, "{:?}", seen.error);

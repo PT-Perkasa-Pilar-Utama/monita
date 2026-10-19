@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { parseHeaderLines, whenItFails } from "@/lib/checks";
+import { envName, headerText, parseHeaderLines, signInWords, whenItFails } from "@/lib/checks";
 
 test("each pair of failure boxes has its own sentence", () => {
   expect(whenItFails(true, true)).toBe("Sends alerts and opens an incident");
@@ -13,4 +13,23 @@ test("header lines become pairs, blank and colon-less lines skipped", () => {
     ["Authorization", "Bearer a:b"],
     ["X-Env", "prod"],
   ]);
+});
+
+test("header rows become lines; empty rows drop, half rows stay for the server to refuse", () => {
+  expect(headerText([{ name: " X-Env ", value: "prod " }, { name: "", value: "" }, { name: "", value: "orphan" }])).toBe("X-Env: prod\n: orphan");
+  expect(headerText([])).toBe("");
+});
+
+test("a secret name becomes a shell variable", () => {
+  expect(envName("api-token")).toBe("API_TOKEN");
+  expect(envName("2fa")).toBe("SECRET_2FA");
+  expect(envName(null)).toBe("SECRET");
+});
+
+test("sign-in words name the secret, never a value", () => {
+  const m = { auth_kind: "none", auth_secret_name: "API_TOKEN", auth_user: "svc", auth_header: "X-Api-Key" };
+  expect(signInWords(m)).toBe("None");
+  expect(signInWords({ ...m, auth_kind: "bearer" })).toBe("Bearer token from secret API_TOKEN");
+  expect(signInWords({ ...m, auth_kind: "basic" })).toBe("User svc, password from secret API_TOKEN");
+  expect(signInWords({ ...m, auth_kind: "header", auth_secret_name: null })).toBe("X-Api-Key header from secret (deleted)");
 });

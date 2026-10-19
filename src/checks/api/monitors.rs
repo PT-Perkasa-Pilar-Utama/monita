@@ -16,7 +16,7 @@ use crate::{
     accounts::CurrentUser,
     app::AppState,
     checks::{
-        self, CheckRow, Monitor, MonitorInput,
+        self, CheckRow, Monitor, MonitorInput, Saved,
         insight::Insight,
         overview::{self, Day, check_summary, interval_label},
     },
@@ -62,6 +62,13 @@ struct MonitorView {
     /// `Name: value` lines. Owner and super admin only, like the rest of this view.
     headers: String,
     body: Option<String>,
+    /// `none`, `bearer`, `basic` or `header`. Never the secret's value.
+    auth_kind: String,
+    auth_secret_id: Option<i64>,
+    /// Set on one monitor's page only.
+    auth_secret_name: Option<String>,
+    auth_user: Option<String>,
+    auth_header: Option<String>,
     created_at: i64,
     next_check_at: i64,
     /// `up`, `down`, `issue` or `unknown` (waiting for the first check).
@@ -94,6 +101,11 @@ fn view(m: Monitor, state: &'static str) -> MonitorView {
         method: m.method,
         headers: m.headers.unwrap_or_default(),
         body: m.body,
+        auth_kind: m.auth_kind,
+        auth_secret_id: m.auth_secret_id,
+        auth_secret_name: None,
+        auth_user: m.auth_user,
+        auth_header: m.auth_header,
         created_at: m.created_at,
         next_check_at: m.next_check_at,
         state,
@@ -219,8 +231,15 @@ async fn detail(
         ),
         insight.incidents_stat(),
     ]);
+    let secret_name = match m.auth_secret_id {
+        Some(sid) => projects::secrets::name_of(&state.db.read().await?, p.id, sid).await?,
+        None => None,
+    };
     Ok(data(DetailView {
-        monitor: view(m, s),
+        monitor: MonitorView {
+            auth_secret_name: secret_name,
+            ..view(m, s)
+        },
         stats,
         insight: insight.into(),
         checks: rows,
@@ -250,6 +269,10 @@ struct MonitorForm {
     body: String,
     /// Missing means 2, the count every monitor used before it could choose.
     fails_to_open: Option<String>,
+    auth_kind: String,
+    auth_secret_id: Option<i64>,
+    auth_user: String,
+    auth_header: String,
 }
 
 impl From<MonitorForm> for MonitorInput {
@@ -277,6 +300,10 @@ impl From<MonitorForm> for MonitorInput {
             method: f.method.trim().to_uppercase(),
             headers: f.headers,
             body: Some(f.body).filter(|b| !b.trim().is_empty()),
+            auth_kind: f.auth_kind.trim().to_string(),
+            auth_secret_id: f.auth_secret_id,
+            auth_user: Some(f.auth_user.trim().to_string()).filter(|u| !u.is_empty()),
+            auth_header: Some(f.auth_header.trim().to_string()).filter(|h| !h.is_empty()),
         }
     }
 }
@@ -287,6 +314,14 @@ fn form_error(mut errors: checks::FieldErrors) -> UiError {
         errors.insert("timeout_s", m);
     }
     invalid(errors)
+}
+
+fn refused_error(s: Saved) -> UiError {
+    match s {
+        Saved::Full => UiError::field("name", caps::MONITORS_FULL),
+        Saved::ForeignSecret => UiError::field("auth_secret_id", "Pick a secret of this project."),
+        Saved::Done(_) | Saved::NotFound => UiError::NotFound,
+    }
 }
 
 /// AC-09.01: 201 with the new monitor's id.
@@ -303,8 +338,8 @@ async fn create(
         return Err(form_error(errors));
     }
     match checks::create_monitor(&state.db, p.id, &input).await? {
-        Some(id) => Ok(created(serde_json::json!({ "id": id }))),
-        None => Err(UiError::field("name", caps::MONITORS_FULL)),
+        Saved::Done(id) => Ok(created(serde_json::json!({ "id": id }))),
+        refused => Err(refused_error(refused)),
     }
 }
 
@@ -320,10 +355,10 @@ async fn update(
     if !errors.is_empty() {
         return Err(form_error(errors));
     }
-    if !checks::update_monitor(&state.db, p.id, id, &input).await? {
-        return Err(UiError::NotFound);
+    match checks::update_monitor(&state.db, p.id, id, &input).await? {
+        Saved::Done(_) => Ok(StatusCode::NO_CONTENT.into_response()),
+        refused => Err(refused_error(refused)),
     }
-    Ok(StatusCode::NO_CONTENT.into_response())
 }
 
 /// The monitor, its checks and summaries go; an open incident on it closes.

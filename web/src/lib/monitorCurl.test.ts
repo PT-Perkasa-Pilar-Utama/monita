@@ -20,3 +20,12 @@ test("a POST sends its headers and body, quoted for the shell", () => {
 test("quoting survives a single quote", () => {
   expect(shellQuote("it's")).toBe("'it'\\''s'");
 });
+
+test("a check that signs in reads its secret from a shell variable, never a value", () => {
+  const signed = (auth_kind: string, extra = {}): string => monitorCurl({ ...base, auth_kind, auth_secret_name: "api-token", ...extra });
+  expect(signed("bearer")).toStartWith("# Set the secret first: export API_TOKEN='…'\ncurl");
+  expect(signed("bearer")).toContain(`-H "Authorization: Bearer $API_TOKEN"`);
+  expect(signed("basic", { auth_user: 'sv"c$' })).toContain(`-u "sv\\"c\\$:$API_TOKEN"`);
+  expect(signed("header", { auth_header: "X-Api-Key" })).toContain(`-H "X-Api-Key: $API_TOKEN"`);
+  expect(signed("none")).toStartWith("curl");
+});

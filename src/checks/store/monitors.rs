@@ -1,8 +1,9 @@
-//! SQL for monitors and check_results.
+//! SQL for monitors.
 
 use turso::Connection;
 
-use crate::checks::{CheckResult, MonitorInput};
+use super::CheckRow;
+use crate::checks::MonitorInput;
 use crate::platform::caps;
 
 pub struct Monitor {
@@ -23,6 +24,10 @@ pub struct Monitor {
     pub method: String,
     pub headers: Option<String>,
     pub body: Option<String>,
+    pub auth_kind: String,
+    pub auth_secret_id: Option<i64>,
+    pub auth_user: Option<String>,
+    pub auth_header: Option<String>,
     pub next_check_at: i64,
     pub last: Option<CheckRow>,
     pub created_at: i64,
@@ -46,6 +51,10 @@ impl Monitor {
             method: self.method.clone(),
             headers: self.headers.clone().unwrap_or_default(),
             body: self.body.clone(),
+            auth_kind: self.auth_kind.clone(),
+            auth_secret_id: self.auth_secret_id,
+            auth_user: self.auth_user.clone(),
+            auth_header: self.auth_header.clone(),
         }
     }
 
@@ -62,7 +71,22 @@ impl Monitor {
         }
     }
 
-    pub fn target(&self) -> crate::checks::probe::Target<'_> {
+    /// What one check sends. `secret` is the value of `auth_secret_id`; without it the check
+    /// sends no sign-in.
+    pub fn target<'a>(&'a self, secret: Option<&'a str>) -> crate::checks::probe::Target<'a> {
+        use crate::checks::probe::Auth;
+        let auth = secret.and_then(|value| match self.auth_kind.as_str() {
+            "bearer" => Some(Auth::Bearer(value)),
+            "basic" => Some(Auth::Basic {
+                user: self.auth_user.as_deref().unwrap_or_default(),
+                password: value,
+            }),
+            "header" => Some(Auth::Header {
+                name: self.auth_header.as_deref().unwrap_or_default(),
+                value,
+            }),
+            _ => None,
+        });
         crate::checks::probe::Target {
             url: &self.url,
             method: &self.method,
@@ -76,21 +100,12 @@ impl Monitor {
             expected_status: &self.expected_status,
             keyword: self.keyword.as_deref(),
             skip_tls_verify: self.skip_tls_verify,
+            auth,
         }
     }
 }
 
-#[derive(serde::Serialize)]
-pub struct CheckRow {
-    pub id: i64,
-    pub checked_at: i64,
-    pub ok: bool,
-    pub status_code: Option<i64>,
-    pub latency_ms: Option<i64>,
-    pub error: Option<String>,
-}
-
-const COLS: &str = "m.id, m.project_id, m.name, m.url, m.interval_s, m.timeout_ms, m.expected_status, m.keyword, m.skip_tls_verify, m.severity, m.is_public, m.next_check_at, c.checked_at, c.ok, c.status_code, c.latency_ms, c.error, m.created_at, c.id, m.alert, m.auto_incident, m.method, m.headers, m.body, m.fails_to_open";
+const COLS: &str = "m.id, m.project_id, m.name, m.url, m.interval_s, m.timeout_ms, m.expected_status, m.keyword, m.skip_tls_verify, m.severity, m.is_public, m.next_check_at, c.checked_at, c.ok, c.status_code, c.latency_ms, c.error, m.created_at, c.id, m.alert, m.auto_incident, m.method, m.headers, m.body, m.fails_to_open, m.auth_kind, m.auth_secret_id, m.auth_user, m.auth_header";
 const FROM: &str = "FROM monitors m LEFT JOIN check_results c ON c.id = (SELECT id FROM check_results WHERE monitor_id = m.id ORDER BY checked_at DESC, id DESC LIMIT 1)";
 
 fn monitor(r: &turso::Row) -> turso::Result<Monitor> {
@@ -123,6 +138,10 @@ fn monitor(r: &turso::Row) -> turso::Result<Monitor> {
         headers: r.get(22)?,
         body: r.get(23)?,
         fails_to_open: r.get(24)?,
+        auth_kind: r.get(25)?,
+        auth_secret_id: r.get(26)?,
+        auth_user: r.get(27)?,
+        auth_header: r.get(28)?,
         next_check_at: r.get(11)?,
         last,
         created_at: r.get(17)?,
@@ -158,10 +177,19 @@ pub async fn insert_monitor(
     Ok(id)
 }
 
-/// Whether a monitor's failures alert and open an incident, beside the main write.
+/// The columns later migrations added, beside the main write. Sign-in fields another kind does
+/// not use are cleared.
 async fn set_switches(c: &Connection, id: i64, m: &MonitorInput) -> anyhow::Result<()> {
+    let kind = m.auth_kind();
+    let trimmed = |v: &Option<String>| {
+        v.as_deref()
+            .map(str::trim)
+            .filter(|v| !v.is_empty())
+            .map(str::to_string)
+    };
     c.execute(
-        "UPDATE monitors SET alert = ?1, auto_incident = ?2, method = ?3, headers = ?4, body = ?5, fails_to_open = ?7 WHERE id = ?6",
+        "UPDATE monitors SET alert = ?1, auto_incident = ?2, method = ?3, headers = ?4, body = ?5, fails_to_open = ?7,
+           auth_kind = ?8, auth_secret_id = ?9, auth_user = ?10, auth_header = ?11 WHERE id = ?6",
         (
             m.alert,
             m.auto_incident,
@@ -170,6 +198,10 @@ async fn set_switches(c: &Connection, id: i64, m: &MonitorInput) -> anyhow::Resu
             m.body.as_deref().filter(|b| !b.is_empty() && matches!(m.method(), "POST" | "PUT")),
             id,
             m.fails_to_open,
+            kind,
+            m.auth_secret_id.filter(|_| kind != "none"),
+            trimmed(&m.auth_user).filter(|_| kind == "basic"),
+            trimmed(&m.auth_header).filter(|_| kind == "header"),
         ),
     )
     .await?;
@@ -252,75 +284,6 @@ pub async fn find_monitor(
     .pop())
 }
 
-/// Reads the `'monitor'` or `'heartbeat'` literal in column `i`.
-fn kind_at(r: &turso::Row, i: usize) -> turso::Result<crate::incidents::SourceKind> {
-    let raw = r.get::<String>(i)?;
-    crate::incidents::SourceKind::parse(&raw)
-        .ok_or_else(|| turso::Error::ConversionFailure(format!("unknown source kind {raw}")))
-}
-
-/// The project's public monitors and heartbeats, monitors first (the last column orders them).
-pub async fn public_items(
-    c: &Connection,
-    project_id: i64,
-) -> anyhow::Result<Vec<crate::checks::PublicItem>> {
-    crate::platform::db::query_all(
-        c,
-        "SELECT 'monitor', m.id, m.name, m.created_at, EXISTS (SELECT 1 FROM check_results WHERE monitor_id = m.id), 0
-         FROM monitors m WHERE m.project_id = ?1 AND m.is_public = 1
-         UNION ALL
-         SELECT 'heartbeat', h.id, h.name, h.created_at, h.last_ping_at IS NOT NULL, 1
-         FROM heartbeats h WHERE h.project_id = ?1 AND h.is_public = 1
-         ORDER BY 6, 3 LIMIT ?2",
-        (project_id, caps::SOURCES_PER_PROJECT),
-        |r| {
-            Ok(crate::checks::PublicItem {
-                kind: kind_at(r, 0)?,
-                id: r.get(1)?,
-                name: r.get(2)?,
-                created_at: r.get(3)?,
-                seen: r.get::<i64>(4)? == 1,
-            })
-        },
-    )
-    .await
-}
-
-/// Every monitor and heartbeat of a project as (kind, id, name), monitors first (the last
-/// column orders them).
-pub async fn source_names(
-    c: &Connection,
-    project_id: i64,
-) -> anyhow::Result<Vec<(crate::incidents::SourceKind, i64, String)>> {
-    crate::platform::db::query_all(
-        c,
-        "SELECT 'monitor', id, name, 0 FROM monitors WHERE project_id = ?1
-         UNION ALL SELECT 'heartbeat', id, name, 1 FROM heartbeats WHERE project_id = ?1 ORDER BY 4, 3 LIMIT ?2",
-        (project_id, caps::SOURCES_PER_PROJECT),
-        |r| Ok((kind_at(r, 0)?, r.get(1)?, r.get(2)?)),
-    )
-    .await
-}
-
-/// Whether a monitor's or heartbeat's failures alert; a deleted one counts as on.
-pub async fn alert_on(
-    c: &Connection,
-    kind: crate::incidents::SourceKind,
-    id: i64,
-) -> anyhow::Result<bool> {
-    let table = match kind {
-        crate::incidents::SourceKind::Monitor => "monitors",
-        crate::incidents::SourceKind::Heartbeat => "heartbeats",
-    };
-    let on = crate::platform::db::query_i64(
-        c,
-        &format!("SELECT alert FROM {table} WHERE id = ?1"),
-        [id],
-    )
-    .await?;
-    Ok(on.unwrap_or(1) == 1)
-}
-
 /// A read-only probe, so an idle tick never waits for the writer.
 pub async fn any_due(c: &Connection, at: i64) -> anyhow::Result<bool> {
     let n = crate::platform::db::query_i64(
@@ -352,57 +315,11 @@ pub async fn claim_due(c: &Connection, at: i64, limit: i64) -> anyhow::Result<Ve
     Ok(due)
 }
 
-pub async fn insert_check(c: &Connection, monitor_id: i64, r: &CheckResult) -> anyhow::Result<()> {
-    c.execute(
-        "INSERT INTO check_results (monitor_id, checked_at, ok, status_code, latency_ms, error) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-        (monitor_id, r.checked_at, r.ok, r.status_code.map(i64::from), r.latency_ms, r.error.clone()),
-    )
-    .await?;
-    Ok(())
-}
-
-pub async fn recent_checks(
-    c: &Connection,
-    monitor_id: i64,
-    since: i64,
-    before: (i64, i64),
-    limit: i64,
-) -> anyhow::Result<Vec<CheckRow>> {
-    crate::platform::db::query_all(
-        c,
-        "SELECT id, checked_at, ok, status_code, latency_ms, error FROM check_results
-         WHERE monitor_id = ?1 AND checked_at >= ?2 AND (checked_at < ?3 OR (checked_at = ?3 AND id < ?4))
-         ORDER BY checked_at DESC, id DESC LIMIT ?5",
-        (monitor_id, since, before.0, before.1, limit),
-        |r| {
-            Ok(CheckRow {
-                id: r.get(0)?,
-                checked_at: r.get(1)?,
-                ok: r.get::<i64>(2)? == 1,
-                status_code: r.get(3)?,
-                latency_ms: r.get(4)?,
-                error: r.get(5)?,
-            })
-        },
-    )
-    .await
-}
-
 pub async fn count_monitors(c: &Connection, project_id: i64) -> anyhow::Result<i64> {
     Ok(crate::platform::db::query_i64(
         c,
         "SELECT count(*) FROM monitors WHERE project_id = ?1",
         [project_id],
-    )
-    .await?
-    .unwrap_or(0))
-}
-
-pub async fn secret_users(c: &Connection, secret_id: i64) -> anyhow::Result<i64> {
-    Ok(crate::platform::db::query_i64(
-        c,
-        "SELECT count(*) FROM monitors WHERE auth_secret_id = ?1 AND auth_kind != 'none'",
-        [secret_id],
     )
     .await?
     .unwrap_or(0))

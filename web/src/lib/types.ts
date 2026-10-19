@@ -91,6 +91,13 @@ export type MonitorView = {
   /** `Name: value` lines. */
   headers: string;
   body: string | null;
+  /** How the check signs in. Never the secret's value. */
+  auth_kind: "none" | "bearer" | "basic" | "header";
+  auth_secret_id: number | null;
+  /** Set on one monitor's page only. */
+  auth_secret_name: string | null;
+  auth_user: string | null;
+  auth_header: string | null;
   created_at: number;
   next_check_at: number;
   state: StateKind;

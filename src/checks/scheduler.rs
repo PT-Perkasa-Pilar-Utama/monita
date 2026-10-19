@@ -153,8 +153,15 @@ async fn run_due_monitors(
         let held = pass.clone();
         tokio::spawn(async move {
             let _held = held;
-            let result = super::probe(&monitor.target(), &state.http).await;
+            let result = super::run_check(&state.db, &state.http, &monitor).await;
             drop(permit);
+            let result = match result {
+                Ok(r) => r,
+                Err(e) => {
+                    tracing::error!(monitor = monitor.id, error = %e, "scheduler: could not read a monitor's secret");
+                    return;
+                }
+            };
             let stored =
                 super::record_check(&state.db, &state.config.base_url, &monitor, &result).await;
             if let Err(e) = stored {

@@ -2,7 +2,7 @@ import type { ReactElement } from "react";
 import { CodeCopy, CopyField } from "@/components/app/CopyField";
 import { DetailPart, DetailsSheet } from "@/components/app/DetailsSheet";
 import { Facts } from "@/components/app/Facts";
-import { parseHeaderLines, whenItFails } from "@/lib/checks";
+import { parseHeaderLines, signInWords, whenItFails } from "@/lib/checks";
 import { monitorCurl } from "@/lib/monitorCurl";
 import { stamp } from "@/lib/time";
 import type { MonitorView } from "@/lib/types";
@@ -17,6 +17,7 @@ export function MonitorDetails({ m }: { m: MonitorView }): ReactElement {
         <Facts
           rows={[
             ["Method", m.method],
+            ["Sign-in", signInWords(m)],
             ["Headers", headers.length === 0 ? "None" : headers.map(([n]) => n).join(", ")],
             ["Request body", m.body ? `${m.body.length.toLocaleString()} characters` : "None"],
             ["Timeout", `${m.timeout_s} seconds`],
@@ -25,7 +26,9 @@ export function MonitorDetails({ m }: { m: MonitorView }): ReactElement {
         />
       </DetailPart>
       <DetailPart title="Try it yourself">
-        <p className="text-muted-foreground">This curl command sends the same request and prints the status code and the time.</p>
+        <p className="text-muted-foreground">
+          This curl command sends the same request and prints the status code and the time.{m.auth_kind !== "none" && " Set the secret's value in your shell first, as its first line shows."}
+        </p>
         <CodeCopy id="monitor-curl" title="Same request as the check" code={monitorCurl(m)} />
       </DetailPart>
       <DetailPart title="A check passes when">

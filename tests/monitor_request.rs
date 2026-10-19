@@ -13,8 +13,8 @@ use common::{TestApp, json_of};
 use monita::platform::db::query_i64;
 use serde_json::{Value, json};
 
-/// (method, Authorization header, body) of each request the server got.
-type Seen = Arc<Mutex<Vec<(String, String, String)>>>;
+/// (method, Authorization header, body, X-Api-Key header) of each request the server got.
+type Seen = Arc<Mutex<Vec<(String, String, String, String)>>>;
 
 async fn recorder() -> (String, Seen) {
     let seen: Seen = Arc::default();
@@ -27,15 +27,17 @@ async fn recorder() -> (String, Seen) {
                      method: axum::http::Method,
                      h: HeaderMap,
                      body: Bytes| async move {
-                        let auth = h
-                            .get("authorization")
-                            .and_then(|v| v.to_str().ok())
-                            .unwrap_or("")
-                            .to_string();
+                        let header = |name| {
+                            h.get(name)
+                                .and_then(|v| v.to_str().ok())
+                                .unwrap_or("")
+                                .to_string()
+                        };
                         s.lock().unwrap().push((
                             method.to_string(),
-                            auth,
+                            header("authorization"),
                             String::from_utf8_lossy(&body).to_string(),
+                            header("x-api-key"),
                         ));
                         "ok"
                     },
@@ -123,7 +125,12 @@ async fn a_monitor_sends_its_method_headers_and_body() {
     let got = seen.lock().unwrap().clone();
     assert_eq!(
         got[0],
-        ("POST".into(), "Bearer t0ken".into(), r#"{"ping":1}"#.into())
+        (
+            "POST".into(),
+            "Bearer t0ken".into(),
+            r#"{"ping":1}"#.into(),
+            String::new()
+        )
     );
     let detail = json_of(app.api_get(&format!("{path}/1"), Some(&tl)).await).await;
     assert_eq!(detail["data"]["monitor"]["method"], "POST");
@@ -166,4 +173,102 @@ async fn a_monitor_sends_its_method_headers_and_body() {
         .await
         .unwrap();
     assert!(!public.contains("t0ken") && !public.contains("Authorization"));
+}
+
+/// A form that signs in with `kind`, on top of a plain GET.
+fn signed(url: &str, kind: &str, secret: i64, extra: Value) -> Value {
+    let mut f = form(url, "GET", "", "");
+    f["auth_kind"] = kind.into();
+    f["auth_secret_id"] = secret.into();
+    for (k, v) in extra.as_object().unwrap() {
+        f[k] = v.clone();
+    }
+    f
+}
+
+#[tokio::test]
+async fn a_monitor_signs_in_with_a_project_secret_and_never_shows_it() {
+    let app = TestApp::spawn("test").await;
+    let tl = app.tl("rina@x.co").await;
+    app.project(&tl, "Payments", "payments").await;
+    app.project(&tl, "Billing", "billing").await;
+    let secret = |slug: &str| format!("/api/ui/projects/{slug}/secrets");
+    let value = json!({ "name": "API_TOKEN", "value": "s3cret-v4lue" });
+    let id = json_of(
+        app.api_post(&secret("payments"), value.clone(), Some(&tl))
+            .await,
+    )
+    .await["data"]["id"]
+        .as_i64()
+        .unwrap();
+    let foreign =
+        json_of(app.api_post(&secret("billing"), value, Some(&tl)).await).await["data"]["id"]
+            .as_i64()
+            .unwrap();
+    let path = "/api/ui/projects/payments/monitors";
+    let (url, seen) = recorder().await;
+
+    let refused = async |body: Value| {
+        let res = app.api_post(path, body, Some(&tl)).await;
+        assert_eq!(res.status(), 422);
+        json_of(res).await["error"]["fields"].clone()
+    };
+    let other = refused(signed(&url, "bearer", foreign, json!({}))).await;
+    assert!(other["auth_secret_id"].is_string(), "{other}");
+    let twice = refused(signed(
+        &url,
+        "bearer",
+        id,
+        json!({ "headers": "Authorization: Bearer plain" }),
+    ))
+    .await;
+    assert!(twice["headers"].is_string(), "{twice}");
+    let no_user = refused(signed(&url, "basic", id, json!({}))).await;
+    assert!(no_user["auth_user"].is_string(), "{no_user}");
+
+    let res = app
+        .api_post(path, signed(&url, "bearer", id, json!({})), Some(&tl))
+        .await;
+    assert_eq!(res.status(), 201);
+    checks(&app, 1).await;
+    assert_eq!(seen.lock().unwrap()[0].1, "Bearer s3cret-v4lue");
+    let detail = app
+        .api_get(&format!("{path}/1"), Some(&tl))
+        .await
+        .text()
+        .await
+        .unwrap();
+    assert!(!detail.contains("s3cret"), "{detail}");
+    let detail: Value = serde_json::from_str(&detail).unwrap();
+    assert_eq!(detail["data"]["monitor"]["auth_secret_name"], "API_TOKEN");
+
+    let in_use = app
+        .api_send(
+            reqwest::Method::DELETE,
+            &format!("{}/{id}", secret("payments")),
+            json!({}),
+            Some(&tl),
+        )
+        .await;
+    assert_eq!(in_use.status(), 422, "a secret in use stays");
+
+    let edit = async |body: Value| {
+        let res = app
+            .api_send(reqwest::Method::PUT, &format!("{path}/1"), body, Some(&tl))
+            .await;
+        assert_eq!(res.status(), 204);
+    };
+    edit(signed(
+        &url,
+        "header",
+        id,
+        json!({ "auth_header": "X-Api-Key" }),
+    ))
+    .await;
+    checks(&app, 2).await;
+    edit(signed(&url, "basic", id, json!({ "auth_user": "svc" }))).await;
+    checks(&app, 3).await;
+    let got = seen.lock().unwrap().clone();
+    assert_eq!((got[1].1.as_str(), got[1].3.as_str()), ("", "s3cret-v4lue"));
+    assert_eq!(got[2].1, "Basic c3ZjOnMzY3JldC12NGx1ZQ==");
 }

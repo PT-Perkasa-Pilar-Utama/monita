@@ -1,30 +1,29 @@
 import { useEffect, useState } from "react";
 import type { FormEvent, ReactElement } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChoiceField, PublicField, SeverityField, WhenItFails } from "@/components/app/CheckForm";
+import { PublicField, SeverityField, WhenItFails } from "@/components/app/CheckForm";
 import { FormSheet, FormSheetBody } from "@/components/app/FormSheet";
 import { MonitorGuide } from "@/components/app/Guides";
 import { ConfirmDialog } from "@/components/app/ConfirmDialog";
+import { AuthFields, HeaderFields, RequestFields, sendsBody } from "@/components/app/MonitorRequest";
+import type { RequestPart } from "@/components/app/MonitorRequest";
 import { Trash2 } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Field, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
+import { Field, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSeparator, FieldSet } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
-import { Textarea } from "@/components/ui/textarea";
 import { api, ApiError, dropField, errorText } from "@/lib/api";
+import { headerText, parseHeaderLines } from "@/lib/checks";
 import { useProject } from "@/lib/project";
-import type { CheckOptions, MonitorDetail, Severity } from "@/lib/types";
+import type { CheckOptions, MonitorDetail, Secret, Severity } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 import { toast } from "sonner";
 
-type Form = {
+type Form = RequestPart & {
   name: string;
-  url: string;
-  interval_s: number;
-  timeout_s: string;
   expected_status: string;
   keyword: string;
   skip_tls_verify: boolean;
@@ -32,15 +31,8 @@ type Form = {
   is_public: boolean;
   alert: boolean;
   auto_incident: boolean;
-  method: string;
-  headers: string;
-  body: string;
   fails_to_open: number;
 };
-
-const METHODS = ["GET", "HEAD", "POST", "PUT"];
-const sendsBody = (method: string): boolean => method === "POST" || method === "PUT";
-
 
 /** New monitor, or edit one when the URL names it. Edit also deletes. */
 function MonitorFormBody({ id, onClose, onSaved }: { id: string | undefined; onClose: () => void; onSaved: () => void }): ReactElement {
@@ -49,6 +41,7 @@ function MonitorFormBody({ id, onClose, onSaved }: { id: string | undefined; onC
   const base = `/projects/${p.slug}/monitors`;
   const options = useApi<CheckOptions>("/check-options");
   const current = useApi<MonitorDetail>(id ? `${base}/${encodeURIComponent(id)}?range=hour` : null);
+  const secrets = useApi<Secret[]>(`/projects/${p.slug}/secrets`);
   const [form, setForm] = useState<Form | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
   const [busy, setBusy] = useState(false);
@@ -61,14 +54,21 @@ function MonitorFormBody({ id, onClose, onSaved }: { id: string | undefined; onC
     if (id && !m) return;
     setForm(
       m
-        ? { name: m.name, url: m.url, interval_s: m.interval_s, timeout_s: String(m.timeout_s), expected_status: m.expected_status, keyword: m.keyword ?? "", skip_tls_verify: m.skip_tls_verify, severity: m.severity, is_public: m.is_public, alert: m.alert, auto_incident: m.auto_incident, method: m.method, headers: m.headers, body: m.body ?? "", fails_to_open: m.fails_to_open }
-        : { name: "", url: "", interval_s: o.monitor.interval_s, timeout_s: String(o.monitor.timeout_s), expected_status: o.monitor.expected_status, keyword: "", skip_tls_verify: false, severity: o.monitor.severity, is_public: false, alert: true, auto_incident: true, method: "GET", headers: "", body: "", fails_to_open: 2 },
+        ? {
+            name: m.name, url: m.url, interval_s: m.interval_s, timeout_s: String(m.timeout_s), expected_status: m.expected_status, keyword: m.keyword ?? "", skip_tls_verify: m.skip_tls_verify, severity: m.severity, is_public: m.is_public, alert: m.alert, auto_incident: m.auto_incident, method: m.method, body: m.body ?? "", fails_to_open: m.fails_to_open,
+            header_rows: parseHeaderLines(m.headers).map(([name, value]) => ({ name, value })),
+            auth_kind: m.auth_kind, auth_secret_id: m.auth_secret_id, auth_user: m.auth_user ?? "", auth_header: m.auth_header ?? "",
+          }
+        : {
+            name: "", url: "", interval_s: o.monitor.interval_s, timeout_s: String(o.monitor.timeout_s), expected_status: o.monitor.expected_status, keyword: "", skip_tls_verify: false, severity: o.monitor.severity, is_public: false, alert: true, auto_incident: true, method: "GET", body: "", fails_to_open: 2,
+            header_rows: [], auth_kind: "none", auth_secret_id: null, auth_user: "", auth_header: "",
+          },
     );
   }, [form, id, options.data, current.data]);
 
   const set = <K extends keyof Form>(k: K, v: Form[K]): void => {
     setForm((f) => (f ? { ...f, [k]: v } : f));
-    setError((e) => e && dropField(e, k));
+    setError((e) => e && dropField(e, k === "header_rows" ? "headers" : String(k)));
   };
   const err = (k: string): string | undefined => error?.fields[k];
 
@@ -77,7 +77,8 @@ function MonitorFormBody({ id, onClose, onSaved }: { id: string | undefined; onC
     setBusy(true);
     setError(null);
     // A body typed for POST stays in the box after a switch to GET, but only POST and PUT send it.
-    const body = { ...form, interval_s: String(form.interval_s), fails_to_open: String(form.fails_to_open), body: sendsBody(form.method) ? form.body : "" };
+    const { header_rows, ...rest } = form;
+    const body = { ...rest, headers: headerText(header_rows), interval_s: String(form.interval_s), fails_to_open: String(form.fails_to_open), body: sendsBody(form.method) ? form.body : "" };
     try {
       if (id) {
         await api(`${base}/${id}`, "PUT", body);
@@ -95,6 +96,8 @@ function MonitorFormBody({ id, onClose, onSaved }: { id: string | undefined; onC
       setBusy(false);
     }
   };
+
+  const parts = form && options.data ? { form, set, err, intervals: options.data.intervals, secrets: secrets.data ?? null, secretsHref: `/projects/${p.slug}/settings/secrets` } : null;
 
   return (
     <FormSheetBody
@@ -133,7 +136,7 @@ function MonitorFormBody({ id, onClose, onSaved }: { id: string | undefined; onC
     >
       {current.error?.status === 404 ? (
         <p className="text-sm text-muted-foreground">This monitor does not exist.</p>
-      ) : !form || !options.data ? (
+      ) : !form || !options.data || !parts ? (
         <Skeleton className="h-[420px] rounded-xl" />
       ) : (
                 <FieldGroup className="gap-5">
@@ -144,57 +147,15 @@ function MonitorFormBody({ id, onClose, onSaved }: { id: string | undefined; onC
                     <Input id="m-name" autoFocus={!id} maxLength={80} aria-required aria-invalid={err("name") ? true : undefined} value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="Checkout API" />
                     {err("name") && <FieldError>{err("name")}</FieldError>}
                   </Field>
-                  <div className="grid gap-5 sm:grid-cols-[8rem_minmax(0,1fr)]">
-                    <Field data-invalid={err("method") ? true : undefined}>
-                      <FieldLabel htmlFor="m-method">Method</FieldLabel>
-                      <Select value={form.method} onValueChange={(v) => set("method", v)}>
-                        <SelectTrigger id="m-method" className="font-mono">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectGroup>
-                            {METHODS.map((x) => (
-                              <SelectItem key={x} value={x} className="font-mono">
-                                {x}
-                              </SelectItem>
-                            ))}
-                          </SelectGroup>
-                        </SelectContent>
-                      </Select>
-                      {err("method") && <FieldError>{err("method")}</FieldError>}
-                    </Field>
-                    <Field data-invalid={err("url") ? true : undefined}>
-                      <FieldLabel htmlFor="m-url" required>
-                        URL
-                      </FieldLabel>
-                      <Input id="m-url" type="url" aria-required aria-invalid={err("url") ? true : undefined} className="font-mono" value={form.url} onChange={(e) => set("url", e.target.value)} placeholder="https://api.example.com/healthz" />
-                      {err("url") && <FieldError>{err("url")}</FieldError>}
-                    </Field>
-                  </div>
-                  <Field data-invalid={err("headers") ? true : undefined}>
-                    <FieldLabel htmlFor="m-headers">Headers, one per line as Name: value</FieldLabel>
-                    <Textarea id="m-headers" rows={2} spellCheck={false} aria-invalid={err("headers") ? true : undefined} className="font-mono text-[13px]" value={form.headers} onChange={(e) => set("headers", e.target.value)} />
-                    {err("headers") && <FieldError>{err("headers")}</FieldError>}
-                  </Field>
-                  {sendsBody(form.method) && (
-                    <Field data-invalid={err("body") ? true : undefined}>
-                      <FieldLabel htmlFor="m-body">Request body</FieldLabel>
-                      <Textarea id="m-body" rows={3} spellCheck={false} aria-invalid={err("body") ? true : undefined} className="font-mono text-[13px]" value={form.body} onChange={(e) => set("body", e.target.value)} />
-                      {err("body") && <FieldError>{err("body")}</FieldError>}
-                    </Field>
-                  )}
-                  <div className="grid gap-5 sm:grid-cols-2">
-                    <ChoiceField id="m-interval" label="Check every" value={form.interval_s} choices={options.data.intervals} onChange={(v) => set("interval_s", v)} error={err("interval_s")} />
-                    <Field data-invalid={err("timeout_s") ? true : undefined}>
-                      <FieldLabel htmlFor="m-timeout" required>
-                        Timeout in seconds
-                      </FieldLabel>
-                      <Input id="m-timeout" inputMode="numeric" aria-required aria-invalid={err("timeout_s") ? true : undefined} value={form.timeout_s} onChange={(e) => set("timeout_s", e.target.value)} />
-                      {err("timeout_s") && <FieldError>{err("timeout_s")}</FieldError>}
-                    </Field>
-                  </div>
+                  <FieldSeparator />
+                  <RequestFields {...parts} />
+                  <FieldSeparator />
+                  <AuthFields {...parts} />
+                  <FieldSeparator />
+                  <HeaderFields {...parts} />
+                  <FieldSeparator />
                   <FieldSet className="gap-3">
-                    <FieldLegend variant="label">A check passes when</FieldLegend>
+                    <FieldLegend>A check passes when</FieldLegend>
                     <div className="grid gap-5 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
                       <Field data-invalid={err("expected_status") ? true : undefined}>
                         <FieldLabel htmlFor="m-status" className="font-normal" required>
@@ -218,6 +179,9 @@ function MonitorFormBody({ id, onClose, onSaved }: { id: string | undefined; onC
                       </FieldLabel>
                     </Field>
                   </FieldSet>
+                  <FieldSeparator />
+                  <FieldSet className="gap-7">
+                  <FieldLegend>Alerts and status page</FieldLegend>
                   <SeverityField value={form.severity} onChange={(v) => set("severity", v)} />
                   <WhenItFails id="m" alert={form.alert} autoIncident={form.auto_incident} onChange={set}>
                     <Field data-invalid={err("fails_to_open") ? true : undefined} className="max-w-sm">
@@ -242,6 +206,7 @@ function MonitorFormBody({ id, onClose, onSaved }: { id: string | undefined; onC
                     </Field>
                   </WhenItFails>
                   <PublicField id="m" noun="monitor" checked={form.is_public} onChange={(v) => set("is_public", v)} />
+                  </FieldSet>
                 </FieldGroup>
               
       )}

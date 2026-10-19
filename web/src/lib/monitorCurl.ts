@@ -1,12 +1,44 @@
 // A curl command that sends the same request as a monitor's check, to try it from a terminal.
 
-import { parseHeaderLines } from "@/lib/checks";
+import { envName, parseHeaderLines } from "@/lib/checks";
 
-export type CurlInput = { url: string; method: string; headers: string; body: string | null; timeout_s: number; skip_tls_verify: boolean; expected_status: string };
+export type CurlInput = {
+  url: string;
+  method: string;
+  headers: string;
+  body: string | null;
+  timeout_s: number;
+  skip_tls_verify: boolean;
+  expected_status: string;
+  auth_kind?: string;
+  auth_secret_name?: string | null;
+  auth_user?: string | null;
+  auth_header?: string | null;
+};
 
 /** `it's` as `'it'\''s'`: safe inside a POSIX shell. */
 export function shellQuote(s: string): string {
   return `'${s.replaceAll("'", `'\\''`)}'`;
+}
+
+/** Text safe inside a double-quoted shell word, where a `$NAME` beside it still expands. */
+function inDoubleQuotes(s: string): string {
+  return s.replace(/["\\$`]/g, "\\$&");
+}
+
+/** The sign-in part, with the secret as a shell variable the reader sets first. */
+function authPart(m: CurlInput): string | null {
+  const v = `$${envName(m.auth_secret_name ?? null)}`;
+  switch (m.auth_kind) {
+    case "bearer":
+      return `-H "Authorization: Bearer ${v}"`;
+    case "basic":
+      return `-u "${inDoubleQuotes(m.auth_user ?? "")}:${v}"`;
+    case "header":
+      return `-H "${inDoubleQuotes(m.auth_header ?? "")}: ${v}"`;
+    default:
+      return null;
+  }
 }
 
 /** The check as one curl command. It prints the status code and the time, as Monita sees them.
@@ -18,7 +50,10 @@ export function monitorCurl(m: CurlInput): string {
   if (m.method === "HEAD") parts.push("-I");
   else if (m.method !== "GET") parts.push(`-X ${m.method}`);
   for (const [name, value] of parseHeaderLines(m.headers)) parts.push(`-H ${shellQuote(`${name}: ${value}`)}`);
+  const auth = authPart(m);
+  if (auth) parts.push(auth);
   if (m.body && (m.method === "POST" || m.method === "PUT")) parts.push(`--data-raw ${shellQuote(m.body)}`);
   parts.push(shellQuote(m.url));
-  return parts.join(" \\\n  ");
+  const command = parts.join(" \\\n  ");
+  return auth ? `# Set the secret first: export ${envName(m.auth_secret_name ?? null)}='…'\n${command}` : command;
 }

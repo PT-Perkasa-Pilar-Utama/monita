@@ -19,3 +19,47 @@ export function parseHeaderLines(headers: string): [string, string][] {
       return [l.slice(0, at).trim(), l.slice(at + 1).trim()];
     });
 }
+
+/** One header row of the monitor form. */
+export type HeaderRow = { name: string; value: string };
+
+/** Rows back to `Name: value` lines. A row with neither part is dropped; a half-filled row is
+ * kept so the server names the problem. */
+export function headerText(rows: HeaderRow[]): string {
+  return rows
+    .map((r) => ({ name: r.name.trim(), value: r.value.trim() }))
+    .filter((r) => r.name || r.value)
+    .map((r) => `${r.name}: ${r.value}`)
+    .join("\n");
+}
+
+/** How a monitor signs in, as its form lists it. */
+export const AUTH_KINDS = [
+  { value: "none", label: "No sign-in" },
+  { value: "bearer", label: "Bearer token" },
+  { value: "basic", label: "User name and password" },
+  { value: "header", label: "A key in a header" },
+] as const;
+
+export type AuthKind = (typeof AUTH_KINDS)[number]["value"];
+
+/** A secret's name as a shell variable: `api-token` becomes `API_TOKEN`. */
+export function envName(secret: string | null): string {
+  const n = (secret ?? "").toUpperCase().replace(/[^A-Z0-9_]/g, "_");
+  return /^[A-Z_]/.test(n) ? n : `SECRET_${n}`.replace(/_$/, "");
+}
+
+/** How a monitor signs in, in words, naming the secret but never its value. */
+export function signInWords(m: { auth_kind: string; auth_secret_name: string | null; auth_user: string | null; auth_header: string | null }): string {
+  const from = `from secret ${m.auth_secret_name ?? "(deleted)"}`;
+  switch (m.auth_kind) {
+    case "bearer":
+      return `Bearer token ${from}`;
+    case "basic":
+      return `User ${m.auth_user ?? ""}, password ${from}`;
+    case "header":
+      return `${m.auth_header ?? ""} header ${from}`;
+    default:
+      return "None";
+  }
+}
