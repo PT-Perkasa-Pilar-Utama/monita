@@ -45,7 +45,7 @@ export function Status(): ReactElement {
         <span>{headline(overall, items)}</span>
         <span className="flex flex-wrap items-center gap-x-4 gap-y-1 text-base font-normal text-muted-foreground">
           {up} of {items.length} systems up
-          {incidents.length > 0 && (
+          {project.pages.incidents && incidents.length > 0 && (
             <Link to={`/status/${project.slug}/incidents`} className="flex items-center gap-1.5 text-link underline-offset-4 hover:underline">
               {incidents.length === 1 ? "1 active incident" : `${incidents.length} active incidents`}
               <ArrowRight className="size-3.5" />
