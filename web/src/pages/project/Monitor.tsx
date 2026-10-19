@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useProject } from "@/lib/project";
+import { whenItFails } from "@/lib/checks";
 import { stamp } from "@/lib/time";
 import type { MonitorDetail } from "@/lib/types";
 import { useDetail } from "@/lib/useDetail";
@@ -75,6 +76,7 @@ export function Monitor({ editing = false }: { editing?: boolean }): ReactElemen
                       ["Timeout", `${m.timeout_s} seconds`],
                       ["Expects", m.keyword ? `${m.expected_status} with "${m.keyword}"` : m.expected_status],
                       ["TLS", m.skip_tls_verify ? "Not verified" : "Verified"],
+                      ["When it fails", whenItFails(m.alert, m.auto_incident)],
                       ["Next check", stamp(m.next_check_at)],
                     ]}
                   />

@@ -147,33 +147,31 @@ async fn detail(
     let s = hb.state(incident).0;
     let off = crate::platform::settings::utc_offset(&state.db.read().await?).await?;
     let insight = Insight::heartbeat(&state.db, &hb, paging.range(), now(), off).await?;
-    let every = heartbeat::label(&PERIODS_S, hb.period_s);
-    let seen = hb.last_ping_at.is_some();
     let newest = heartbeat::last_pings(&state.db, p.id).await?.remove(&id);
-    let failed_last = newest.as_ref().is_some_and(|l| !l.ok);
-    let last = (
-        "Last ping",
-        newest
-            .as_ref()
-            .map_or_else(|| "Never".into(), |l| time::ago(l.at, insight.now)),
-        if failed_last {
-            format!("a fail ping, expected every {every}")
-        } else {
-            format!("expected every {every}")
-        },
-        if failed_last { "down" } else { "plain" },
-    );
-    let failed = insight.failed();
-    let pings_stat = (
-        "Pings",
-        insight.series.total.to_string(),
-        format!("{failed} failed, {}", insight.range_word()),
-        if failed > 0 { "down" } else { "plain" },
-    );
+    let last = match &newest {
+        Some(l) if l.ok => (
+            "Last ping",
+            time::ago(l.at, insight.now),
+            "the job reported success".to_string(),
+            "plain",
+        ),
+        Some(l) => (
+            "Last ping",
+            time::ago(l.at, insight.now),
+            "the job reported a failure".to_string(),
+            "down",
+        ),
+        None => (
+            "Last ping",
+            "Never".to_string(),
+            "the job has not called yet".to_string(),
+            "plain",
+        ),
+    };
     let stats = views::stats([
-        insight.streak_stat(seen),
+        insight.streak_stat(newest.is_some()),
+        overview::next_ping_stat(hb.deadline_at, insight.now, off),
         last,
-        pings_stat,
         insight.incidents_stat(),
     ]);
     Ok(data(DetailView {

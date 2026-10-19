@@ -87,10 +87,6 @@ impl Insight {
             .map_or("–".into(), |v| format!("{v} ms"))
     }
 
-    pub fn failed(&self) -> i64 {
-        self.series.total - self.series.ok
-    }
-
     /// "Up for 3d 2h", or how old the item is before its first check or ping.
     pub fn streak_stat(&self, seen: bool) -> Stat {
         if !seen {

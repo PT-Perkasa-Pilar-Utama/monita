@@ -152,6 +152,8 @@ pub struct PingRow {
     pub received_at: i64,
     pub kind: String,
     pub source_ip: Option<String>,
+    /// What a fail ping reported: the first 1 KB of its body.
+    pub cause: Option<String>,
 }
 
 /// AC-12.01: a heartbeat that never pings still misses its first deadline. `None` when the

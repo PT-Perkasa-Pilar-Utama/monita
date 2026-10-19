@@ -153,9 +153,43 @@ pub fn due(h: &Heartbeat, now: i64) -> Due {
     }
 }
 
+/// The heartbeat page's "Next ping due" card: how long until the deadline, or that it passed.
+pub fn next_ping_stat(deadline: Option<i64>, now: i64, off: i64) -> crate::checks::insight::Stat {
+    let label = "Next ping due";
+    match deadline {
+        Some(d) if d > now => (
+            label,
+            format!("in {}", time::duration(d - now)),
+            format!("by {}", time::stamp(d, off)),
+            "plain",
+        ),
+        Some(d) => (
+            label,
+            format!("Late by {}", time::duration(now - d)),
+            "Monita is opening an incident".into(),
+            "down",
+        ),
+        None => (
+            label,
+            "Missed".into(),
+            "the next ping sets a new deadline".into(),
+            "down",
+        ),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_next_ping_card_counts_down_then_says_late_or_missed() {
+        let (_, value, sub, tone) = next_ping_stat(Some(1_000 + 3 * 3600 + 960), 1_000, 0);
+        assert_eq!((value.as_str(), tone), ("in 3h 16m", "plain"));
+        assert!(sub.starts_with("by 1970-01-01 "), "{sub}");
+        assert_eq!(next_ping_stat(Some(960), 1_000, 0).1, "Late by 40s");
+        assert_eq!(next_ping_stat(None, 1_000, 0).1, "Missed");
+    }
 
     fn b(index: usize, total: i64, ok: i64, avg_ms: i64) -> Bucket {
         Bucket {

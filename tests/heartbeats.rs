@@ -218,6 +218,20 @@ async fn the_list_shows_the_newest_ping_even_when_it_failed() {
     assert!(hb["last_ping_at"].is_null(), "no good ping yet");
     assert_eq!(hb["last"]["ok"], false);
     assert_eq!(hb["last"]["cause"], "disk full");
+    let detail = json_of(
+        app.api_get("/api/ui/projects/payments/heartbeats/1", Some(&tl))
+            .await,
+    )
+    .await;
+    let stats = &detail["data"]["stats"];
+    assert_eq!(stats[0]["label"], "Down for", "a fail ping counts as heard");
+    assert_eq!(stats[1]["label"], "Next ping due");
+    assert!(
+        stats[1]["value"].as_str().unwrap().starts_with("in "),
+        "{stats}"
+    );
+    assert_eq!(stats[2]["sub"], "the job reported a failure");
+    assert_eq!(detail["data"]["pings"][0]["cause"], "disk full");
 
     let res = ping(&app, reqwest::Method::GET, &format!("/ping/{token}")).await;
     assert_eq!(res.status(), 200);

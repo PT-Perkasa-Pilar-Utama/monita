@@ -150,13 +150,14 @@ pub async fn recent_pings(
     limit: i64,
 ) -> anyhow::Result<Vec<PingRow>> {
     let (t, pid) = before.unwrap_or((i64::MAX, i64::MAX));
-    crate::platform::db::query_all(c, "SELECT id, received_at, kind, source_ip FROM pings WHERE heartbeat_id = ?1 AND received_at >= ?2
+    crate::platform::db::query_all(c, "SELECT id, received_at, kind, source_ip, cause FROM pings WHERE heartbeat_id = ?1 AND received_at >= ?2
             AND (received_at < ?3 OR (received_at = ?3 AND id < ?4)) ORDER BY received_at DESC, id DESC LIMIT ?5",
             (id, since, t, pid, limit), |r| Ok(PingRow {
             id: r.get(0)?,
             received_at: r.get(1)?,
             kind: r.get(2)?,
             source_ip: r.get(3)?,
+            cause: r.get(4)?,
         })).await
 }
 

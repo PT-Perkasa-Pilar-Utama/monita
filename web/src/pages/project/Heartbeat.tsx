@@ -15,13 +15,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useProject } from "@/lib/project";
+import { whenItFails } from "@/lib/checks";
 import { stamp } from "@/lib/time";
 import type { HeartbeatDetail } from "@/lib/types";
 import { useDetail } from "@/lib/useDetail";
 import { NotFound } from "@/pages/NotFound";
 import { HeartbeatFormSheet } from "@/pages/project/HeartbeatForm";
 
-/** One heartbeat: its ping URL, four numbers, the ping chart, availability and its pings. */
+/** One heartbeat: four numbers led by when the next ping is due, the ping chart, availability
+ * beside its ping URL and settings, and its pings with what each reported. */
 export function Heartbeat({ editing = false }: { editing?: boolean }): ReactElement {
   const navigate = useNavigate();
   const { project: p } = useProject();
@@ -31,6 +33,21 @@ export function Heartbeat({ editing = false }: { editing?: boolean }): ReactElem
   if (res.error?.status === 404) return <NotFound />;
   const d = res.data;
   const h = d?.heartbeat;
+  // Until the job first calls, the ping URL is the one thing to do, so it leads the page.
+  const fresh = h?.last === null;
+  const ping = d ? (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-[15px]">Ping URL</CardTitle>
+        <CardDescription>
+          Call it with GET, HEAD or POST when the job succeeds. Add /fail to the end when it fails; Monita shows the first 1 KB of the body as the cause.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <CopyField id="ping-url" value={d.ping_url} />
+      </CardContent>
+    </Card>
+  ) : null;
 
   return (
     <>
@@ -61,49 +78,42 @@ export function Heartbeat({ editing = false }: { editing?: boolean }): ReactElem
             }
           />
           <div className="flex flex-col gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-[15px]">Ping URL</CardTitle>
-                <CardDescription>
-                  Call it with GET, HEAD or POST when the job succeeds. Add /fail to report a failure; the first 1 KB of the body becomes the cause.{" "}
-                  {h.due.late || !h.deadline_at ? "The deadline was missed; the next ping resets it." : `Next deadline ${stamp(h.deadline_at)}.`}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <CopyField id="ping-url" value={d.ping_url} />
-              </CardContent>
-            </Card>
+            {fresh && ping}
             <StatCards stats={d.stats} />
             <ChartCard insight={d.insight} />
             <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
               <AvailabilityCard insight={d.insight} />
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-[15px]">Settings</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Facts
-                    rows={[
-                      ["Runs every", h.every],
-                      ["Can be late by", h.grace],
-                      ["Deadline", h.deadline_at ? stamp(h.deadline_at) : "none"],
-                      ["Created", stamp(h.created_at)],
-                    ]}
-                  />
-                </CardContent>
-              </Card>
+              <div className="flex min-w-0 flex-col gap-6">
+                {!fresh && ping}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-[15px]">Settings</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Facts
+                      rows={[
+                        ["Runs every", h.every],
+                        ["Can be late by", h.grace],
+                        ["When it fails", whenItFails(h.alert, h.auto_incident)],
+                        ["Created", stamp(h.created_at)],
+                      ]}
+                    />
+                  </CardContent>
+                </Card>
+              </div>
             </div>
             <TableCard title="Pings, last 7 days">
               {d.pings.length === 0 ? (
-                <TableEmpty title="Waiting for the first ping" description="The first ping arrives when the job next runs." />
+                <TableEmpty title="Waiting for the first ping" description="Call the ping URL when the job next finishes." />
               ) : (
                 <>
                   <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead>Time</TableHead>
-                        <TableHead>Kind</TableHead>
-                        <TableHead className="text-right">From</TableHead>
+                        <TableHead>Result</TableHead>
+                        <TableHead className="max-sm:hidden">What the job reported</TableHead>
+                        <TableHead className="text-right max-md:hidden">From</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -111,9 +121,13 @@ export function Heartbeat({ editing = false }: { editing?: boolean }): ReactElem
                         <TableRow key={r.id}>
                           <TableCell className="font-mono text-[13px]">{stamp(r.received_at)}</TableCell>
                           <TableCell>
-                            <StateBadge kind={r.kind === "ok" ? "up" : "down"} label={r.kind === "ok" ? "OK" : "Fail"} />
+                            <StateBadge kind={r.kind === "ok" ? "up" : "down"} label={r.kind === "ok" ? "OK" : "Failed"} />
+                            {r.kind === "fail" && <div className="mt-1 max-w-48 truncate font-mono text-xs text-muted-foreground sm:hidden">{r.cause ?? "No reason given"}</div>}
                           </TableCell>
-                          <TableCell className="text-right font-mono text-muted-foreground">{r.source_ip ?? "–"}</TableCell>
+                          <TableCell className="max-w-96 truncate font-mono text-[13px] text-muted-foreground max-sm:hidden" title={r.cause ?? undefined}>
+                            {r.kind === "ok" ? "Success" : (r.cause ?? "No reason given")}
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-muted-foreground max-md:hidden">{r.source_ip ?? "–"}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>

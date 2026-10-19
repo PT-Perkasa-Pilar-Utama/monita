@@ -183,7 +183,7 @@ export type HeartbeatView = {
 
 export type HeartbeatList = { heartbeats: HeartbeatView[]; summary: ListSummary };
 
-export type PingRow = { id: number; received_at: number; kind: "ok" | "fail"; source_ip: string | null };
+export type PingRow = { id: number; received_at: number; kind: "ok" | "fail"; source_ip: string | null; cause: string | null };
 
 export type HeartbeatDetail = {
   heartbeat: HeartbeatView;
