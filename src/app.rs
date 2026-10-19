@@ -75,6 +75,7 @@ pub fn router(state: AppState) -> Router {
         .merge(crate::notify::api::router())
         .merge(crate::status::routes::router())
         .merge(crate::platform::limits::router())
+        .merge(crate::platform::mail_api::router())
         .fallback(crate::platform::spa::fallback);
 
     // SEC-17: the route does not exist in prod. Registration is the control, not authorization.

@@ -286,10 +286,23 @@ export type LimitRow = { key: string; label: string; group: string; help: string
 export type SystemView = {
   limits: LimitRow[];
   groups: string[];
-  mail: { server: string | null; user: string | null; from: string };
+  mail: MailView;
   email: { sent: number; failed: number; waiting: number; last_sent_at: number | null; last_error: [string, number] | null };
   email_days: number;
   server: [string, string][];
   caps: { label: string; max: number; used: number | null }[];
   utc_offset_min: number;
+};
+
+/** The mail server on the System page. The password never comes back; `has_password` says one is saved. */
+export type MailView = {
+  source: "saved" | "env" | "none";
+  server: string | null;
+  user: string | null;
+  from: string;
+  host: string | null;
+  port: number | null;
+  security: "tls" | "starttls" | "none" | null;
+  has_password: boolean;
+  skip_verify: boolean;
 };

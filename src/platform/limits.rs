@@ -110,7 +110,7 @@ pub struct Cap {
 struct SystemView {
     limits: Vec<Limit>,
     groups: [&'static str; 3],
-    mail: Mail,
+    mail: super::mail_api::MailView,
     email: EmailHealth,
     email_days: i64,
     server: Vec<(&'static str, String)>,
@@ -196,6 +196,7 @@ async fn view(state: &AppState) -> anyhow::Result<SystemView> {
     let c = state.db.read().await?;
     let current = settings::all(&c).await?;
     let utc_offset_min = settings::utc_offset(&c).await?;
+    let saved_mail = settings::mail(&c).await?;
     drop(c);
     let limits = META
         .iter()
@@ -265,7 +266,11 @@ async fn view(state: &AppState) -> anyhow::Result<SystemView> {
     Ok(SystemView {
         limits,
         groups: ["Monitoring", "Visitors and apps", "Bug reports"],
-        mail: smtp_view(config.smtp_url.as_deref(), &config.mail_from),
+        mail: super::mail_api::view(
+            saved_mail.as_ref(),
+            config.smtp_url.as_deref(),
+            &config.mail_from,
+        ),
         email: notify::email_health(&state.db, now - EMAIL_DAYS * 86_400).await?,
         email_days: EMAIL_DAYS,
         server: server_rows(config),

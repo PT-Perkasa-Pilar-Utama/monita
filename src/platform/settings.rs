@@ -111,3 +111,41 @@ pub async fn set_utc_offset(conn: &Connection, min: i64) -> anyhow::Result<bool>
     set_raw(conn, UTC_OFFSET, &min.to_string()).await?;
     Ok(true)
 }
+
+const MAIL: &str = "mail";
+
+/// The mail server an admin saved on the System page. The password is stored as entered:
+/// Monita must send it to the server, so it cannot be hashed. It never leaves the server.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct MailSettings {
+    pub host: String,
+    pub port: u16,
+    /// `tls` (TLS from the start, often 465), `starttls` (often 587) or `none`.
+    pub security: String,
+    pub user: Option<String>,
+    pub password: Option<String>,
+    /// A mailbox such as `Monita <monita@company.co.id>`.
+    pub from: String,
+    /// Accept a self-signed certificate, for an internal relay.
+    pub skip_verify: bool,
+}
+
+/// The saved mail server; `None` when no admin saved one, so the env setting or the log applies.
+pub async fn mail(conn: &Connection) -> anyhow::Result<Option<MailSettings>> {
+    Ok(match get_raw(conn, MAIL).await? {
+        Some(v) if !v.is_empty() => Some(serde_json::from_str(&v)?),
+        _ => None,
+    })
+}
+
+/// Saves the mail server, or clears it with `None`.
+pub async fn set_mail(conn: &Connection, m: Option<&MailSettings>) -> anyhow::Result<()> {
+    match m {
+        Some(m) => set_raw(conn, MAIL, &serde_json::to_string(m)?).await,
+        None => {
+            conn.execute("DELETE FROM settings WHERE key = ?1", [MAIL])
+                .await?;
+            Ok(())
+        }
+    }
+}

@@ -10,6 +10,7 @@ pub mod headers;
 pub mod health;
 pub mod jobs;
 pub mod limits;
+pub mod mail_api;
 pub mod migrate;
 pub mod page;
 pub mod rate_limit;

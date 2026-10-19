@@ -97,11 +97,14 @@ async fn deliver_one(state: &AppState, row: store::OutboxRow) -> anyhow::Result<
             "email" => {
                 state
                     .mailer
-                    .send(SentEmail {
-                        to: row.recipient.clone(),
-                        subject: row.subject.clone().unwrap_or_default(),
-                        body: row.body.clone(),
-                    })
+                    .send(
+                        &state.db,
+                        SentEmail {
+                            to: row.recipient.clone(),
+                            subject: row.subject.clone().unwrap_or_default(),
+                            body: row.body.clone(),
+                        },
+                    )
                     .await
             }
             _ => post_webhook(state, &row.recipient, &row.body).await,

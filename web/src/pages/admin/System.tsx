@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { ReactElement } from "react";
 import { Facts } from "@/components/app/Facts";
 import { SettingsSection } from "@/components/app/SettingsSection";
+import { MailServerSection } from "@/components/app/MailServerSection";
 import { TimeZoneSection } from "@/components/app/TimeZoneSection";
 import { StateBadge } from "@/components/app/Tone";
 import { PageHeader } from "@/components/layout/Page";
@@ -38,15 +39,7 @@ function EmailSection({ d }: { d: SystemView }): ReactElement {
   return (
     <SettingsSection
       title="Email delivery"
-      description={
-        d.mail.server ? (
-          "Alerts, digests and invites go out through this mail server."
-        ) : (
-          <>
-            No mail server is set, so Monita writes each email to its log. Set <code className="font-mono">MONITA_SMTP_URL</code> to send them.
-          </>
-        )
-      }
+      description={d.mail.server ? "What went out through the mail server, and a test you can send." : "No mail server is set, so Monita writes each email to its log."}
       action={d.mail.server ? <StateBadge kind="up" label="Sending" /> : <StateBadge kind="issue" label="Log only" />}
       footerNote={d.mail.server ? undefined : "Set a mail server to send a test email."}
       footer={
@@ -66,8 +59,6 @@ function EmailSection({ d }: { d: SystemView }): ReactElement {
         <Facts
           rows={[
             ["Mail server", <span className="font-mono text-[13px]">{d.mail.server ?? "Not set"}</span>],
-            ["Signs in as", d.mail.user ?? "No user name"],
-            ["Sends from", d.mail.from],
             ["Last sent", e.last_sent_at ? ago(e.last_sent_at) : "Nothing sent yet"],
           ]}
         />
@@ -102,6 +93,7 @@ export function System(): ReactElement {
       ) : (
         <div className="flex flex-col gap-6">
           <TimeZoneSection initial={d.utc_offset_min} />
+          <MailServerSection key={JSON.stringify(d.mail)} mail={d.mail} onSaved={res.reload} />
           <EmailSection d={d} />
           <SettingsSection
             title="Server"
