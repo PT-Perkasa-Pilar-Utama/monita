@@ -6,27 +6,43 @@
 /* ---------- Top bar ---------- */
 .topbar {
   position: sticky; top: 0; z-index: 10;
-  display: flex; align-items: center; gap: var(--s4);
-  height: 60px; padding: 0 max(var(--s5), env(safe-area-inset-left, 0px));
+  padding: 0 var(--gutter);
   border-bottom: 1px solid var(--border);
-  background: var(--header-bg);
-  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  background: var(--bg-2);
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
 }
-.topbar__brand { display: flex; align-items: center; gap: var(--s2); color: var(--fg); font-size: var(--t-20); font-weight: 650; letter-spacing: var(--head-track); }
-.topbar__mark { width: 26px; height: 26px; fill: none; stroke: var(--accent); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
-.topbar__nav { margin-left: auto; display: flex; align-items: center; gap: var(--s1); }
-.topbar__link { display: inline-flex; align-items: center; gap: var(--s2); height: 36px; padding: 0 var(--s3); border-radius: var(--r); color: var(--fg-muted); font-weight: 510; }
+/* The app's TopBar: one 1440 px column, 56 px tall, the same gutters as every app page. */
+:root { --gutter: 16px; --bar-h: 56px; }
+@media (min-width: 640px) { :root { --gutter: 32px; } }
+@media (min-width: 1024px) { :root { --gutter: 48px; } }
+.topbar__inner { display: flex; align-items: center; gap: 12px; max-width: 1440px; height: var(--bar-h); margin: 0 auto; }
+.topbar__brand { display: flex; align-items: center; gap: 8px; color: var(--fg); font-size: 20px; font-weight: 600; letter-spacing: -0.025em; }
+.topbar__mark { width: 26px; height: 26px; fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.topbar__nav { margin-left: auto; display: flex; align-items: center; gap: 4px; }
+.topbar__link { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px; border-radius: 8px; color: var(--fg-muted); font-size: 13px; font-weight: 500; white-space: nowrap; }
+.topbar__link svg { width: 16px; height: 16px; flex: none; }
 .topbar__link:hover { color: var(--fg); background: var(--f4); }
-.topbar__link[aria-current="page"] { color: var(--fg); background: var(--bg-2); box-shadow: 0 0 0 1px var(--border); }
+.topbar__link[aria-current="page"] { color: var(--fg); font-weight: 600; background: var(--bg); box-shadow: 0 0 0 1px var(--border); }
 .icon--fill { fill: currentColor; stroke: none; }
-.topbar__icon { display: inline-grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: var(--r); background: transparent; color: var(--fg-muted); cursor: pointer; }
+.topbar__icon { display: inline-grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 8px; background: transparent; color: var(--fg-muted); cursor: pointer; }
+.topbar__icon svg { width: 16px; height: 16px; }
 .topbar__icon:hover { color: var(--fg); background: var(--f4); }
+/* The app shows the moon in light and the sun in dark: the theme a click switches to. */
+.theme-sun { display: none; }
+:root[data-theme="dark"] .theme-sun { display: block; }
+:root[data-theme="dark"] .theme-moon { display: none; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .theme-sun { display: block; }
+  :root:not([data-theme="light"]) .theme-moon { display: none; }
+}
+/* Like the app's area links: below 1024 px only the icon shows. */
+@media (max-width: 1023px) { .topbar__link span { display: none; } }
 
 /* ---------- Docs layout: sidebar, page, on this page ---------- */
-.docs { display: grid; grid-template-columns: 280px minmax(0, 1fr) 220px; align-items: start; max-width: 1600px; margin: 0 auto; }
-.docs__side { position: sticky; top: 60px; height: calc(100vh - 60px); overflow-y: auto; padding: var(--s5) var(--s4) var(--s6); border-right: 1px solid var(--border); }
+.docs { display: grid; grid-template-columns: 280px minmax(0, 1fr) 220px; align-items: start; max-width: calc(1440px + 2 * var(--gutter)); margin: 0 auto; padding: 0 var(--gutter); }
+.docs__side { position: sticky; top: var(--bar-h); height: calc(100vh - var(--bar-h)); overflow-y: auto; padding: var(--s5) var(--s4) var(--s6); border-right: 1px solid var(--border); }
 .docs__main { min-width: 0; padding: var(--s7) var(--s7) var(--s8); }
-.docs__toc { position: sticky; top: 60px; padding: var(--s7) var(--s4) var(--s4) 0; }
+.docs__toc { position: sticky; top: var(--bar-h); padding: var(--s7) var(--s4) var(--s4) 0; }
 
 .side__search { display: flex; align-items: center; gap: var(--s2); height: 40px; padding: 0 var(--s3); margin-bottom: var(--s4); border: 1px solid var(--border-input); border-radius: var(--r); background: var(--bg-2); color: var(--fg-muted); }
 .side__search:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--ring-accent); }
@@ -95,16 +111,14 @@
 
 @media (max-width: 1200px) { .docs { grid-template-columns: 260px minmax(0, 1fr); } .docs__toc { display: none; } }
 @media (max-width: 820px) {
-  .docs { grid-template-columns: minmax(0, 1fr); }
+  .docs { grid-template-columns: minmax(0, 1fr); padding: 0; }
   .docs__side { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--border); }
   .docs__main { padding: var(--s6) 16px var(--s7); }
-  .topbar { padding: 0 16px; }
-  .topbar__link span, .topbar__link { font-size: var(--t-13); padding: 0 var(--s2); }
   .api-list a { grid-template-columns: minmax(0, 1fr) auto; }
   .api-list a span { grid-column: 1; }
 }
 @media (max-width: 520px) {
-  .topbar__brand span, .topbar__link svg { display: none; }
+  .topbar__brand span { display: none; }
   .topbar__nav { gap: 0; }
 }
 
@@ -229,3 +243,19 @@
 .foot-l { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--s3); margin-top: var(--s8); padding-top: var(--s5); border-top: 1px solid var(--rule); color: var(--fg-muted); font-size: var(--t-13); }
 .foot-l nav { display: flex; gap: var(--s4); }
 .foot-l a:hover { color: var(--fg); }
+
+/* ---------- Brand page: each file on the background it is made for ---------- */
+.brand-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--s4); margin: 0 0 var(--s5); }
+.brand-tile { margin: 0; overflow: hidden; border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--bg-2); }
+.brand-tile--wide { grid-column: 1 / -1; }
+.brand-tile__art { display: flex; align-items: center; justify-content: center; height: 160px; padding: var(--s5); background: #f7f8f8; }
+.brand-tile--dark .brand-tile__art { background: #0f1011; }
+.brand-tile--wide .brand-tile__art { height: 200px; }
+.brand-tile__art img { display: block; width: auto; height: auto; max-width: 100%; max-height: 112px; }
+.brand-tile--wide .brand-tile__art img { max-height: 152px; }
+.brand-tile figcaption { display: flex; flex-direction: column; gap: var(--s1); padding: var(--s3) var(--s4); border-top: 1px solid var(--border); font-size: var(--t-13); }
+.brand-tile__files { display: flex; flex-wrap: wrap; gap: var(--s3); }
+.brand-tile__files a { color: var(--accent); }
+.brand-tile--wide figcaption { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+.swatch { display: inline-block; width: 14px; height: 14px; margin-right: 6px; border: 1px solid var(--border); border-radius: 4px; vertical-align: -2px; }
+.docs-moni { display: block; width: 100%; max-width: 760px; margin: var(--s5) 0 var(--s2); }
