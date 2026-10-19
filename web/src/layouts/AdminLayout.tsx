@@ -14,7 +14,7 @@ export function AdminLayout(): ReactElement {
   return (
     <SidebarFrame nav={<SideNav
           label="Admin"
-          sections={[{ items: [item("/admin/users", "User management", Users), item("/admin/limits", "Rate limits", Timer), item("/admin/email", "Email", Mail), item("/admin/time-zone", "Time zone", Clock), item("/admin/system", "System information", Server)] }]}
+          sections={[{ items: [item("/admin/users", "User management", Users), item("/admin/limits", "Rate limits", Timer), item("/admin/email", "Outgoing email", Mail), item("/admin/time-zone", "Time zone", Clock), item("/admin/system", "System information", Server)] }]}
         />}>
       <Outlet />
     </SidebarFrame>

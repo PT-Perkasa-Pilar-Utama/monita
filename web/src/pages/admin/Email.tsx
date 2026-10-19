@@ -126,13 +126,13 @@ function DeliverySection({ d }: { d: SystemView }): ReactElement {
   );
 }
 
-/** Admin, Email: the mail server alerts go out through, and what went out. */
+/** Admin, Outgoing email: the mail server alerts go out through, and what went out. */
 export function Email(): ReactElement {
   const res = useApi<SystemView>("/admin/system");
   const d = res.data;
   return (
     <>
-      <PageHeader title="Email" />
+      <PageHeader title="Outgoing email" />
       {!d ? (
         <Skeleton className="h-96 rounded-xl" />
       ) : (

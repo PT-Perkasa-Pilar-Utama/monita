@@ -10,7 +10,7 @@ Monita reads `MONITA_*` environment variables at start. `monita setup` writes th
 | `MONITA_DB_PATH` | Database file | `/var/lib/monita/monita.db` |
 | `MONITA_BACKUP_DIR` | Daily backup folder; empty turns backups off | `/var/backups/monita` |
 | `MONITA_BACKUP_KEEP` | Backups kept | `7` |
-| `MONITA_SMTP_URL` | `smtps://user:pass@host:465`. A mail server saved on Admin, Email replaces it; with neither, Monita logs emails instead | your mail server, or set it on the Email page |
+| `MONITA_SMTP_URL` | `smtps://user:pass@host:465`. A mail server saved on Admin, Outgoing email replaces it; with neither, Monita logs emails instead | your mail server, or set it on the Outgoing email page |
 | `MONITA_MAIL_FROM` | Sender | `Monita <monita@example.com>` |
 | `MONITA_PING_URL` | A heartbeat Monita pings every 60 s, to be watched from outside | a peer's ping URL |
 | `MONITA_TRUST_PROXY` | Read the client IP from `X-Forwarded-For` | `true` behind a proxy |
