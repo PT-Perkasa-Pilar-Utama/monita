@@ -16,7 +16,7 @@ import { countLabel, keeps } from "@/lib/filter";
 import { useProject } from "@/lib/project";
 import { ago } from "@/lib/time";
 import type { MonitorList } from "@/lib/types";
-import { useApi } from "@/lib/useApi";
+import { LIVE_MS, useApi } from "@/lib/useApi";
 import { SortHead } from "@/components/list/SortHead";
 import { sortRows } from "@/lib/sort";
 import { useSort } from "@/lib/useSort";
@@ -30,7 +30,7 @@ export function Monitors({ creating = false }: { creating?: boolean }): ReactEle
   const navigate = useNavigate();
   const { project: p } = useProject();
   const base = `/projects/${p.slug}/monitors`;
-  const res = useApi<MonitorList>(`/projects/${p.slug}/monitors`);
+  const res = useApi<MonitorList>(`/projects/${p.slug}/monitors`, LIVE_MS);
   const [filter, setFilter, clear] = useListFilter();
   const filtered = filter.q.trim() !== "" || filter.state !== "" || filter.severity !== "";
   const all = res.data?.monitors ?? [];

@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api";
 
+/** How often a live page reads again: the shortest check interval. */
+export const LIVE_MS = 30_000;
+
 export type Loaded<T> = {
   data: T | undefined;
   error: ApiError | undefined;
@@ -45,6 +48,8 @@ export function useApi<T>(path: string | null, pollMs?: number): Loaded<T> {
     if (path === null || !pollMs) return;
     let live = true;
     const id = setInterval(() => {
+      // A hidden tab skips the read; the next one after it shows again catches up.
+      if (document.hidden) return;
       api<T>(path, "GET", undefined, "no-cache")
         .then((d) => live && setData(d))
         .catch(() => undefined); // A missed refresh keeps the last data; the next one tries again.

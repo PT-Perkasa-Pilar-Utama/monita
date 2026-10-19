@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { listQuery, pageCount, pageParam, skeletonCount } from "@/lib/page";
 import type { ProjectList } from "@/lib/types";
-import { useApi } from "@/lib/useApi";
+import { LIVE_MS, useApi } from "@/lib/useApi";
 import { useRememberedQuery } from "@/lib/useRememberedQuery";
 import { useViewMode } from "@/lib/useViewMode";
 
@@ -29,8 +29,8 @@ export function Projects(): ReactElement {
   const owner = params.get("owner") ?? "";
   const sort = params.get("sort") ?? "";
   const page = pageParam(params.get("page"));
-  // The cards and rows show live state, so the page reads again every minute.
-  const list = useApi<ProjectList>(`/projects${listQuery({ q, owner, sort, page })}`, 60_000);
+  // The cards and rows show live state, so the page reads again every 30 seconds.
+  const list = useApi<ProjectList>(`/projects${listQuery({ q, owner, sort, page })}`, LIVE_MS);
   const [view, setView] = useViewMode("monita:projects:view");
   const [draft, setDraft] = useState(q);
   const [creating, setCreating] = useState(false);

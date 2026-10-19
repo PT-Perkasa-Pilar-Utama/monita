@@ -16,7 +16,7 @@ import { countLabel, keeps } from "@/lib/filter";
 import { useProject } from "@/lib/project";
 import { ago } from "@/lib/time";
 import type { HeartbeatList } from "@/lib/types";
-import { useApi } from "@/lib/useApi";
+import { LIVE_MS, useApi } from "@/lib/useApi";
 import { cn } from "@/lib/utils";
 import { SortHead } from "@/components/list/SortHead";
 import { sortRows } from "@/lib/sort";
@@ -30,7 +30,7 @@ export function Heartbeats({ creating = false }: { creating?: boolean }): ReactE
   const navigate = useNavigate();
   const { project: p } = useProject();
   const base = `/projects/${p.slug}/heartbeats`;
-  const res = useApi<HeartbeatList>(`/projects/${p.slug}/heartbeats`);
+  const res = useApi<HeartbeatList>(`/projects/${p.slug}/heartbeats`, LIVE_MS);
   const [filter, setFilter, clear] = useListFilter();
   const filtered = filter.q.trim() !== "" || filter.state !== "" || filter.severity !== "";
   const all = res.data?.heartbeats ?? [];
