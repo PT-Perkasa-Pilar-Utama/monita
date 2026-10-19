@@ -29,20 +29,21 @@ import { toast } from "sonner";
 
 const asApiError = (e: unknown): ApiError => (e instanceof ApiError ? e : new ApiError(0, "error", errorText(e)));
 
-/** Name, slug, description and icon. The name and the slug never change. */
+/** Name, slug, homepage, description and icon. The name and the slug never change. */
 function ProjectSection(): ReactElement {
   const { project: p, reload } = useProject();
   const [description, setDescription] = useState(p.description ?? "");
+  const [homepage, setHomepage] = useState(p.homepage_url ?? "");
   const [icon, setIcon] = useState("");
   const [removeIcon, setRemoveIcon] = useState(false);
   const [error, setError] = useState<ApiError | null>(null);
   const [busy, setBusy] = useState(false);
-  const changed = description !== (p.description ?? "") || icon !== "" || removeIcon;
+  const changed = description !== (p.description ?? "") || homepage !== (p.homepage_url ?? "") || icon !== "" || removeIcon;
   const save = async (): Promise<void> => {
     setBusy(true);
     setError(null);
     try {
-      await api(`/projects/${p.slug}/profile`, "PUT", { description, icon, remove_icon: removeIcon ? "on" : "" });
+      await api(`/projects/${p.slug}/profile`, "PUT", { description, homepage_url: homepage, icon, remove_icon: removeIcon ? "on" : "" });
       reload();
       setIcon("");
       setRemoveIcon(false);
@@ -78,6 +79,22 @@ function ProjectSection(): ReactElement {
             <Input id="general-slug" value={p.slug} readOnly disabled className="font-mono" />
           </Field>
         </div>
+        <Field data-invalid={error?.fields.homepage_url ? true : undefined}>
+          <FieldLabel htmlFor="general-homepage" required>
+            Homepage
+          </FieldLabel>
+          <Input
+            id="general-homepage"
+            type="url"
+            className="font-mono"
+            placeholder="https://payments.example.com"
+            aria-required
+            aria-invalid={error?.fields.homepage_url ? true : undefined}
+            value={homepage}
+            onChange={(e) => setHomepage(e.target.value)}
+          />
+          {error?.fields.homepage_url && <FieldError>{error.fields.homepage_url}</FieldError>}
+        </Field>
         <Field data-invalid={error?.fields.description ? true : undefined}>
           <FieldLabel htmlFor="general-description">Description</FieldLabel>
           <Textarea
@@ -100,7 +117,7 @@ function ProjectSection(): ReactElement {
             </FieldLabel>
           </Field>
         )}
-        {error && !error.fields.description && !error.fields.icon && <p className="text-sm text-destructive">{error.message}</p>}
+        {error && !error.fields.description && !error.fields.homepage_url && !error.fields.icon && <p className="text-sm text-destructive">{error.message}</p>}
       </FieldGroup>
     </SettingsSection>
   );
