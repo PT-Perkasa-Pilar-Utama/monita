@@ -21,6 +21,7 @@ import { Overview } from "@/pages/project/Overview";
 import { DoneTickets } from "@/pages/project/DoneTickets";
 import { Tickets } from "@/pages/project/Tickets";
 import { History } from "@/pages/public/History";
+import { Incidents as PublicIncidents } from "@/pages/public/Incidents";
 import { KnownIssues } from "@/pages/public/KnownIssues";
 import { Mine } from "@/pages/public/Mine";
 import { Report } from "@/pages/public/Report";
@@ -79,6 +80,7 @@ export default function App(): ReactElement {
       </Route>
       <Route path="/status/:slug" element={<PublicLayout />}>
         <Route index element={<Status />} />
+        <Route path="incidents" element={<PublicIncidents />} />
         <Route path="history" element={<History />} />
         <Route path="tickets" element={<KnownIssues />} />
         <Route path="report" element={<Report />} />

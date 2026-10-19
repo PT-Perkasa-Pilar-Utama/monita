@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 import { Link, useOutletContext } from "react-router-dom";
-import { IncidentCard, IncidentRow, SystemRow, uptimeText } from "@/components/app/PublicStatus";
+import { SystemRow, uptimeText } from "@/components/app/PublicStatus";
 import { StateBadge } from "@/components/app/Tone";
 import { ArrowRight, RefreshCw } from "@/components/icons";
 import { PageHeader } from "@/components/layout/Page";
@@ -8,13 +8,14 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { headline, splitSystems } from "@/lib/status";
-import type { PublicProject, PublicStatus } from "@/lib/types";
+import type { PublicSite, PublicStatus } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 import { cn } from "@/lib/utils";
 
-/** The public status page: one sentence, the systems with 90 days of bars, then incidents. */
+/** The public Uptime tab: one sentence, then the systems with 90 days of bars. Incidents have
+ * their own tab, which the banner links to while one is open. */
 export function Status(): ReactElement {
-  const project = useOutletContext<PublicProject>();
+  const project = useOutletContext<PublicSite>();
   const res = useApi<PublicStatus>(`/public/${project.slug}/status`);
   const d = res.data;
   if (!d) return <Skeleton className="h-96 rounded-xl" />;
@@ -42,23 +43,18 @@ export function Status(): ReactElement {
         )}
       >
         <span>{headline(overall, items)}</span>
-        <span className="text-base font-normal text-muted-foreground">
+        <span className="flex flex-wrap items-center gap-x-4 gap-y-1 text-base font-normal text-muted-foreground">
           {up} of {items.length} systems up
+          {incidents.length > 0 && (
+            <Link to={`/status/${project.slug}/incidents`} className="flex items-center gap-1.5 text-link underline-offset-4 hover:underline">
+              {incidents.length === 1 ? "1 active incident" : `${incidents.length} active incidents`}
+              <ArrowRight className="size-3.5" />
+            </Link>
+          )}
         </span>
       </p>
-      {/* One column below 1000 px with active incidents first; two columns above, systems left.
-          Past incidents run under both, so a busy week never stretches one column. */}
-      <div className="grid items-start gap-10 min-[1000px]:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
-        <section aria-labelledby="active" className="flex flex-col gap-3 min-[1000px]:col-start-2 min-[1000px]:row-start-1">
-          <h2 id="active" className="font-semibold">
-            Active incidents
-          </h2>
-          {incidents.length === 0 && <p className="text-muted-foreground">Every system is running normally.</p>}
-          {incidents.map((i, n) => (
-            <IncidentCard key={n} incident={i} />
-          ))}
-        </section>
-        <section aria-labelledby="systems" className="flex flex-col gap-5 min-[1000px]:col-start-1 min-[1000px]:row-start-1">
+      <div className="flex flex-col gap-5">
+        <section aria-labelledby="systems" className="flex flex-col gap-5">
           <div className="flex items-baseline justify-between">
             <h2 id="systems" className="font-semibold">
               Systems
@@ -85,24 +81,6 @@ export function Status(): ReactElement {
               </ul>
             </details>
           )}
-        </section>
-        <section aria-labelledby="past" className="flex flex-col gap-3 min-[1000px]:col-span-2">
-          <h2 id="past" className="font-semibold">
-            Past 7 days
-          </h2>
-          {d.recent.length === 0 ? (
-            <p className="text-muted-foreground">There were no incidents in the last 7 days.</p>
-          ) : (
-            <div className="overflow-hidden rounded-xl border bg-card shadow-xs">
-              {d.recent.map((i, n) => (
-                <IncidentRow key={n} incident={i} />
-              ))}
-            </div>
-          )}
-          <Link to={`/status/${project.slug}/history`} className="flex items-center gap-1.5 text-sm text-link underline-offset-4 hover:underline">
-            Incident history
-            <ArrowRight className="size-3.5" />
-          </Link>
         </section>
       </div>
     </>

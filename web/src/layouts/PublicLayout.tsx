@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 import { Link, Outlet, useLocation, useParams } from "react-router-dom";
 import { Mark } from "@/components/brand/Mark";
-import { Bug, Globe, ListChecks, Ticket } from "@/components/icons";
+import { Activity, AlertTriangle, Bug, ListChecks, Ticket } from "@/components/icons";
 import { PageFrame } from "@/components/layout/Page";
 import { PageTabs } from "@/components/layout/PageTabs";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
@@ -20,13 +20,14 @@ export function PublicLayout(): ReactElement | null {
   setOffset(p.data.utc_offset_min);
   const base = `/status/${p.data.slug}`;
   const shown = p.data.pages;
-  const tabs: { key: keyof PublicPages; to: string; label: string; icon: typeof Globe }[] = [
+  const tabs: { key: keyof PublicPages; to: string; label: string; icon: typeof Activity; match?: string[] }[] = [
+    { key: "incidents", to: `${base}/incidents`, label: "Incidents", icon: AlertTriangle, match: [`${base}/history`] },
     { key: "known_issues", to: `${base}/tickets`, label: "Known issues", icon: ListChecks },
     { key: "report", to: `${base}/report`, label: "Report a bug", icon: Bug },
     { key: "mine", to: `${base}/mine`, label: "My tickets", icon: Ticket },
   ];
   // A tab the project turned off is not found by URL either; its JSON answers 404 too.
-  const hidden = tabs.some((t) => !shown[t.key] && pathname.startsWith(t.to));
+  const hidden = tabs.some((t) => !shown[t.key] && [t.to, ...(t.match ?? [])].some((to) => pathname.startsWith(to)));
   return (
     <div className="flex min-h-dvh flex-col">
       <header className="sticky top-0 z-40 border-b bg-background" data-has-tabs="">
@@ -41,7 +42,7 @@ export function PublicLayout(): ReactElement | null {
         </div>
         <PageTabs
           label="Public pages"
-          tabs={[{ to: base, label: "Status", icon: Globe, end: true, match: [`${base}/history`] }, ...tabs.filter((t) => shown[t.key]).map(({ to, label, icon }) => ({ to, label, icon }))]}
+          tabs={[{ to: base, label: "Uptime", icon: Activity, end: true }, ...tabs.filter((t) => shown[t.key]).map(({ to, label, icon, match }) => ({ to, label, icon, ...(match ? { match } : {}) }))]}
         />
       </header>
       <PageFrame>

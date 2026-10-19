@@ -345,3 +345,27 @@ async fn past_incidents_older_than_a_week_leave_the_page_for_the_history() {
     let history = text(&app, HISTORY).await;
     assert!(history.contains("Old blip"));
 }
+
+#[tokio::test]
+async fn incidents_turned_off_leave_uptime_and_hide_every_incident() {
+    let app = TestApp::spawn("test").await;
+    let tl = setup(&app).await;
+    let off = serde_json::json!({ "incidents": false, "known_issues": true, "report": true, "mine": true });
+    let res = app
+        .api_send(
+            reqwest::Method::PUT,
+            "/api/ui/projects/payments/public-pages",
+            off,
+            Some(&tl),
+        )
+        .await;
+    assert_eq!(res.status(), 204);
+
+    let page: Value = serde_json::from_str(&text(&app, PAGE).await).unwrap();
+    assert_eq!(page["data"]["status"]["items"][0]["name"], "Checkout");
+    assert_eq!(page["data"]["status"]["incidents"], serde_json::json!([]));
+    assert_eq!(page["data"]["recent"], serde_json::json!([]));
+    let json = text(&app, "/api/v1/public/status/payments").await;
+    assert!(!json.contains("Checkout is down"), "{json}");
+    assert_eq!(app.get(HISTORY, None).await.status(), 404);
+}

@@ -19,12 +19,19 @@ pub struct Project {
     pub pages: PublicPages,
 }
 
-/// The public tabs a project shows besides Status, which always shows.
+/// The public tabs a project shows besides Uptime, which always shows.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct PublicPages {
+    /// Missing means on, so a client that never sends it keeps the tab.
+    #[serde(default = "on")]
+    pub incidents: bool,
     pub known_issues: bool,
     pub report: bool,
     pub mine: bool,
+}
+
+fn on() -> bool {
+    true
 }
 
 #[derive(serde::Serialize)]
@@ -37,7 +44,7 @@ pub struct ApiKeyRow {
     pub created_at: i64,
 }
 
-const COLS: &str = "p.id, p.owner_id, u.email, p.name, p.slug, p.ip_allowlist, p.created_at, u.disabled_at IS NULL, p.description, p.icon_at, p.show_known_issues, p.show_report, p.show_mine";
+const COLS: &str = "p.id, p.owner_id, u.email, p.name, p.slug, p.ip_allowlist, p.created_at, u.disabled_at IS NULL, p.description, p.icon_at, p.show_known_issues, p.show_report, p.show_mine, p.show_incidents";
 
 fn row(r: &turso::Row) -> turso::Result<Project> {
     Ok(Project {
@@ -52,6 +59,7 @@ fn row(r: &turso::Row) -> turso::Result<Project> {
         description: r.get(8)?,
         icon_at: r.get(9)?,
         pages: PublicPages {
+            incidents: r.get::<i64>(13)? == 1,
             known_issues: r.get::<i64>(10)? == 1,
             report: r.get::<i64>(11)? == 1,
             mine: r.get::<i64>(12)? == 1,
@@ -270,8 +278,8 @@ pub async fn set_pages(
     at: i64,
 ) -> anyhow::Result<()> {
     c.execute(
-        "UPDATE projects SET show_known_issues = ?1, show_report = ?2, show_mine = ?3, updated_at = ?4 WHERE id = ?5",
-        (p.known_issues as i64, p.report as i64, p.mine as i64, at, project_id),
+        "UPDATE projects SET show_known_issues = ?1, show_report = ?2, show_mine = ?3, show_incidents = ?6, updated_at = ?4 WHERE id = ?5",
+        (p.known_issues as i64, p.report as i64, p.mine as i64, at, project_id, p.incidents as i64),
     )
     .await?;
     Ok(())

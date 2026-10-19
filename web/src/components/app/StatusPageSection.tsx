@@ -12,12 +12,13 @@ import type { PublicPages } from "@/lib/types";
 import { toast } from "sonner";
 
 const TABS: { key: keyof PublicPages; label: string }[] = [
+  { key: "incidents", label: "Incidents: what is wrong now, the last 7 days and the history, with your updates" },
   { key: "known_issues", label: "Known issues: the tickets your team has sorted, by title only" },
   { key: "report", label: "Report a bug: the form on the status page. Your app can still file tickets through the API." },
   { key: "mine", label: "My tickets: a reporter looks up their own tickets by ref ID" },
 ];
 
-/** The status page's address and which tabs visitors see. Status always shows. */
+/** The status page's address and which tabs visitors see. Uptime always shows. */
 export function StatusPageSection(): ReactElement {
   const { project: p, reload } = useProject();
   const [pages, setPages] = useState<PublicPages>(p.pages);
@@ -56,9 +57,9 @@ export function StatusPageSection(): ReactElement {
       <FieldSet className="gap-3">
         <FieldLegend className="sr-only">Tabs visitors see</FieldLegend>
         <Field orientation="horizontal" data-disabled>
-          <Checkbox id="tab-status" checked disabled />
-          <FieldLabel htmlFor="tab-status" className="font-normal">
-            Status: always shown
+          <Checkbox id="tab-uptime" checked disabled />
+          <FieldLabel htmlFor="tab-uptime" className="font-normal">
+            Uptime: each public system with 90 days of bars, always shown
           </FieldLabel>
         </Field>
         {TABS.map((t) => (

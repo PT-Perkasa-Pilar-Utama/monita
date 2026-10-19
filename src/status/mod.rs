@@ -174,12 +174,16 @@ async fn items(db: &Db, slug: &str, days: usize) -> anyhow::Result<Option<Items>
 }
 
 /// Public incidents of `which`, as wire types: public item names, no author, at most `limit`.
+/// None when the project turned its Incidents tab off.
 async fn incidents(
     db: &Db,
     it: &Items,
     which: history::Touching,
     limit: i64,
 ) -> anyhow::Result<Vec<IncidentStatus>> {
+    if !it.project.pages.incidents {
+        return Ok(Vec::new());
+    }
     let refs: Vec<ItemRef> = it.refs.iter().map(|(r, _)| r.clone()).collect();
     let name_of = |r: &ItemRef| {
         it.refs
@@ -261,13 +265,17 @@ pub async fn page(db: &Db, slug: &str) -> anyhow::Result<Option<PageData>> {
     }))
 }
 
-/// One page of the incident history, older than the `(started_at, id)` cursor.
+/// One page of the incident history, older than the `(started_at, id)` cursor. None also when
+/// the project turned its Incidents tab off.
 pub async fn history_page(
     db: &Db,
     slug: &str,
     before: Option<(i64, i64)>,
 ) -> anyhow::Result<Option<(ProjectRef, Vec<IncidentStatus>)>> {
-    let Some(it) = items(db, slug, 1).await? else {
+    let Some(it) = items(db, slug, 1)
+        .await?
+        .filter(|it| it.project.pages.incidents)
+    else {
         return Ok(None);
     };
     let list = incidents(
