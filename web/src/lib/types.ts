@@ -213,7 +213,8 @@ export type CheckOptions = {
   periods: Choice[];
   graces: Choice[];
   /** Failed checks in a row a monitor may count as down. */
-  fails: number[];
+  /** The failed-check counts a monitor may choose from. */
+  fails: { min: number; max: number };
   monitor: { interval_s: number; timeout_s: number; expected_status: string; severity: Severity };
   heartbeat: { period_s: number; grace_s: number; severity: Severity };
 };

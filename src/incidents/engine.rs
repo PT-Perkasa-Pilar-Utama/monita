@@ -4,9 +4,9 @@
 use super::Signal;
 
 /// Confirmation for monitors: this many failed checks in a row open an incident (Q4). Each
-/// monitor may choose another count from `FAILS_CHOICES`.
+/// monitor may choose another count from `FAILS_RANGE`.
 pub const FAILS_TO_OPEN: u32 = 2;
-pub const FAILS_CHOICES: [u32; 4] = [1, 2, 3, 5];
+pub const FAILS_RANGE: std::ops::RangeInclusive<u32> = 1..=99;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct SourceState {

@@ -6,7 +6,7 @@ An incident records a problem from start to end, sends alerts, and tells users o
 
 | Source | Opens | Closes |
 | --- | --- | --- |
-| Monitor | 2 failed checks in a row, or the count the monitor sets (1, 2, 3 or 5) | The first passing check |
+| Monitor | 2 failed checks in a row, or the count the monitor sets (1 to 99) | The first passing check |
 | Heartbeat | A missed deadline, or a call to `/fail` | The next ping |
 
 Monita posts the first update, **Investigating**, with the cause. A tech lead can add updates while it is open.

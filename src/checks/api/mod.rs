@@ -82,7 +82,10 @@ async fn options(CurrentUser(_): CurrentUser) -> UiResult {
         "intervals": intervals,
         "periods": choices(&super::heartbeat::PERIODS_S),
         "graces": choices(&super::heartbeat::GRACES_S),
-        "fails": crate::incidents::engine::FAILS_CHOICES,
+        "fails": {
+            "min": crate::incidents::engine::FAILS_RANGE.start(),
+            "max": crate::incidents::engine::FAILS_RANGE.end(),
+        },
         "monitor": {
             "interval_s": m.interval_s,
             "timeout_s": m.timeout_ms / 1000,

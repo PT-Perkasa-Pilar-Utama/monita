@@ -45,6 +45,10 @@ const MIGRATIONS: &[(i64, &str)] = &[
     ),
     (16, include_str!("../../migrations/0016_show_incidents.sql")),
     (17, include_str!("../../migrations/0017_ref_id_tail.sql")),
+    (
+        18,
+        include_str!("../../migrations/0018_fails_to_open_range.sql"),
+    ),
 ];
 
 pub async fn run(db: &Db) -> anyhow::Result<()> {
@@ -168,6 +172,28 @@ mod tests {
             Some(0),
             "delete still cascades"
         );
+        let four = db
+            .write(async |c| {
+                c.execute(
+                    "INSERT INTO monitors (project_id, name, url, next_check_at, fails_to_open) VALUES (1, 'D', 'https://d', 0, 4)",
+                    (),
+                )
+                .await?;
+                Ok(())
+            })
+            .await;
+        assert!(four.is_ok(), "any count from 1 to 99: {four:?}");
+        let hundred = db
+            .write(async |c| {
+                c.execute(
+                    "INSERT INTO monitors (project_id, name, url, next_check_at, fails_to_open) VALUES (1, 'E', 'https://e', 0, 100)",
+                    (),
+                )
+                .await?;
+                Ok(())
+            })
+            .await;
+        assert!(hundred.is_err(), "100 is past the range");
     }
 
     #[tokio::test]

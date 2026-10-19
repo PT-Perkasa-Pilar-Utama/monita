@@ -31,7 +31,7 @@ type Form = RequestPart & {
   is_public: boolean;
   alert: boolean;
   auto_incident: boolean;
-  fails_to_open: number;
+  fails_to_open: string;
 };
 
 /** New monitor, or edit one when the URL names it. Edit also deletes. */
@@ -55,12 +55,12 @@ function MonitorFormBody({ id, onClose, onSaved }: { id: string | undefined; onC
     setForm(
       m
         ? {
-            name: m.name, url: m.url, interval_s: m.interval_s, timeout_s: String(m.timeout_s), expected_status: m.expected_status, keyword: m.keyword ?? "", skip_tls_verify: m.skip_tls_verify, severity: m.severity, is_public: m.is_public, alert: m.alert, auto_incident: m.auto_incident, method: m.method, body: m.body ?? "", fails_to_open: m.fails_to_open,
+            name: m.name, url: m.url, interval_s: m.interval_s, timeout_s: String(m.timeout_s), expected_status: m.expected_status, keyword: m.keyword ?? "", skip_tls_verify: m.skip_tls_verify, severity: m.severity, is_public: m.is_public, alert: m.alert, auto_incident: m.auto_incident, method: m.method, body: m.body ?? "", fails_to_open: String(m.fails_to_open),
             header_rows: parseHeaderLines(m.headers).map(([name, value]) => ({ name, value })),
             auth_kind: m.auth_kind, auth_secret_id: m.auth_secret_id, auth_user: m.auth_user ?? "", auth_header: m.auth_header ?? "",
           }
         : {
-            name: "", url: "", interval_s: o.monitor.interval_s, timeout_s: String(o.monitor.timeout_s), expected_status: o.monitor.expected_status, keyword: "", skip_tls_verify: false, severity: o.monitor.severity, is_public: false, alert: true, auto_incident: true, method: "GET", body: "", fails_to_open: 2,
+            name: "", url: "", interval_s: o.monitor.interval_s, timeout_s: String(o.monitor.timeout_s), expected_status: o.monitor.expected_status, keyword: "", skip_tls_verify: false, severity: o.monitor.severity, is_public: false, alert: true, auto_incident: true, method: "GET", body: "", fails_to_open: "2",
             header_rows: [], auth_kind: "none", auth_secret_id: null, auth_user: "", auth_header: "",
           },
     );
@@ -78,7 +78,7 @@ function MonitorFormBody({ id, onClose, onSaved }: { id: string | undefined; onC
     setError(null);
     // A body typed for POST stays in the box after a switch to GET, but only POST and PUT send it.
     const { header_rows, ...rest } = form;
-    const body = { ...rest, headers: headerText(header_rows), interval_s: String(form.interval_s), fails_to_open: String(form.fails_to_open), body: sendsBody(form.method) ? form.body : "" };
+    const body = { ...rest, headers: headerText(header_rows), interval_s: String(form.interval_s), fails_to_open: form.fails_to_open, body: sendsBody(form.method) ? form.body : "" };
     try {
       if (id) {
         await api(`${base}/${id}`, "PUT", body);
@@ -184,24 +184,25 @@ function MonitorFormBody({ id, onClose, onSaved }: { id: string | undefined; onC
                   <FieldLegend>Alerts and status page</FieldLegend>
                   <SeverityField value={form.severity} onChange={(v) => set("severity", v)} />
                   <WhenItFails id="m" alert={form.alert} autoIncident={form.auto_incident} onChange={set}>
-                    <Field data-invalid={err("fails_to_open") ? true : undefined} className="max-w-sm">
+                    <Field data-invalid={err("fails_to_open") ? true : undefined}>
                       <FieldLabel htmlFor="m-fails" className="font-normal">
                         It counts as down after
                       </FieldLabel>
-                      <Select value={String(form.fails_to_open)} onValueChange={(v) => set("fails_to_open", Number(v))}>
-                        <SelectTrigger id="m-fails">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectGroup>
-                            {options.data.fails.map((n) => (
-                              <SelectItem key={n} value={String(n)}>
-                                {n === 1 ? "1 failed check" : `${n} failed checks in a row`}
-                              </SelectItem>
-                            ))}
-                          </SelectGroup>
-                        </SelectContent>
-                      </Select>
+                      <div className="flex items-center gap-3">
+                        <Input
+                          id="m-fails"
+                          type="number"
+                          inputMode="numeric"
+                          min={options.data.fails.min}
+                          max={options.data.fails.max}
+                          className="w-24"
+                          aria-invalid={err("fails_to_open") ? true : undefined}
+                          value={form.fails_to_open}
+                          onChange={(e) => set("fails_to_open", e.target.value)}
+                          placeholder="2"
+                        />
+                        <span className="text-sm text-muted-foreground">{form.fails_to_open.trim() === "1" ? "failed check" : "failed checks in a row"}</span>
+                      </div>
                       {err("fails_to_open") && <FieldError>{err("fails_to_open")}</FieldError>}
                     </Field>
                   </WhenItFails>

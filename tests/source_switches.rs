@@ -229,7 +229,7 @@ async fn a_monitor_set_to_one_failure_opens_at_once_and_two_waits() {
     assert_eq!(count(&app, title).await, 1);
 
     let bad = serde_json::json!({ "name": "x", "url": url, "interval_s": "60", "timeout_s": "5",
-        "expected_status": "2xx", "severity": "warning", "fails_to_open": "4" });
+        "expected_status": "2xx", "severity": "warning", "fails_to_open": "100" });
     let res = app
         .api_post("/api/ui/projects/payments/monitors", bad, Some(&tl))
         .await;

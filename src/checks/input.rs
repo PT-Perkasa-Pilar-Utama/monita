@@ -20,7 +20,7 @@ pub struct MonitorInput {
     pub alert: bool,
     /// A failure opens an incident on its own. Off: only an alert, and you report one by hand.
     pub auto_incident: bool,
-    /// Failed checks in a row that count as down: 1, 2, 3 or 5.
+    /// Failed checks in a row that count as down: 1 to 99.
     pub fails_to_open: i64,
     /// GET, HEAD, POST or PUT; empty reads as GET.
     pub method: String,
@@ -89,11 +89,9 @@ impl MonitorInput {
         if !matches!(self.severity.as_str(), "critical" | "warning") {
             e.insert("severity", "Pick critical or warning.");
         }
-        if !crate::incidents::engine::FAILS_CHOICES
-            .iter()
-            .any(|&n| i64::from(n) == self.fails_to_open)
-        {
-            e.insert("fails_to_open", "Pick 1, 2, 3 or 5 failed checks.");
+        let fails = crate::incidents::engine::FAILS_RANGE;
+        if !(i64::from(*fails.start())..=i64::from(*fails.end())).contains(&self.fails_to_open) {
+            e.insert("fails_to_open", "Enter a number from 1 to 99.");
         }
         if !probe::METHODS.contains(&self.method()) {
             e.insert("method", "Pick GET, HEAD, POST or PUT.");
@@ -226,6 +224,20 @@ mod tests {
             m.validate().keys().copied().collect::<Vec<_>>(),
             vec!["interval_s"]
         );
+    }
+
+    #[test]
+    fn a_failure_count_runs_from_1_to_99() {
+        let with = |n| MonitorInput {
+            name: "API".into(),
+            url: "https://x.co".into(),
+            fails_to_open: n,
+            ..MonitorInput::defaults()
+        };
+        assert!(errors(&with(1)).is_empty());
+        assert!(errors(&with(37)).is_empty());
+        assert_eq!(errors(&with(0)), ["fails_to_open"]);
+        assert_eq!(errors(&with(100)), ["fails_to_open"]);
     }
 
     fn errors(m: &MonitorInput) -> Vec<&'static str> {
