@@ -513,6 +513,14 @@ async fn a_column_move_calls_the_ticket_webhook_only_when_moves_are_on() {
         (&body["from"], &body["to"], &body["close_reason"]),
         (&json!("backlog"), &json!("done"), &json!("fixed"))
     );
+
+    let test = "/api/ui/projects/payments/ticket-alerts/test";
+    let res = app.api_post(test, json!({}), Some(&s.tl)).await;
+    assert_eq!(
+        json_of(res).await["data"]["sent_to"],
+        1,
+        "the test button works with moves alone"
+    );
 }
 
 #[tokio::test]
