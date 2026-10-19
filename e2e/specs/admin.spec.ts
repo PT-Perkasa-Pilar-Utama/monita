@@ -12,7 +12,10 @@ test("a limit can be discarded, then saved, and holds after a reload", async ({ 
   await page.getByRole("button", { name: "Discard changes" }).click();
   await expect(cap).toHaveValue(before);
   await cap.fill("150");
+  // A reload before the save's answer would read the old value.
+  const saved = page.waitForResponse((r) => r.url().endsWith("/api/ui/admin/limits") && r.request().method() === "PUT");
   await page.getByRole("button", { name: "Save limits" }).click();
+  expect((await saved).status()).toBe(204);
   await page.reload();
   await expect(cap).toHaveValue("150");
   // Other specs share this server: put the limit back.
