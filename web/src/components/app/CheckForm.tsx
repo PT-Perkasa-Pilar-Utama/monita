@@ -21,7 +21,7 @@ export function SeverityField({ value, onChange }: { value: Severity; onChange: 
   );
 }
 
-/** A select over a fixed list of seconds, such as a check interval or a grace time. */
+/** A select over a fixed list of seconds, such as a check interval or how late a job can be. */
 export function ChoiceField({
   id,
   label,

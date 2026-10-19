@@ -131,7 +131,7 @@ impl HeartbeatInput {
             e.insert("period_s", "Pick one of the listed periods.");
         }
         if !GRACES_S.iter().any(|(v, _)| *v == self.grace_s) {
-            e.insert("grace_s", "Pick one of the listed grace times.");
+            e.insert("grace_s", "Pick how late the job can be from the list.");
         }
         if !matches!(self.severity.as_str(), "critical" | "warning") {
             e.insert("severity", "Pick critical or warning.");

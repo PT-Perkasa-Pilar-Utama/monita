@@ -82,7 +82,7 @@ export function Heartbeats({ creating = false }: { creating?: boolean }): ReactE
                   <TableRow>
                     <SortHead by="name" label="Heartbeat" sort={sort} onSort={onSort} />
                     <SortHead by="state" label="State" sort={sort} onSort={onSort} />
-                    <SortHead by="deadline" label="Next deadline" sort={sort} onSort={onSort} className="max-lg:hidden" />
+                    <SortHead by="deadline" label="Next ping due" sort={sort} onSort={onSort} className="max-lg:hidden" />
                     <SortHead by="every" label="Every" sort={sort} onSort={onSort} className="max-md:hidden" />
                     <SortHead by="severity" label="Severity" sort={sort} onSort={onSort} className="max-md:hidden" />
                     <SortHead by="last" label="Last ping" sort={sort} onSort={onSort} className="text-right max-sm:hidden" />
@@ -95,7 +95,7 @@ export function Heartbeats({ creating = false }: { creating?: boolean }): ReactE
                         <Link to={`${base}/${h.id}`} className={ROW_LINK}>
                           {h.name}
                         </Link>
-                        <div className="text-xs text-muted-foreground">{h.grace} grace time</div>
+                        <div className="text-xs text-muted-foreground">Can be late by {h.grace}</div>
                       </TableCell>
                       <TableCell>
                         <StateBadge kind={h.state} />

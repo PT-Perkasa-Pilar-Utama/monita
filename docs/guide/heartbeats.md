@@ -6,14 +6,14 @@ A heartbeat watches a job that runs on a schedule. The job calls a URL when it f
 
 1. In a project, open **Heartbeats** and select **New heartbeat**.
 2. Set **Runs every** to the job's schedule, from 1 minute to 30 days.
-3. Set **Grace time** to how late the job may finish, up to 1 day.
+3. Set **Can be late by** to how late the job may finish, up to 1 day.
 4. Save and copy the ping URL.
 
-The first deadline is the period plus the grace from the moment you save. A heartbeat that never pings still misses its first deadline.
+The deadline is the last ping plus **Runs every** plus **Can be late by**. Example: a job runs every 1 day, can be late by 1 hour, and pings at 01:00. The next deadline is 02:00 the next day. The first deadline counts from the moment you save. A heartbeat that never pings still misses its first deadline.
 
 ## Ping on success
 
-Call the URL with `GET`, `HEAD` or `POST` when the job succeeds. Each ping moves the deadline to now plus the period plus the grace, and closes an open incident.
+Call the URL with `GET`, `HEAD` or `POST` when the job succeeds. Each ping moves the deadline to now plus **Runs every** plus **Can be late by**, and closes an open incident.
 
 ```sh
 curl -fsS -m 10 https://monita.example.com/ping/<token>

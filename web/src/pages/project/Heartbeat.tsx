@@ -45,7 +45,7 @@ export function Heartbeat({ editing = false }: { editing?: boolean }): ReactElem
               <>
                 <StateBadge id="state" kind={h.state} />
                 <span>
-                  Every {h.every}, {h.grace} grace time
+                  Every {h.every}, can be late by {h.grace}
                 </span>
                 <SeverityBadge severity={h.severity} />
                 {h.is_public && <Badge variant="outline">On the status page</Badge>}
@@ -85,7 +85,7 @@ export function Heartbeat({ editing = false }: { editing?: boolean }): ReactElem
                   <Facts
                     rows={[
                       ["Runs every", h.every],
-                      ["Grace time", h.grace],
+                      ["Can be late by", h.grace],
                       ["Deadline", h.deadline_at ? stamp(h.deadline_at) : "none"],
                       ["Created", stamp(h.created_at)],
                     ]}

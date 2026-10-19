@@ -20,7 +20,7 @@ A backup is a plain SQLite file: `sqlite3 monita-20261016.db 'PRAGMA integrity_c
 
 Monita cannot alert about its own outage. Run a second Monita at another site and give each a heartbeat on the other:
 
-1. On Monita B, create a heartbeat named `monita-a`, period 1 minute, grace 5 minutes, severity critical.
+1. On Monita B, create a heartbeat named `monita-a`, runs every 1 minute, can be late by 5 minutes, severity critical.
 2. On Monita A, set `MONITA_PING_URL` to that heartbeat's ping URL and restart. A pings it at start and every 60 seconds.
 3. Do the same in the other direction.
 

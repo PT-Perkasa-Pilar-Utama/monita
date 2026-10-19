@@ -116,7 +116,7 @@ function HeartbeatFormBody({ id, onClose, onSaved }: { id: string | undefined; o
                   </Field>
                   <div className="grid gap-5 sm:grid-cols-2">
                     <ChoiceField id="h-period" label="Runs every" value={form.period_s} choices={options.data.periods} onChange={(v) => set("period_s", v)} error={err("period_s")} />
-                    <ChoiceField id="h-grace" label="Grace time" value={form.grace_s} choices={options.data.graces} onChange={(v) => set("grace_s", v)} error={err("grace_s")} />
+                    <ChoiceField id="h-grace" label="Can be late by" value={form.grace_s} choices={options.data.graces} onChange={(v) => set("grace_s", v)} error={err("grace_s")} />
                   </div>
                   <SeverityField value={form.severity} onChange={(v) => set("severity", v)} />
                   <WhenItFails id="h" alert={form.alert} autoIncident={form.auto_incident} onChange={set} />
