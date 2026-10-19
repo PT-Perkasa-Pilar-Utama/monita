@@ -41,6 +41,11 @@
   --color-link: var(--link);
   /* State colours carry data: up, down, issue, waiting. Never the brand accent. */
   --color-up: var(--up);
+  --color-mascot-body: var(--mascot-body);
+  --color-mascot-line: var(--mascot-line);
+  --color-mascot-ink: var(--mascot-ink);
+  --color-mascot-shine: var(--mascot-shine);
+  --color-mascot-cheek: var(--mascot-cheek);
   --color-down: var(--down);
   --color-issue: var(--issue);
   --color-unknown: var(--unknown);
@@ -88,6 +93,12 @@
   --issue: #8a6300;
   --unknown: #7a7f87;
   --neutral-strong: #565a62;
+  /* Moni looks the same in both themes, so these are set once here and not under .dark. */
+  --mascot-body: #fbe4f2;
+  --mascot-line: #c4258f;
+  --mascot-ink: #1e1a1d;
+  --mascot-shine: #ffffff;
+  --mascot-cheek: #f2a7d4;
 }
 
 .dark {
@@ -148,7 +159,10 @@
 :root { --bar-h: 57px; }
 body:has(header[data-has-tabs]) { --bar-h: 101px; }
 
-/* The footer illustrations. Reduced motion stops them through the rule in the base layer. */
+/* The footer illustrations. Reduced motion stops them through the rule in the base layer.
+   An edge fades toward the scene and toward the top, so the texture never meets a hard line. */
+.footer-edge-left { mask-image: linear-gradient(to right, black, transparent 90%), linear-gradient(to bottom, transparent, black 45%); mask-composite: intersect; }
+.footer-edge-right { mask-image: linear-gradient(to left, black, transparent 90%), linear-gradient(to bottom, transparent, black 45%); mask-composite: intersect; }
 @keyframes monita-ping { to { stroke-dashoffset: -22; } }
 @keyframes monita-blink { 0%, 94%, 100% { transform: scaleY(1); } 97% { transform: scaleY(0.1); } }
 @keyframes monita-beat { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }

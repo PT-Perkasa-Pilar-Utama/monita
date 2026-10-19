@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import type { ReactElement } from "react";
 import { Link, Outlet, useLocation, useParams } from "react-router-dom";
-import { MonitorsFooter } from "@/components/app/PrimitiveFooter";
+import { PrimitiveFooter } from "@/components/app/footers";
 import { ProjectBadge } from "@/components/app/ProjectBadge";
 import { AlertTriangle, ExternalLink, Globe, Heartbeat, LayoutGrid, Activity, ScrollText, Settings, Ticket } from "@/components/icons";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import { forgetProject, rememberProject } from "@/lib/lastProject";
 import { useMe } from "@/lib/session";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { ProjectHead } from "@/lib/types";
+import { footerFor } from "@/lib/primitiveFooter";
 import { useApi } from "@/lib/useApi";
 
 function ProjectChrome(): ReactElement | null {
@@ -52,6 +53,7 @@ function ProjectChrome(): ReactElement | null {
   }
   const { project: p, counts } = head.data;
   const base = `/projects/${p.slug}`;
+  const footer = footerFor(pathname, base);
   const crumb = (
     <Link to={base} className="flex min-w-0 items-center gap-2 rounded-lg px-2 py-1 font-semibold hover:bg-accent">
       <ProjectBadge name={p.name} iconUrl={p.icon_url} />
@@ -89,7 +91,7 @@ function ProjectChrome(): ReactElement | null {
         <PageFrame>
           <Outlet />
         </PageFrame>
-        {pathname.startsWith(`${base}/monitors`) && <MonitorsFooter />}
+        {footer && <PrimitiveFooter kind={footer} />}
       </div>
     </ProjectProvider>
   );
