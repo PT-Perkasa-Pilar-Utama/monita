@@ -1,24 +1,12 @@
 import type { ReactElement } from "react";
 import { CodeCopy } from "@/components/app/CopyField";
+import { endpointDocs } from "@/components/app/customStatusDocs";
 import { SettingsSection } from "@/components/app/SettingsSection";
 import { Download } from "@/components/icons";
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useProject } from "@/lib/project";
 import { statusTemplate } from "@/lib/statusTemplate";
-
-const ROUTES: { method: string; path: string; access: string; use: string }[] = [
-  { method: "GET", path: "/api/v1/public/status/{slug}", access: "None", use: "Systems, their last 90 days and incidents. Add ?days=1 to 90 for a shorter window." },
-  { method: "POST", path: "/api/v1/tickets", access: "A ref ID in the body", use: "Files a bug report from your page. Body: ref_id, title, description, page_url." },
-  { method: "GET", path: "/api/v1/tickets/mine", access: "A ref ID in the X-Ref-Id header", use: "Lists the reporter's own tickets and their columns." },
-  { method: "POST", path: "/api/v1/ref-ids", access: "An API key, from your server only", use: "Gives one of your users a ref ID. Never put the API key in a browser page." },
-];
-
-const FIELDS: [string, string][] = [
-  ["overall", "up, down or issue, for the whole page"],
-  ["items[]", "Each public system: name, state, uptime_90d and days[] (day, uptime, downtime_s)"],
-  ["incidents[]", "Open incidents and those that started in the window: title, items, started_at, resolved_at and updates[] (label, message, at)"],
-];
 
 function download(origin: string, slug: string): void {
   const url = URL.createObjectURL(new Blob([statusTemplate(origin, slug)], { type: "text/html" }));
@@ -29,61 +17,58 @@ function download(origin: string, slug: string): void {
   URL.revokeObjectURL(url);
 }
 
-/** How to build your own status page on Monita's public JSON, with a template to start from. */
+/** How to build your own status page on Monita's public JSON: each endpoint with who may call
+ * it, a request and a response, plus a template to start from. */
 export function CustomStatusSection(): ReactElement {
   const { project: p } = useProject();
   const origin = window.location.origin;
+  const docs = endpointDocs(origin, p.slug, p.name);
   return (
     <SettingsSection
       id="custom"
       reference
       title="Custom status page"
-      description="Build your own page from the same data. The status JSON needs no API key, and a browser can call it from any website."
+      description="Build your own page from the same data. Start from the template, or call the endpoints below."
     >
       <div className="flex flex-col gap-6">
-        <div className="overflow-hidden rounded-lg border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Endpoint</TableHead>
-                <TableHead>Key</TableHead>
-                <TableHead className="max-md:hidden">What it does</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {ROUTES.map((r) => (
-                <TableRow key={r.path}>
-                  <TableCell className="font-mono text-[13px] whitespace-normal">
-                    <span className="text-muted-foreground">{r.method}</span> {r.path.replace("{slug}", p.slug)}
-                  </TableCell>
-                  <TableCell className="whitespace-normal">{r.access}</TableCell>
-                  <TableCell className="whitespace-normal text-muted-foreground max-md:hidden">{r.use}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-        <CodeCopy id="custom-status-curl" title="Try it" code={`curl -s ${origin}/api/v1/public/status/${p.slug}`} />
-        <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-[9rem_1fr]">
-          {FIELDS.map(([k, v]) => (
-            <div key={k} className="contents">
-              <dt className="font-mono text-[13px]">{k}</dt>
-              <dd className="text-muted-foreground">{v}</dd>
-            </div>
-          ))}
-        </dl>
-        <ul className="flex list-disc flex-col gap-1 pl-5 text-sm text-muted-foreground">
-          <li>Only the monitors and heartbeats you mark as public appear.</li>
-          <li>While the Incidents tab is off, incidents comes back empty.</li>
-          <li>Each visitor address may call 60 times a minute. An answer can be up to 30 seconds old.</li>
-        </ul>
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-paper px-4 py-3">
-          <span className="text-sm">A single HTML file that shows your systems and incidents and refreshes every minute.</span>
+          <span className="text-sm">One HTML file that shows your systems and incidents and reloads every minute. Open it, or host it anywhere.</span>
           <Button variant="outline" onClick={() => download(origin, p.slug)}>
             <Download data-icon="inline-start" />
             Download template
           </Button>
         </div>
+        <Tabs defaultValue={docs[0]!.tab} className="gap-4">
+          <TabsList className="flex-wrap">
+            {docs.map((d) => (
+              <TabsTrigger key={d.tab} value={d.tab}>
+                {d.tab}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+          {docs.map((d, n) => (
+            <TabsContent key={d.tab} value={d.tab} className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1">
+                <p className="font-mono text-[13px] break-all">
+                  <span className="font-semibold">{d.method}</span> {d.path}
+                </p>
+                <p className="text-sm">{d.purpose}</p>
+              </div>
+              <dl className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-[8rem_1fr]">
+                <dt className="font-medium">Who can call it</dt>
+                <dd className="text-muted-foreground">{d.access}</dd>
+              </dl>
+              <CodeCopy id={`custom-req-${n}`} title="Request" code={d.request} />
+              <CodeCopy id={`custom-res-${n}`} title={d.responseTitle} code={d.response} lang="js" />
+              <ul className="flex list-disc flex-col gap-1 pl-5 text-sm text-muted-foreground">
+                {d.notes.map((t) => (
+                  <li key={t}>{t}</li>
+                ))}
+                <li>An error answers {'{"error": {"code": "...", "message": "..."}}'} with its HTTP status. A 429 carries Retry-After in seconds.</li>
+              </ul>
+            </TabsContent>
+          ))}
+        </Tabs>
       </div>
     </SettingsSection>
   );
