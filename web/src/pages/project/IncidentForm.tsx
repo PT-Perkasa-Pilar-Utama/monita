@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { FormEvent, ReactElement } from "react";
 import { useNavigate } from "react-router-dom";
 import { SeverityField } from "@/components/app/CheckForm";
+import { StateBadge } from "@/components/app/Tone";
 import { FormSheet, FormSheetBody } from "@/components/app/FormSheet";
 import { IncidentGuide } from "@/components/app/Guides";
 import { Button } from "@/components/ui/button";
@@ -12,10 +13,76 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { api, ApiError, errorText } from "@/lib/api";
+import { countLabel } from "@/lib/filter";
+import { pickItems } from "@/lib/incidentItems";
 import { useProject } from "@/lib/project";
 import type { IncidentItem, Severity } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 
+/** One kind's checkboxes under its count, scrolling past about eight rows. */
+function ItemList({ items, total, noun, chosen, onToggle }: { items: IncidentItem[]; total: number; noun: string; chosen: string[]; onToggle: (value: string, on: boolean) => void }): ReactElement {
+  return (
+    <FieldSet className="gap-2">
+      <FieldLegend variant="label">{countLabel(items.length, total, noun)}</FieldLegend>
+      {items.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{total === 0 ? `This project has no ${noun}s.` : `No ${noun} matches.`}</p>
+      ) : (
+        <div className="flex max-h-64 flex-col gap-2 overflow-y-auto rounded-lg border p-3">
+          {items.map((c) => {
+            const id = `item-${c.value.replace(":", "-")}`;
+            return (
+              <Field key={c.value} orientation="horizontal">
+                <Checkbox id={id} checked={chosen.includes(c.value)} onCheckedChange={(v) => onToggle(c.value, v === true)} />
+                <FieldLabel htmlFor={id} className="min-w-0 font-normal">
+                  <span className="truncate">{c.name}</span>
+                  {c.state && (
+                    <>
+                      {" "}
+                      <StateBadge kind={c.state} />
+                    </>
+                  )}
+                </FieldLabel>
+              </Field>
+            );
+          })}
+        </div>
+      )}
+    </FieldSet>
+  );
+}
+
+/** Affected items: one search over a Monitors list and a Heartbeats list, with what is already broken marked. */
+function ItemPicker({ choices, chosen, onToggle, error }: { choices: IncidentItem[]; chosen: string[]; onToggle: (value: string, on: boolean) => void; error?: string | undefined }): ReactElement {
+  const [q, setQ] = useState("");
+  const { monitors, heartbeats } = pickItems(choices, q);
+  const all = pickItems(choices, "");
+  const names = choices.filter((c) => chosen.includes(c.value)).map((c) => c.name);
+  return (
+    <FieldSet className="gap-3" data-invalid={error ? true : undefined}>
+      <FieldLegend variant="label">
+        Affected monitors and heartbeats <span aria-hidden="true" className="text-destructive">*</span>
+      </FieldLegend>
+      {choices.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Add a monitor or heartbeat first.</p>
+      ) : (
+        <>
+          <Field>
+            <FieldLabel htmlFor="i-find" className="font-normal">
+              Find a monitor or heartbeat by name
+            </FieldLabel>
+            <Input id="i-find" type="search" value={q} onChange={(e) => setQ(e.target.value)} />
+          </Field>
+          {names.length > 0 && <p className="text-sm text-muted-foreground">Chosen: {names.join(", ")}.</p>}
+          <div className="mt-2 grid gap-4 sm:grid-cols-2">
+            <ItemList items={monitors} total={all.monitors.length} noun="monitor" chosen={chosen} onToggle={onToggle} />
+            <ItemList items={heartbeats} total={all.heartbeats.length} noun="heartbeat" chosen={chosen} onToggle={onToggle} />
+          </div>
+        </>
+      )}
+      {error && <FieldError>{error}</FieldError>}
+    </FieldSet>
+  );
+}
 
 /** Report an incident by hand: a title, the items it affects, a severity and the first update. */
 function IncidentFormBody({ onClose }: { onClose: () => void }): ReactElement {
@@ -75,26 +142,7 @@ function IncidentFormBody({ onClose }: { onClose: () => void }): ReactElement {
                     <Input id="i-title" autoFocus maxLength={120} aria-required aria-invalid={err("title") ? true : undefined} value={title} onChange={(e) => setTitle(e.target.value)} />
                     {err("title") && <FieldError>{err("title")}</FieldError>}
                   </Field>
-                  <FieldSet data-invalid={err("items") ? true : undefined}>
-                    <FieldLegend variant="label">
-                      Affected monitors and heartbeats <span aria-hidden="true" className="text-destructive">*</span>
-                    </FieldLegend>
-                    {choices.data.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">Add a monitor or heartbeat first.</p>
-                    ) : (
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        {choices.data.map((c, n) => (
-                          <Field key={c.value} orientation="horizontal">
-                            <Checkbox id={`item-${n}`} checked={items.includes(c.value)} onCheckedChange={(v) => toggle(c.value, v === true)} />
-                            <FieldLabel htmlFor={`item-${n}`} className="font-normal">
-                              {c.name}
-                            </FieldLabel>
-                          </Field>
-                        ))}
-                      </div>
-                    )}
-                    {err("items") && <FieldError>{err("items")}</FieldError>}
-                  </FieldSet>
+                  <ItemPicker choices={choices.data} chosen={items} onToggle={toggle} error={err("items")} />
                   <SeverityField value={severity} onChange={setSeverity} />
                   <Field data-invalid={err("message") ? true : undefined}>
                     <FieldLabel htmlFor="i-message" required>

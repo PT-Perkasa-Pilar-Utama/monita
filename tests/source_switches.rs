@@ -126,6 +126,16 @@ async fn without_auto_incident_a_failure_alerts_down_and_up_and_opens_nothing() 
         team["data"]["monitors"][0]["state"], "down",
         "the team sees it"
     );
+    let items = json_of(
+        app.api_get("/api/ui/projects/payments/incident-items", Some(&tl))
+            .await,
+    )
+    .await;
+    assert_eq!(
+        (&items["data"][0]["kind"], &items["data"][0]["state"]),
+        (&serde_json::json!("monitor"), &serde_json::json!("down")),
+        "the incident form shows it is down"
+    );
     let public = json_of(app.get("/api/ui/public/payments/status", None).await).await;
     assert!(
         !public.to_string().contains("\"down\""),

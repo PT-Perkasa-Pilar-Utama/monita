@@ -543,7 +543,7 @@ async fn a_manual_incident_marks_its_items_and_closes_on_resolved() {
     .await;
     assert_eq!(
         choices["data"],
-        json!([{ "value": "monitor:1", "name": "API health" }])
+        json!([{ "value": "monitor:1", "kind": "monitor", "name": "API health", "state": null }])
     );
     let none = app
         .api_post(

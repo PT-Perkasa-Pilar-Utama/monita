@@ -206,7 +206,8 @@ export type UpdateRow = { label: UpdateLabel; message: string; author_email: str
 
 export type IncidentDetail = { incident: IncidentRow; items: string[]; updates: UpdateRow[]; labels: UpdateLabel[] };
 
-export type IncidentItem = { value: string; name: string };
+/** A monitor or heartbeat a manual incident may name. `state` is set only when it is down or has an issue. */
+export type IncidentItem = { value: string; kind: "monitor" | "heartbeat"; name: string; state: "down" | "issue" | null };
 
 export type Stage = "triage" | "backlog" | "in_progress" | "done";
 

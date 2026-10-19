@@ -81,22 +81,32 @@ async fn list(
 struct Item {
     /// `monitor:<id>` or `heartbeat:<id>`, as the create body names it.
     value: String,
+    kind: &'static str,
     name: String,
+    /// `down` or `issue` as the team's pages show it; `None` when it is up.
+    state: Option<&'static str>,
 }
 
-/// The monitors and heartbeats a manual incident may name.
+/// The monitors and heartbeats a manual incident may name, with what is already broken.
 async fn items(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
     Path(slug): Path<String>,
 ) -> UiResult {
     let p = projects::find_for(&state.db, &user, &slug).await?;
+    let states = super::team_states_for(&state.db, p.id).await?;
     let items: Vec<Item> = super::item_names(&state.db, p.id)
         .await?
         .into_iter()
         .map(|(r, name)| Item {
             value: format!("{}:{}", r.kind.as_str(), r.id),
+            kind: r.kind.as_str(),
             name,
+            state: match states.get(&(r.kind, r.id)) {
+                Some(super::ItemState::Down) => Some("down"),
+                Some(super::ItemState::Issue) => Some("issue"),
+                Some(super::ItemState::Up) | None => None,
+            },
         })
         .collect();
     Ok(data(items))
