@@ -1,8 +1,8 @@
 import type { ReactElement, ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Mark } from "@/components/brand/Mark";
 import { ProjectBadge } from "@/components/app/ProjectBadge";
-import { Folder, LogOut, Moon, Sun, Undo2 } from "@/components/icons";
+import { AlertTriangle, BookOpen, Folder, LogOut, Moon, Settings, Sun, Ticket, Undo2 } from "@/components/icons";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,25 +18,53 @@ import { useTheme } from "@/components/layout/ThemeProvider";
 import { api } from "@/lib/api";
 import { lastProject } from "@/lib/lastProject";
 import { useMe } from "@/lib/session";
+import type { HomeCounts } from "@/lib/types";
+import { LIVE_MS, useApi } from "@/lib/useApi";
 import { cn } from "@/lib/utils";
 
 export const DOCS = "https://pt-perkasa-pilar-utama.github.io/monita/docs/";
 
-/** An area link at the top bar's right end. The open area is a raised pill. */
-function AreaLink({ to, label, icon, active }: { to: string; label: string; icon: ReactNode; active: boolean }): ReactElement {
+/** An area link in the header. The open area is a raised pill; a count sits beside the label.
+ * Below 1024 px only the icon shows. */
+function AreaLink({ to, label, icon, active, count, external, className }: { to: string; label: string; icon: ReactNode; active: boolean; count?: number | undefined; external?: boolean; className?: string }): ReactElement {
+  const body = (
+    <>
+      {icon}
+      <span className="hidden lg:inline">{label}</span>
+      {count !== undefined && count > 0 && <span className="min-w-[18px] rounded-full bg-muted px-1.5 text-center text-xs font-semibold tabular-nums text-foreground">{count.toLocaleString()}</span>}
+    </>
+  );
   return (
-    <Button
-      asChild
-      variant="ghost"
-      size="sm"
-      title={label}
-      className={cn(active && "bg-background font-semibold text-foreground ring-1 ring-border hover:bg-background")}
-    >
-      <Link to={to} aria-current={active ? "page" : undefined}>
-        {icon}
-        <span className="hidden md:inline">{label}</span>
-      </Link>
+    <Button asChild variant="ghost" size="sm" title={label} className={cn(active && "bg-background font-semibold text-foreground ring-1 ring-border hover:bg-background", className)}>
+      {external ? (
+        <a href={to} target="_blank" rel="noreferrer" aria-label={`${label}, opens in a new tab`}>
+          {body}
+        </a>
+      ) : (
+        <Link to={to} aria-current={active ? "page" : undefined} aria-label={label}>
+          {body}
+        </Link>
+      )}
     </Button>
+  );
+}
+
+/** The header's areas: Projects, Incidents and Tickets across your projects, Admin settings for a
+ * super admin, and the documentation. */
+function AreaLinks(): ReactElement {
+  const me = useMe();
+  const { pathname } = useLocation();
+  const counts = useApi<HomeCounts>("/home-counts", LIVE_MS).data;
+  const at = (p: string): boolean => pathname === p || pathname.startsWith(`${p}/`);
+  return (
+    <>
+      <AreaLink to="/" label="Projects" icon={<Folder />} active={pathname === "/" || at("/projects")} />
+      <AreaLink to="/incidents" label="Incidents" icon={<AlertTriangle />} active={at("/incidents")} count={counts?.incidents} />
+      <AreaLink to="/tickets" label="Tickets" icon={<Ticket />} active={at("/tickets")} count={counts?.tickets} />
+      {/* On a phone these two move into the account menu, so the project name keeps its room. */}
+      {me.is_admin && <AreaLink to="/admin/users" label="Admin settings" icon={<Settings />} active={at("/admin")} className="max-sm:hidden" />}
+      <AreaLink to={DOCS} label="Documentation" icon={<BookOpen />} active={false} external className="max-sm:hidden" />
+    </>
   );
 }
 
@@ -70,6 +98,20 @@ function AccountMenu(): ReactElement {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
+          {me.is_admin && (
+            <DropdownMenuItem asChild className="sm:hidden">
+              <Link to="/admin/users">
+                <Settings />
+                Admin settings
+              </Link>
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuItem asChild className="sm:hidden">
+            <a href={DOCS} target="_blank" rel="noreferrer">
+              <BookOpen />
+              Documentation
+            </a>
+          </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => setTheme(resolved === "dark" ? "light" : "dark")}>
             {resolved === "dark" ? <Sun /> : <Moon />}
             Toggle theme
@@ -125,10 +167,10 @@ export function TopBar({ crumb, tabs }: { crumb?: ReactNode; tabs?: ReactNode })
               {place}
             </>
           )}
-          <nav aria-label="Account" className="ml-auto flex items-center gap-3">
-            {crumb && <AreaLink to="/" label="Projects" icon={<Folder />} active={false} />}
-            <AccountMenu />
+          <nav aria-label="Areas" className="ml-auto flex items-center gap-1">
+            <AreaLinks />
           </nav>
+          <AccountMenu />
         </div>
       </div>
       {tabs}
