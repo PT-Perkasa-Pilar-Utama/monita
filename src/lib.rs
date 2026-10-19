@@ -3,6 +3,7 @@
 
 pub mod accounts;
 pub mod app;
+pub mod changelog;
 pub mod checks;
 pub mod cli;
 pub mod home;

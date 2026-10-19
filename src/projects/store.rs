@@ -32,7 +32,7 @@ pub struct ApiKeyRow {
     pub created_at: i64,
 }
 
-const COLS: &str = "p.id, p.owner_id, u.email, p.name, p.slug, p.ip_allowlist, p.created_at, u.disabled_at IS NULL, p.description, p.icon_at, p.show_known_issues, p.show_report, p.show_incidents, p.homepage_url";
+const COLS: &str = "p.id, p.owner_id, u.email, p.name, p.slug, p.ip_allowlist, p.created_at, u.disabled_at IS NULL, p.description, p.icon_at, p.show_known_issues, p.show_report, p.show_incidents, p.homepage_url, p.show_changelog";
 
 fn row(r: &turso::Row) -> turso::Result<Project> {
     Ok(Project {
@@ -50,6 +50,7 @@ fn row(r: &turso::Row) -> turso::Result<Project> {
             incidents: r.get::<i64>(12)? == 1,
             known_issues: r.get::<i64>(10)? == 1,
             report: r.get::<i64>(11)? == 1,
+            changelog: r.get::<i64>(14)? == 1,
         },
         homepage_url: r.get(13)?,
     })
@@ -268,8 +269,8 @@ pub async fn set_pages(
     at: i64,
 ) -> anyhow::Result<()> {
     c.execute(
-        "UPDATE projects SET show_known_issues = ?1, show_report = ?2, show_incidents = ?5, updated_at = ?3 WHERE id = ?4",
-        (p.known_issues as i64, p.report as i64, at, project_id, p.incidents as i64),
+        "UPDATE projects SET show_known_issues = ?1, show_report = ?2, show_incidents = ?5, show_changelog = ?6, updated_at = ?3 WHERE id = ?4",
+        (p.known_issues as i64, p.report as i64, at, project_id, p.incidents as i64, p.changelog as i64),
     )
     .await?;
     Ok(())

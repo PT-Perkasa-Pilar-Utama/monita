@@ -14,7 +14,7 @@ export type Project = {
 };
 
 /** The public tabs besides Status, which always shows. */
-export type PublicPages = { incidents: boolean; known_issues: boolean; report: boolean };
+export type PublicPages = { incidents: boolean; known_issues: boolean; report: boolean; changelog: boolean };
 
 export type Owner = { email: string; role: string };
 
@@ -34,7 +34,7 @@ export type ProjectList = {
   owner_options: string[];
 };
 
-export type TabCounts = { monitors: number; heartbeats: number; incidents: number; tickets: number };
+export type TabCounts = { monitors: number; heartbeats: number; incidents: number; tickets: number; changelog: number };
 
 export type ProjectHead = { project: Project; counts: TabCounts };
 
@@ -358,3 +358,18 @@ export type HomeList<K extends string, T> = Record<K, T[]> & { total: number; pa
 
 /** The numbers beside the top menu. */
 export type HomeCounts = { projects: number; incidents: number; tickets: number };
+
+/** One kind of change in a release, and its lines. */
+export type ReleaseSection = { tag: "Added" | "Changed" | "Fixed" | "Removed"; items: string[] };
+
+/** A release as the team edits it. */
+export type Release = { id: number; version: string; released_on: string; title: string; sections: ReleaseSection[] };
+
+export type ReleaseList = { releases: Release[]; total: number; page: number; page_size: number };
+
+/** A release in the public index. */
+export type ReleaseHead = { version: string; title: string; released_on: string };
+
+export type PublicReleaseIndex = { releases: ReleaseHead[]; older: string | null };
+
+export type PublicRelease = { release: Omit<Release, "id">; newer: ReleaseHead | null; older: ReleaseHead | null };

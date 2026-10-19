@@ -57,6 +57,7 @@ const MIGRATIONS: &[(i64, &str)] = &[
         20,
         include_str!("../../migrations/0020_project_homepage.sql"),
     ),
+    (21, include_str!("../../migrations/0021_changelog.sql")),
 ];
 
 pub async fn run(db: &Db) -> anyhow::Result<()> {

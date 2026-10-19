@@ -50,6 +50,7 @@ site/                 landing page and docs site builder    docs/guide/ user doc
 | notify | alert_routes, outbox | `send(Event)`: inserts outbox rows, never blocks; `create_routes`, `purge_delivered` |
 | status | none | public page and JSON |
 | home | none | cross-project Incidents and Tickets pages, top menu counts |
+| changelog | changelog_entries | `count`; team CRUD and the public Changelog tab in its `api.rs` |
 | tickets | ref_ids, tickets | `issue_ref_id`, `submit` |
 | platform | settings, schema_migrations | `Db`, `ui` (envelope, `Body`, `public_cache`), `now`, config |
 

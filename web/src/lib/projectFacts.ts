@@ -5,6 +5,7 @@ const TAB_NAMES: [keyof PublicPages, string][] = [
   ["incidents", "Incidents"],
   ["known_issues", "Issues"],
   ["report", "Ticket"],
+  ["changelog", "Changelog"],
 ];
 
 /** The public tabs that are on, Uptime first because it always shows. */

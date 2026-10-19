@@ -112,6 +112,9 @@ pub struct PublicPages {
     pub known_issues: bool,
     /// The Report a bug tab: the form and the reporter's own tickets, both behind a ref ID.
     pub report: bool,
+    /// The Changelog tab. Missing means off: it starts off on every project.
+    #[serde(default)]
+    pub changelog: bool,
 }
 
 fn on() -> bool {
@@ -125,6 +128,7 @@ pub struct TabCounts {
     pub heartbeats: i64,
     pub incidents: i64,
     pub tickets: i64,
+    pub changelog: i64,
 }
 
 /// The numbers beside a project's tabs, each read through its module's interface.
@@ -135,6 +139,7 @@ pub async fn tab_counts(db: &Db, project_id: i64) -> anyhow::Result<TabCounts> {
         heartbeats,
         incidents: crate::incidents::open_count(db, project_id).await?,
         tickets: crate::tickets::open_count(db, project_id).await?,
+        changelog: crate::changelog::count(db, project_id).await?,
     })
 }
 

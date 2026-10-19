@@ -34,6 +34,8 @@ import { Users } from "@/pages/admin/users/Users";
 import { AllIncidents } from "@/pages/AllIncidents";
 import { AllTickets } from "@/pages/AllTickets";
 import { Invite } from "@/pages/Invite";
+import { Changelog } from "@/pages/project/Changelog";
+import { PublicChangelog } from "@/pages/public/Changelog";
 import { Login } from "@/pages/Login";
 import { NotFound } from "@/pages/NotFound";
 import { Projects } from "@/pages/Projects";
@@ -70,6 +72,7 @@ export default function App(): ReactElement {
         <Route path="incidents" element={<Incidents />} />
         <Route path="incidents/new" element={<Incidents creating />} />
         <Route path="incidents/:id" element={<Incident />} />
+        <Route path="changelog" element={<Changelog />} />
         <Route path="tickets/done" element={<DoneTickets />} />
         <Route path="tickets/:number?" element={<Tickets />} />
         <Route element={<SettingsLayout />}>
@@ -89,6 +92,7 @@ export default function App(): ReactElement {
         <Route path="history" element={<History />} />
         <Route path="issues" element={<Issues />} />
         <Route path="ticket" element={<Ticket />} />
+        <Route path="changelog/:version?" element={<PublicChangelog />} />
         <Route path="tickets" element={<Navigate to="../issues" replace />} />
         <Route path="report" element={<Navigate to="../ticket" replace />} />
         <Route path="mine" element={<Navigate to="../ticket" replace />} />

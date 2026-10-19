@@ -41,6 +41,8 @@ pub const OPEN_INCIDENTS: i64 = SOURCES_PER_PROJECT + OPEN_MANUAL_PER_PROJECT;
 pub const PUBLIC_RECENT: i64 = 10;
 /// Incidents per page of the public incident history.
 pub const PUBLIC_HISTORY_PAGE: i64 = 25;
+/// Releases per page of a changelog, on the team's list and the public index.
+pub const CHANGELOG_PAGE: i64 = 25;
 /// Rows per page of the cross-project Incidents and Tickets lists.
 pub const ACROSS_PAGE: i64 = 25;
 /// Automatic-incident spans read for one project's window. A source that flaps faster than this

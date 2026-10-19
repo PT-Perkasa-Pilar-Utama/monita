@@ -711,8 +711,8 @@ async fn a_public_tab_turned_off_answers_404_and_the_app_api_still_files() {
     let project = read(&app, "/api/ui/public/payments", None).await;
     assert_eq!(
         project["pages"],
-        json!({ "incidents": true, "known_issues": true, "report": false }),
-        "a client that leaves out incidents keeps the tab"
+        json!({ "incidents": true, "known_issues": true, "report": false, "changelog": false }),
+        "a client that leaves out incidents keeps it, and changelog stays off"
     );
 
     let rid = ref_id(&app, &s.key, false).await;
