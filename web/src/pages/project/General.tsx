@@ -3,7 +3,6 @@ import type { FormEvent, ReactElement } from "react";
 import { useNavigate } from "react-router-dom";
 import { IconPicker } from "@/components/app/IconPicker";
 import { SettingsPage, SettingsSection } from "@/components/app/SettingsSection";
-import { StatusPageSection } from "@/components/app/StatusPageSection";
 import { UserPicker } from "@/components/app/UserPicker";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -217,13 +216,11 @@ export function General(): ReactElement {
       title="General"
       toc={[
         { id: "project", label: "Project" },
-        { id: "status-page", label: "Status page" },
         { id: "owner", label: "Owner" },
         ...(me.is_admin ? [{ id: "danger-zone", label: "Danger zone" }] : []),
       ]}
     >
       <ProjectSection />
-      <StatusPageSection />
       <SettingsSection
         id="owner"
         title="Owner"

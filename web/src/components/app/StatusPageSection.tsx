@@ -37,9 +37,9 @@ export function StatusPageSection(): ReactElement {
   };
   return (
     <SettingsSection
-      id="status-page"
-      title="Status page"
-      description="Visitors see the monitors and heartbeats you make public, and the tabs you choose here."
+      id="tabs"
+      title="Tabs visitors see"
+      description="The page shows the monitors and heartbeats you make public. Turn off a tab your team does not use."
       footerNote={
         <a href={`/status/${p.slug}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-mono break-all text-link underline-offset-4 hover:underline">
           {window.location.origin}/status/{p.slug}
@@ -54,7 +54,7 @@ export function StatusPageSection(): ReactElement {
       }
     >
       <FieldSet className="gap-3">
-        <FieldLegend variant="label">Tabs visitors see</FieldLegend>
+        <FieldLegend className="sr-only">Tabs visitors see</FieldLegend>
         <Field orientation="horizontal" data-disabled>
           <Checkbox id="tab-status" checked disabled />
           <FieldLabel htmlFor="tab-status" className="font-normal">

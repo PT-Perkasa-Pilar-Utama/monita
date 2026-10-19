@@ -7,7 +7,7 @@
 | Project | `layouts/ProjectLayout.tsx` | `TopBar` (project crumb, `PageTabs`) then `PageFrame` then the page |
 | App | `layouts/AppLayout.tsx` | `TopBar` then `PageFrame`. Projects and Admin pages. |
 | Admin | `layouts/AdminLayout.tsx` | `SidebarFrame` with `SideNav` (Users, System). A non-admin gets the not-found page. |
-| Settings | `layouts/SettingsLayout.tsx` | `SidebarFrame` with `SideNav` (General, Alerts, API keys, Allowlist) |
+| Settings | `layouts/SettingsLayout.tsx` | `SidebarFrame` with `SideNav` (General, Status page, Alerts, API keys, Allowlist) |
 | Public | `layouts/PublicLayout.tsx` | Sticky header (project name, `ThemeToggle`, `PageTabs`), `PageFrame`, footer |
 | Bare | `layouts/BareLayout.tsx` | Sign-in and invite: the brand, one card (max 420 px), a footer, `ThemeToggle` |
 
@@ -20,7 +20,7 @@ Under 768 px (`md`) a side navigation becomes one scrolling row. The tab bar scr
 | Top bar | Mark and project crumb, Projects, Admin (super admin: Users, System), Docs, account menu |
 | Account menu | Who is signed in, All projects, theme switch, Sign out |
 | Project tabs | Overview, Monitors, Heartbeats, Incidents, Tickets, Settings. Status page sits at the right end and leaves the app for `/status/{slug}`. |
-| Settings side nav | General, Alerts, API keys, Allowlist |
+| Settings side nav | General, Status page, Alerts, API keys, Allowlist |
 | Public tabs | Status (also History), Known issues, Report a bug, My tickets |
 
 Only Settings and Admin have a side navigation. Every list stays full width. Counts show beside Monitors, Heartbeats, Incidents and Tickets when above zero.

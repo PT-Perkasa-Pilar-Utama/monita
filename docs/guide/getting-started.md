@@ -36,7 +36,7 @@ Sign in as `tl@monita.test` with the password `monita-dev-password`.
 
 1. On **Projects**, select **New project** and enter a name. Monita makes the slug from the name plus 6 random characters, for example `payments-k3x9qa`. The status page lives at `/status/<slug>`.
    You may add a description and an icon. The page shrinks the icon to a small square before it sends it. A super admin can also type the owner's email; a tech lead owns the projects they create.
-2. Open the project. Its tabs are Overview, Monitors, Heartbeats, Incidents, Tickets and Settings. Settings holds General, Alerts, API keys and Allowlist.
+2. Open the project. Its tabs are Overview, Monitors, Heartbeats, Incidents, Tickets and Settings. Settings holds General, Status page, Alerts, API keys and Allowlist.
 
 ## Watch a URL
 
