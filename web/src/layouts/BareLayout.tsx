@@ -13,7 +13,7 @@ export function BareLayout({ children, scene }: { children: ReactNode; scene?: R
         <div className="flex flex-col items-center gap-3 text-center">
           <Mark className="size-12 text-primary" />
           <p className="text-3xl font-bold tracking-tight">Monita</p>
-          <p className="text-muted-foreground">Uptime, incidents and status pages for your team.</p>
+          <p className="text-muted-foreground">Site reliability for every project your team ships.</p>
         </div>
         <div className="w-full max-w-[420px]">{children}</div>
         <footer className="flex flex-col items-center gap-2 text-sm text-muted-foreground">

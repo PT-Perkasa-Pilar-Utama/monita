@@ -2,7 +2,9 @@
 
 <img src="docs/assets/logo.svg" alt="Monita" width="236">
 
-**Monita checks your team's websites and scheduled jobs, alerts your team when one fails, and shows the outage on a public status page.**
+### Site reliability for every project your team ships.
+
+Monita checks your team's websites and scheduled jobs, alerts your team when one fails, and shows the outage on a public status page.
 You run it on your own server as one program, and it keeps all its data in one SQLite file.
 
 [![CI](https://github.com/PT-Perkasa-Pilar-Utama/monita/actions/workflows/ci.yml/badge.svg)](https://github.com/PT-Perkasa-Pilar-Utama/monita/actions/workflows/ci.yml)
@@ -12,6 +14,8 @@ You run it on your own server as one program, and it keeps all its data in one S
 **[Try the demo](https://pt-perkasa-pilar-utama.github.io/monita/demo/)** &nbsp;&nbsp;
 **[Docs](https://pt-perkasa-pilar-utama.github.io/monita/docs/)** &nbsp;&nbsp;
 **[Install](#install)**
+
+<img src="docs/assets/moni.svg" alt="Moni, the Monita mascot, and friends at play: flying a kite, playing catch, stacking uptime blocks and blowing bubbles" width="100%">
 
 </div>
 

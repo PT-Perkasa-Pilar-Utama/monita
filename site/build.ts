@@ -275,7 +275,7 @@ function main(): void {
   page(join(OUT, "docs", "index.html"), overview(pages));
   page(join(OUT, "index.html"), readFileSync(join(import.meta.dir, "index.html"), "utf8").replace("<!-- topbar -->", topbar("", "home"))
     .replace("<!-- og -->", ogTags(
-      "Monita: self-hosted uptime monitoring, heartbeats and status pages",
+      "Monita: site reliability for every project your team ships",
       "Monita checks your team's URLs and cron jobs, opens an incident after two failed checks, alerts the people you choose by email and webhook, and shows it on a public status page. You host it yourself.",
       "",
     )));
