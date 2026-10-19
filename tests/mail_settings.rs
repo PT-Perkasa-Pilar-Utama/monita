@@ -109,12 +109,15 @@ async fn a_test_email_goes_out_at_once_and_says_whether_it_went() {
 
     let res = json_of(app.api_post(path, to, Some(&admin)).await).await;
     assert_eq!(res["data"]["ok"], true);
-    let sent = app.state.mailer.sent();
-    assert_eq!(
-        (sent.len(), sent[0].to.as_str()),
-        (1, "ops@x.co"),
-        "sent now, not queued"
-    );
+    // The tech lead's invite may go out through the delivery loop too; count only the test.
+    let tests = app
+        .state
+        .mailer
+        .sent()
+        .into_iter()
+        .filter(|m| m.to == "ops@x.co")
+        .count();
+    assert_eq!(tests, 1, "sent now, not queued");
 }
 
 #[tokio::test]
