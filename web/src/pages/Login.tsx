@@ -7,6 +7,7 @@ import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { BareLayout } from "@/layouts/BareLayout";
+import { PeekingMoni, Playground } from "@/components/brand/Playground";
 import { api, errorText } from "@/lib/api";
 
 /** Where to go after signing in: a path on this site only. */
@@ -41,8 +42,9 @@ export function Login(): ReactElement {
   };
 
   return (
-    <BareLayout>
-      <Card>
+    <BareLayout scene={<Playground />}>
+      <Card className="relative mt-4">
+        <PeekingMoni className="absolute -top-[44px] right-8 h-[46px] w-[100px]" />
         <CardHeader>
           <CardTitle>
             <h1 className="text-xl">Sign in</h1>

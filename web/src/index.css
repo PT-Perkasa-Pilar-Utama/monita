@@ -149,7 +149,7 @@
   h1, h2, h3 { letter-spacing: -0.022em; }
   code, kbd, pre, .font-mono { font-feature-settings: normal; }
   @media (prefers-reduced-motion: reduce) {
-    *, ::before, ::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+    *, ::before, ::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
   }
 }
 
@@ -166,3 +166,7 @@ body:has(header[data-has-tabs]) { --bar-h: 101px; }
 @keyframes monita-ping { to { stroke-dashoffset: -22; } }
 @keyframes monita-blink { 0%, 94%, 100% { transform: scaleY(1); } 97% { transform: scaleY(0.1); } }
 @keyframes monita-beat { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+@keyframes monita-bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-22px); } }
+@keyframes monita-toss { from { offset-distance: 0%; } to { offset-distance: 100%; } }
+@keyframes monita-rise { 0% { transform: translateY(0); opacity: 0; } 15% { opacity: 1; } 100% { transform: translateY(-70px); opacity: 0; } }
+@keyframes monita-sway { 0%, 100% { transform: rotate(-6deg); } 50% { transform: rotate(6deg); } }
