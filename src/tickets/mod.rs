@@ -234,9 +234,11 @@ pub async fn find(db: &Db, project_id: i64, number: i64) -> anyhow::Result<Optio
     store::find(&db.read().await?, project_id, number).await
 }
 
-/// US-25. Done needs a close reason; leaving Done clears it.
+/// US-25. Done needs a close reason; leaving Done clears it. A move to another column calls the
+/// move webhook in the same write.
 pub async fn move_stage(
     db: &Db,
+    base_url: &str,
     project_id: i64,
     number: i64,
     stage: &str,
@@ -258,7 +260,21 @@ pub async fn move_stage(
     };
     let t = now();
     Ok(db
-        .write(async |c| store::set_stage(c, project_id, number, stage, reason, t).await)
+        .write(async |c| {
+            let Some(before) = store::find(c, project_id, number).await? else {
+                return Ok(false);
+            };
+            store::set_stage(c, project_id, number, stage, reason, t).await?;
+            let moved = crate::notify::Moved {
+                number,
+                title: &before.title,
+                from: &before.stage,
+                to: stage,
+                close_reason: reason,
+            };
+            crate::notify::send_ticket_moved(c, project_id, &moved, base_url).await?;
+            Ok(true)
+        })
         .await?)
 }
 

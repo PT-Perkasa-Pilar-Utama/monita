@@ -61,7 +61,7 @@ function Severities(): ReactElement {
       <p className="text-muted-foreground">
         An incident opens after 2 failed checks in a row, a missed heartbeat or a fail ping, and closes on the next good one. Each recipient gets one alert when it opens and one
         when it closes. A monitor or heartbeat with incidents off sends a down alert and an up alert instead. One with alerts off sends nothing. A manual incident
-        sends no alert; it shows on the status page. New tickets have their own settings in Ticket alerts.
+        sends no alert; it shows on the status page. New tickets and ticket moves have their own settings in Ticket alerts.
       </p>
     </Part>
   );
@@ -96,7 +96,11 @@ function Samples({ slug, webhooks }: { slug: string; webhooks: Record<string, st
             </div>
           ) : (
             <p className="text-muted-foreground">
-              {p.event === "ticket.created" ? "Each ticket sends no email of its own. The owner's daily digest lists the new ones." : "This alert sends no email."}
+              {p.event === "ticket.created"
+                ? "Each ticket sends no email of its own. The owner's daily digest lists the new ones."
+                : p.event === "ticket.moved"
+                  ? "A move sends no email. Only the webhook gets it, when moves are on in Ticket alerts."
+                  : "This alert sends no email."}
             </p>
           )}
           <h4 className="font-semibold">Webhook</h4>
@@ -109,7 +113,7 @@ function Samples({ slug, webhooks }: { slug: string; webhooks: Record<string, st
             {JSON.stringify(p.webhook, null, 2)}
           </div>
           <p className="text-muted-foreground">
-            {p.route === "ticket" ? "Goes to the webhook in Ticket alerts when it is on." : `Goes to the ${p.route} webhook when it is on.`} <code className="font-mono">at</code> is
+            {p.event === "ticket.moved" ? "Goes to the webhook in Ticket alerts when moves are on." : p.route === "ticket" ? "Goes to the webhook in Ticket alerts when new tickets are on." : `Goes to the ${p.route} webhook when it is on.`} <code className="font-mono">at</code> is
             Unix seconds, UTC.
           </p>
         </div>

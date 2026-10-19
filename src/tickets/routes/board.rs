@@ -62,7 +62,8 @@ pub(super) async fn move_stage(
 ) -> UiResult {
     let p = projects::find_for(&state.db, &user, &slug).await?;
     let reason = f.close_reason.as_deref().filter(|r| !r.is_empty());
-    done(crate::tickets::move_stage(&state.db, p.id, number, &f.stage, reason).await?)
+    let base = &state.config.base_url;
+    done(crate::tickets::move_stage(&state.db, base, p.id, number, &f.stage, reason).await?)
 }
 
 #[derive(Deserialize, Default)]

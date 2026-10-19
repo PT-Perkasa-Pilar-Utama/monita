@@ -151,7 +151,7 @@ export function Alerts(): ReactElement {
   const t = ticketHook ?? tickets.data;
   const webhooks: Record<string, string | null> = {
     ...Object.fromEntries((routes.data ?? []).map((r) => [r.severity, r.use_webhook ? r.webhook_url : null])),
-    ticket: t?.use_webhook ? t.webhook_url : null,
+    ticket: t?.use_webhook || t?.webhook_moves ? t.webhook_url : null,
   };
   return (
     <SettingsPage

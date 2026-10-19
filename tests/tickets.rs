@@ -420,7 +420,7 @@ async fn each_new_ticket_calls_the_ticket_webhook_and_never_the_warning_one() {
     let alerts = "/api/ui/projects/payments/ticket-alerts";
     assert_eq!(
         read(&app, alerts, Some(&s.tl)).await,
-        json!({"enabled": true, "digest": true, "webhook_url": null, "use_webhook": false}),
+        json!({"enabled": true, "digest": true, "webhook_url": null, "use_webhook": false, "webhook_moves": false}),
         "a new project: digest on, webhook off"
     );
     let put = |body: Value| app.api_send(reqwest::Method::PUT, alerts, body, Some(&s.tl));
@@ -460,6 +460,59 @@ async fn each_new_ticket_calls_the_ticket_webhook_and_never_the_warning_one() {
     assert_eq!(calls[0].1["event"], "ticket.created");
     assert_eq!(calls[0].1["ticket_number"], 2);
     assert_eq!(calls[0].1["text"], "[TICKET] Payments #2: On: webhook");
+}
+
+#[tokio::test]
+async fn a_column_move_calls_the_ticket_webhook_only_when_moves_are_on() {
+    let app = TestApp::spawn("test").await;
+    let s = setup(&app).await;
+    let rid = ref_id(&app, &s.key, false).await;
+    submit(&app, &rid, "Checkout broken").await;
+    let alerts = "/api/ui/projects/payments/ticket-alerts";
+    let put = |body: Value| app.api_send(reqwest::Method::PUT, alerts, body, Some(&s.tl));
+    let hooks = "SELECT count(*) FROM outbox WHERE channel = 'webhook'";
+
+    let res = put(json!({"digest": true, "webhook_moves": true})).await;
+    assert_eq!(res.status(), 422, "moves need the webhook URL");
+    let url = "http://127.0.0.1:9/t";
+    let off = json!({"digest": true, "webhook_url": url, "webhook_moves": false});
+    assert_eq!(put(off).await.status(), 204);
+    stage(&app, &s.tl, json!({ "stage": "backlog" })).await;
+    assert_eq!(
+        count(&app, hooks).await,
+        0,
+        "moves off: the URL alone sends nothing"
+    );
+
+    let on = json!({"digest": true, "webhook_url": url, "webhook_moves": true});
+    assert_eq!(put(on).await.status(), 204);
+    stage(&app, &s.tl, json!({ "stage": "backlog" })).await;
+    assert_eq!(count(&app, hooks).await, 0, "the same column is no move");
+    let done = json!({ "stage": "done", "close_reason": "fixed" });
+    assert_eq!(stage(&app, &s.tl, done).await.status(), 204);
+    submit(&app, &rid, "New tickets stay off").await;
+    assert_eq!(count(&app, hooks).await, 1, "one move; new tickets are off");
+
+    let c = app.state.db.read().await.unwrap();
+    let body: String = monita::platform::db::query_all(
+        &c,
+        "SELECT body FROM outbox WHERE channel = 'webhook'",
+        (),
+        |r| r.get(0),
+    )
+    .await
+    .unwrap()
+    .remove(0);
+    let body: Value = serde_json::from_str(&body).unwrap();
+    assert_eq!(body["event"], "ticket.moved");
+    assert_eq!(
+        body["text"],
+        "[TICKET] Payments #1 moved from Backlog to Done (Fixed): Checkout broken"
+    );
+    assert_eq!(
+        (&body["from"], &body["to"], &body["close_reason"]),
+        (&json!("backlog"), &json!("done"), &json!("fixed"))
+    );
 }
 
 #[tokio::test]

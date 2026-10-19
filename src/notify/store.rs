@@ -168,20 +168,22 @@ pub async fn create_routes(c: &Connection, project_id: i64) -> anyhow::Result<()
     Ok(())
 }
 
-/// Who hears about new tickets: the owner's daily digest, and a webhook per ticket.
+/// Who hears about tickets: the owner's daily digest of new ones, and a webhook for each new
+/// ticket and, on its own switch, each column move.
 #[derive(serde::Serialize, Debug, PartialEq, Eq)]
 pub struct TicketAlerts {
     pub enabled: bool,
     pub digest: bool,
     pub webhook_url: Option<String>,
     pub use_webhook: bool,
+    pub webhook_moves: bool,
 }
 
 /// A project with no row has the defaults: digest on, webhook off.
 pub async fn ticket_alerts(c: &Connection, project_id: i64) -> anyhow::Result<TicketAlerts> {
     let mut rows = c
         .query(
-            "SELECT digest, webhook_url, use_webhook, enabled FROM ticket_alerts WHERE project_id = ?1",
+            "SELECT digest, webhook_url, use_webhook, enabled, webhook_moves FROM ticket_alerts WHERE project_id = ?1",
             [project_id],
         )
         .await?;
@@ -191,12 +193,14 @@ pub async fn ticket_alerts(c: &Connection, project_id: i64) -> anyhow::Result<Ti
             digest: r.get::<i64>(0)? == 1,
             webhook_url: r.get(1)?,
             use_webhook: r.get::<i64>(2)? == 1,
+            webhook_moves: r.get::<i64>(4)? == 1,
         },
         None => TicketAlerts {
             enabled: true,
             digest: true,
             webhook_url: None,
             use_webhook: false,
+            webhook_moves: false,
         },
     })
 }
@@ -207,9 +211,10 @@ pub async fn save_ticket_alerts(
     a: &TicketAlerts,
 ) -> anyhow::Result<()> {
     c.execute(
-        "INSERT INTO ticket_alerts (project_id, digest, webhook_url, use_webhook) VALUES (?1, ?2, ?3, ?4)
-         ON CONFLICT (project_id) DO UPDATE SET digest = excluded.digest, webhook_url = excluded.webhook_url, use_webhook = excluded.use_webhook",
-        (project_id, a.digest, a.webhook_url.as_deref(), a.use_webhook),
+        "INSERT INTO ticket_alerts (project_id, digest, webhook_url, use_webhook, webhook_moves) VALUES (?1, ?2, ?3, ?4, ?5)
+         ON CONFLICT (project_id) DO UPDATE SET digest = excluded.digest, webhook_url = excluded.webhook_url,
+           use_webhook = excluded.use_webhook, webhook_moves = excluded.webhook_moves",
+        (project_id, a.digest, a.webhook_url.as_deref(), a.use_webhook, a.webhook_moves),
     )
     .await?;
     Ok(())

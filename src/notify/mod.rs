@@ -23,7 +23,9 @@ pub use digest::digest;
 pub use mailer::{Mailer, SentEmail};
 pub use preview::{Preview, previews};
 pub use store::{Route, TicketAlerts};
-pub use tickets::{save_ticket_alerts, send_ticket, send_ticket_test, ticket_alerts};
+pub use tickets::{
+    Moved, save_ticket_alerts, send_ticket, send_ticket_moved, send_ticket_test, ticket_alerts,
+};
 
 /// AC-15.02: a new project's two routes. Critical calls its webhook once one is set; warning does not.
 pub async fn create_routes(c: &Connection, project_id: i64) -> anyhow::Result<()> {

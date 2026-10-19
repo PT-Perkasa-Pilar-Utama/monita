@@ -141,9 +141,11 @@ struct TicketAlertsInput {
     webhook_url: String,
     #[serde(default)]
     use_webhook: bool,
+    #[serde(default)]
+    webhook_moves: bool,
 }
 
-/// The owner's daily digest and the webhook per new ticket, each on or off.
+/// The owner's daily digest, the webhook per new ticket and the webhook per move, each on or off.
 async fn save_ticket_alerts(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
@@ -151,8 +153,15 @@ async fn save_ticket_alerts(
     Body(f): Body<TicketAlertsInput>,
 ) -> UiResult {
     let p = projects::find_for(&state.db, &user, &slug).await?;
-    match super::save_ticket_alerts(&state.db, p.id, f.digest, &f.webhook_url, f.use_webhook).await
-    {
+    let saved = super::save_ticket_alerts(
+        &state.db,
+        p.id,
+        f.digest,
+        &f.webhook_url,
+        f.use_webhook,
+        f.webhook_moves,
+    );
+    match saved.await {
         Ok(()) => Ok(StatusCode::NO_CONTENT.into_response()),
         Err(RouteError::Other(e)) => Err(e.into()),
         Err(e) => Err(UiError::field("webhook_url", e.to_string())),

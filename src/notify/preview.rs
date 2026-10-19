@@ -2,13 +2,14 @@
 
 use serde::Serialize;
 
-use super::{compose, test_message, ticket_json};
+use super::{compose, test_message, ticket_json, tickets::Moved, tickets::ticket_moved_json};
 use crate::incidents::Event;
 
 /// One kind of alert as its recipients get it.
 #[derive(Serialize)]
 pub struct Preview {
-    /// The webhook `event` field: `incident.opened`, `incident.resolved`, `ticket.created`, `test`.
+    /// The webhook `event` field: `incident.opened`, `incident.resolved`, `ticket.created`,
+    /// `ticket.moved`, `test`.
     pub event: &'static str,
     pub label: &'static str,
     /// The settings that send it: `critical`, `warning` or `ticket`.
@@ -76,6 +77,20 @@ pub fn previews(name: &str, slug: &str, base_url: &str, at: i64) -> Vec<Preview>
             at,
         ),
     });
+    let moved = Moved {
+        number: 17,
+        title: "Export to Excel drops the last row",
+        from: "in_progress",
+        to: "done",
+        close_reason: Some("fixed"),
+    };
+    out.push(Preview {
+        event: "ticket.moved",
+        label: "Ticket moved",
+        route: "ticket",
+        email: None,
+        webhook: ticket_moved_json(name, slug, &moved, base_url, at),
+    });
     let (subject, body, webhook) = test_message(name, slug, "critical", base_url, at);
     out.push(Preview {
         event: "test",
@@ -99,6 +114,7 @@ mod tests {
                 "incident.opened",
                 "incident.resolved",
                 "ticket.created",
+                "ticket.moved",
                 "test"
             ]
         );
@@ -116,8 +132,12 @@ mod tests {
         );
         assert!(all[2].email.is_none(), "a ticket sends no email");
         assert_eq!(all[2].route, "ticket");
+        assert_eq!(
+            all[3].webhook["text"],
+            "[TICKET] Payments #17 moved from In progress to Done (Fixed): Export to Excel drops the last row"
+        );
         assert!(
-            all[3]
+            all[4]
                 .email
                 .as_ref()
                 .unwrap()

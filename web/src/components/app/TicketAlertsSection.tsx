@@ -12,26 +12,28 @@ import { api, ApiError, errorText } from "@/lib/api";
 import type { TicketAlerts } from "@/lib/types";
 import { toast } from "sonner";
 
-/** Ticket alerts: the owner's daily digest and a webhook per new ticket, each switched on its own. */
+/** Ticket alerts: the owner's daily digest, a webhook per new ticket and the same webhook per move, each switched on its own. */
 export function TicketAlertsSection({ slug, owner, initial, onSaved }: { slug: string; owner: string; initial: TicketAlerts; onSaved: (a: TicketAlerts) => void }): ReactElement {
   const [saved, setSaved] = useState(initial);
   const [digest, setDigest] = useState(initial.digest);
   const [useWebhook, setUseWebhook] = useState(initial.use_webhook);
+  const [moves, setMoves] = useState(initial.webhook_moves);
   const [webhook, setWebhook] = useState(initial.webhook_url ?? "");
   const [error, setError] = useState<ApiError | null>(null);
   const [busy, setBusy] = useState(false);
   const [testing, setTesting] = useState(false);
   const [notice, setNotice] = useState("");
   const [enabled, setEnabled] = useState(initial.enabled);
-  const changed = digest !== saved.digest || useWebhook !== saved.use_webhook || webhook.trim() !== (saved.webhook_url ?? "");
+  const changed = digest !== saved.digest || useWebhook !== saved.use_webhook || moves !== saved.webhook_moves || webhook.trim() !== (saved.webhook_url ?? "");
+  const hooked = useWebhook || moves;
 
   const save = async (): Promise<void> => {
     setBusy(true);
     setError(null);
     setNotice("");
     try {
-      await api(`/projects/${slug}/ticket-alerts`, "PUT", { digest, webhook_url: webhook, use_webhook: useWebhook });
-      const next = { enabled, digest, webhook_url: webhook.trim() || null, use_webhook: useWebhook };
+      await api(`/projects/${slug}/ticket-alerts`, "PUT", { digest, webhook_url: webhook, use_webhook: useWebhook, webhook_moves: moves });
+      const next = { enabled, digest, webhook_url: webhook.trim() || null, use_webhook: useWebhook, webhook_moves: moves };
       setSaved(next);
       setWebhook(webhook.trim());
       onSaved(next);
@@ -59,7 +61,7 @@ export function TicketAlertsSection({ slug, owner, initial, onSaved }: { slug: s
     <SettingsSection
       id="tickets"
       title="Ticket alerts"
-      description="New bug reports from your users. A ticket your team files itself sends nothing."
+      description="New bug reports from your users, and each move on the ticket board. A ticket your team files sends no new-ticket alert."
       action={
         <AlertSwitch
           slug={slug}
@@ -76,7 +78,7 @@ export function TicketAlertsSection({ slug, owner, initial, onSaved }: { slug: s
       footerNote={!enabled ? "Off. Nothing is sent. The settings stay for when you turn it back on." : changed ? "Save to test the new webhook." : notice}
       footer={
         <>
-          <Button type="button" variant="outline" disabled={!enabled || changed || testing || !saved.use_webhook} onClick={() => void test()}>
+          <Button type="button" variant="outline" disabled={!enabled || changed || testing || !(saved.use_webhook || saved.webhook_moves)} onClick={() => void test()}>
             {testing ? <Spinner data-icon="inline-start" /> : <Send data-icon="inline-start" />}
             Send a test
           </Button>
@@ -98,10 +100,16 @@ export function TicketAlertsSection({ slug, owner, initial, onSaved }: { slug: s
         <Field orientation="horizontal">
           <Checkbox id="ticket-webhook-on" checked={useWebhook} onCheckedChange={(v) => setUseWebhook(v === true)} />
           <FieldLabel htmlFor="ticket-webhook-on" className="font-normal">
-            Send each new ticket to a webhook
+            Send each new ticket to the webhook
           </FieldLabel>
         </Field>
-        {useWebhook && (
+        <Field orientation="horizontal">
+          <Checkbox id="ticket-webhook-moves" checked={moves} onCheckedChange={(v) => setMoves(v === true)} />
+          <FieldLabel htmlFor="ticket-webhook-moves" className="font-normal">
+            Send each ticket move to the webhook
+          </FieldLabel>
+        </Field>
+        {hooked && (
           <Field data-invalid={error?.fields.webhook_url ? true : undefined}>
             <FieldLabel htmlFor="ticket-webhook" required>
               Webhook URL

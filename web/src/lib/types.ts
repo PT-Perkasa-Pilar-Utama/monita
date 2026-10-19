@@ -232,7 +232,7 @@ export type StageCounts = Record<Stage, number>;
 export type TicketBoard = { tickets: TicketRow[]; counts: StageCounts };
 
 /** Who hears about new tickets: the owner's daily digest, and a webhook per ticket. */
-export type TicketAlerts = { enabled: boolean; digest: boolean; webhook_url: string | null; use_webhook: boolean };
+export type TicketAlerts = { enabled: boolean; digest: boolean; webhook_url: string | null; use_webhook: boolean; webhook_moves: boolean };
 
 /** One more page of one column (`?stage=&page=`). */
 export type ColumnPage<T> = { tickets: T[]; page: number; total: number; page_size: number };
