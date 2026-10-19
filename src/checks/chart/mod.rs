@@ -191,47 +191,6 @@ fn x_ticks(range: Range, w: &Window) -> Vec<Tick> {
         .collect()
 }
 
-/// Up and down bands from `covered_from` to `now`: down where an automatic incident was open.
-fn bands(w: &Window, covered_from: i64, now: i64, down: &[(i64, i64)]) -> (Vec<Mark>, Vec<Mark>) {
-    let (start, end) = (covered_from.max(w.from), now.min(w.end()));
-    let mut ups = Vec::new();
-    let mut downs = Vec::new();
-    let mut at = start;
-    let mut spans: Vec<(i64, i64)> = down
-        .iter()
-        .map(|&(s, e)| (s.max(start), e.min(end)))
-        .filter(|(s, e)| s < e)
-        .collect();
-    spans.sort_unstable();
-    for (s, e) in spans {
-        if s > at {
-            ups.push(band(w, at, s, "Up"));
-        }
-        downs.push(band(
-            w,
-            s.max(at),
-            e,
-            &format!("Down for {}", time::duration(e - s)),
-        ));
-        at = at.max(e);
-    }
-    if end > at {
-        ups.push(band(w, at, end, "Up"));
-    }
-    (ups, downs)
-}
-
-fn band(w: &Window, s: i64, e: i64, title: &str) -> Mark {
-    let x = x_of(w, s);
-    Mark {
-        x,
-        w: (x_of(w, e) - x).max(1.0),
-        y: FULL.0,
-        h: FULL.1,
-        title: title.to_string(),
-    }
-}
-
 fn blank(range: Range, w: &Window) -> Chart {
     Chart {
         line: String::new(),
@@ -289,20 +248,6 @@ pub fn latency(
                 ),
             });
         }
-        chart.hovers.push(Mark {
-            x: bx,
-            w: bw,
-            y: FULL.0,
-            h: FULL.1,
-            title: format!(
-                "{}: {} checks{}",
-                when(w, b.index),
-                b.total,
-                b.avg_ms
-                    .map(|v| format!(", mean {v} ms"))
-                    .unwrap_or_default()
-            ),
-        });
         let Some(v) = b.avg_ms else { continue };
         let (px, py) = (bx + bw / 2.0, y(v));
         chart.dots.push((px, py));
@@ -329,6 +274,19 @@ pub fn latency(
     }
     chart.line = chart.line.trim().to_string();
     chart.area = chart.area.trim().to_string();
+    chart.hovers = hovers(w, buckets, "No checks", |b| {
+        let failed = b.total - b.ok;
+        let mean = b
+            .avg_ms
+            .map(|v| format!(", mean {v} ms"))
+            .unwrap_or_default();
+        let failed = if failed > 0 {
+            format!(", {failed} failed")
+        } else {
+            String::new()
+        };
+        format!("{} {}{mean}{failed}", b.total, plural(b.total, "check"))
+    });
     chart
 }
 
@@ -371,8 +329,20 @@ pub fn pings(
         }
     }
     chart.empty = chart.up.is_empty() && chart.down.is_empty();
+    chart.hovers = hovers(w, buckets, "No pings", |b| {
+        let failed = b.total - b.ok;
+        let failed = if failed > 0 {
+            format!(", {failed} failed")
+        } else {
+            String::new()
+        };
+        format!("{} {}{failed}", b.total, plural(b.total, "ping"))
+    });
     chart
 }
+
+mod marks;
+use marks::{bands, hovers, plural};
 
 #[cfg(test)]
 mod tests;

@@ -1,10 +1,12 @@
-import type { ReactElement } from "react";
+import { useState } from "react";
+import type { PointerEvent, ReactElement } from "react";
 import { useSearchParams } from "react-router-dom";
 import { TableCard } from "@/components/app/TableCard";
 import { Card, CardAction, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { barWidth, grade, pct } from "@/lib/availability";
+import { PLOT, readout } from "@/lib/chart";
 import { duration, zone } from "@/lib/time";
 import type { Chart, Insight as InsightData, Range, Stat } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -41,15 +43,23 @@ export function StatCards({ stats }: { stats: Stat[] }): ReactElement {
 
 const f = (n: number): string => n.toFixed(1);
 
-/** The server's chart geometry, drawn as SVG. Plot bounds: x 56 to 952, y 10 to 212. */
+/** The server's chart geometry, drawn as SVG. Plot bounds: x 56 to 952, y 10 to 212. Moving the
+ * pointer over it shows a guide line and a label with the bucket's time, count and state. */
 function ChartSvg({ chart, title, range }: { chart: Chart; title: string; range: Range }): ReactElement {
+  const [at, setAt] = useState<number | null>(null);
+  const r = at === null ? null : readout(chart, at);
+  const move = (e: PointerEvent<SVGSVGElement>): void => {
+    const box = e.currentTarget.getBoundingClientRect();
+    setAt(((e.clientX - box.left) / box.width) * PLOT.width);
+  };
   const rect = (cls: string) => (m: Chart["up"][number], i: number) => (
-    <rect key={`${cls}${i}`} className={cls} x={f(m.x)} y={f(m.y)} width={f(m.w)} height={f(m.h)}>
-      <title>{m.title}</title>
-    </rect>
+    <rect key={`${cls}${i}`} className={cls} x={f(m.x)} y={f(m.y)} width={f(m.w)} height={f(m.h)} />
   );
+  const left = r ? ((r.bucket.x + r.bucket.w / 2) / PLOT.width) * 100 : 0;
   return (
-    <svg viewBox="0 0 960 240" role="img" aria-label={`${title}, last ${range}`} className="block h-auto w-full px-2">
+    <div className="px-2">
+      <div className="relative">
+    <svg viewBox="0 0 960 240" role="img" aria-label={`${title}, last ${range}`} className="block h-auto w-full touch-pan-y" onPointerMove={move} onPointerDown={move} onPointerLeave={() => setAt(null)}>
       <defs>
         <linearGradient id="chart-fill" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" className="[stop-color:var(--primary)] [stop-opacity:0.38]" />
@@ -78,7 +88,12 @@ function ChartSvg({ chart, title, range }: { chart: Chart; title: string; range:
       ))}
       {chart.oks.map(rect("fill-up/85"))}
       {chart.fails.map(rect("fill-down"))}
-      {chart.hovers.map(rect("fill-transparent hover:fill-muted"))}
+      {r && (
+        <>
+          <rect x={f(r.bucket.x)} y={10} width={f(Math.max(r.bucket.w, 1))} height={202} className="fill-foreground/5" />
+          <line x1={f(r.bucket.x + r.bucket.w / 2)} x2={f(r.bucket.x + r.bucket.w / 2)} y1={10} y2={212} className="stroke-foreground/40" vectorEffect="non-scaling-stroke" />
+        </>
+      )}
       {chart.x_ticks.map((t) => (
         <text key={`x${t.label}${t.at}`} x={f(t.at)} y={232} textAnchor="middle" className="fill-muted-foreground font-mono text-[9px]">
           {t.label}
@@ -90,6 +105,21 @@ function ChartSvg({ chart, title, range }: { chart: Chart; title: string; range:
         </text>
       )}
     </svg>
+      {r && (
+        <div
+          className={cn(
+            "pointer-events-none absolute top-1 z-10 flex flex-col gap-0.5 rounded-md border bg-popover px-2.5 py-1.5 text-xs whitespace-nowrap text-popover-foreground shadow-sm",
+            left < 20 ? "translate-x-0" : left > 80 ? "-translate-x-full" : "-translate-x-1/2",
+          )}
+          style={{ left: `${left}%` }}
+        >
+          <span className="font-mono text-muted-foreground">{r.when}</span>
+          <span className="font-medium">{r.what}</span>
+          {r.band && <span className={r.band === "Up" ? "text-up" : "text-down"}>{r.band}</span>}
+        </div>
+      )}
+      </div>
+    </div>
   );
 }
 

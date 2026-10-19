@@ -97,3 +97,21 @@ fn a_bucket_with_a_fail_ping_is_red() {
         "two pings stand taller than one"
     );
 }
+
+#[test]
+fn every_bucket_answers_a_hover_even_an_empty_one() {
+    let w = Window::new(Range::Hour, 3600 * 10, 420);
+    let c = pings(Range::Hour, &w, &[b(2, 2, 1, None)], 0, 3600 * 10, &[]);
+    assert_eq!(c.hovers.len(), w.buckets);
+    assert!(
+        c.hovers[0].title.ends_with(": No pings"),
+        "{}",
+        c.hovers[0].title
+    );
+    assert!(
+        c.hovers[2].title.ends_with(": 2 pings, 1 failed"),
+        "{}",
+        c.hovers[2].title
+    );
+    assert!(c.hovers[2].title.contains("UTC+7"), "{}", c.hovers[2].title);
+}
