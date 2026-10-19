@@ -105,7 +105,7 @@ export function MonitorGuide(): ReactElement {
       label="How monitors work"
       title="How Monita checks a URL"
       steps={[
-        "Monita sends a GET request to the URL at the interval you choose.",
+        "Monita sends a request to the URL at the interval you choose, with the method you pick (GET unless you change it).",
         <PassRules />,
         "A monitor counts as down after 2 failed checks in a row, or the count you enter, from 1 to 99. That opens an incident. The first passing check closes it.",
         "A critical monitor alerts by email and webhook. A warning monitor alerts by email only.",

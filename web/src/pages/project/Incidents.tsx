@@ -85,7 +85,7 @@ export function Incidents({ creating = false }: { creating?: boolean }): ReactEl
           ) : (
             <TableEmpty
               title="Every system is up"
-              description="Monita opens an incident when a monitor fails twice in a row or a heartbeat misses. You can also report one by hand."
+              description="Monita opens an incident when a monitor fails the checks in a row you set or a heartbeat misses. You can also report one by hand."
             />
           )
         ) : (

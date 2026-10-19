@@ -133,7 +133,7 @@ export function Overview(): ReactElement {
             {!d ? (
               <Skeleton className="m-5 h-24" />
             ) : d.incidents.length === 0 ? (
-              <TableEmpty title="Every system is up" description="Monita opens an incident when a monitor fails twice in a row or a heartbeat misses." />
+              <TableEmpty title="Every system is up" description="Monita opens an incident when a monitor fails the checks in a row you set or a heartbeat misses." />
             ) : (
               <>
                 <Table>

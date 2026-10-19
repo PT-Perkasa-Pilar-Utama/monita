@@ -131,7 +131,7 @@ export function Tickets(): ReactElement {
         <Card className="py-0">
           <TableEmpty
             title="Bug reports arrive here"
-            description={`Project users report bugs with a ref ID from your system, through the API or the form at /status/${p.slug}/report.`}
+            description={`Project users report bugs with a ref ID from your system, through the API or the Ticket tab at /status/${p.slug}/ticket.`}
           />
         </Card>
       ) : (

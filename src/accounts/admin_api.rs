@@ -1,4 +1,5 @@
-//! The Users page as JSON: tech leads, invites and disable. Super admin only.
+//! The Users page as JSON: accounts, roles, invites, disable and enable. A super admin changes;
+//! a supervisor reads (their writes stop in `CurrentUser`).
 //! Contract: docs/api-specs/02-authentication.md.
 
 use axum::{
