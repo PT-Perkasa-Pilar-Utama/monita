@@ -14,7 +14,7 @@ pub(super) async fn project(State(state): State<AppState>, Path(slug): Path<Stri
     let p = public_project(&state, &slug).await?;
     let off = crate::platform::settings::utc_offset(&state.db.read().await?).await?;
     Ok(data(
-        serde_json::json!({ "name": p.name, "slug": p.slug, "pages": p.pages, "utc_offset_min": off }),
+        serde_json::json!({ "name": p.name, "slug": p.slug, "pages": p.pages, "utc_offset_min": off, "homepage_url": p.homepage_url }),
     ))
 }
 

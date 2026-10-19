@@ -2,10 +2,11 @@ import { useState } from "react";
 import type { ReactElement, ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { IconPicker } from "@/components/app/IconPicker";
-import { Activity, AlertTriangle, Bell, Folder, Globe, Heartbeat, Key, Shield, Ticket, Users } from "@/components/icons";
+import { Activity, AlertTriangle, Bell, ExternalLink, Folder, Globe, Heartbeat, Key, Shield, Ticket, Users } from "@/components/icons";
 import type { AppIcon } from "@/components/icons";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { api, ApiError, errorText } from "@/lib/api";
@@ -31,6 +32,8 @@ export type ProjectEdit = {
   saving: boolean;
   description: string;
   setDescription: (v: string) => void;
+  homepage: string;
+  setHomepage: (v: string) => void;
   icon: string;
   setIcon: (v: string) => void;
   removeIcon: boolean;
@@ -46,6 +49,7 @@ export function useProjectEdit(head: ProjectHead, reload: () => void): ProjectEd
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [description, setDescription] = useState("");
+  const [homepage, setHomepage] = useState("");
   const [icon, setIcon] = useState("");
   const [removeIcon, setRemoveIcon] = useState(false);
   const [error, setError] = useState<ApiError | null>(null);
@@ -54,6 +58,8 @@ export function useProjectEdit(head: ProjectHead, reload: () => void): ProjectEd
     saving,
     description,
     setDescription,
+    homepage,
+    setHomepage,
     icon,
     setIcon,
     removeIcon,
@@ -61,6 +67,7 @@ export function useProjectEdit(head: ProjectHead, reload: () => void): ProjectEd
     error,
     start: () => {
       setDescription(p.description ?? "");
+      setHomepage(p.homepage_url ?? "");
       setIcon("");
       setRemoveIcon(false);
       setError(null);
@@ -71,7 +78,7 @@ export function useProjectEdit(head: ProjectHead, reload: () => void): ProjectEd
       setSaving(true);
       setError(null);
       try {
-        await api(`/projects/${p.slug}/profile`, "PUT", { description, icon, remove_icon: removeIcon ? "on" : "" });
+        await api(`/projects/${p.slug}/profile`, "PUT", { description, homepage_url: homepage, icon, remove_icon: removeIcon ? "on" : "" });
         reload();
         setEditing(false);
         toast.success("Project saved.");
@@ -121,6 +128,22 @@ export function ProjectAbout({
             />
             {edit.error?.fields.description && <FieldError>{edit.error.fields.description}</FieldError>}
           </Field>
+          <Field data-invalid={edit.error?.fields.homepage_url ? true : undefined}>
+            <FieldLabel htmlFor="about-homepage" required>
+              Homepage
+            </FieldLabel>
+            <Input
+              id="about-homepage"
+              type="url"
+              aria-required
+              aria-invalid={edit.error?.fields.homepage_url ? true : undefined}
+              className="font-mono"
+              placeholder="https://payments.example.com"
+              value={edit.homepage}
+              onChange={(e) => edit.setHomepage(e.target.value)}
+            />
+            {edit.error?.fields.homepage_url && <FieldError>{edit.error.fields.homepage_url}</FieldError>}
+          </Field>
           <IconPicker value={edit.icon} onChange={edit.setIcon} current={edit.removeIcon ? null : p.icon_url} error={edit.error?.fields.icon} />
           {p.icon_url && !edit.icon && (
             <Field orientation="horizontal">
@@ -130,7 +153,7 @@ export function ProjectAbout({
               </FieldLabel>
             </Field>
           )}
-          {edit.error && !edit.error.fields.description && !edit.error.fields.icon && (
+          {edit.error && Object.keys(edit.error.fields).length === 0 && (
             <p className="text-sm text-destructive">{edit.error.message}</p>
           )}
         </FieldGroup>
@@ -140,6 +163,13 @@ export function ProjectAbout({
         <p className="text-sm text-muted-foreground">No description.</p>
       )}
       <ul className="flex flex-col gap-2.5">
+        {p.homepage_url && (
+          <Fact icon={ExternalLink}>
+            <a href={p.homepage_url} target="_blank" rel="noreferrer" className="break-all text-link hover:underline">
+              {p.homepage_url.replace(/^https?:\/\//, "")}
+            </a>
+          </Fact>
+        )}
         <Fact icon={Users}>Owned by {p.owner_email}</Fact>
         <Fact icon={Folder}>Created {stamp(p.created_at)}</Fact>
         <Fact icon={Key}>

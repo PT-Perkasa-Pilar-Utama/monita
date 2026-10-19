@@ -6,6 +6,7 @@ export async function createProject(page: Page, name: string): Promise<string> {
   await page.getByRole("button", { name: "New project" }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Name").fill(name);
+  await dialog.getByLabel("Homepage").fill("https://app.example.com");
   await dialog.getByRole("button", { name: "Create project" }).click();
   await expect(page).toHaveURL(/\/projects\/[a-z0-9-]+-[a-z2-7]{6}\/monitors$/);
   return new URL(page.url()).pathname.split("/")[2]!;

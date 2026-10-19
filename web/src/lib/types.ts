@@ -9,6 +9,8 @@ export type Project = {
   ip_allowlist: string | null;
   created_at: number;
   pages: PublicPages;
+  /** Where people use the system; null for a project made before it was asked. */
+  homepage_url: string | null;
 };
 
 /** The public tabs besides Status, which always shows. */
@@ -274,7 +276,7 @@ export type MyTicket = { number: number; title: string; stage: Stage; close_reas
 export type PublicProject = { name: string; slug: string };
 
 /** The public layout's project: its name and the tabs it shows. */
-export type PublicSite = PublicProject & { pages: PublicPages; utc_offset_min: number };
+export type PublicSite = PublicProject & { pages: PublicPages; utc_offset_min: number; homepage_url: string | null };
 
 /** SEC-21: an update on a public page has no author. */
 export type PublicUpdate = { label: UpdateLabel; message: string; at: number };

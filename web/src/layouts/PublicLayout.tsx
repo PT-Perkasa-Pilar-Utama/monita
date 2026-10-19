@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 import { Link, Outlet, useLocation, useParams } from "react-router-dom";
 import { Mark } from "@/components/brand/Mark";
-import { Activity, AlertTriangle, Bug, ListChecks } from "@/components/icons";
+import { Activity, AlertTriangle, Bug, ExternalLink, ListChecks } from "@/components/icons";
 import { PageFrame } from "@/components/layout/Page";
 import { PageTabs } from "@/components/layout/PageTabs";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
@@ -36,7 +36,17 @@ export function PublicLayout(): ReactElement | null {
               <Mark className="size-[26px] shrink-0 text-primary" />
               <span className="truncate">{p.data.name}</span>
             </Link>
-            <ThemeToggle className="ml-auto" />
+            {p.data.homepage_url && (
+              <a
+                href={p.data.homepage_url}
+                rel="noreferrer"
+                className="ml-auto flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+              >
+                <span className="truncate">{p.data.homepage_url.replace(/^https?:\/\//, "").replace(/\/$/, "")}</span>
+                <ExternalLink className="size-3.5 shrink-0" />
+              </a>
+            )}
+            <ThemeToggle className={p.data.homepage_url ? "" : "ml-auto"} />
           </div>
         </div>
         <PageTabs

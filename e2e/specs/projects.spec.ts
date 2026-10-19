@@ -37,6 +37,7 @@ test("@US-06 the page shrinks a picked icon before it reaches the server", async
   await page.getByRole("button", { name: "New project" }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Name").fill("Branded");
+  await dialog.getByLabel("Homepage").fill("https://shop.example.com");
   await dialog.getByLabel("Description").fill("The shop's storefront.");
   await dialog.getByLabel(/^Icon/).setInputFiles({ name: "logo.png", mimeType: "image/png", buffer: png });
   await expect(dialog.locator("[data-icon-preview]")).toBeVisible();

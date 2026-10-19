@@ -57,7 +57,11 @@ async fn an_instance_has_no_project_cap() {
     )
     .await;
     let res = app
-        .api_post("/api/ui/projects", json!({ "name": "One more" }), Some(&tl))
+        .api_post(
+            "/api/ui/projects",
+            json!({ "name": "One more", "homepage_url": "https://app.example.com" }),
+            Some(&tl),
+        )
         .await;
     assert_eq!(res.status(), 201);
     assert_eq!(count(&app, "SELECT count(*) FROM projects").await, 252);

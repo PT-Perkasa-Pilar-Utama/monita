@@ -22,6 +22,8 @@ pub struct ProjectInput {
     pub name: String,
     pub owner_email: String,
     pub description: String,
+    /// Where people use the system. Required.
+    pub homepage_url: String,
     /// Base64 of the scaled icon, filled by the page's script; empty for none.
     pub icon: String,
 }
@@ -31,9 +33,18 @@ pub struct ProjectInput {
 #[serde(default)]
 pub struct ProfileInput {
     pub description: String,
+    pub homepage_url: String,
     pub icon: String,
     /// A checkbox: "on" removes the icon when no new one is sent.
     pub remove_icon: String,
+}
+
+const HOMEPAGE_HINT: &str = "Enter the address where people use it, starting with https://.";
+
+/// The homepage, trimmed, or the error for its field. A URL of up to 2 000 characters.
+fn homepage(raw: &str) -> Option<&str> {
+    let u = raw.trim();
+    (crate::platform::valid_http_url(u) && u.len() <= 2_000).then_some(u)
 }
 
 /// An empty description is none.
@@ -78,11 +89,30 @@ pub async fn find_owner(db: &Db, acting: &User, email: &str) -> anyhow::Result<O
 /// super admin owns it too unless the form names another owner.
 pub async fn create(db: &Db, acting: &User, input: &ProjectInput) -> Result<Project, ProjectError> {
     let name = input.name.trim();
+    let mut bad = Vec::new();
     if name.is_empty() || name.chars().count() > 80 {
-        return Err(ProjectError::InvalidName);
+        bad.push(("name", "Enter a name of up to 80 characters."));
     }
-    let description = description(&input.description)?;
-    let icon = parse_icon(&input.icon)?;
+    let homepage_url = homepage(&input.homepage_url);
+    if homepage_url.is_none() {
+        bad.push(("homepage_url", HOMEPAGE_HINT));
+    }
+    let description = description(&input.description);
+    if description.is_err() {
+        bad.push((
+            "description",
+            "The description needs at most 280 characters.",
+        ));
+    }
+    let icon = parse_icon(&input.icon);
+    if let Err(ProjectError::BadIcon(m)) = &icon {
+        bad.push(("icon", m));
+    }
+    let (Some(homepage_url), Ok(description), Ok(icon), true) =
+        (homepage_url, description, icon, bad.is_empty())
+    else {
+        return Err(ProjectError::Invalid(bad));
+    };
     let owner = if acting.is_admin() && !input.owner_email.trim().is_empty() {
         find_owner(db, acting, &input.owner_email)
             .await?
@@ -100,7 +130,8 @@ pub async fn create(db: &Db, acting: &User, input: &ProjectInput) -> Result<Proj
             for _ in 0..3 {
                 let slug = slug_for(name, &token::random_token()[..SUFFIX]);
                 if store::find_by_slug(c, &slug).await?.is_none() {
-                    let id = store::insert(c, owner, name, &slug, description).await?;
+                    let id =
+                        store::insert(c, owner, name, &slug, description, homepage_url).await?;
                     if let Some(i) = &icon {
                         store::set_icon(c, id, i.mime, i.data.clone(), now()).await?;
                     }
@@ -124,12 +155,31 @@ pub async fn update_profile(
     project_id: i64,
     input: &ProfileInput,
 ) -> Result<(), ProjectError> {
-    let description = description(&input.description)?;
-    let icon = parse_icon(&input.icon)?;
+    let description = description(&input.description);
+    let homepage_url = homepage(&input.homepage_url);
+    let mut bad = Vec::new();
+    if description.is_err() {
+        bad.push((
+            "description",
+            "The description needs at most 280 characters.",
+        ));
+    }
+    if homepage_url.is_none() {
+        bad.push(("homepage_url", HOMEPAGE_HINT));
+    }
+    let icon = parse_icon(&input.icon);
+    if let Err(ProjectError::BadIcon(m)) = &icon {
+        bad.push(("icon", m));
+    }
+    let (Ok(description), Some(homepage_url), Ok(icon), true) =
+        (description, homepage_url, icon, bad.is_empty())
+    else {
+        return Err(ProjectError::Invalid(bad));
+    };
     let remove = input.remove_icon == "on";
     db.write(async |c| {
         let at = now();
-        store::set_description(c, project_id, description, at).await?;
+        store::set_description(c, project_id, description, homepage_url, at).await?;
         match &icon {
             Some(i) => store::set_icon(c, project_id, i.mime, i.data.clone(), at).await?,
             None if remove => store::remove_icon(c, project_id, at).await?,

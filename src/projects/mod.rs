@@ -35,6 +35,9 @@ pub enum ProjectError {
     UnknownOwner,
     #[error("The description needs at most 280 characters.")]
     LongDescription,
+    /// Bad values in several fields of one form, in the form's order.
+    #[error("{}", .0.first().map_or("Fix the fields marked below.", |f| f.1))]
+    Invalid(Vec<(&'static str, &'static str)>),
     #[error("{0}")]
     BadIcon(&'static str),
     #[error("Not a valid IP or CIDR: {0}")]

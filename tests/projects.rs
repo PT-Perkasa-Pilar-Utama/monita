@@ -10,7 +10,11 @@ async fn project(app: &TestApp, cookie: &str, name: &str, slug: &str) -> reqwest
 }
 
 /// Creates a project through the API and returns its slug.
-async fn create(app: &TestApp, cookie: &str, body: Value) -> String {
+async fn create(app: &TestApp, cookie: &str, mut body: Value) -> String {
+    body.as_object_mut()
+        .unwrap()
+        .entry("homepage_url")
+        .or_insert("https://app.example.com".into());
     let res = app.api_post("/api/ui/projects", body, Some(cookie)).await;
     assert_eq!(res.status(), 201);
     json_of(res).await["data"]["slug"]
@@ -95,9 +99,11 @@ async fn monita_makes_a_unique_slug_from_the_name() {
         .api_post("/api/ui/projects", json!({ "name": "  " }), Some(&tl))
         .await;
     assert_eq!(blank.status(), 422);
-    assert_eq!(
-        json_of(blank).await["error"]["fields"]["name"],
-        "Enter a name."
+    let fields = json_of(blank).await["error"]["fields"].clone();
+    assert_eq!(fields["name"], "Enter a name of up to 80 characters.");
+    assert!(
+        fields["homepage_url"].is_string(),
+        "every bad field at once: {fields}"
     );
 }
 
@@ -264,7 +270,7 @@ async fn a_super_admin_names_the_owner_and_a_tl_always_owns_what_they_create() {
     );
     assert_eq!(listed(&app, &rina).await.len(), 1);
 
-    let ghost = json!({ "name": "Ghost", "owner_email": "nobody@x.co" });
+    let ghost = json!({ "name": "Ghost", "owner_email": "nobody@x.co", "homepage_url": "https://ghost.example.com" });
     let res = app.api_post("/api/ui/projects", ghost, Some(&admin)).await;
     assert_eq!(res.status(), 422);
     assert!(
@@ -317,7 +323,10 @@ async fn editing_refuses_svg_and_long_text_and_removes_the_icon() {
     let app = TestApp::spawn("test").await;
     let rina = app.tl("rina@x.co").await;
     project(&app, &rina, "Payments", "payments").await;
-    let edit = |body: Value| put(&app, "/api/ui/projects/payments/profile", body, &rina);
+    let edit = |mut body: Value| {
+        body["homepage_url"] = "https://pay.example.com".into();
+        put(&app, "/api/ui/projects/payments/profile", body, &rina)
+    };
     let res = edit(json!({ "icon": "data:image/svg+xml;base64,PHN2Zy8+" })).await;
     assert_eq!(res.status(), 422);
     assert_eq!(
@@ -755,4 +764,27 @@ async fn the_project_list_shows_each_projects_state_incidents_tickets_and_last_d
     assert_eq!(hours.len(), 24);
     assert_eq!(hours[0]["uptime"], 100.0, "a day ago, before the incident");
     assert_eq!(hours[22]["uptime"], 0.0, "the one system was down all hour");
+}
+
+#[tokio::test]
+async fn a_new_project_needs_a_homepage_that_its_status_page_links_to() {
+    let app = TestApp::spawn("test").await;
+    let tl = app.tl("rina@x.co").await;
+    let bad = app
+        .api_post(
+            "/api/ui/projects",
+            json!({ "name": "Shop", "homepage_url": "shop.example.com" }),
+            Some(&tl),
+        )
+        .await;
+    assert_eq!(bad.status(), 422);
+    assert!(json_of(bad).await["error"]["fields"]["homepage_url"].is_string());
+    let slug = create(
+        &app,
+        &tl,
+        json!({ "name": "Shop", "homepage_url": " https://shop.example.com " }),
+    )
+    .await;
+    let site = json_of(app.get(&format!("/api/ui/public/{slug}"), None).await).await;
+    assert_eq!(site["data"]["homepage_url"], "https://shop.example.com");
 }

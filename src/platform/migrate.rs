@@ -53,6 +53,10 @@ const MIGRATIONS: &[(i64, &str)] = &[
         19,
         include_str!("../../migrations/0019_merge_report_and_mine.sql"),
     ),
+    (
+        20,
+        include_str!("../../migrations/0020_project_homepage.sql"),
+    ),
 ];
 
 pub async fn run(db: &Db) -> anyhow::Result<()> {

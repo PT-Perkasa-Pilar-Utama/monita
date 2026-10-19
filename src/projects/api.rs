@@ -35,6 +35,7 @@ pub struct ProjectView {
     pub ip_allowlist: Option<String>,
     pub created_at: i64,
     pub pages: super::PublicPages,
+    pub homepage_url: Option<String>,
 }
 
 impl From<&Project> for ProjectView {
@@ -50,6 +51,7 @@ impl From<&Project> for ProjectView {
             ip_allowlist: p.ip_allowlist.clone(),
             created_at: p.created_at,
             pages: p.pages,
+            homepage_url: p.homepage_url.clone(),
         }
     }
 }
@@ -161,10 +163,15 @@ pub fn form_error(e: ProjectError) -> UiError {
         ProjectError::BadIcon(_) => "icon",
         ProjectError::InvalidCidr(_) => "cidrs",
         ProjectError::ConfirmMismatch => "confirm",
-        ProjectError::Full(_) | ProjectError::Other(_) => "",
+        ProjectError::Full(_) | ProjectError::Other(_) | ProjectError::Invalid(_) => "",
     };
     match e {
         ProjectError::Other(e) => UiError::Internal(e),
+        ProjectError::Invalid(bad) => UiError::fields(
+            bad.into_iter()
+                .map(|(f, m)| (f.to_string(), m.to_string()))
+                .collect(),
+        ),
         e if field.is_empty() => UiError::invalid(e.to_string()),
         e => UiError::field(field, e.to_string()),
     }

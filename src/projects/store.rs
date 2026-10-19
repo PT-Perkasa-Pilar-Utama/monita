@@ -18,6 +18,8 @@ pub struct Project {
     /// When the icon was last set; `None` when the project has none.
     pub icon_at: Option<i64>,
     pub pages: PublicPages,
+    /// Where people use the system; `None` for a project made before it was asked.
+    pub homepage_url: Option<String>,
 }
 
 #[derive(serde::Serialize)]
@@ -30,7 +32,7 @@ pub struct ApiKeyRow {
     pub created_at: i64,
 }
 
-const COLS: &str = "p.id, p.owner_id, u.email, p.name, p.slug, p.ip_allowlist, p.created_at, u.disabled_at IS NULL, p.description, p.icon_at, p.show_known_issues, p.show_report, p.show_incidents";
+const COLS: &str = "p.id, p.owner_id, u.email, p.name, p.slug, p.ip_allowlist, p.created_at, u.disabled_at IS NULL, p.description, p.icon_at, p.show_known_issues, p.show_report, p.show_incidents, p.homepage_url";
 
 fn row(r: &turso::Row) -> turso::Result<Project> {
     Ok(Project {
@@ -49,6 +51,7 @@ fn row(r: &turso::Row) -> turso::Result<Project> {
             known_issues: r.get::<i64>(10)? == 1,
             report: r.get::<i64>(11)? == 1,
         },
+        homepage_url: r.get(13)?,
     })
 }
 
@@ -66,10 +69,11 @@ pub async fn insert(
     name: &str,
     slug: &str,
     description: Option<&str>,
+    homepage_url: &str,
 ) -> anyhow::Result<i64> {
     c.execute(
-        "INSERT INTO projects (owner_id, name, slug, description) VALUES (?1, ?2, ?3, ?4)",
-        (owner_id, name, slug, description),
+        "INSERT INTO projects (owner_id, name, slug, description, homepage_url) VALUES (?1, ?2, ?3, ?4, ?5)",
+        (owner_id, name, slug, description, homepage_url),
     )
     .await?;
     Ok(c.last_insert_rowid())
@@ -79,11 +83,12 @@ pub async fn set_description(
     c: &Connection,
     project_id: i64,
     description: Option<&str>,
+    homepage_url: &str,
     at: i64,
 ) -> anyhow::Result<()> {
     c.execute(
-        "UPDATE projects SET description = ?1, updated_at = ?2 WHERE id = ?3",
-        (description, at, project_id),
+        "UPDATE projects SET description = ?1, homepage_url = ?4, updated_at = ?2 WHERE id = ?3",
+        (description, at, project_id, homepage_url),
     )
     .await?;
     Ok(())

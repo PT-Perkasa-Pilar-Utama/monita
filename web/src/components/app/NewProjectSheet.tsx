@@ -14,7 +14,8 @@ import { api, ApiError, errorText } from "@/lib/api";
 import { useMe } from "@/lib/session";
 import type { Owner, Project } from "@/lib/types";
 
-/** New project: a name, then for a super admin the owner, and an optional description and icon. */
+/** New project: a name and the homepage people use it at, then for a super admin the owner, and an
+ * optional description and icon. */
 export function NewProjectSheet({
   open,
   onOpenChange,
@@ -29,6 +30,7 @@ export function NewProjectSheet({
   const [name, setName] = useState("");
   const [owner, setOwner] = useState(me.email);
   const [description, setDescription] = useState("");
+  const [homepage, setHomepage] = useState("");
   const [icon, setIcon] = useState("");
   const [error, setError] = useState<ApiError | null>(null);
   const [busy, setBusy] = useState(false);
@@ -38,7 +40,7 @@ export function NewProjectSheet({
     setBusy(true);
     setError(null);
     try {
-      const p = await api<Project>("/projects", "POST", { name, owner_email: owner, description, icon });
+      const p = await api<Project>("/projects", "POST", { name, owner_email: owner, homepage_url: homepage, description, icon });
       onOpenChange(false);
       navigate(`/projects/${p.slug}/monitors`);
     } catch (err) {
@@ -89,6 +91,22 @@ export function NewProjectSheet({
                 onChange={(e) => setName(e.target.value)}
               />
               {fieldError("name") && <FieldError>{fieldError("name")}</FieldError>}
+            </Field>
+            <Field data-invalid={fieldError("homepage_url") ? true : undefined}>
+              <FieldLabel htmlFor="project-homepage" required>
+                Homepage
+              </FieldLabel>
+              <Input
+                id="project-homepage"
+                type="url"
+                aria-required
+                aria-invalid={fieldError("homepage_url") ? true : undefined}
+                className="font-mono"
+                placeholder="https://payments.example.com"
+                value={homepage}
+                onChange={(e) => setHomepage(e.target.value)}
+              />
+              {fieldError("homepage_url") && <FieldError>{fieldError("homepage_url")}</FieldError>}
             </Field>
             {me.is_admin && (
               <UserPicker label="Owner" users={owners} value={owner} onChange={setOwner} error={fieldError("owner_email")} />

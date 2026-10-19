@@ -86,7 +86,11 @@ impl TestApp {
     /// 201, or 422 for a refused form.
     pub async fn project(&self, cookie: &str, name: &str, slug: &str) -> reqwest::StatusCode {
         let res = self
-            .api_post("/api/ui/projects", json!({ "name": name }), Some(cookie))
+            .api_post(
+                "/api/ui/projects",
+                json!({ "name": name, "homepage_url": "https://app.example.com" }),
+                Some(cookie),
+            )
             .await;
         let status = res.status();
         if status == 201 {
