@@ -10,7 +10,8 @@ import { TopBar } from "@/components/layout/TopBar";
 import { NotFound } from "@/pages/NotFound";
 import { ProjectProvider } from "@/lib/project";
 import { forgetProject, rememberProject } from "@/lib/lastProject";
-import { SessionProvider, useMe } from "@/lib/session";
+import { useMe } from "@/lib/session";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { ProjectHead } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 
@@ -25,7 +26,28 @@ function ProjectChrome(): ReactElement | null {
     else if (gone) forgetProject(me.email, slug);
   }, [opened, gone, me.email, slug]);
   if (gone) return <NotFound />;
-  if (!head.data) return null;
+  // The header stays up while the project loads, so moving between areas never blinks it away.
+  if (!head.data) {
+    return (
+      <>
+        <TopBar
+          crumb={<Skeleton className="h-6 w-40" />}
+          tabs={
+            <div className="px-4 sm:px-8 lg:px-12">
+              <div className="mx-auto flex h-11 max-w-app items-center gap-6">
+                {Array.from({ length: 6 }, (_, i) => (
+                  <Skeleton key={i} className="h-4 w-20" />
+                ))}
+              </div>
+            </div>
+          }
+        />
+        <PageFrame>
+          <Skeleton className="h-96 rounded-xl" />
+        </PageFrame>
+      </>
+    );
+  }
   const { project: p, counts } = head.data;
   const base = `/projects/${p.slug}`;
   const crumb = (
@@ -69,9 +91,5 @@ function ProjectChrome(): ReactElement | null {
 
 /** Every page inside a project: the top bar with the project, its tab bar, then the page. */
 export function ProjectLayout(): ReactElement {
-  return (
-    <SessionProvider>
-      <ProjectChrome />
-    </SessionProvider>
-  );
+  return <ProjectChrome />;
 }

@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AdminLayout } from "@/layouts/AdminLayout";
-import { AppLayout } from "@/layouts/AppLayout";
+import { AppLayout, SignedInLayout } from "@/layouts/AppLayout";
 import { ProjectLayout } from "@/layouts/ProjectLayout";
 import { PublicLayout } from "@/layouts/PublicLayout";
 import { SettingsLayout } from "@/layouts/SettingsLayout";
@@ -46,44 +46,46 @@ export default function App(): ReactElement {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/invite/:token" element={<Invite />} />
-      <Route element={<AppLayout />}>
-        <Route path="/" element={<Projects />} />
-        <Route path="/incidents" element={<AllIncidents />} />
-        <Route path="/tickets" element={<AllTickets />} />
-        <Route element={<AdminLayout />}>
-          <Route path="/admin/users" element={<Users />} />
-          <Route path="/admin/limits" element={<RateLimits />} />
-          <Route path="/admin/email" element={<Email />} />
-          <Route path="/admin/time-zone" element={<TimeZone />} />
-          <Route path="/admin/system" element={<System />} />
-          <Route path="/admin/settings" element={<Navigate to="/admin/system" replace />} />
+      <Route element={<SignedInLayout />}>
+        <Route element={<AppLayout />}>
+          <Route path="/" element={<Projects />} />
+          <Route path="/incidents" element={<AllIncidents />} />
+          <Route path="/tickets" element={<AllTickets />} />
+          <Route element={<AdminLayout />}>
+            <Route path="/admin/users" element={<Users />} />
+            <Route path="/admin/limits" element={<RateLimits />} />
+            <Route path="/admin/email" element={<Email />} />
+            <Route path="/admin/time-zone" element={<TimeZone />} />
+            <Route path="/admin/system" element={<System />} />
+            <Route path="/admin/settings" element={<Navigate to="/admin/system" replace />} />
+          </Route>
         </Route>
-      </Route>
-      <Route path="/projects/:slug" element={<ProjectLayout />}>
-        <Route index element={<Overview />} />
-        <Route path="monitors" element={<Monitors />} />
-        <Route path="monitors/new" element={<Monitors creating />} />
-        <Route path="monitors/:id" element={<Monitor />} />
-        <Route path="monitors/:id/edit" element={<Monitor editing />} />
-        <Route path="heartbeats" element={<Heartbeats />} />
-        <Route path="heartbeats/new" element={<Heartbeats creating />} />
-        <Route path="heartbeats/:id" element={<Heartbeat />} />
-        <Route path="heartbeats/:id/edit" element={<Heartbeat editing />} />
-        <Route path="incidents" element={<Incidents />} />
-        <Route path="incidents/new" element={<Incidents creating />} />
-        <Route path="incidents/:id" element={<Incident />} />
-        <Route path="changelog" element={<Changelog />} />
-        <Route path="tickets/done" element={<DoneTickets />} />
-        <Route path="tickets/:number?" element={<Tickets />} />
-        <Route element={<SettingsLayout />}>
-          <Route path="settings" element={<General />} />
-          <Route path="settings/status-page" element={<StatusPageSettings />} />
-          <Route path="settings/keys" element={<Keys />} />
-          <Route path="settings/secrets" element={<Secrets />} />
-          <Route path="settings/allowlist" element={<Allowlist />} />
-          <Route path="settings/alerts" element={<Alerts />} />
+        <Route path="/projects/:slug" element={<ProjectLayout />}>
+          <Route index element={<Overview />} />
+          <Route path="monitors" element={<Monitors />} />
+          <Route path="monitors/new" element={<Monitors creating />} />
+          <Route path="monitors/:id" element={<Monitor />} />
+          <Route path="monitors/:id/edit" element={<Monitor editing />} />
+          <Route path="heartbeats" element={<Heartbeats />} />
+          <Route path="heartbeats/new" element={<Heartbeats creating />} />
+          <Route path="heartbeats/:id" element={<Heartbeat />} />
+          <Route path="heartbeats/:id/edit" element={<Heartbeat editing />} />
+          <Route path="incidents" element={<Incidents />} />
+          <Route path="incidents/new" element={<Incidents creating />} />
+          <Route path="incidents/:id" element={<Incident />} />
+          <Route path="changelog" element={<Changelog />} />
+          <Route path="tickets/done" element={<DoneTickets />} />
+          <Route path="tickets/:number?" element={<Tickets />} />
+          <Route element={<SettingsLayout />}>
+            <Route path="settings" element={<General />} />
+            <Route path="settings/status-page" element={<StatusPageSettings />} />
+            <Route path="settings/keys" element={<Keys />} />
+            <Route path="settings/secrets" element={<Secrets />} />
+            <Route path="settings/allowlist" element={<Allowlist />} />
+            <Route path="settings/alerts" element={<Alerts />} />
+          </Route>
+          <Route path="alerts" element={<Navigate to="../settings/alerts" replace />} />
         </Route>
-        <Route path="alerts" element={<Navigate to="../settings/alerts" replace />} />
       </Route>
       <Route path="/status/:slug" element={<PublicLayout />}>
         <Route index element={<Status />} />
