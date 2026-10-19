@@ -61,11 +61,12 @@ function ProjectChrome(): ReactElement | null {
       label="Project"
       tabs={[
         { to: base, label: "Overview", icon: LayoutGrid, end: true },
-        { to: `${base}/monitors`, label: "Monitors", icon: Activity, count: counts.monitors },
-        { to: `${base}/heartbeats`, label: "Heartbeats", icon: Heartbeat, count: counts.heartbeats },
-        { to: `${base}/incidents`, label: "Incidents", icon: AlertTriangle, count: counts.incidents },
-        { to: `${base}/tickets`, label: "Tickets", icon: Ticket, count: counts.tickets },
-        { to: `${base}/changelog`, label: "Changelog", icon: ScrollText, count: counts.changelog },
+        // A number on a tab flags something to look at: what is down, what is open, what waits.
+        { to: `${base}/monitors`, label: "Monitors", icon: Activity, count: counts.monitors_down, alarm: true },
+        { to: `${base}/heartbeats`, label: "Heartbeats", icon: Heartbeat, count: counts.heartbeats_down, alarm: true },
+        { to: `${base}/incidents`, label: "Incidents", icon: AlertTriangle, count: counts.incidents, alarm: true },
+        { to: `${base}/tickets`, label: "Tickets", icon: Ticket, count: counts.triage },
+        { to: `${base}/changelog`, label: "Changelog", icon: ScrollText },
         { to: `${base}/settings`, label: "Settings", icon: Settings },
       ]}
       end={

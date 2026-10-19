@@ -18,20 +18,17 @@ import { useTheme } from "@/components/layout/ThemeProvider";
 import { api } from "@/lib/api";
 import { lastProject } from "@/lib/lastProject";
 import { useMe } from "@/lib/session";
-import type { HomeCounts } from "@/lib/types";
-import { LIVE_MS, useApi } from "@/lib/useApi";
 import { cn } from "@/lib/utils";
 
 export const DOCS = "https://pt-perkasa-pilar-utama.github.io/monita/docs/";
 
-/** An area link in the header. The open area is a raised pill; a count sits beside the label.
+/** An area link in the header. The open area is a raised pill.
  * Below 1024 px only the icon shows. */
-function AreaLink({ to, label, icon, active, count, external, className }: { to: string; label: string; icon: ReactNode; active: boolean; count?: number | undefined; external?: boolean; className?: string }): ReactElement {
+function AreaLink({ to, label, icon, active, external, className }: { to: string; label: string; icon: ReactNode; active: boolean; external?: boolean; className?: string }): ReactElement {
   const body = (
     <>
       {icon}
       <span className="hidden lg:inline">{label}</span>
-      {count !== undefined && count > 0 && <span className="min-w-[18px] rounded-full bg-muted px-1.5 text-center text-xs font-semibold tabular-nums text-foreground">{count.toLocaleString()}</span>}
     </>
   );
   return (
@@ -54,13 +51,12 @@ function AreaLink({ to, label, icon, active, count, external, className }: { to:
 function AreaLinks(): ReactElement {
   const me = useMe();
   const { pathname } = useLocation();
-  const counts = useApi<HomeCounts>("/home-counts", LIVE_MS).data;
   const at = (p: string): boolean => pathname === p || pathname.startsWith(`${p}/`);
   return (
     <>
       <AreaLink to="/" label="Projects" icon={<Folder />} active={pathname === "/" || at("/projects")} />
-      <AreaLink to="/incidents" label="Incidents" icon={<AlertTriangle />} active={at("/incidents")} count={counts?.incidents} />
-      <AreaLink to="/tickets" label="Tickets" icon={<Ticket />} active={at("/tickets")} count={counts?.tickets} />
+      <AreaLink to="/incidents" label="Incidents" icon={<AlertTriangle />} active={at("/incidents")} />
+      <AreaLink to="/tickets" label="Tickets" icon={<Ticket />} active={at("/tickets")} />
       {/* On a phone these two move into the account menu, so the project name keeps its room. */}
       {me.is_admin && <AreaLink to="/admin/users" label="Admin settings" icon={<Settings />} active={at("/admin")} className="max-sm:hidden" />}
       <AreaLink to={DOCS} label="Documentation" icon={<BookOpen />} active={false} external className="max-sm:hidden" />

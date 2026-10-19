@@ -9,8 +9,10 @@ export type PageTab = {
   to: string;
   label: string;
   icon: AppIcon;
-  /** Shown beside the label when above zero. */
+  /** Shown beside the label when above zero. A count flags something to look at, never a total. */
   count?: number | undefined;
+  /** The count means something is broken (down, open incident): it shows in red. */
+  alarm?: boolean;
   /** Open only on its exact path, such as an overview whose path starts every other tab's. */
   end?: boolean;
   /** Other paths that open this tab, such as the pages in its sidebar. */
@@ -62,7 +64,7 @@ export function PageTabs({
                 <t.icon className="size-4 shrink-0" />
                 {t.label}
                 {t.count !== undefined && t.count > 0 && (
-                  <span className="min-w-[18px] rounded-full bg-muted px-1.5 text-center text-xs font-semibold tabular-nums text-foreground">
+                  <span className={cn("min-w-[18px] rounded-full px-1.5 text-center text-xs font-semibold tabular-nums", t.alarm ? "bg-down/12 text-down" : "bg-muted text-foreground")}>
                     {t.count.toLocaleString()}
                   </span>
                 )}

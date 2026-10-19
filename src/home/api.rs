@@ -1,5 +1,4 @@
-//! `/api/ui/incidents`, `/api/ui/tickets` and `/api/ui/home-counts`: the cross-project lists and
-//! the numbers beside the top menu. A tech lead sees their own projects; a super admin sees all.
+//! `/api/ui/incidents` and `/api/ui/tickets`: the cross-project lists. A tech lead sees their own projects; a super admin sees all.
 
 use std::collections::HashMap;
 
@@ -26,7 +25,6 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/api/ui/incidents", get(incidents))
         .route("/api/ui/tickets", get(tickets))
-        .route("/api/ui/home-counts", get(counts))
 }
 
 /// Whose projects a list reads: `None` reads every project.
@@ -93,15 +91,5 @@ async fn tickets(
     let rows = with_projects(&state, rows).await?;
     Ok(data(serde_json::json!({
         "tickets": rows, "total": total, "page": q.page(), "page_size": caps::ACROSS_PAGE,
-    })))
-}
-
-/// The numbers beside Projects, Incidents and Tickets in the top menu.
-async fn counts(State(state): State<AppState>, CurrentUser(user): CurrentUser) -> UiResult {
-    let o = owner(&user);
-    Ok(data(serde_json::json!({
-        "projects": projects::page_for(&state.db, &user, "", "", projects::Sort::Name, 1).await?.total,
-        "incidents": crate::incidents::open_across(&state.db, o, 1).await?.1,
-        "tickets": crate::tickets::triage_across(&state.db, o, 1).await?.1,
     })))
 }

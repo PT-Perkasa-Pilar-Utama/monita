@@ -121,25 +121,43 @@ fn on() -> bool {
     true
 }
 
-/// The numbers beside the project tabs: monitors, heartbeats, open incidents, open tickets.
+/// A project's numbers. The tabs show only the ones that flag a problem: monitors and heartbeats
+/// that are down, open incidents, and tickets waiting in Triage. The About column shows totals.
 #[derive(Default, serde::Serialize)]
 pub struct TabCounts {
     pub monitors: i64,
     pub heartbeats: i64,
+    pub monitors_down: i64,
+    pub heartbeats_down: i64,
     pub incidents: i64,
     pub tickets: i64,
-    pub changelog: i64,
+    pub triage: i64,
 }
 
-/// The numbers beside a project's tabs, each read through its module's interface.
+/// Each number read through its module's interface.
 pub async fn tab_counts(db: &Db, project_id: i64) -> anyhow::Result<TabCounts> {
+    use crate::incidents::{ItemState, SourceKind};
     let (monitors, heartbeats) = crate::checks::counts(db, project_id).await?;
+    let states = crate::incidents::team_states_for(db, project_id).await?;
+    let down = |kind: SourceKind| {
+        states
+            .iter()
+            .filter(|((k, _), s)| *k == kind && **s == ItemState::Down)
+            .count() as i64
+    };
+    let triage = crate::tickets::stage_counts(db, project_id)
+        .await?
+        .into_iter()
+        .find(|(stage, _)| stage == "triage")
+        .map_or(0, |(_, n)| n);
     Ok(TabCounts {
         monitors,
         heartbeats,
+        monitors_down: down(SourceKind::Monitor),
+        heartbeats_down: down(SourceKind::Heartbeat),
         incidents: crate::incidents::open_count(db, project_id).await?,
         tickets: crate::tickets::open_count(db, project_id).await?,
-        changelog: crate::changelog::count(db, project_id).await?,
+        triage,
     })
 }
 

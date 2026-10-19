@@ -788,3 +788,38 @@ async fn a_new_project_needs_a_homepage_that_its_status_page_links_to() {
     let site = json_of(app.get(&format!("/api/ui/public/{slug}"), None).await).await;
     assert_eq!(site["data"]["homepage_url"], "https://shop.example.com");
 }
+
+#[tokio::test]
+async fn the_tab_numbers_flag_only_what_needs_a_look() {
+    let app = TestApp::spawn("test").await;
+    let tl = app.tl("rina@x.co").await;
+    project(&app, &tl, "Payments", "payments").await;
+    app.state
+        .db
+        .write(async |c| {
+            c.execute_batch(
+                "INSERT INTO monitors (id, project_id, name, url, next_check_at) VALUES
+                   (1, 1, 'API', 'https://a.invalid', 9999999999), (2, 1, 'Site', 'https://b.invalid', 9999999999);
+                 INSERT INTO incidents (id, project_id, origin, title, severity, started_at) VALUES (1, 1, 'auto', 'API is down', 'critical', 1);
+                 INSERT INTO incident_items VALUES (1, 'monitor', 1);
+                 INSERT INTO incident_sources VALUES ('monitor', 1, 2, 1, NULL);
+                 INSERT INTO tickets (project_id, number, created_by, stage, title, description, created_at, updated_at) VALUES
+                   (1, 1, (SELECT min(id) FROM users), 'triage', 'New one', 'd', 1, 1), (1, 2, (SELECT min(id) FROM users), 'backlog', 'Sorted', 'd', 2, 2);",
+            )
+            .await?;
+            Ok(())
+        })
+        .await
+        .unwrap();
+    let head = json_of(app.get("/api/ui/projects/payments", Some(&tl)).await).await;
+    let c = &head["data"]["counts"];
+    assert_eq!(
+        (&c["monitors"], &c["monitors_down"]),
+        (&json!(2), &json!(1)),
+        "{c}"
+    );
+    assert_eq!(
+        (&c["incidents"], &c["tickets"], &c["triage"]),
+        (&json!(1), &json!(2), &json!(1))
+    );
+}

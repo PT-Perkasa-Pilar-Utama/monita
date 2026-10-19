@@ -34,7 +34,9 @@ export type ProjectList = {
   owner_options: string[];
 };
 
-export type TabCounts = { monitors: number; heartbeats: number; incidents: number; tickets: number; changelog: number };
+/** A project's numbers. Tabs show only the ones that flag a problem: down systems, open
+ * incidents, tickets in Triage. */
+export type TabCounts = { monitors: number; heartbeats: number; monitors_down: number; heartbeats_down: number; incidents: number; tickets: number; triage: number };
 
 export type ProjectHead = { project: Project; counts: TabCounts };
 
@@ -356,8 +358,6 @@ export type HomeTicket = { project: Project; number: number; title: string; crea
 
 export type HomeList<K extends string, T> = Record<K, T[]> & { total: number; page: number; page_size: number };
 
-/** The numbers beside the top menu. */
-export type HomeCounts = { projects: number; incidents: number; tickets: number };
 
 /** One kind of change in a release, and its lines. */
 export type ReleaseSection = { tag: "Added" | "Changed" | "Fixed" | "Removed"; items: string[] };
