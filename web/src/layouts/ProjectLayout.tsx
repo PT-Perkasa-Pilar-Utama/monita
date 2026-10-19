@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import type { ReactElement } from "react";
 import { Link, Outlet, useParams } from "react-router-dom";
 import { ProjectBadge } from "@/components/app/ProjectBadge";
@@ -7,14 +8,22 @@ import { PageTabs } from "@/components/layout/PageTabs";
 import { TopBar } from "@/components/layout/TopBar";
 import { NotFound } from "@/pages/NotFound";
 import { ProjectProvider } from "@/lib/project";
-import { SessionProvider } from "@/lib/session";
+import { forgetProject, rememberProject } from "@/lib/lastProject";
+import { SessionProvider, useMe } from "@/lib/session";
 import type { ProjectHead } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 
 function ProjectChrome(): ReactElement | null {
   const { slug = "" } = useParams();
+  const me = useMe();
   const head = useApi<ProjectHead>(`/projects/${encodeURIComponent(slug)}`);
-  if (head.error?.status === 404) return <NotFound />;
+  const opened = head.data?.project;
+  const gone = head.error?.status === 404;
+  useEffect(() => {
+    if (opened) rememberProject(me.email, opened);
+    else if (gone) forgetProject(me.email, slug);
+  }, [opened, gone, me.email, slug]);
+  if (gone) return <NotFound />;
   if (!head.data) return null;
   const { project: p, counts } = head.data;
   const base = `/projects/${p.slug}`;

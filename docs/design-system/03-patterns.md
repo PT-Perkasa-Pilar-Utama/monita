@@ -17,7 +17,7 @@ Under 768 px (`md`) a side navigation becomes one scrolling row. The tab bar scr
 
 | Place | Items |
 | --- | --- |
-| Top bar | Mark and project crumb, Projects, Admin (super admin: User management, Rate limits, Email, Time zone, System information), Docs, account menu |
+| Top bar | Mark and project crumb (outside a project: a way back to the last one opened, from `lib/lastProject.ts`), Projects, Admin (super admin: User management, Rate limits, Email, Time zone, System information), Docs, account menu |
 | Account menu | Who is signed in, All projects, theme switch, Sign out |
 | Project tabs | Overview, Monitors, Heartbeats, Incidents, Tickets, Settings. Status page sits at the right end and leaves the app for `/status/{slug}`. |
 | Settings side nav | General, Status page, Alerts, API keys, Allowlist |

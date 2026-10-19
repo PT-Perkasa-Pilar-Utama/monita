@@ -1,7 +1,8 @@
 import type { ReactElement, ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Mark } from "@/components/brand/Mark";
-import { BookOpen, Folder, LogOut, Moon, Settings, Sun } from "@/components/icons";
+import { ProjectBadge } from "@/components/app/ProjectBadge";
+import { BookOpen, Folder, LogOut, Moon, Settings, Sun, Undo2 } from "@/components/icons";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useTheme } from "@/components/layout/ThemeProvider";
 import { api } from "@/lib/api";
+import { lastProject } from "@/lib/lastProject";
 import { useMe } from "@/lib/session";
 import { cn } from "@/lib/utils";
 
@@ -103,13 +105,29 @@ function AccountMenu(): ReactElement {
 }
 
 /**
- * The sticky band over every signed-in page: the brand, the place (a project or Admin), the area
- * links and the account menu, then the area's tab bar when it has one.
+ * The sticky band over every signed-in page: the brand, the place (the open project, or the way
+ * back to the last one), the area links and the account menu, then the area's tab bar.
  */
 export function TopBar({ crumb, tabs }: { crumb?: ReactNode; tabs?: ReactNode }): ReactElement {
   const me = useMe();
   const { pathname } = useLocation();
   const at = (prefix: string): boolean => pathname.startsWith(prefix);
+  // Outside a project, the way back to the one opened last in this browser.
+  const last = crumb ? null : lastProject(me.email);
+  const place =
+    crumb ??
+    (last && (
+      <Link
+        to={`/projects/${last.slug}`}
+        title={`Back to ${last.name}`}
+        aria-label={`Back to ${last.name}`}
+        className="flex min-w-0 items-center gap-2 rounded-lg px-2 py-1 font-semibold text-muted-foreground hover:bg-accent hover:text-foreground"
+      >
+        <Undo2 aria-hidden="true" className="size-4 shrink-0" />
+        <ProjectBadge name={last.name} iconUrl={last.icon_url} />
+        <span className="truncate">{last.name}</span>
+      </Link>
+    ));
   return (
     <header className="sticky top-0 z-40 border-b bg-card shadow-xs" data-has-tabs={tabs ? "" : undefined}>
       <div className="px-4 sm:px-8 lg:px-12">
@@ -118,12 +136,12 @@ export function TopBar({ crumb, tabs }: { crumb?: ReactNode; tabs?: ReactNode })
             <Mark className="size-[26px] text-primary" />
             <span className="hidden sm:inline">Monita</span>
           </Link>
-          {crumb && (
+          {place && (
             <>
               <span aria-hidden="true" className="hidden text-xl font-light text-input sm:inline">
                 /
               </span>
-              {crumb}
+              {place}
             </>
           )}
           <nav aria-label="Account" className="ml-auto flex items-center gap-3">
