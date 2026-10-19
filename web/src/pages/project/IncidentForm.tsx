@@ -67,10 +67,10 @@ function ItemPicker({ choices, chosen, onToggle, error }: { choices: IncidentIte
       ) : (
         <>
           <Field>
-            <FieldLabel htmlFor="i-find" className="font-normal">
-              Find a monitor or heartbeat by name
+            <FieldLabel htmlFor="i-find" className="sr-only">
+              Search
             </FieldLabel>
-            <Input id="i-find" type="search" value={q} onChange={(e) => setQ(e.target.value)} />
+            <Input id="i-find" type="search" placeholder="Find a monitor or heartbeat by name" value={q} onChange={(e) => setQ(e.target.value)} />
           </Field>
           {names.length > 0 && <p className="text-sm text-muted-foreground">Chosen: {names.join(", ")}.</p>}
           <div className="mt-2 grid gap-4 sm:grid-cols-2">

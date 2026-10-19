@@ -87,13 +87,13 @@ export function NewTicketSheet({ slug, onFiled }: { slug: string; onFiled: (n: n
             </Field>
             <Field data-invalid={err("description") ? true : undefined}>
               <FieldLabel htmlFor="ticket-description" required>
-                Description, only your team sees it
+                Description
               </FieldLabel>
               <Textarea
                 id="ticket-description"
                 rows={12}
                 className="min-h-56"
-                placeholder="What happens, where, and how to make it happen again."
+                placeholder="What happens, where, and how to make it happen again. Only your team sees this."
                 aria-required
                 aria-invalid={err("description") ? true : undefined}
                 value={description}

@@ -139,10 +139,11 @@ export function Secrets(): ReactElement {
             {editing === "new" && (
               <Field data-invalid={error?.fields.name ? true : undefined}>
                 <FieldLabel htmlFor="secret-name" required>
-                  Name, such as REPORT_API_TOKEN
+                  Name
                 </FieldLabel>
                 <Input
                   id="secret-name"
+                  placeholder="REPORT_API_TOKEN"
                   autoFocus
                   autoComplete="off"
                   className="font-mono"

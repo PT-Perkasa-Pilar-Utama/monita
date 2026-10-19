@@ -102,7 +102,7 @@ function RouteSection({ slug, route }: { slug: string; route: AlertRoute }): Rea
       <fieldset disabled={!enabled} className="contents">
       <FieldGroup className="gap-5">
         <Field data-invalid={error?.fields.emails ? true : undefined}>
-          <FieldLabel htmlFor={`emails-${s}`}>Email addresses, one per line</FieldLabel>
+          <FieldLabel htmlFor={`emails-${s}`}>Email addresses</FieldLabel>
           <Textarea
             id={`emails-${s}`}
             rows={3}

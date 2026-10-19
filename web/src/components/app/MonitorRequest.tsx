@@ -38,11 +38,11 @@ type Props<F extends RequestPart> = {
 const METHODS = ["GET", "HEAD", "POST", "PUT"];
 export const sendsBody = (method: string): boolean => method === "POST" || method === "PUT";
 
-function Pick({ id, value, items, onChange, mono, invalid }: { id: string; value: string; items: { value: string; label: string }[]; onChange: (v: string) => void; mono?: boolean; invalid?: boolean }): ReactElement {
+function Pick({ id, value, items, onChange, mono, invalid, placeholder = "Pick one" }: { id: string; value: string; items: { value: string; label: string }[]; onChange: (v: string) => void; mono?: boolean; invalid?: boolean; placeholder?: string }): ReactElement {
   return (
     <Select value={value} onValueChange={onChange}>
       <SelectTrigger id={id} className={mono ? "font-mono" : undefined} aria-invalid={invalid ? true : undefined}>
-        <SelectValue placeholder="Pick one" />
+        <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>
         <SelectGroup>
@@ -87,9 +87,12 @@ export function RequestFields<F extends RequestPart>({ form, set, err, intervals
         <ChoiceField id="m-interval" label="Check every" value={form.interval_s} choices={intervals} onChange={(v) => set("interval_s", v)} error={err("interval_s")} />
         <Field data-invalid={err("timeout_s") ? true : undefined}>
           <FieldLabel htmlFor="m-timeout" required>
-            Timeout in seconds
+            Timeout
           </FieldLabel>
-          <Input id="m-timeout" inputMode="numeric" aria-required aria-invalid={err("timeout_s") ? true : undefined} value={form.timeout_s} onChange={(e) => set("timeout_s", e.target.value)} />
+          <div className="flex items-center gap-3">
+            <Input id="m-timeout" inputMode="numeric" className="w-24" aria-required aria-invalid={err("timeout_s") ? true : undefined} value={form.timeout_s} onChange={(e) => set("timeout_s", e.target.value)} placeholder="10" />
+            <span className="text-sm text-muted-foreground">seconds</span>
+          </div>
           {err("timeout_s") && <FieldError>{err("timeout_s")}</FieldError>}
         </Field>
       </div>
@@ -112,11 +115,12 @@ export function AuthFields<F extends RequestPart>({ form, set, err, secrets, sec
         {kind !== "none" && secrets && secrets.length > 0 && (
           <Field data-invalid={err("auth_secret_id") ? true : undefined}>
             <FieldLabel htmlFor="m-secret" required>
-              {kind === "basic" ? "Password from secret" : "Value from secret"}
+              {kind === "basic" ? "Password" : "Secret"}
             </FieldLabel>
             <Pick
               id="m-secret"
               mono
+              placeholder="Pick a secret"
               invalid={!!err("auth_secret_id")}
               value={form.auth_secret_id === null ? "" : String(form.auth_secret_id)}
               items={secrets.map((s) => ({ value: String(s.id), label: s.name }))}

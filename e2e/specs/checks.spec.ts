@@ -13,7 +13,7 @@ test("@US-09 TL adds a monitor with defaults and sees it waiting for its first c
   const slug = await newProject(page);
   await page.getByRole("link", { name: "New monitor" }).click();
   await expect(page.getByLabel("Check every")).toHaveText("1 minute");
-  await expect(page.getByLabel("Timeout in seconds")).toHaveValue("10");
+  await expect(page.getByLabel("Timeout")).toHaveValue("10");
   await page.getByLabel("Name").fill("Monita health");
   await page.getByLabel("URL").fill("http://127.0.0.1:18080/healthz");
   await page.getByRole("button", { name: "Save monitor" }).click();

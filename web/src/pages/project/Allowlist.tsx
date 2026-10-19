@@ -45,7 +45,7 @@ export function Allowlist(): ReactElement {
         }
       >
         <Field data-invalid={error ? true : undefined}>
-          <FieldLabel htmlFor="cidrs">One address or CIDR range per line</FieldLabel>
+          <FieldLabel htmlFor="cidrs">Allowed addresses</FieldLabel>
           <Textarea
             id="cidrs"
             rows={5}
