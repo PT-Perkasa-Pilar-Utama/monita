@@ -79,8 +79,18 @@ pub fn ip_limited(method: &axum::http::Method, path: &str) -> bool {
         || path.starts_with("/api/ui/public/")
         || path.starts_with("/api/v1/public/")
         || path.starts_with("/api/v1/tickets")
-        || (method == axum::http::Method::POST
-            && (path == "/api/ui/login" || path.starts_with("/api/ui/invites/")))
+        || path.starts_with("/api/ui/invites/")
+        || (method == axum::http::Method::POST && path == "/api/ui/login")
+}
+
+/// Sign-in counts in its own bucket, so status-page traffic from an office behind one address
+/// cannot use up the attempts its people need to sign in.
+fn bucket(path: &str, ip: &str) -> String {
+    if path == "/api/ui/login" {
+        format!("login:{ip}")
+    } else {
+        format!("ip:{ip}")
+    }
 }
 
 /// 429 with `Retry-After`: the JSON envelope under `/api/`, plain text elsewhere. The routes that
@@ -131,7 +141,7 @@ pub async fn per_ip(
         }
     };
     if let Verdict::Deny(retry) = state.limiter.hit(
-        &format!("ip:{ip}"),
+        &bucket(req.uri().path(), &ip),
         u32::try_from(limit.max(1)).unwrap_or(u32::MAX),
         60,
         super::now(),

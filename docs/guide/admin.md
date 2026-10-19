@@ -69,7 +69,7 @@ You cannot act on your own account. A disabled user can only be enabled. A batch
 | Group | Limit | Default |
 | --- | --- | --- |
 | Monitoring | Checks at the same time | 50 |
-| Visitors and apps | Visits per minute from one address | 60 |
+| Visitors and apps | Visits per minute from one address. Sign-in attempts count apart, at the same rate. | 60 |
 | Visitors and apps | API calls per minute from one key | 120 |
 | Visitors and apps | Pings per second for one heartbeat | 1 |
 | Bug reports | Bug reports per user per day | 5 |

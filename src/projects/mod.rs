@@ -321,24 +321,37 @@ impl FromRequestParts<AppState> for ApiProject {
                 "Unexpected failure.",
             )
         };
+        let ip =
+            crate::platform::caller_ip(&parts.headers, &parts.extensions, state.config.trust_proxy);
         let conn = state.db.read().await.map_err(internal)?;
-        let (key_id, project, last_used) = store::find_live_key(&conn, &token::hash(raw.trim()))
-            .await
-            .map_err(internal)?
-            .ok_or_else(unauthorized)?;
-        if let Some(list) = &project.ip_allowlist {
-            let ip = crate::platform::caller_ip(
-                &parts.headers,
-                &parts.extensions,
-                state.config.trust_proxy,
-            );
-            if !ip.is_some_and(|ip| allowlist::contains(list, ip)) {
-                return Err(api_error(
-                    StatusCode::FORBIDDEN,
-                    "forbidden",
-                    "This IP may not use this key.",
-                ));
-            }
+        // A wrong key has no key bucket yet, so its misses count per IP, as unknown ping tokens do.
+        let miss_key = format!("keymiss:{}", crate::platform::rate_limit::ip_key(ip));
+        let ip_limit = crate::platform::settings::get_or(&conn, "rl_ip_per_min", 60).await;
+        let ip_limit = u32::try_from(ip_limit.max(1)).unwrap_or(u32::MAX);
+        if let crate::platform::rate_limit::Verdict::Deny(retry) =
+            state.limiter.over(&miss_key, ip_limit, 60, now())
+        {
+            return Err(crate::platform::rate_limit::too_many(
+                parts.uri.path(),
+                retry,
+            ));
+        }
+        let Some((key_id, project, last_used)) =
+            store::find_live_key(&conn, &token::hash(raw.trim()))
+                .await
+                .map_err(internal)?
+        else {
+            state.limiter.hit(&miss_key, ip_limit, 60, now());
+            return Err(unauthorized());
+        };
+        if let Some(list) = &project.ip_allowlist
+            && !ip.is_some_and(|ip| allowlist::contains(list, ip))
+        {
+            return Err(api_error(
+                StatusCode::FORBIDDEN,
+                "forbidden",
+                "This IP may not use this key.",
+            ));
         }
         // SEC-12: per-key limit, read from settings on each call.
         let limit = crate::platform::settings::get_or(&conn, "rl_key_per_min", 120).await;

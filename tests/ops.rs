@@ -327,3 +327,53 @@ async fn monita_pings_its_peer_at_start_and_every_minute() {
     }
     assert_eq!(hits.load(Ordering::SeqCst), 1);
 }
+
+#[tokio::test]
+async fn wrong_api_keys_are_limited_per_ip() {
+    let app = TestApp::spawn("test").await;
+    set(&app, "rl_ip_per_min", 2).await;
+    let call = || {
+        app.http
+            .post(app.url("/api/v1/ref-ids"))
+            .bearer_auth("mk_aaaaaaaaaaaaaaaaaaaaaaaaaa")
+            .send()
+    };
+    for _ in 0..2 {
+        assert_eq!(call().await.unwrap().status(), 401);
+    }
+    let limited = call().await.unwrap();
+    assert_eq!(limited.status(), 429);
+    assert!(limited.headers().contains_key("retry-after"));
+}
+
+#[tokio::test]
+async fn invite_links_are_limited_per_ip_when_read() {
+    let app = TestApp::spawn("test").await;
+    set(&app, "rl_ip_per_min", 2).await;
+    for _ in 0..2 {
+        let res = app.get("/api/ui/invites/not-a-token", None).await;
+        assert_eq!(res.status(), 410);
+    }
+    let res = app.get("/api/ui/invites/not-a-token", None).await;
+    assert_eq!(res.status(), 429);
+}
+
+#[tokio::test]
+async fn status_page_traffic_does_not_use_up_sign_in() {
+    let app = TestApp::spawn("test").await;
+    set(&app, "rl_ip_per_min", 2).await;
+    for _ in 0..3 {
+        app.get("/api/ui/public/nope/status", None).await;
+    }
+    let login = || {
+        app.api_post(
+            "/api/ui/login",
+            serde_json::json!({ "email": "rina@x.co", "password": "wrong-password" }),
+            None,
+        )
+    };
+    for _ in 0..2 {
+        assert_ne!(login().await.status(), 429, "sign-in has its own bucket");
+    }
+    assert_eq!(login().await.status(), 429, "and its own limit");
+}
