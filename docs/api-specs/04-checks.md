@@ -55,7 +55,7 @@ The monitor form sends these fields. The view returns the same fields, plus thos
 | Field | Type | Rule |
 | --- | --- | --- |
 | `name` | string | 1 to 80 characters |
-| `url` | string | starts with `http://` or `https://` |
+| `url` | string | starts with `http://` or `https://`; no user name or password in it (use `auth_kind`) |
 | `method` | string | `GET`, `HEAD`, `POST` or `PUT`; blank is `GET` |
 | `headers` | string | `Name: value` lines. Up to 20 headers and 4 KB a value. `Host` and `Content-Length` are refused. A header may not repeat the one that Authentication sends. |
 | `body` | string | Sent with `POST` and `PUT` only, up to 64 KB. A body with another method is 422 on `body`. Blank is none. |

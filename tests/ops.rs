@@ -377,3 +377,25 @@ async fn status_page_traffic_does_not_use_up_sign_in() {
     }
     assert_eq!(login().await.status(), 429, "and its own limit");
 }
+
+/// SEC-18: the database holds secrets, so it is private even when the umask is not.
+#[cfg(unix)]
+#[tokio::test]
+async fn the_database_files_are_readable_by_their_owner_only() {
+    use std::os::unix::fs::PermissionsExt;
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("monita.db");
+    let db = monita::platform::db::Db::open(&path).await.unwrap();
+    db.write(async |c| {
+        c.execute("CREATE TABLE t (x INTEGER)", ()).await?;
+        Ok(())
+    })
+    .await
+    .unwrap();
+    // The WAL exists from the first connection, so open covers it.
+    for entry in std::fs::read_dir(dir.path()).unwrap() {
+        let f = entry.unwrap();
+        let mode = f.metadata().unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode, 0o600, "{:?}", f.file_name());
+    }
+}

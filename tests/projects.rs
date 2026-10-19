@@ -190,14 +190,9 @@ async fn a_project_goes_only_to_an_active_tl() {
     let rina = app.tl("rina@x.co").await;
     app.tl("budi@x.co").await;
     project(&app, &rina, "Payments", "payments").await;
-    let budi_id = monita::accounts::list_users(&app.state.db)
-        .await
-        .unwrap()
-        .into_iter()
-        .find(|u| u.email == "budi@x.co")
-        .unwrap()
-        .id;
-    monita::accounts::disable(&app.state.db, 0, budi_id)
+    let users = monita::accounts::list_users(&app.state.db).await.unwrap();
+    let id_of = |email: &str| users.iter().find(|u| u.email == email).unwrap().id;
+    monita::accounts::disable(&app.state.db, id_of("admin@x.co"), id_of("budi@x.co"))
         .await
         .unwrap();
     for owner in ["budi@x.co", "nobody@x.co", ""] {
@@ -821,5 +816,27 @@ async fn the_tab_numbers_flag_only_what_needs_a_look() {
     assert_eq!(
         (&c["incidents"], &c["tickets"], &c["triage"]),
         (&json!(1), &json!(2), &json!(1))
+    );
+}
+
+/// The homepage is public on the status page, so it carries no user name or password.
+#[tokio::test]
+async fn a_homepage_with_a_password_in_it_is_refused() {
+    let app = TestApp::spawn("test").await;
+    let tl = app.tl("rina@x.co").await;
+    let res = app
+        .api_post(
+            "/api/ui/projects",
+            json!({ "name": "Shop", "homepage_url": "https://bob:secret@shop.example.com" }),
+            Some(&tl),
+        )
+        .await;
+    assert_eq!(res.status(), 422);
+    let err = json_of(res).await;
+    assert!(
+        err["error"]["fields"]["homepage_url"]
+            .as_str()
+            .unwrap()
+            .contains("no user name or password")
     );
 }

@@ -84,6 +84,13 @@ impl Db {
         let path = path.to_str().context("database path must be UTF-8")?;
         let database = Builder::new_local(path).build().await?;
         let conn = connect(&database).await?;
+        // SEC-18: the database holds secrets, so only its owner reads it, whatever the umask.
+        for companion in ["", "-wal", "-shm"] {
+            let f = std::path::PathBuf::from(format!("{path}{companion}"));
+            if f.exists() {
+                super::restrict(&f, 0o600)?;
+            }
+        }
         Ok(Self {
             database,
             writer: Arc::new(Mutex::new(Writer {

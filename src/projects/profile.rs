@@ -39,12 +39,14 @@ pub struct ProfileInput {
     pub remove_icon: String,
 }
 
-const HOMEPAGE_HINT: &str = "Enter the address where people use it, starting with https://.";
+const HOMEPAGE_HINT: &str =
+    "Enter the address where people use it, starting with https://, with no user name or password.";
 
 /// The homepage, trimmed, or the error for its field. A URL of up to 2 000 characters.
 fn homepage(raw: &str) -> Option<&str> {
     let u = raw.trim();
-    (crate::platform::valid_http_url(u) && u.len() <= 2_000).then_some(u)
+    (crate::platform::valid_http_url(u) && u.len() <= 2_000 && !crate::platform::has_userinfo(u))
+        .then_some(u)
 }
 
 /// An empty description is none.

@@ -55,6 +55,23 @@ pub fn valid_http_url(raw: &str) -> bool {
         })
 }
 
+/// Sets a file's or folder's Unix mode (SEC-18). Does nothing on other systems.
+pub fn restrict(path: &std::path::Path, mode: u32) -> std::io::Result<()> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(path, std::fs::Permissions::from_mode(mode))?;
+    }
+    let _ = (path, mode);
+    Ok(())
+}
+
+/// True when a URL carries a user name or password (`https://user:pass@host`). A monitor has
+/// sign-in fields that a supervisor never sees, and a homepage is public, so neither takes one.
+pub fn has_userinfo(raw: &str) -> bool {
+    reqwest::Url::parse(raw).is_ok_and(|u| !u.username().is_empty() || u.password().is_some())
+}
+
 /// Current time in Unix seconds, UTC.
 pub fn now() -> i64 {
     std::time::SystemTime::now()

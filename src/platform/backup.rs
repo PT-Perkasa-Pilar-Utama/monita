@@ -21,11 +21,11 @@ pub async fn run(state: &AppState, now: i64) -> anyhow::Result<Option<PathBuf>> 
         std::fs::remove_dir_all(&partial)?;
     }
     std::fs::create_dir(&partial)?;
-    restrict(&partial, 0o700)?;
+    super::restrict(&partial, 0o700)?;
     let staged = partial.join("copy.db");
     state.db.vacuum_into(&staged).await?;
     remove_companions(&staged)?;
-    restrict(&staged, 0o600)?;
+    super::restrict(&staged, 0o600)?;
     std::fs::rename(&staged, &file)?;
     std::fs::remove_dir(&partial)?;
     // The copy is good; a prune failure must not make the job redo it every 10 minutes.
@@ -44,17 +44,6 @@ fn remove_companions(file: &Path) -> std::io::Result<()> {
             std::fs::remove_file(companion)?;
         }
     }
-    Ok(())
-}
-
-/// SEC-18: backups are readable by the service user only.
-fn restrict(path: &Path, mode: u32) -> std::io::Result<()> {
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(path, std::fs::Permissions::from_mode(mode))?;
-    }
-    let _ = (path, mode);
     Ok(())
 }
 

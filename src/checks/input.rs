@@ -66,6 +66,11 @@ impl MonitorInput {
         let url = self.url.trim();
         if !crate::platform::valid_http_url(url) {
             e.insert("url", "The URL must start with http:// or https://.");
+        } else if crate::platform::has_userinfo(url) {
+            e.insert(
+                "url",
+                "Put the user name and password under Sign in with, not in the URL.",
+            );
         }
         if !INTERVALS_S.contains(&self.interval_s) {
             e.insert("interval_s", "Pick one of the listed intervals.");
@@ -200,6 +205,27 @@ mod tests {
             ..MonitorInput::defaults()
         };
         assert!(!input.validate().contains_key("name"));
+    }
+
+    #[test]
+    fn a_url_with_a_user_name_or_password_is_refused() {
+        for url in ["https://bob:secret@x.co/health", "https://bob@x.co/health"] {
+            let input = MonitorInput {
+                name: "API".into(),
+                url: url.into(),
+                ..MonitorInput::defaults()
+            };
+            assert!(input.validate()["url"].contains("Sign in with"), "{url}");
+        }
+        let query = MonitorInput {
+            name: "API".into(),
+            url: "https://x.co/health?token=abc".into(),
+            ..MonitorInput::defaults()
+        };
+        assert!(
+            !query.validate().contains_key("url"),
+            "a query string stays allowed"
+        );
     }
 
     #[test]

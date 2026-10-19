@@ -15,7 +15,7 @@
 | Monita to SMTP | Credential leak | SEC-16 |
 | Admin surface | Reset endpoint in production | SEC-17 |
 | Database file | Theft from disk or backup | SEC-18 |
-| Read-only role | A supervisor changes data or reads a credential | SEC-22 |
+| Read-only role | A supervisor changes data or reads a credential | SEC-22 A monitor URL and a project homepage may not carry a user name or password (`https://user:pass@host`), so a supervisor never reads one there: the monitor's sign-in fields hold them instead. |
 | Stored credentials | Secrets, header values and the mail password leave Monita in a response or a log | SEC-23, SEC-24, SEC-25 |
 | Ref IDs | The team cannot tell ref IDs apart, or a stored hint weakens one | SEC-26 |
 
@@ -40,7 +40,7 @@
 | SEC-15 | Outbound targets | Monitors and webhooks may target internal addresses. Only the owner of a project or a super admin can set them. Probe bodies are capped at 1 MB. Redirects are followed up to 5 times. |
 | SEC-16 | Secrets in config | SMTP credentials come from the mail server a super admin saved (`settings.mail`, SEC-25) or, when none is saved, from the environment file (mode 0600, owned by the service user). They are never logged. |
 | SEC-17 | Reset endpoint | Registered only when `MONITA_ENV` is `dev` or `test`. Enforced at route registration, not by authorization. In prod the path returns 404. |
-| SEC-18 | Data at rest | The DB file and backups have mode 0600 and belong to the `monita` user. |
+| SEC-18 | Data at rest | The DB file, its WAL and backups have mode 0600 and belong to the `monita` user. Monita sets the mode each time it opens the database, whatever the umask. |
 | SEC-19 | Request limits | Request bodies are capped at 128 KiB (413): a ticket of 10 000 four-byte characters, percent-encoded, is about 120 KB. The ping routes are the exceptions. They read a body only after the token and the limits pass. They read up to 16 MiB or 10 s and keep only the first 1 KB of a `/fail` body. Ticket description at most 10 000 chars. |
 | SEC-21 | Status page privacy | Public pages and JSON never show an update's author, and show Monita's own detection entry as `Detected.` without its cause, which can name internal hosts. Incidents and their item lists are cut to public items. |
 | SEC-20 | Logs | No passwords, tokens, keys, sealed secret values, header values, request bodies, the mail password or ticket descriptions in logs. Tokens appear as their first 6 chars at most. Email bodies are not logged and are cleared from the outbox once delivered or failed. A check's error text names no header value, body or credential. |

@@ -12,7 +12,7 @@ A project as every route shows it (`project`):
 | --- | --- |
 | `name`, `slug`, `owner_email` | strings |
 | `description` | text up to 280 characters, or null |
-| `homepage_url` | `http` or `https` address, or null for a project made before it was required |
+| `homepage_url` | `http` or `https` address with no user name or password, or null for a project made before it was required |
 | `icon_url` | `/projects/{slug}/icon?v={icon_at}`, or null |
 | `ip_allowlist` | the CIDRs as saved, or null |
 | `created_at` | Unix seconds |
