@@ -77,7 +77,7 @@ export function Ticket(): ReactElement {
 
   return (
     <>
-      <PageHeader title={`${project.name} tickets`} meta={<span>Your ref ID is on your account page in {project.name}.</span>} />
+      <PageHeader title={`${project.name} tickets`} />
       <div className="grid items-start gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
@@ -126,7 +126,7 @@ export function Ticket(): ReactElement {
               </FieldGroup>
             </CardContent>
             <CardFooter className="flex-wrap justify-between gap-3 border-t">
-              <span className="text-sm text-muted-foreground">Only the team reads your report. Please leave out passwords.</span>
+              <span className="text-sm text-muted-foreground">Do not include sensitive information.</span>
               <Button type="submit" disabled={sending}>
                 {sending && <Spinner data-icon="inline-start" />}
                 Send report

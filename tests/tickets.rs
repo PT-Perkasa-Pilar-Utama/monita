@@ -776,3 +776,21 @@ async fn the_team_issues_a_ref_id_from_the_board_and_it_files_tickets() {
     let stored = format!("SELECT count(*) FROM ref_ids WHERE token_hash = '{rid}'");
     assert_eq!(count(&app, &stored).await, 0, "only the hash is stored");
 }
+
+#[tokio::test]
+async fn a_report_form_names_every_bad_field_at_once() {
+    let app = TestApp::spawn("test").await;
+    setup(&app).await;
+    let res = app
+        .api_post(
+            "/api/ui/public/payments/report",
+            json!({ "ref_id": "", "title": "x", "description": "", "page_url": "ftp://x" }),
+            None,
+        )
+        .await;
+    assert_eq!(res.status(), 422);
+    let fields = json_of(res).await["error"]["fields"].clone();
+    for f in ["ref_id", "title", "description", "page_url"] {
+        assert!(fields[f].is_string(), "{f} missing from {fields}");
+    }
+}

@@ -67,7 +67,11 @@ pub fn router() -> Router<AppState> {
 impl From<TicketError> for UiError {
     fn from(e: TicketError) -> Self {
         match e {
-            TicketError::Invalid { field, message } => UiError::field(field, message),
+            TicketError::Invalid(bad) => UiError::fields(
+                bad.into_iter()
+                    .map(|(f, m)| (f.to_string(), m.to_string()))
+                    .collect(),
+            ),
             TicketError::RefIdInvalid => UiError::field("ref_id", e.to_string()),
             TicketError::NeedReason => UiError::field("close_reason", e.to_string()),
             TicketError::DailyCap => UiError::DailyCap(e.to_string()),

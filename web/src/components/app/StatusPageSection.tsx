@@ -14,10 +14,10 @@ import { toast } from "sonner";
 type TabKey = keyof PublicPages | "uptime";
 
 const TABS: CheckCard<TabKey>[] = [
-  { key: "uptime", title: "Uptime", description: "Each public system with 90 days of bars. Always shown.", locked: true },
-  { key: "incidents", title: "Incidents", description: "What is wrong now and every past incident, with your updates." },
-  { key: "known_issues", title: "Issues", description: "The tickets your team has sorted, by title only." },
-  { key: "report", title: "Ticket", description: "A reporter files a bug and checks their own tickets with their ref ID. Your app can still file through the API." },
+  { key: "uptime", title: "Uptime", description: "Shows how each public system has done over the last 90 days. This tab is always on.", locked: true },
+  { key: "incidents", title: "Incidents", description: "Shows current problems and past incidents, with the updates your team posts." },
+  { key: "known_issues", title: "Issues", description: "Shows the bugs your team is working on. Visitors see only the title." },
+  { key: "report", title: "Ticket", description: "Lets people report a bug and follow its progress with their ref ID." },
 ];
 const KEYS: (keyof PublicPages)[] = ["incidents", "known_issues", "report"];
 
@@ -42,8 +42,8 @@ export function StatusPageSection(): ReactElement {
   return (
     <SettingsSection
       id="tabs"
-      title="Tabs visitors see"
-      description="The page shows the monitors and heartbeats you make public. Turn off a tab your team does not use."
+      title="Public tabs"
+      description="Choose what people see on your status page. Only the monitors and heartbeats you mark as public appear there."
       footerNote={
         <a href={`/status/${p.slug}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-mono break-all text-link underline-offset-4 hover:underline">
           {window.location.origin}/status/{p.slug}
@@ -59,7 +59,7 @@ export function StatusPageSection(): ReactElement {
     >
       <CheckCards
         id="tab"
-        legend="Tabs visitors see"
+        legend="Public tabs"
         cards={TABS}
         value={{ ...pages, uptime: true }}
         onChange={(k, on) => k !== "uptime" && setPages({ ...pages, [k]: on })}

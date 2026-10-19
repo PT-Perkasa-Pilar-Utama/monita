@@ -29,8 +29,8 @@ pub(super) async fn preflight() -> Response {
 
 fn ticket_error(e: TicketError) -> Response {
     match e {
-        TicketError::Invalid { message, .. } => {
-            api_error(StatusCode::BAD_REQUEST, "invalid_request", message)
+        TicketError::Invalid(_) => {
+            api_error(StatusCode::BAD_REQUEST, "invalid_request", &e.to_string())
         }
         TicketError::RefIdInvalid => api_error(
             StatusCode::UNPROCESSABLE_ENTITY,
