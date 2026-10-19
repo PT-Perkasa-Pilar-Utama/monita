@@ -33,11 +33,6 @@ export function barTitle(d: UptimeDay): string {
   return d.downtime_s === 0 ? `${d.day}: ${pct}` : `${d.day}: ${pct}, down ${duration(d.downtime_s)}`;
 }
 
-/** "Since 2026-10-17 10:38 UTC", or the start and how long it took. */
-export function when(i: PublicIncident): string {
-  return i.resolved_at === null ? `Since ${stamp(i.started_at)}` : `${stamp(i.started_at)}, resolved after ${duration(i.resolved_at - i.started_at)}`;
-}
-
 /** Resolved, Issue for a reported incident (never downtime), or Down. */
 export function incidentState(i: PublicIncident): [StateKind, string] {
   if (i.resolved_at !== null) return ["up", "Resolved"];
@@ -91,4 +86,21 @@ export function meanUptime(days: UptimeDay[]): string | null {
   const known = days.map((d) => d.uptime).filter((u): u is number => u !== null);
   if (known.length === 0) return null;
   return `${(known.reduce((a, b) => a + b, 0) / known.length).toFixed(2)}%`;
+}
+
+/** Runs of incidents that start in the same month, in the order given, as "October 2026". */
+export function byMonth(incidents: PublicIncident[]): { month: string; incidents: PublicIncident[] }[] {
+  const groups: { month: string; incidents: PublicIncident[] }[] = [];
+  for (const i of incidents) {
+    const m = month(i.started_at);
+    const last = groups.at(-1);
+    if (last?.month === m) last.incidents.push(i);
+    else groups.push({ month: m, incidents: [i] });
+  }
+  return groups;
+}
+
+/** The incidents that have ended; open ones show under Happening now instead. */
+export function resolvedOnly(incidents: PublicIncident[]): PublicIncident[] {
+  return incidents.filter((i) => i.resolved_at !== null);
 }

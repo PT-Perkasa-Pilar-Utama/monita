@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { barTone, blanksBefore, meanUptime, headline, incidentState, month, monthName, span, splitSystems, when, windowLabel } from "@/lib/status";
+import { barTone, blanksBefore, meanUptime, headline, incidentState, month, monthName, span, splitSystems, windowLabel, byMonth, resolvedOnly } from "@/lib/status";
 import { setOffset } from "@/lib/time";
 import type { PublicIncident, PublicItem, UptimeDay } from "@/lib/types";
 
@@ -35,9 +35,7 @@ test("a reported incident shows as Issue, never Down", () => {
   expect(incidentState(inc("auto", 1_790_000_360))).toEqual(["up", "Resolved"]);
 });
 
-test("when and month read in UTC", () => {
-  expect(when(inc("auto", 1_790_000_360))).toBe("2026-09-21 14:13 UTC, resolved after 6m 0s");
-  expect(when(inc("auto", null))).toBe("Since 2026-09-21 14:13 UTC");
+test("month reads in UTC", () => {
   expect(month(1_790_000_000)).toBe("September 2026");
 });
 
@@ -74,4 +72,18 @@ test("a mean uptime skips bars without data", () => {
   const d = (uptime: number | null): UptimeDay => ({ day: "d", uptime, downtime_s: 0 });
   expect(meanUptime([d(100), d(null), d(99)])).toBe("99.50%");
   expect(meanUptime([d(null)])).toBeNull();
+});
+
+test("byMonth keeps the order and starts a group at each new month", () => {
+  const at = (title: string, started_at: number): PublicIncident => ({ ...inc("auto", null), title, started_at });
+  // 2026-10-02, 2026-10-01, 2026-09-21, 2026-09-20 in UTC.
+  const groups = byMonth([at("a", 1_791_000_000), at("b", 1_790_900_000), at("c", 1_790_000_000), at("d", 1_789_900_000)]);
+  expect(groups.map((g) => [g.month, g.incidents.map((i) => i.title).join("")])).toEqual([
+    ["October 2026", "ab"],
+    ["September 2026", "cd"],
+  ]);
+});
+
+test("resolvedOnly drops the incidents still open", () => {
+  expect(resolvedOnly([inc("auto", null), inc("manual", 1_790_000_360)]).map((i) => i.resolved_at)).toEqual([1_790_000_360]);
 });
