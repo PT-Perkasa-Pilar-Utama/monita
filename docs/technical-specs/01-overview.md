@@ -19,11 +19,13 @@ Monita is a self-hosted uptime and incident service for every project in the IT 
 
 ### 1.2.1 accounts
 - Create the first super admin from the CLI (US-01).
-- Create TLs, invite links, password set and reset (US-02, US-03, US-04).
+- Invite users with a role (tech lead, supervisor or super admin), change a role, disable and enable, password set and reset (US-02, US-03, US-04).
+- A supervisor sees everything a super admin sees and changes nothing ([09](09-authentication-and-authorization.md)).
 
 ### 1.2.2 projects
 - Projects, ownership and reassignment (US-05, US-06).
 - API keys and the IP allowlist (US-07, US-08).
+- Sealed secrets for monitor sign-in, and the public tab switches.
 
 ### 1.2.3 checks
 - HTTP monitors and recent checks (US-09, US-10).
@@ -37,7 +39,8 @@ Monita is a self-hosted uptime and incident service for every project in the IT 
 
 ### 1.2.5 notify
 - Alert routes per severity, alerts on open and close (US-15, US-16).
-- The daily ticket digest and the ticket webhook (US-30).
+- The daily ticket digest and the ticket webhook, with its own switches for new tickets and moves (US-30).
+- The mail server a super admin saves on the Email page.
 
 ### 1.2.6 status
 - Public status page and public JSON (US-21, US-22).
@@ -45,10 +48,14 @@ Monita is a self-hosted uptime and incident service for every project in the IT 
 ### 1.2.7 tickets
 - Ref IDs, ticket submission, ticket board, public board, reporter view (US-23 to US-29).
 
-### 1.2.8 platform
+### 1.2.8 home and changelog
+- `home`: Incidents and Tickets across every project the user may open.
+- `changelog`: a project's releases, with a public Changelog tab.
+
+### 1.2.9 platform
 - Rate limits (US-31), nightly backup (US-33), `/healthz` and the peer ping (US-34), settings, database and migrations.
 
-### 1.2.9 Out of scope
+### 1.2.10 Out of scope
 - Monitor types other than HTTP(S).
 - SSO, 2FA, self-service password reset.
 - Escalation, on-call schedules, SMS, phone calls.
@@ -109,4 +116,4 @@ VISITOR
 3. A company SMTP relay exists.
 4. A second Monita runs at another site and watches the first through a heartbeat (peer watch).
 5. Turso is pre-1.0. Monita uses standard SQLite features only, so the `sqlite3` tool and any SQLite library can open the same file. See [04](04-tech-stack.md).
-6. All times are stored in UTC.
+6. All times are stored in UTC. Pages show them in a fixed offset that a super admin sets ([05 section 5.8.6](05-module-definitions.md#586-time-zone)).

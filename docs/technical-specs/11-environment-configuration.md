@@ -1,6 +1,6 @@
 # 11. Environment Configuration
 
-Monita reads its configuration from environment variables at start. systemd loads them from `/etc/monita/monita.env`, which `monita setup` writes. A command run by hand reads the same file when `MONITA_ENV` is unset ([api-specs 10.1](../api-specs/10-cli.md#101-the-env-file)). Runtime limits live in the `settings` table, not here.
+Monita reads its configuration from environment variables at start. systemd loads them from `/etc/monita/monita.env`, which `monita setup` writes. A command run by hand reads the same file when `MONITA_ENV` is unset ([api-specs 10.1](../api-specs/10-cli.md#101-the-env-file)). Runtime limits, the time zone offset and the saved mail server live in the `settings` table, not here ([06 section 6.3.14](06-data-model.md)).
 
 | Variable | Meaning | dev | test (e2e) | prod |
 | --- | --- | --- | --- | --- |
@@ -10,8 +10,8 @@ Monita reads its configuration from environment variables at start. systemd load
 | `MONITA_DB_PATH` | Database file | `./data/monita.db` | `./data/e2e.db` | `/var/lib/monita/monita.db` |
 | `MONITA_BACKUP_DIR` | Backup folder. Empty disables backup. | empty | empty | `/var/backups/monita` |
 | `MONITA_BACKUP_KEEP` | Backups kept | 7 | 7 | 7 |
-| `MONITA_SMTP_URL` | `smtp://` or `smtps://user:pass@host:port`. Empty logs emails instead of sending. | empty | empty | set |
-| `MONITA_MAIL_FROM` | Sender | `monita@localhost` | `monita@localhost` | `Monita <monita@company.co.id>` |
+| `MONITA_SMTP_URL` | Fallback mail server: `smtp://` or `smtps://user:pass@host:port`. Used only while no super admin has saved a mail server on the admin Email page. With neither, Monita logs emails instead of sending. | empty | empty | set, or empty when the Email page holds the server |
+| `MONITA_MAIL_FROM` | Sender for the fallback server. A saved mail server has its own sender. | `monita@localhost` | `monita@localhost` | `Monita <monita@company.co.id>` |
 | `MONITA_PING_URL` | Peer or outside heartbeat. Empty disables. | empty | empty | peer URL |
 | `MONITA_TRUST_PROXY` | Read the client IP from `X-Forwarded-For` | `false` | `false` | `true` behind the reverse proxy |
 | `MONITA_DIGEST_UTC_HOUR` | Hour of the ticket digest | `1` | `1` | `1` (08:00 WIB) |

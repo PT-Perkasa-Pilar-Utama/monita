@@ -15,6 +15,7 @@ One loop drives every timed job in Monita: monitor checks, heartbeat deadlines, 
 | Interval edit | `next_check_at = now + 5 + rand(0..interval_s - 5)` | Same spreading |
 | Heartbeat due | `deadline_at <= now`. The loop sends `HeartbeatMissed`, then sets `deadline_at = NULL`. | One miss signal per outage |
 | Ping | `deadline_at = now + period_s + grace_s` | Q7 |
+| Hand resolve | A TL's Resolved on a heartbeat's incident sets `deadline_at = now + period_s + grace_s` (`checks::rearm_heartbeat`) | Without it nothing watches the heartbeat until its next ping. Migration 0012 repaired heartbeats left without a deadline. |
 | New heartbeat | `deadline_at = created_at + period_s + grace_s` | A job that never pings still alerts. |
 | Daily jobs | Run when the UTC hour has passed and `settings.last_<job>_day` is not today. A failed job waits 10 minutes, then runs again. A rerun is safe: the digest moves its ticket watermark in the same transaction that queues its emails, so a rerun after a failed day marker sends nothing new; a backup only overwrites that day's file; a prune failure is logged and does not fail the backup. | One loop, no cron crate |
 | Liveness | An `AtomicI64` holds the last tick time. `/healthz` reads it. | T5 |
@@ -29,10 +30,11 @@ every 1 s:
   for m in SELECT ... FROM monitors WHERE next_check_at <= now ORDER BY next_check_at LIMIT permits:
       UPDATE monitors SET next_check_at = now + interval_s WHERE id = m.id
       spawn with permit:
-          r = probe(m)
+          r = run_check(m)        (reads the monitor's secret just before the probe)
           tx: INSERT check_results; ev = incidents::observe(Monitor(m.id), signal(r)); notify::send(ev)
   for h in SELECT ... FROM heartbeats WHERE deadline_at <= now:
       tx: UPDATE heartbeats SET deadline_at = NULL; ev = observe(Heartbeat(h.id), HeartbeatMissed); send(ev)
+          (up to caps::MISSED_BATCH = 50 per write; the sweep loops)
   outbox::deliver_due()          (spawned, one at a time)
   daily jobs, each once per UTC day:
       00:10  rollup yesterday into daily_summaries, then delete check_results and pings older than 7 days,

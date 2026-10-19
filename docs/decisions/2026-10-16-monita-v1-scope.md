@@ -45,3 +45,25 @@ footprint.
 | Monitor types other than HTTP (TCP, ping, DNS) | Not needed in v1 | The user, on request from a TL |
 | SSO, self-service password reset, 2FA | Not needed in v1 | The user |
 | File uploads on tickets | Storage cost and privacy risk | The user |
+
+## Amendments
+
+Added after v1 scope. A row amends a decision above; the original row stays as it was decided.
+
+| # | Date | Amends | Decision | Why |
+|---|------|--------|----------|-----|
+| A1 | 2026-10-18 | Q9 | The team files tickets from the board. Such a ticket has `created_by` and no ref ID, no daily caps and no webhook. Q9 let only project users file. | Caps and the webhook guard against reporter traffic, and the team already knows its own tickets. |
+| A2 | 2026-10-18 | Q14 | Ticket alerts are apart from the severities. The owner digest is a switch (on by default). The ticket webhook is a switch (off by default) with its own URL, and the warning webhook no longer hears tickets. Migration 0007. | Before, every new ticket called the warning webhook. |
+| A3 | 2026-10-19 | Q14 | The ticket webhook can also hear each column move (`ticket.moved`). Off by default. Migration 0011. | Not recorded. |
+| A4 | 2026-10-18 | Q2, Q14 | Each alert setting (Critical, Warning, Ticket alerts) has an on and off switch. Off keeps the recipients and the webhook. Migration 0008. | Off keeps the recipients and the webhook, so turning it back on restores them. |
+| A5 | 2026-10-18 | Q5 | A TL may post Resolved on an open automatic incident. It closes, the resolved alert says "marked resolved by a tech lead", and the source starts over. A heartbeat gets a new deadline. Q5 said Monita sets Resolved on an automatic incident. | A job can be retired on purpose, and then no passing check ever arrives. |
+| A6 | 2026-10-18 | Q2, Q4 | Each monitor and heartbeat has an alert switch and an incident switch (migration 0009). With the incident switch off, a failure sends a Down alert and recovery sends an Up alert, and no incident opens. With the alert switch off, nobody is told. | Not recorded. |
+| A7 | 2026-10-19 | Q4 | The 2-failure rule is a default. Each monitor sets 1 to 99 failed checks in a row (migrations 0014 and 0018). | It was 2 for every monitor, so 2 stays the default and no monitor changes. |
+| A8 | 2026-10-18 | Q1, Q13 | The super admin can promote, demote, enable, disable and invite any user, never their own account. Invites carry a role. | At least one active super admin always remains, because nobody changes their own account. |
+| A9 | 2026-10-19 | Q1 | A third role, supervisor. It sees every project and the admin pages and changes nothing. A project owner cannot become one. Migration 0022. | Not recorded. |
+| A10 | 2026-10-18 | Q1 | Only a super admin deletes a project, with everything in it. | Not recorded. |
+| A11 | 2026-10-19 | Q6 | A monitor may send GET, HEAD, POST or PUT, with headers and a body. It may sign in with a bearer token, a user name and password, or a key in a header, each from a sealed secret in the project (migrations 0013 and 0015). Q6 said URL, interval, timeout, status and keyword. | A check must send the real values, so they are stored as entered. |
+| A12 | 2026-10-19 | Q8 | The status page has tabs a project switches: Uptime (always), Incidents, Known issues, Report a bug, Changelog. A tab that is off answers 404. Q8 described one page. Migrations 0010, 0016, 0019 and 0021. | Each project chooses which public tabs visitors see. |
+| A13 | 2026-10-19 | Q1 | Every new project gives a homepage URL, linked from its status page. Migration 0020. | The status page links to it. |
+| A14 | 2026-10-19 | Q2 | A super admin can save the mail server on the admin Email page. `MONITA_SMTP_URL` is the fallback. | Not recorded. |
+| A15 | 2026-10-19 | Q12 | Pages show times in a fixed UTC offset that a super admin sets. Storage stays UTC. There is no daylight saving. Daily summaries stay UTC days. | Not recorded. |

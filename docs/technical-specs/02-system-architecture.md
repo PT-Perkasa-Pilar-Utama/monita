@@ -19,7 +19,7 @@ graph LR
   Browser -->|React app, JSON under /api/ui| HTTP[axum router]
   ProjectBackend[Project backend] -->|JSON + API key| HTTP
   Job[Project job] -->|/ping| HTTP
-  HTTP --> accounts & projects & checks & incidents & status & tickets & notify
+  HTTP --> accounts & projects & checks & incidents & status & tickets & notify & home & changelog
   Scheduler[scheduler loop] --> checks
   checks -->|observe| incidents
   incidents -->|send event| notify
@@ -92,12 +92,14 @@ Not in v1: remote probes, hot standby, and shared databases. The check runner si
 | Module | Owns tables | Others call |
 | --- | --- | --- |
 | accounts | users, invites, sessions | `CurrentUser`, `AdminUser`, `is_active_tl`, `purge_expired` |
-| projects | projects, api_keys | `ApiProject`, `find_for`, `can_view` |
-| checks | monitors, heartbeats, check_results, pings, daily_summaries | `probe`, `heartbeat::admit`, `heartbeat::record`, `list_monitors`, `heartbeat::list` |
-| incidents | incidents, incident_items, incident_sources, status_updates | `observe`, `states_for`, `source_deleted` |
-| notify | alert_routes, outbox | `send`, `create_routes`, `purge_delivered` |
+| projects | projects, project_icons, api_keys, project_secrets | `ApiProject`, `find_for`, `can_view`, `owns_any`, `secrets::value_of` |
+| checks | monitors, heartbeats, check_results, pings, daily_summaries | `probe`, `run_check`, `heartbeat::admit`, `heartbeat::record`, `rearm_heartbeat`, `list_monitors`, `heartbeat::list` |
+| incidents | incidents, incident_items, incident_sources, status_updates | `observe`, `states_for`, `team_states_for`, `source_deleted`, `across` |
+| notify | alert_routes, ticket_alerts, outbox | `send`, `previews`, `send_ticket`, `send_ticket_moved`, `create_routes`, `purge_delivered` |
 | status | none | none |
-| tickets | ref_ids, tickets | none |
+| tickets | ref_ids, tickets | `issue_ref_id`, `submit`, `triage_across`, `stage_counts` |
+| home | none | none |
+| changelog | changelog_entries | `page`, `index`, `one` |
 | platform | settings, schema_migrations | `settings`, rate limit layer, `ui` (JSON envelope), `spa` (serves the React app) |
 
 Rule: a module writes only its own tables and reads only its own, except a read-only `JOIN users` for an email or name. It calls another module through that module's `pub` functions in `mod.rs`. It never imports another module's `store` or `engine` files.

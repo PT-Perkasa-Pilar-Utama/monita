@@ -201,7 +201,9 @@ Then Monita sends no email
 ### AC-30.03: Webhook for each new ticket
 
 ```gherkin
-Given the project has a warning-level webhook
+Given the project's ticket alerts have the ticket webhook on
+  And the ticket webhook has a URL
 When a reporter submits a ticket
-Then Monita calls the webhook for that ticket
+Then Monita calls the ticket webhook for that ticket
+  And Monita does not call the warning webhook
 ```

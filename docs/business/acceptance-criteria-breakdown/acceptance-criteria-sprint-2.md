@@ -130,8 +130,9 @@ Then Monita rejects the update
 
 ```gherkin
 Given an incident is closed
-When the TL posts a status update
+When the TL posts a status update with the label Resolved
 Then Monita adds the update to the incident
+  And Monita refuses any other label
 ```
 
 ## US-20: Open an incident by hand (TL)

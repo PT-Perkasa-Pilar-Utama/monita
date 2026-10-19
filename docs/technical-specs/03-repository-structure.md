@@ -9,7 +9,7 @@ monita/
 ├── rust-toolchain.toml        pins Rust 1.97
 ├── deny.toml                  cargo-deny: licenses and advisories
 ├── migrations/                numbered .sql files, built into the binary
-│   └── 0001_init.sql
+│   └── 0001_init.sql ... 0022_supervisor_role.sql   append only
 ├── seeds/                     dev.sql, qa.sql and demo.sql, loaded by reset-state
 ├── src/
 │   ├── lib.rs                 module tree; integration tests link against it
@@ -17,19 +17,24 @@ monita/
 │   ├── cli/                   mod.rs (commands, env file loading), setup.rs, service.rs, envfile.rs
 │   ├── app.rs                 AppState, router assembly, background loop start
 │   ├── platform/              config, db, migrate, ui (JSON envelope), spa (serves web/dist), page (PageError),
-│   │                          assets, headers, health, rate_limit, limits, settings, jobs, backup, time,
-│   │                          token, reset_state
-│   ├── accounts/              mod.rs (interface), auth.rs (cookie, extractors), api.rs, admin_api.rs, store.rs
-│   ├── projects/              mod.rs, allowlist.rs, icon.rs, profile.rs, overview.rs, api.rs, settings_api.rs,
-│   │                          routes.rs (the icon), store.rs
-│   ├── checks/                mod.rs, probe.rs, heartbeat.rs, cause.rs, scheduler.rs, retention.rs, insight.rs,
-│   │                          overview.rs, series.rs, chart/, ping_routes.rs, api/{mod, monitors, heartbeats, views},
-│   │                          store/{monitors, heartbeats, rollup}
-│   ├── incidents/             mod.rs, engine.rs (pure), history.rs, manual.rs, availability.rs, api.rs,
-│   │                          store/{mod, reads}
-│   ├── notify/                mod.rs (send), delivery.rs (outbox loop), mailer.rs, digest.rs, api.rs, store.rs
-│   ├── status/                mod.rs (public wire types), routes.rs (public JSON)
-│   └── tickets/               mod.rs, store.rs, routes/{mod, api (/api/v1), public, board}
+│   │                          assets, headers, health, rate_limit, limits, caps, settings, mail_api, jobs, backup,
+│   │                          time, token, reset_state
+│   ├── accounts/              mod.rs (interface), auth.rs (cookie, extractors), admin.rs (roles, disable), password.rs,
+│   │                          api.rs, admin_api.rs, store.rs
+│   ├── projects/              mod.rs, allowlist.rs, icon.rs, profile.rs, overview.rs, pulse.rs, api.rs,
+│   │                          settings_api.rs, routes.rs (the icon), secrets/{mod, api, store}, store/{mod, keys}
+│   ├── checks/                mod.rs, input.rs, probe.rs, heartbeat.rs, cause.rs, scheduler.rs, retention.rs,
+│   │                          insight.rs, overview.rs, series.rs, chart/, ping_routes.rs,
+│   │                          api/{mod, monitors, heartbeats, views},
+│   │                          store/{monitors, heartbeats, results, sources, rollup, charts}
+│   ├── incidents/             mod.rs, engine.rs (pure), updates.rs, history.rs, manual.rs, availability.rs, api.rs,
+│   │                          store/{mod, reads, across}
+│   ├── notify/                mod.rs (send), delivery.rs (outbox loop), mailer.rs, digest.rs, preview.rs,
+│   │                          tickets.rs (ticket alerts), api.rs, store.rs
+│   ├── status/                mod.rs (public wire types), routes.rs (public JSON), months.rs, uptime_calendar.rs
+│   ├── tickets/               mod.rs, routes/{mod, api (/api/v1), public, board}, store/{mod, across}
+│   ├── changelog/             mod.rs, api.rs (team and public routes), store.rs
+│   └── home/                  mod.rs, api.rs (Incidents and Tickets across projects)
 ├── web/                       React app: src/{pages, layouts, components, lib}, build.ts; `make web` builds dist/
 ├── static/                    theme.js, favicon.svg, fonts; embedded by rust-embed
 ├── tests/                     Rust integration tests (temp-file DB, fake adapters)

@@ -50,7 +50,7 @@ site/                 landing page and docs site builder    docs/guide/ user doc
 | notify | alert_routes, outbox | `send(Event)`: inserts outbox rows, never blocks; `create_routes`, `purge_delivered` |
 | status | none | public page and JSON |
 | home | none | cross-project Incidents and Tickets pages, top menu counts |
-| changelog | changelog_entries | `count`; team CRUD and the public Changelog tab in its `api.rs` |
+| changelog | changelog_entries | `page`, `index`, `one`, `create`, `update`, `delete`; no other module calls it. Its `api.rs` serves the team tab and the public Changelog tab |
 | tickets | ref_ids, tickets | `issue_ref_id`, `submit` |
 | platform | settings, schema_migrations | `Db`, `ui` (envelope, `Body`, `public_cache`), `now`, config |
 
@@ -164,9 +164,9 @@ Each line was argued in review and decided. Do not reopen one without a new fact
 
 ## Context recovery checklist
 
-- [ ] An incident opens after a monitor's failed-check count in a row (1 to 99; default 2); a missed heartbeat or `/ping/{token}/fail` opens it at once; the first pass closes an auto incident; manual incidents close only on a TL "Resolved" update. A TL may also resolve an auto incident by hand: it closes, the resolved alert goes out ("marked resolved by a tech lead"), and its source starts over.
+- [ ] An incident opens after a monitor's failed-check count in a row (1 to 99; default 2); a missed heartbeat or `/ping/{token}/fail` opens it at once; the first pass closes an auto incident; with a source's incident switch off no incident opens, and a failure sends a Down alert and recovery an Up alert; manual incidents close only on a TL "Resolved" update. A TL may also resolve an auto incident by hand: it closes, the resolved alert goes out ("marked resolved by a tech lead"), and its source starts over.
 - [ ] Status update labels: investigating, identified, monitoring, resolved.
-- [ ] Ticket stages: triage, backlog, in_progress, done. Done needs close_reason fixed, wont_fix or duplicate. Triage is private. A reporter files with a ref ID; the team files from the board (`created_by`, no ref ID, no caps, no webhook). Ticket alerts (`ticket_alerts`) are apart from severities: owner digest on by default, own webhook off by default. A board column shows 25; Done links to a paged list.
+- [ ] Ticket stages: triage, backlog, in_progress, done. Done needs close_reason fixed, wont_fix or duplicate. Triage is private. A reporter files with a ref ID; the team files from the board (`created_by`, no ref ID, no caps, no webhook). Ticket alerts (`ticket_alerts`) are apart from severities: owner digest on by default, own webhook off by default; the same webhook can also hear column moves (`webhook_moves`, off by default). A board column shows 25; Done links to a paged list.
 - [ ] Severity: critical (email + webhook by default), warning (email only).
 - [ ] Monitor intervals: 30, 60, 180, 300 s. Default timeout 10 s, expected `2xx`.
 - [ ] Ref IDs: `POST /api/v1/ref-ids`, project from the API key, `single_use` flag. Caps: 5 per ref ID per day, 100 per project per day.
@@ -181,6 +181,7 @@ Each line was argued in review and decided. Do not reopen one without a new fact
 ```sh
 make setup                      # git hooks + e2e deps
 make run                        # dev server on 127.0.0.1:7466, ./data/monita.db
+make dev                        # same server, reads web/dist from disk: after a web change run `cd web && bun run build` and refresh
 make check-fast                 # fmt, clippy, unit tests
 make check                      # the gate
 make e2e                        # Playwright smoke and story specs, port 18080

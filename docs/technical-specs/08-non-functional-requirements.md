@@ -31,7 +31,11 @@ No list is unbounded. No page renders every row of a list that can grow: it read
 | Addresses per alert route | 20 | Route not saved |
 | Status updates per incident | 50 | Update refused |
 | Open manual incidents per project | 20 | New manual incident refused |
-| Tickets per board column | 200 shown | The newest show; the header counts all |
+| Tickets per board column | 25 a page | The newest show; Show more loads the next page; the header counts all. Done links to a paged list. |
+| Rows per page of the cross-project Incidents and Tickets lists | 25 | The list pages on the server |
+| Releases per page of a changelog | 25 | The team list and the public index page |
+| Sealed secrets per project | 20, each up to 4 KB | New secret refused |
+| Headers per monitor | 20, each value up to 4 KB; body up to 64 KB | Monitor not saved |
 | Tickets per digest email | 50 listed | The email says how many more wait |
 | Updates per incident on the status page | 10 | The newest show |
 | Incidents in the status JSON | 200 | The newest show |
