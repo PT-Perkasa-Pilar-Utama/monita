@@ -55,10 +55,17 @@ export function shardsOfSpec(path: string): Shard[] {
     .filter((shard) => SHARDS[shard].some((name) => projects.has(name)));
 }
 
-/** The tracked files a shard's result depends on: all but other shards' specs, docs and Markdown. */
+/**
+ * Files no build or test reads: docs, Markdown, and GitHub's issue forms, code owners and
+ * Dependabot settings. .github/workflows/ci.yml repeats this pattern in the change check and the
+ * check job's key; change all three together.
+ */
+export const NOT_CODE = /^docs\/|\.md$|^\.github\/(ISSUE_TEMPLATE\/|CODEOWNERS$|dependabot\.yml$)/;
+
+/** The tracked files a shard's result depends on: all but other shards' specs and NOT_CODE. */
 export function inputsOf(shard: Shard, tracked: readonly string[]): string[] {
   return tracked.filter((path) => {
-    if (path.startsWith("docs/") || path.endsWith(".md")) return false;
+    if (NOT_CODE.test(path)) return false;
     if (!SPEC.test(path)) return true;
     return shardsOfSpec(path).includes(shard);
   });

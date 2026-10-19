@@ -14,7 +14,16 @@ test("every project and every spec belongs to a shard", () => {
 });
 
 test("a shard ignores docs and the other shard's specs", () => {
-  const tracked = ["src/app.rs", "docs/a.md", "README.md", "e2e/specs/smoke.spec.ts", "e2e/specs/accounts.spec.ts"];
+  const tracked = [
+    "src/app.rs",
+    "docs/a.md",
+    "README.md",
+    ".github/ISSUE_TEMPLATE/bug_report.yml",
+    ".github/CODEOWNERS",
+    ".github/dependabot.yml",
+    "e2e/specs/smoke.spec.ts",
+    "e2e/specs/accounts.spec.ts",
+  ];
   expect(inputsOf("smoke", tracked)).toEqual(["src/app.rs", "e2e/specs/smoke.spec.ts"]);
   expect(inputsOf("flows", tracked)).toEqual(["src/app.rs"]);
   expect(inputsOf("people", tracked)).toEqual(["src/app.rs", "e2e/specs/accounts.spec.ts"]);

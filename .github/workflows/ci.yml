@@ -1,8 +1,9 @@
 name: ci
 
 # Pattern from testate's ci.yml. Work lands on main directly (trunk-based), so main pushes run the
-# browser suite too; a shard that passed on the same inputs skips itself (e2e/lib/shards.ts).
-# A pull request that touches only docs and Markdown runs the fast gate alone.
+# browser suite too. A push or pull request that touches only docs/ and Markdown skips the browser
+# suite and the service smoke. The check job and each e2e shard also skip themselves when a pass
+# on the same code inputs (every tracked file but docs/ and *.md) is recorded in the cache.
 on:
   push:
     branches: [main]
@@ -32,10 +33,21 @@ jobs:
       - id: diff
         env:
           EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
         run: |
-          if [ "$EVENT" != "pull_request" ]; then echo "code=true" >> "$GITHUB_OUTPUT"; exit 0; fi
-          changed=$(git diff --name-only HEAD^1 HEAD)
-          code_files=$(printf '%s\n' "$changed" | grep -vE '^docs/|\.md$' || true)
+          # A pull request's merge commit has the base as its first parent. A push compares with
+          # what main was before it; a new branch or tag, or a manual run, counts as code.
+          if [ "$EVENT" = "pull_request" ]; then
+            base=HEAD^1
+          elif [ "$EVENT" = "push" ] && [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ] \
+            && git fetch --quiet --depth=1 origin "$BEFORE"; then
+            base=$BEFORE
+          else
+            echo "code=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          changed=$(git diff --name-only "$base" HEAD)
+          # The pattern of NOT_CODE in e2e/lib/shards.ts; change them together.
+          code_files=$(printf '%s\n' "$changed" | grep -vE '^docs/|\.md$|^\.github/(ISSUE_TEMPLATE/|CODEOWNERS$|dependabot\.yml$)' || true)
           if [ -n "$code_files" ]; then code=true; else code=false; fi
           echo "code=$code" >> "$GITHUB_OUTPUT"
           echo "::notice::code changed: $code"
@@ -50,15 +62,37 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      # Every tracked file but NOT_CODE (e2e/lib/shards.ts), by git blob hash: nothing the binary or
+      # the tests read lives there. A pass stores the binary under this key; the same inputs reuse it.
+      - name: code input key
+        id: key
+        run: echo "key=check-pass-$(git ls-files -s | awk -F'\t' '$2 !~ /^docs\/|\.md$|^\.github\/(ISSUE_TEMPLATE\/|CODEOWNERS$|dependabot\.yml$)/' | sha256sum | cut -c1-32)" >> "$GITHUB_OUTPUT"
+      - name: passed before on these inputs?
+        id: passed
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: target/debug/monita
+          key: ${{ steps.key.outputs.key }}
+      - if: steps.passed.outputs.cache-hit == 'true'
+        run: echo "::notice::make check passed before on these inputs; reusing that binary."
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        if: steps.passed.outputs.cache-hit != 'true'
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        if: steps.passed.outputs.cache-hit != 'true'
         with:
           bun-version: "1.4.2"
       # The binary embeds web/dist, so the frontend is built first; the shards reuse this binary.
       - run: make web
+        if: steps.passed.outputs.cache-hit != 'true'
       - run: make check
+        if: steps.passed.outputs.cache-hit != 'true'
         env:
           CARGO_BUILD_JOBS: 4
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: steps.passed.outputs.cache-hit != 'true'
+        with:
+          path: target/debug/monita
+          key: ${{ steps.key.outputs.key }}
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: monita-debug
