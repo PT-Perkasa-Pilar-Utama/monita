@@ -1,28 +1,30 @@
 import { useState } from "react";
 import type { FormEvent, ReactElement } from "react";
-import { useSearchParams } from "react-router-dom";
 import { ConfirmDialog } from "@/components/app/ConfirmDialog";
 import { FormSheet, FormSheetBody } from "@/components/app/FormSheet";
+import { ListFilters } from "@/components/app/ListFilters";
+import { ReleaseChanges } from "@/components/app/ReleaseChanges";
 import { TableCard } from "@/components/app/TableCard";
 import { Plus, Trash2 } from "@/components/icons";
 import { PageHeader } from "@/components/layout/Page";
 import { Pager } from "@/components/list/Pager";
+import { SortHead } from "@/components/list/SortHead";
 import { TableEmpty } from "@/components/list/TableEmpty";
 import { Button } from "@/components/ui/button";
-import { Field, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
+import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Textarea } from "@/components/ui/textarea";
 import { api, ApiError, dropField, errorText } from "@/lib/api";
-import { CHANGE_BOXES, changeCount, releaseForm } from "@/lib/changelog";
+import { changeCount, releaseBody, releaseForm } from "@/lib/changelog";
 import type { ReleaseForm } from "@/lib/changelog";
-import { pageParam } from "@/lib/page";
+import { dateHead, nextDate } from "@/lib/dateSort";
 import { useProject } from "@/lib/project";
 import { day, nowSecs } from "@/lib/time";
 import type { Release, ReleaseList } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
+import { useServerList } from "@/lib/useServerList";
 import { toast } from "sonner";
 
 /** Project, Changelog: the releases the public Changelog tab shows, newest first. A release
@@ -30,9 +32,8 @@ import { toast } from "sonner";
 export function Changelog(): ReactElement {
   const { project: p, reload: reloadHead } = useProject();
   const base = `/projects/${p.slug}/changelog`;
-  const [params, setParams] = useSearchParams();
-  const page = pageParam(params.get("page"));
-  const list = useApi<ReleaseList>(`${base}?page=${page}`);
+  const q = useServerList(`monita:changelog:${p.slug}`);
+  const list = useApi<ReleaseList>(`${base}${q.query}`);
   // null: closed; "new": a new release; a release: edit it.
   const [editing, setEditing] = useState<"new" | Release | null>(null);
   const [form, setForm] = useState<ReleaseForm>(releaseForm(null, ""));
@@ -45,7 +46,7 @@ export function Changelog(): ReactElement {
     setForm(releaseForm(r === "new" ? null : r, day(nowSecs())));
     setError(null);
   };
-  const set = (k: keyof ReleaseForm, v: string): void => {
+  const set = <K extends keyof ReleaseForm>(k: K, v: ReleaseForm[K]): void => {
     setForm((f) => ({ ...f, [k]: v }));
     setError((e) => e && dropField(e, k));
   };
@@ -61,8 +62,8 @@ export function Changelog(): ReactElement {
     setBusy(true);
     setError(null);
     try {
-      if (editing === "new") await api(base, "POST", form);
-      else await api(`${base}/${editing.id}`, "PUT", form);
+      if (editing === "new") await api(base, "POST", releaseBody(form));
+      else await api(`${base}/${editing.id}`, "PUT", releaseBody(form));
       toast.success(`Release ${form.version.trim()} saved.`);
       done();
     } catch (err) {
@@ -76,6 +77,7 @@ export function Changelog(): ReactElement {
     <>
       <PageHeader
         title="Changelog"
+        filtered={q.filtered}
         actions={
           <Button onClick={() => open("new")}>
             <Plus data-icon="inline-start" />
@@ -84,9 +86,15 @@ export function Changelog(): ReactElement {
         }
       />
       <div className="flex flex-col gap-6 pb-4">
-        <TableCard title={d ? `${d.total} ${d.total === 1 ? "release" : "releases"}` : "Releases"}>
+        <TableCard
+          title={d ? `${d.total} ${d.total === 1 ? "release" : "releases"}` : "Releases"}
+          onClear={q.filtered ? q.clear : undefined}
+          tools={<ListFilters noun="releases" filter={{ q: q.draft, state: "", severity: "" }} onChange={(c) => c.q !== undefined && q.setDraft(c.q)} selects={false} />}
+        >
           {!d ? (
-            <Skeleton className="m-4 h-40" />
+            <Skeleton className="m-5 h-24" />
+          ) : d.releases.length === 0 && q.filtered ? (
+            <TableEmpty title="" filtered noun="releases" onClear={q.clear} />
           ) : d.releases.length === 0 ? (
             <TableEmpty title="Write your first release" description="Each release lists what was added, changed, fixed or removed. Turn on the Changelog tab in Status page settings to show it." />
           ) : (
@@ -95,15 +103,15 @@ export function Changelog(): ReactElement {
                 <TableRow>
                   <TableHead>Version</TableHead>
                   <TableHead>Title</TableHead>
-                  <TableHead className="max-sm:hidden">Released</TableHead>
+                  <SortHead by="released" label="Released" sort={dateHead("released", q.params.sort, true)} onSort={() => q.set({ sort: nextDate(q.params.sort, true) })} className="max-sm:hidden" />
                   <TableHead className="text-right max-md:hidden">Changes</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {d.releases.map((r) => (
-                  <TableRow key={r.id} className="cursor-pointer" onClick={() => open(r)}>
+                  <TableRow key={r.id} className="cursor-pointer hover:bg-accent" onClick={() => open(r)}>
                     <TableCell className="font-mono font-medium">
-                      <button type="button" className="hover:underline" onClick={() => open(r)}>
+                      <button type="button" className="outline-none focus-visible:underline" onClick={() => open(r)}>
                         {r.version}
                       </button>
                     </TableCell>
@@ -116,7 +124,7 @@ export function Changelog(): ReactElement {
             </Table>
           )}
         </TableCard>
-        {d && <Pager page={page} pageSize={d.page_size} total={d.total} noun="release" onPage={(n) => setParams({ page: String(n) })} disabled={list.loading} />}
+        {d && <Pager page={q.params.page} pageSize={d.page_size} total={d.total} noun="release" onPage={(page) => q.set({ page })} disabled={list.loading} />}
       </div>
       <FormSheet open={editing !== null} onClose={() => setEditing(null)}>
         <FormSheetBody
@@ -178,16 +186,7 @@ export function Changelog(): ReactElement {
               <Input id="r-title" maxLength={120} aria-required aria-invalid={err("title") ? true : undefined} placeholder="Faster exports and a new CSV format" value={form.title} onChange={(e) => set("title", e.target.value)} />
               {err("title") && <FieldError>{err("title")}</FieldError>}
             </Field>
-            <FieldSet className="gap-5">
-              <FieldLegend>Changes</FieldLegend>
-              {CHANGE_BOXES.map(([tag, key]) => (
-                <Field key={key} data-invalid={err(key) ? true : undefined}>
-                  <FieldLabel htmlFor={`r-${key}`}>{tag}</FieldLabel>
-                  <Textarea id={`r-${key}`} rows={3} aria-invalid={err(key) ? true : undefined} placeholder="One change per line" value={form[key]} onChange={(e) => set(key, e.target.value)} />
-                  {err(key) && <FieldError>{err(key)}</FieldError>}
-                </Field>
-              ))}
-            </FieldSet>
+            <ReleaseChanges form={form} onChange={set} err={err} />
           </FieldGroup>
         </FormSheetBody>
       </FormSheet>

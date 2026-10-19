@@ -3,7 +3,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowRight } from "@/components/icons";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { useState } from "react";
 import type { PublicRelease, ReleaseHead } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -58,16 +57,15 @@ export function Neighbour({ slug, release, side }: { slug: string; release: Rele
   );
 }
 
-/** Every loaded release beside the open one, with a filter by version. A phone gets a select. */
-export function VersionIndex({ slug, releases, open, older, onOlder }: { slug: string; releases: ReleaseHead[]; open: string; older: boolean; onOlder: () => void }): ReactElement {
+/** The releases beside the open one. The search asks the server, so it finds any release, not
+ * only the loaded ones. A phone gets a select. */
+export function VersionIndex({ slug, releases, open, older, onOlder, query, onQuery }: { slug: string; releases: ReleaseHead[]; open: string; older: boolean; onOlder: () => void; query: string; onQuery: (q: string) => void }): ReactElement {
   const navigate = useNavigate();
-  const [query, setQuery] = useState("");
-  const q = query.trim().toLowerCase();
-  const shown = q ? releases.filter((r) => r.version.toLowerCase().includes(q)) : releases;
+  const shown = releases;
   return (
     <>
       <nav aria-label="Releases" className="sticky top-[calc(var(--bar-h)+24px)] hidden flex-col gap-3 lg:flex">
-        <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Find a version" aria-label="Find a version" />
+        <Input type="search" value={query} onChange={(e) => onQuery(e.target.value)} placeholder="Find a version or title" aria-label="Find a release" />
         <ol className="flex max-h-[60vh] flex-col gap-0.5 overflow-y-auto border-l pl-3 text-sm">
           {shown.map((r) => (
             <li key={r.version}>
@@ -82,7 +80,7 @@ export function VersionIndex({ slug, releases, open, older, onOlder }: { slug: s
             </li>
           ))}
           {shown.length === 0 && <li className="px-2 py-1 text-muted-foreground">No version matches.</li>}
-          {older && !q && (
+          {older && (
             <li>
               <button type="button" onClick={onOlder} className="px-2 py-1 text-link underline-offset-4 hover:underline">
                 Older releases

@@ -1,4 +1,4 @@
-// The release form and its four boxes of changes, one change per line.
+// The release form: one input per change, so a long change that wraps is still one change.
 import type { Release } from "@/lib/types";
 
 /** Each kind of change and the form field that holds it, in the order a release shows them. */
@@ -9,20 +9,32 @@ export const CHANGE_BOXES = [
   ["Removed", "removed"],
 ] as const;
 
-export type ReleaseForm = { version: string; released_on: string; title: string; added: string; changed: string; fixed: string; removed: string };
+export type ChangeKey = (typeof CHANGE_BOXES)[number][1];
 
-/** The form for a release, or an empty one dated `today`. */
+export type ReleaseForm = { version: string; released_on: string; title: string } & Record<ChangeKey, string[]>;
+
+/** The form for a release, or an empty one dated `today` with one blank Added change. */
 export function releaseForm(r: Release | null, today: string): ReleaseForm {
-  const lines = (tag: string): string => r?.sections.find((s) => s.tag === tag)?.items.join("\n") ?? "";
+  const items = (tag: string): string[] => r?.sections.find((s) => s.tag === tag)?.items ?? [];
   return {
     version: r?.version ?? "",
     released_on: r?.released_on ?? today,
     title: r?.title ?? "",
-    added: lines("Added"),
-    changed: lines("Changed"),
-    fixed: lines("Fixed"),
-    removed: lines("Removed"),
+    added: r ? items("Added") : [""],
+    changed: items("Changed"),
+    fixed: items("Fixed"),
+    removed: items("Removed"),
   };
+}
+
+/** What the server takes: each kind as lines, blank changes dropped. */
+export function releaseBody(f: ReleaseForm): Record<string, string> {
+  const lines = (xs: string[]): string =>
+    xs
+      .map((x) => x.trim())
+      .filter((x) => x !== "")
+      .join("\n");
+  return { version: f.version, released_on: f.released_on, title: f.title, added: lines(f.added), changed: lines(f.changed), fixed: lines(f.fixed), removed: lines(f.removed) };
 }
 
 /** "3 changes" across every kind. */

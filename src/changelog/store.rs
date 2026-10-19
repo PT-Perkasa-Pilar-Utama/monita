@@ -49,26 +49,42 @@ fn head(r: &turso::Row) -> turso::Result<ReleaseHead> {
     })
 }
 
+/// `?2` matches the version or the title, any case; empty matches all.
+const MATCHES: &str =
+    "project_id = ?1 AND (?2 = '' OR instr(lower(version), ?2) > 0 OR instr(lower(title), ?2) > 0)";
+
+fn search(q: &str) -> String {
+    q.trim().to_lowercase().chars().take(100).collect()
+}
+
+/// `oldest` reads the first release first; anything else, the newest.
 pub async fn page(
     c: &Connection,
     project_id: i64,
+    q: &str,
+    sort: &str,
     limit: i64,
     offset: i64,
 ) -> anyhow::Result<Vec<Release>> {
+    let order = if sort == "oldest" {
+        "released_on ASC, id ASC"
+    } else {
+        "released_on DESC, id DESC"
+    };
     query_all(
         c,
-        format!("SELECT {COLS} FROM changelog_entries WHERE project_id = ?1 ORDER BY released_on DESC, id DESC LIMIT ?2 OFFSET ?3"),
-        (project_id, limit, offset),
+        format!("SELECT {COLS} FROM changelog_entries WHERE {MATCHES} ORDER BY {order} LIMIT ?3 OFFSET ?4"),
+        (project_id, search(q), limit, offset),
         release,
     )
     .await
 }
 
-pub async fn count(c: &Connection, project_id: i64) -> anyhow::Result<i64> {
+pub async fn count(c: &Connection, project_id: i64, q: &str) -> anyhow::Result<i64> {
     Ok(query_i64(
         c,
-        "SELECT count(*) FROM changelog_entries WHERE project_id = ?1",
-        [project_id],
+        &format!("SELECT count(*) FROM changelog_entries WHERE {MATCHES}"),
+        (project_id, search(q)),
     )
     .await?
     .unwrap_or(0))
@@ -135,20 +151,23 @@ pub async fn delete(c: &Connection, project_id: i64, id: i64) -> anyhow::Result<
     Ok(())
 }
 
-/// One page of the index, older than the `(released_on, id)` cursor when there is one.
+/// One page of the index matching `q`, older than the `(released_on, id)` cursor when there is one.
 pub async fn index(
     c: &Connection,
     project_id: i64,
+    q: &str,
     before: Option<(String, i64)>,
     limit: i64,
 ) -> anyhow::Result<Vec<ReleaseHead>> {
     let (day, id) = before.unwrap_or_else(|| ("9999-12-31".into(), i64::MAX));
     query_all(
         c,
-        "SELECT id, version, title, released_on FROM changelog_entries
-         WHERE project_id = ?1 AND (released_on < ?2 OR (released_on = ?2 AND id < ?3))
-         ORDER BY released_on DESC, id DESC LIMIT ?4",
-        (project_id, day, id, limit),
+        format!(
+            "SELECT id, version, title, released_on FROM changelog_entries
+             WHERE {MATCHES} AND (released_on < ?3 OR (released_on = ?3 AND id < ?4))
+             ORDER BY released_on DESC, id DESC LIMIT ?5"
+        ),
+        (project_id, search(q), day, id, limit),
         head,
     )
     .await
@@ -196,7 +215,7 @@ pub async fn neighbours(
     )
     .await?
     .pop();
-    let older = index(c, project_id, Some((r.released_on.clone(), r.id)), 1)
+    let older = index(c, project_id, "", Some((r.released_on.clone(), r.id)), 1)
         .await?
         .pop();
     Ok((newer, older))

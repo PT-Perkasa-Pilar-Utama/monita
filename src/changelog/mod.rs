@@ -123,18 +123,21 @@ impl ReleaseInput {
     }
 }
 
-/// One page of the team's list, newest first, and how many releases there are.
-pub async fn page(db: &Db, project_id: i64, page: i64) -> anyhow::Result<(Vec<Release>, i64)> {
+/// One page of the team's list matching `q` (version or title), newest first unless `sort` is
+/// `oldest`, and how many match.
+pub async fn page(
+    db: &Db,
+    project_id: i64,
+    q: &str,
+    sort: &str,
+    page: i64,
+) -> anyhow::Result<(Vec<Release>, i64)> {
     let c = db.read().await?;
     let offset = (page.max(1) - 1).saturating_mul(caps::CHANGELOG_PAGE);
     Ok((
-        store::page(&c, project_id, caps::CHANGELOG_PAGE, offset).await?,
-        store::count(&c, project_id).await?,
+        store::page(&c, project_id, q, sort, caps::CHANGELOG_PAGE, offset).await?,
+        store::count(&c, project_id, q).await?,
     ))
-}
-
-pub async fn count(db: &Db, project_id: i64) -> anyhow::Result<i64> {
-    store::count(&db.read().await?, project_id).await
 }
 
 pub async fn create(db: &Db, project_id: i64, input: &ReleaseInput) -> Result<i64, ChangelogError> {
@@ -183,14 +186,22 @@ pub async fn delete(db: &Db, project_id: i64, id: i64) -> anyhow::Result<()> {
         .await
 }
 
-/// The public index: version, title and day of one page of releases older than the
+/// The public index: version, title and day of one page of releases matching `q`, older than the
 /// `(released_on, id)` cursor, newest first.
 pub async fn index(
     db: &Db,
     project_id: i64,
+    q: &str,
     before: Option<(String, i64)>,
 ) -> anyhow::Result<Vec<ReleaseHead>> {
-    store::index(&db.read().await?, project_id, before, caps::CHANGELOG_PAGE).await
+    store::index(
+        &db.read().await?,
+        project_id,
+        q,
+        before,
+        caps::CHANGELOG_PAGE,
+    )
+    .await
 }
 
 /// One release by version, with its newer and older neighbours' versions; the newest when

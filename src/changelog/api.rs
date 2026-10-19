@@ -52,6 +52,8 @@ impl From<ChangelogError> for UiError {
 #[serde(default)]
 struct PageQuery {
     page: String,
+    q: String,
+    sort: String,
 }
 
 async fn list(
@@ -62,7 +64,7 @@ async fn list(
 ) -> UiResult {
     let p = projects::find_for(&state.db, &user, &slug).await?;
     let page = q.page.trim().parse().unwrap_or(1).max(1);
-    let (releases, total) = super::page(&state.db, p.id, page).await?;
+    let (releases, total) = super::page(&state.db, p.id, &q.q, &q.sort, page).await?;
     Ok(data(serde_json::json!({
         "releases": releases, "total": total, "page": page, "page_size": caps::CHANGELOG_PAGE,
     })))
@@ -113,6 +115,8 @@ async fn public_project(state: &AppState, slug: &str) -> Result<projects::Projec
 struct Before {
     /// `<released_on>.<id>` from `older`; a bad value reads the first page.
     before: String,
+    /// Matches the version or the title.
+    q: String,
 }
 
 async fn public_index(
@@ -125,7 +129,7 @@ async fn public_index(
         .before
         .split_once('.')
         .and_then(|(d, id)| Some((d.to_string(), id.parse::<i64>().ok()?)));
-    let releases = super::index(&state.db, p.id, cursor).await?;
+    let releases = super::index(&state.db, p.id, &q.q, cursor).await?;
     let older = (releases.len() as i64 == caps::CHANGELOG_PAGE)
         .then(|| {
             releases

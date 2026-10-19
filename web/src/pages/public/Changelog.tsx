@@ -13,19 +13,26 @@ export function PublicChangelog(): ReactElement {
   const project = useOutletContext<PublicSite>();
   const { version } = useParams();
   const base = `/public/${project.slug}/changelog`;
-  const index = useApi<PublicReleaseIndex>(base);
+  const [query, setQuery] = useState("");
+  const [q, setQ] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setQ(query.trim()), 250);
+    return () => clearTimeout(t);
+  }, [query]);
+  const index = useApi<PublicReleaseIndex>(`${base}${q ? `?q=${encodeURIComponent(q)}` : ""}`);
   const one = useApi<PublicRelease>(`${base}/${encodeURIComponent(version ?? "latest")}`);
   const [more, setMore] = useState<ReleaseHead[]>([]);
   const [older, setOlder] = useState<string | null>(null);
   useEffect(() => {
     setOlder(index.data?.older ?? null);
+    setMore([]);
   }, [index.data]);
   useEffect(() => {
     window.scrollTo({ top: 0 });
   }, [version]);
   const loadOlder = async (): Promise<void> => {
     if (!older) return;
-    const next = await api<PublicReleaseIndex>(`${base}?before=${encodeURIComponent(older)}`);
+    const next = await api<PublicReleaseIndex>(`${base}?before=${encodeURIComponent(older)}${q ? `&q=${encodeURIComponent(q)}` : ""}`);
     setMore((m) => [...m, ...next.releases]);
     setOlder(next.older);
   };
@@ -34,11 +41,11 @@ export function PublicChangelog(): ReactElement {
   return (
     <>
       <PageHeader title={`${project.name} changelog`} />
-      {index.data && releases.length === 0 ? (
+      {index.data && releases.length === 0 && q === "" ? (
         <p className="text-muted-foreground">No release is published yet.</p>
       ) : (
         <div className="grid gap-8 lg:grid-cols-[13rem_minmax(0,1fr)]">
-          <VersionIndex slug={project.slug} releases={releases} open={r?.release.version ?? ""} older={older !== null} onOlder={() => void loadOlder()} />
+          <VersionIndex slug={project.slug} releases={releases} open={r?.release.version ?? ""} older={older !== null} onOlder={() => void loadOlder()} query={query} onQuery={setQuery} />
           <div className="flex min-w-0 flex-col gap-6">
             {one.error?.status === 404 ? (
               <p className="text-muted-foreground">This release does not exist.</p>

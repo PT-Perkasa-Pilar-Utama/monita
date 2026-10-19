@@ -103,6 +103,13 @@ async fn the_public_tab_shows_releases_newest_first_only_when_on() {
         .map(|r| r["version"].as_str().unwrap().to_string())
         .collect();
     assert_eq!(versions, ["1.2.0", "1.1.0", "1.0.0"]);
+    let found = json_of(app.get(&format!("{PUBLIC}?q=1.1"), None).await).await;
+    assert_eq!(
+        found["data"]["releases"].as_array().unwrap().len(),
+        1,
+        "the search runs on every release, not a loaded page"
+    );
+    assert_eq!(found["data"]["releases"][0]["version"], "1.1.0");
     let newest = json_of(app.get(&format!("{PUBLIC}/latest"), None).await).await;
     assert_eq!(newest["data"]["release"]["version"], "1.2.0");
     let middle = json_of(app.get(&format!("{PUBLIC}/1.1.0"), None).await).await;
