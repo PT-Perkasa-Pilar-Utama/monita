@@ -12,6 +12,7 @@ const font = readFileSync(join(ROOT, "static/fonts/inter-latin-wght.woff2")).toS
 /** The widths to export each file at, in pixels. */
 function widths(name: string): number[] {
   if (name.startsWith("moni-friends")) return [1200, 2400];
+  if (name.startsWith("scene-")) return [1120, 2240];
   if (name.startsWith("logo")) return [608, 1216];
   return [512, 1024];
 }

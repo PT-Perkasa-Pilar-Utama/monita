@@ -1,4 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 230" width="1200" height="230" role="img" aria-label="Moni and friends at play: a kite, a game of catch, a jump, uptime blocks and bubbles"><style>@keyframes monita-blink{0%,94%,100%{transform:scaleY(1)}97%{transform:scaleY(.1)}}
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 230" width="1200" height="230" role="img" aria-label="Moni and friends at play: a kite, a game of catch, a jump, uptime blocks and bubbles"><style>@keyframes monita-ping{to{stroke-dashoffset:-22}}
+@keyframes monita-blink{0%,94%,100%{transform:scaleY(1)}97%{transform:scaleY(.1)}}
 @keyframes monita-beat{0%,100%{opacity:1}50%{opacity:.35}}
 @keyframes monita-bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-22px)}}
 @keyframes monita-toss{from{offset-distance:0%}to{offset-distance:100%}}

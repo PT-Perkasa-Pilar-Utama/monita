@@ -114,11 +114,19 @@ const BRAND_TILES: Record<string, Tile[]> = {
     { file: "moni-peek", name: "Peeking" },
     { file: "moni-friends", name: "Moni and friends", wide: true },
   ],
+  scenes: [
+    { file: "scene-monitors", name: "Monitors" },
+    { file: "scene-heartbeats", name: "Heartbeats" },
+    { file: "scene-incidents", name: "Incidents" },
+    { file: "scene-tickets", name: "Tickets" },
+    { file: "scene-changelog", name: "Changelog" },
+  ],
 };
 
 /** The PNG widths `e2e/brand-png.ts` writes for a brand file. */
 function pngWidths(file: string): number[] {
   if (file === "moni-friends") return [1200, 2400];
+  if (file.startsWith("scene-")) return [1120, 2240];
   if (file.startsWith("logo")) return [608, 1216];
   return [512, 1024];
 }
@@ -306,6 +314,17 @@ function versioned(html: string, assets: string): string {
   });
 }
 
+// The landing page's primitive scenes (make brand), inline so their --art-* colours follow the
+// theme. site.css holds the keyframes once, so each file's own <style> is dropped.
+function scenes(html: string): string {
+  return html.replace(/<!-- scene:(\w+) -->/g, (_, kind: string) =>
+    readFileSync(join(ROOT, `docs/assets/brand/scene-${kind}.svg`), "utf8")
+      .trim()
+      .replace(/<style>[\s\S]*?<\/style>/, "")
+      .replace(/ width="560" height="200"/, ' class="lp-parts__art"'),
+  );
+}
+
 function main(): void {
   const files = readdirSync(GUIDE).filter((f) => f.endsWith(".md")).map((f) => f.slice(0, -3));
   const listed = new Set(GROUPS.flatMap((g) => g.pages));
@@ -328,7 +347,7 @@ function main(): void {
   const pages = new Map([...listed].map((slug) => [slug, load(slug)]));
   for (const p of pages.values()) page(join(OUT, "docs", p.slug, "index.html"), pageHtml(pages, p));
   page(join(OUT, "docs", "index.html"), overview(pages));
-  page(join(OUT, "index.html"), readFileSync(join(import.meta.dir, "index.html"), "utf8").replace("<!-- topbar -->", topbar("", "home"))
+  page(join(OUT, "index.html"), scenes(readFileSync(join(import.meta.dir, "index.html"), "utf8")).replace("<!-- topbar -->", topbar("", "home"))
     .replace("<!-- og -->", ogTags(
       "Monita: site reliability for every project your team ships",
       "Monita checks your team's URLs and cron jobs, opens an incident after two failed checks, alerts the people you choose by email and webhook, and shows it on a public status page. You host it yourself.",

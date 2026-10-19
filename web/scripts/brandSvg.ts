@@ -16,6 +16,24 @@ export const BRAND_COLORS: Record<string, string> = {
   "muted-foreground": "#7a7f87",
   muted: "#8a8f9840",
   foreground: "#16171a",
+  card: "#ffffff",
+  paper: "#f8f8f8",
+};
+
+/**
+ * The same colours, each behind a CSS variable (`--art-up` and so on), for art that a page
+ * inlines and recolours with its theme. Moni keeps fixed colours: Moni looks the same in both
+ * themes. A file opened on its own falls back to the light values.
+ */
+export const THEMED_COLORS: Record<string, string> = Object.fromEntries(
+  Object.entries(BRAND_COLORS).map(([k, v]) => [k, k.startsWith("mascot-") ? v : `var(--art-${k},${v})`]),
+);
+
+/** The type classes the scenes' labels use. */
+const TYPE: Record<string, string> = {
+  "font-mono": "font-family:'Geist Mono',ui-monospace,monospace",
+  "font-semibold": "font-weight:600",
+  "font-medium": "font-weight:500",
 };
 
 /** One class as CSS declarations, or null when the class means nothing in a standalone file. */
@@ -27,6 +45,8 @@ function declarations(c: string, colors: Record<string, string>): string[] | nul
     return out;
   }
   if (c === "fill-none") return ["fill:none"];
+  if (TYPE[c]) return [TYPE[c]];
+  if ((m = c.match(/^text-\[(\d+)px\]$/))) return [`font-size:${m[1]}px`];
   if ((m = c.match(/^animate-\[(.+)\]$/))) return [`animation:${m[1]!.replace(/_/g, " ")}`];
   if ((m = c.match(/^origin-\[(.+)\]$/))) return [`transform-origin:${m[1]!.replace(/_/g, " ")}`];
   if (c === "origin-center") return ["transform-origin:center"];
@@ -51,7 +71,8 @@ export function inlineClasses(svg: string, colors: Record<string, string> = BRAN
 }
 
 /** The keyframes the art animates with (web/src/index.css), stilled for reduced motion. */
-export const KEYFRAMES = `@keyframes monita-blink{0%,94%,100%{transform:scaleY(1)}97%{transform:scaleY(.1)}}
+export const KEYFRAMES = `@keyframes monita-ping{to{stroke-dashoffset:-22}}
+@keyframes monita-blink{0%,94%,100%{transform:scaleY(1)}97%{transform:scaleY(.1)}}
 @keyframes monita-beat{0%,100%{opacity:1}50%{opacity:.35}}
 @keyframes monita-bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-22px)}}
 @keyframes monita-toss{from{offset-distance:0%}to{offset-distance:100%}}

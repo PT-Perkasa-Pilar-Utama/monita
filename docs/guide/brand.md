@@ -16,7 +16,7 @@ The mark is a pulse in a ring: a heartbeat that Monita keeps an eye on. The logo
 
 ## Moni
 
-Moni is Monita's mascot, built from the mark: the ring is the body, the pulse is the mouth, and the antenna listens. Moni appears on the sign-in page, under every primitive's pages in the app, and in the README.
+Moni is Monita's mascot, built from the mark: the ring is the body, the pulse is the mouth, and the antenna listens. Moni appears on the sign-in page, under every primitive's pages in the app, on the landing page, and in the README.
 
 <!-- brand:moni -->
 
@@ -26,6 +26,12 @@ Moni is Monita's mascot, built from the mark: the ring is the body, the pulse is
 - Flows show their direction: magenta for what Monita sends, green for an answer.
 - Keep Moni's proportions. Do not crop the antenna or the feet, except in the peeking pose.
 - Motion stays small: a blink, a beat, a bounce. It stops when the reader asks for reduced motion.
+
+### Scenes
+
+Each primitive has a scene, which the app draws at the foot of its pages and the landing page shows beside each part. The files use the light colours. A page that inlines one can recolour it for its theme with the `--art-*` CSS variables, as the landing page does.
+
+<!-- brand:scenes -->
 
 ## Colours
 
