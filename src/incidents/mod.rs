@@ -284,18 +284,21 @@ pub async fn open_count(db: &Db, project_id: i64) -> anyhow::Result<i64> {
     store::open_count(&db.read().await?, project_id).await
 }
 
-/// One page of open incidents across every project (`owner` None) or the projects `owner` owns,
-/// critical first, then newest; and how many there are in all.
-pub async fn open_across(
+pub use store::AcrossFilter;
+
+/// One page of incidents across every project (`owner` None) or the projects `owner` owns, with
+/// the page's search, filters and sort; and how many match in all.
+pub async fn across(
     db: &Db,
     owner: Option<i64>,
+    f: &AcrossFilter<'_>,
     page: i64,
 ) -> anyhow::Result<(Vec<(i64, IncidentRow)>, i64)> {
     let c = db.read().await?;
     let offset = (page.max(1) - 1).saturating_mul(crate::platform::caps::ACROSS_PAGE);
     Ok((
-        store::open_across(&c, owner, crate::platform::caps::ACROSS_PAGE, offset).await?,
-        store::count_open_across(&c, owner).await?,
+        store::across(&c, owner, f, crate::platform::caps::ACROSS_PAGE, offset).await?,
+        store::count_across(&c, owner, f).await?,
     ))
 }
 

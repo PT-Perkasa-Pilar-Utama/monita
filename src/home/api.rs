@@ -32,10 +32,15 @@ fn owner(user: &User) -> Option<i64> {
     (!user.is_admin()).then_some(user.id)
 }
 
+/// The list's URL: `?q=&state=&severity=&sort=&page=`. Unknown values read as the default.
 #[derive(Deserialize, Default)]
 #[serde(default)]
 struct PageQuery {
     page: String,
+    q: String,
+    state: String,
+    severity: String,
+    sort: String,
 }
 
 impl PageQuery {
@@ -74,7 +79,13 @@ async fn incidents(
     CurrentUser(user): CurrentUser,
     Query(q): Query<PageQuery>,
 ) -> UiResult {
-    let (rows, total) = crate::incidents::open_across(&state.db, owner(&user), q.page()).await?;
+    let f = crate::incidents::AcrossFilter {
+        q: &q.q,
+        state: &q.state,
+        severity: &q.severity,
+        sort: &q.sort,
+    };
+    let (rows, total) = crate::incidents::across(&state.db, owner(&user), &f, q.page()).await?;
     let rows: Vec<WithProject<IncidentRow>> = with_projects(&state, rows).await?;
     Ok(data(serde_json::json!({
         "incidents": rows, "total": total, "page": q.page(), "page_size": caps::ACROSS_PAGE,
@@ -86,7 +97,8 @@ async fn tickets(
     CurrentUser(user): CurrentUser,
     Query(q): Query<PageQuery>,
 ) -> UiResult {
-    let (rows, total) = crate::tickets::triage_across(&state.db, owner(&user), q.page()).await?;
+    let (rows, total) =
+        crate::tickets::triage_across(&state.db, owner(&user), &q.q, &q.sort, q.page()).await?;
     let rows: Vec<(i64, TriageRow)> = rows.into_iter().map(|r| (r.project_id, r)).collect();
     let rows = with_projects(&state, rows).await?;
     Ok(data(serde_json::json!({

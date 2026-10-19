@@ -308,37 +308,3 @@ pub async fn down_without_incident(
     }
     Ok(out)
 }
-
-/// Scopes a cross-project list: every project when `?1` is NULL, else the ones `?1` owns. A
-/// read-only look at `projects.owner_id`, like the `users` join for a name.
-const OWNED_BY: &str =
-    "(?1 IS NULL OR i.project_id IN (SELECT id FROM projects WHERE owner_id = ?1))";
-
-/// Open incidents across projects, critical first, then newest. Each row carries its project id.
-pub async fn open_across(
-    c: &Connection,
-    owner: Option<i64>,
-    limit: i64,
-    offset: i64,
-) -> anyhow::Result<Vec<(i64, IncidentRow)>> {
-    crate::platform::db::query_all(
-        c,
-        format!(
-            "SELECT {COLS}, i.project_id FROM incidents i WHERE i.resolved_at IS NULL AND {OWNED_BY}
-             ORDER BY (i.severity = 'critical') DESC, i.started_at DESC, i.id DESC LIMIT ?2 OFFSET ?3"
-        ),
-        (owner, limit, offset),
-        |r| Ok((r.get(8)?, row(r)?)),
-    )
-    .await
-}
-
-pub async fn count_open_across(c: &Connection, owner: Option<i64>) -> anyhow::Result<i64> {
-    Ok(crate::platform::db::query_i64(
-        c,
-        &format!("SELECT count(*) FROM incidents i WHERE i.resolved_at IS NULL AND {OWNED_BY}"),
-        [owner],
-    )
-    .await?
-    .unwrap_or(0))
-}

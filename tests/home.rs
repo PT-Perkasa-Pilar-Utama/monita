@@ -71,4 +71,20 @@ async fn a_tech_lead_sees_their_own_projects_and_a_super_admin_sees_all() {
     let triage = read(&app, "/api/ui/tickets", &rina).await;
     assert_eq!(titles(&triage["tickets"]), ["payments Refund stuck"]);
     let _ = budi;
+
+    let found = read(&app, "/api/ui/incidents?q=SEARCH", &admin).await;
+    assert_eq!(
+        titles(&found["incidents"]),
+        ["search Search is down"],
+        "the project's name matches"
+    );
+    let warn = read(&app, "/api/ui/incidents?severity=warning", &admin).await;
+    assert_eq!(titles(&warn["incidents"]), ["payments Slow checkout"]);
+    let old = read(&app, "/api/ui/incidents?state=resolved&q=inc-4", &admin).await;
+    assert_eq!(titles(&old["incidents"]), ["payments Old outage"]);
+    let none = read(&app, "/api/ui/tickets?q=typo", &rina).await;
+    assert_eq!(
+        none["total"], 0,
+        "another owner's ticket stays out of a search"
+    );
 }

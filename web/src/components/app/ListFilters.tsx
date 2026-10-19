@@ -48,11 +48,14 @@ export function ListFilters({
   filter,
   onChange,
   stateOptions = STATE_OPTIONS,
+  selects = true,
 }: {
   noun: string;
   filter: ListFilter;
   onChange: (patch: Partial<ListFilter>) => void;
   stateOptions?: Option[];
+  /** False for a list with search only. */
+  selects?: boolean;
 }): ReactElement {
   return (
     <>
@@ -67,8 +70,8 @@ export function ListFilters({
           className="h-8 pl-8 text-[13px] sm:w-60"
         />
       </div>
-      <FilterSelect label="State" value={filter.state} options={stateOptions} onChange={(state) => onChange({ state })} />
-      <FilterSelect label="Severity" value={filter.severity} options={SEVERITY_OPTIONS} onChange={(severity) => onChange({ severity })} />
+      {selects && <FilterSelect label="State" value={filter.state} options={stateOptions} onChange={(state) => onChange({ state })} />}
+      {selects && <FilterSelect label="Severity" value={filter.severity} options={SEVERITY_OPTIONS} onChange={(severity) => onChange({ severity })} />}
     </>
   );
 }

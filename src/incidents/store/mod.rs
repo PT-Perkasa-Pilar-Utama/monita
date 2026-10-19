@@ -1,8 +1,10 @@
 //! SQL for incidents, incident_items, incident_sources, status_updates. Writes and single-incident
 //! reads live here; `reads` holds the batch and cross-incident reads.
 
+mod across;
 mod reads;
 
+pub use across::{AcrossFilter, across, count_across};
 pub use reads::*;
 
 use std::collections::HashMap;

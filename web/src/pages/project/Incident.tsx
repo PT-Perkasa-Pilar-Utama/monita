@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { FormEvent, ReactElement } from "react";
-import { useParams } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 import { ChoiceCards } from "@/components/app/ChoiceCards";
 import { FormSheet, FormSheetBody } from "@/components/app/FormSheet";
 import { Side } from "@/components/app/Side";
@@ -128,6 +128,7 @@ export function Incident(): ReactElement {
   const base = `/projects/${p.slug}/incidents`;
   const path = `${base}/${encodeURIComponent(id)}`;
   const res = useApi<IncidentDetail>(path);
+  const from = (useLocation().state as { from?: string } | null)?.from;
   if (res.error?.status === 404) return <NotFound />;
   const d = res.data;
   const i = d?.incident;
@@ -135,7 +136,13 @@ export function Incident(): ReactElement {
 
   return (
     <>
-      <Crumbs items={[{ label: "Incidents", to: base }, { label: i ? `INC-${i.id}` : "Incident" }]} />
+      <Crumbs
+        items={[
+          // Opened from the Incidents page in the header: the crumb goes back to that list as it was.
+          from ? { label: "All incidents", to: from } : { label: "Incidents", to: base },
+          { label: i ? `INC-${i.id}` : "Incident" },
+        ]}
+      />
       {!d || !i ? (
         <Skeleton className="h-96 rounded-xl" />
       ) : (
