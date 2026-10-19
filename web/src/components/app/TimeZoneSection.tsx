@@ -70,7 +70,7 @@ export function TimeZoneSection({ initial }: { initial: number }): ReactElement 
   return (
     <SettingsSection
       id="time-zone"
-      title="Time zone"
+      title="Times on every page"
       description="Every page, chart and status page shows times in this offset. Today and the status page days start at its midnight. Monita stores times in UTC and does not follow daylight saving."
       footerNote={`Now it is ${stamp(Math.floor(Date.now() / 1000), value)}.`}
       footer={

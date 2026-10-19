@@ -6,7 +6,7 @@
 | --- | --- | --- |
 | Project | `layouts/ProjectLayout.tsx` | `TopBar` (project crumb, `PageTabs`) then `PageFrame` then the page |
 | App | `layouts/AppLayout.tsx` | `TopBar` then `PageFrame`. Projects and Admin pages. |
-| Admin | `layouts/AdminLayout.tsx` | `SidebarFrame` with `SideNav` (Users, System). A non-admin gets the not-found page. |
+| Admin | `layouts/AdminLayout.tsx` | `SidebarFrame` with `SideNav` (User management, Rate limits, Email, Time zone, System information). A non-admin gets the not-found page. |
 | Settings | `layouts/SettingsLayout.tsx` | `SidebarFrame` with `SideNav` (General, Status page, Alerts, API keys, Allowlist) |
 | Public | `layouts/PublicLayout.tsx` | Sticky header (project name, `ThemeToggle`, `PageTabs`), `PageFrame`, footer |
 | Bare | `layouts/BareLayout.tsx` | Sign-in and invite: the brand, one card (max 420 px), a footer, `ThemeToggle` |
@@ -17,7 +17,7 @@ Under 768 px (`md`) a side navigation becomes one scrolling row. The tab bar scr
 
 | Place | Items |
 | --- | --- |
-| Top bar | Mark and project crumb, Projects, Admin (super admin: Users, System), Docs, account menu |
+| Top bar | Mark and project crumb, Projects, Admin (super admin: User management, Rate limits, Email, Time zone, System information), Docs, account menu |
 | Account menu | Who is signed in, All projects, theme switch, Sign out |
 | Project tabs | Overview, Monitors, Heartbeats, Incidents, Tickets, Settings. Status page sits at the right end and leaves the app for `/status/{slug}`. |
 | Settings side nav | General, Status page, Alerts, API keys, Allowlist |
@@ -39,7 +39,7 @@ All pages open with `PageHeader`. A detail or form page puts `Crumbs` above it.
 | Form with aside | `Crumbs`, `PageHeader`, then a `Card` form and `FormAside` in a grid. Footer: Delete (edit only) at the left; Cancel and Save at the right. |
 | Settings page | `SidebarFrame`, `PageHeader`, then one or more `Card`s (General, Alerts, Allowlist) or one `TableCard` (API keys, with New API key as a `Dialog`). |
 | Admin Users | `PageHeader` (Invite tech lead) then a `TableCard`. Invite is a `Dialog`. Disable goes through `ConfirmDialog`. |
-| System | `PageHeader` then cards: email, server, limits (one `Field` per limit), fixed caps. |
+| Admin pages | One topic per page: Rate limits (one `Field` per limit, fixed caps), Email (Mail server form, then delivery counts and a test), Time zone (the offset), System information (server facts from the settings file). |
 | Ticket board | `PageHeader` (Public board) then `TicketBoard` with Triage, Backlog, In progress and Done. |
 | Ticket detail | `Crumbs`, `PageHeader`, then stage and close reason in `ToggleGroup`s. |
 | Public status | `PageHeader`, a headline sentence with a tone border, then a grid: `SystemRow`s at left; Active incidents (`IncidentCard`) at right, and Past 7 days as one card of `IncidentRow`s under both. History shows `IncidentCard`s under month headings. |

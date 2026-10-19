@@ -24,8 +24,10 @@ import { KnownIssues } from "@/pages/public/KnownIssues";
 import { Mine } from "@/pages/public/Mine";
 import { Report } from "@/pages/public/Report";
 import { Status } from "@/pages/public/Status";
+import { Email } from "@/pages/admin/Email";
 import { RateLimits } from "@/pages/admin/RateLimits";
 import { System } from "@/pages/admin/System";
+import { TimeZone } from "@/pages/admin/TimeZone";
 import { Users } from "@/pages/admin/users/Users";
 import { Invite } from "@/pages/Invite";
 import { Login } from "@/pages/Login";
@@ -43,6 +45,8 @@ export default function App(): ReactElement {
         <Route element={<AdminLayout />}>
           <Route path="/admin/users" element={<Users />} />
           <Route path="/admin/limits" element={<RateLimits />} />
+          <Route path="/admin/email" element={<Email />} />
+          <Route path="/admin/time-zone" element={<TimeZone />} />
           <Route path="/admin/system" element={<System />} />
           <Route path="/admin/settings" element={<Navigate to="/admin/system" replace />} />
         </Route>

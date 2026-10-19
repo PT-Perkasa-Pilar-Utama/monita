@@ -1,11 +1,11 @@
 import type { ReactElement } from "react";
 import { Outlet, useLocation } from "react-router-dom";
-import { Server, Timer, Users } from "@/components/icons";
+import { Clock, Mail, Server, Timer, Users } from "@/components/icons";
 import { SideNav, SidebarFrame } from "@/components/layout/SideNav";
 import { useMe } from "@/lib/session";
 import { NotFound } from "@/pages/NotFound";
 
-/** The super admin's pages: User management, Rate limits and System information. Anyone else gets the not-found page. */
+/** The super admin's pages: User management, Rate limits, Email, Time zone and System information. Anyone else gets the not-found page. */
 export function AdminLayout(): ReactElement {
   const me = useMe();
   const { pathname } = useLocation();
@@ -14,7 +14,7 @@ export function AdminLayout(): ReactElement {
   return (
     <SidebarFrame nav={<SideNav
           label="Admin"
-          sections={[{ items: [item("/admin/users", "User management", Users), item("/admin/limits", "Rate limits", Timer), item("/admin/system", "System information", Server)] }]}
+          sections={[{ items: [item("/admin/users", "User management", Users), item("/admin/limits", "Rate limits", Timer), item("/admin/email", "Email", Mail), item("/admin/time-zone", "Time zone", Clock), item("/admin/system", "System information", Server)] }]}
         />}>
       <Outlet />
     </SidebarFrame>
