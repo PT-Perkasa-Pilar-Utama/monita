@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 import { Link, useOutletContext } from "react-router-dom";
-import { IncidentCard, SystemRow, uptimeText } from "@/components/app/PublicStatus";
+import { IncidentCard, IncidentRow, SystemRow, uptimeText } from "@/components/app/PublicStatus";
 import { StateBadge } from "@/components/app/Tone";
 import { ArrowRight, RefreshCw } from "@/components/icons";
 import { PageHeader } from "@/components/layout/Page";
@@ -46,8 +46,9 @@ export function Status(): ReactElement {
           {up} of {items.length} systems up
         </span>
       </p>
-      {/* One column below 1000 px with active incidents first; two columns above, systems left. */}
-      <div className="grid items-start gap-10 min-[1000px]:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] min-[1000px]:grid-rows-[auto_1fr]">
+      {/* One column below 1000 px with active incidents first; two columns above, systems left.
+          Past incidents run under both, so a busy week never stretches one column. */}
+      <div className="grid items-start gap-10 min-[1000px]:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
         <section aria-labelledby="active" className="flex flex-col gap-3 min-[1000px]:col-start-2 min-[1000px]:row-start-1">
           <h2 id="active" className="font-semibold">
             Active incidents
@@ -57,7 +58,7 @@ export function Status(): ReactElement {
             <IncidentCard key={n} incident={i} />
           ))}
         </section>
-        <section aria-labelledby="systems" className="flex flex-col gap-5 min-[1000px]:col-start-1 min-[1000px]:row-span-2 min-[1000px]:row-start-1">
+        <section aria-labelledby="systems" className="flex flex-col gap-5 min-[1000px]:col-start-1 min-[1000px]:row-start-1">
           <div className="flex items-baseline justify-between">
             <h2 id="systems" className="font-semibold">
               Systems
@@ -85,14 +86,19 @@ export function Status(): ReactElement {
             </details>
           )}
         </section>
-        <section aria-labelledby="past" className="flex flex-col gap-3 min-[1000px]:col-start-2 min-[1000px]:row-start-2">
+        <section aria-labelledby="past" className="flex flex-col gap-3 min-[1000px]:col-span-2">
           <h2 id="past" className="font-semibold">
             Past 7 days
           </h2>
-          {d.recent.length === 0 && <p className="text-muted-foreground">There were no incidents in the last 7 days.</p>}
-          {d.recent.map((i, n) => (
-            <IncidentCard key={n} incident={i} />
-          ))}
+          {d.recent.length === 0 ? (
+            <p className="text-muted-foreground">There were no incidents in the last 7 days.</p>
+          ) : (
+            <div className="overflow-hidden rounded-xl border bg-card shadow-xs">
+              {d.recent.map((i, n) => (
+                <IncidentRow key={n} incident={i} />
+              ))}
+            </div>
+          )}
           <Link to={`/status/${project.slug}/history`} className="flex items-center gap-1.5 text-sm text-link underline-offset-4 hover:underline">
             Incident history
             <ArrowRight className="size-3.5" />

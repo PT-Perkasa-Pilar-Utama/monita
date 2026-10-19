@@ -6,7 +6,7 @@ import { stamp } from "@/lib/time";
 import type { PublicIncident, PublicItem } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-const STATE_WORD = { up: "Up", down: "Down", issue: "Issue", unknown: "Waiting" } as const;
+const STATE_WORD = { up: "Up", down: "Down", issue: "Issue", unknown: "No data yet" } as const;
 
 export const uptimeText = (i: PublicItem): string => (i.uptime_90d === null ? "no data yet" : `${i.uptime_90d.toFixed(2)}% uptime`);
 
@@ -43,6 +43,46 @@ export function SystemRow({ item }: { item: PublicItem }): ReactElement {
   );
 }
 
+/** The updates of a public incident, newest first. SEC-21: no author, no cause. */
+function Updates({ incident: i }: { incident: PublicIncident }): ReactElement {
+  return (
+    <>
+      <p className="text-sm text-muted-foreground">Affects {i.items.join(", ")}.</p>
+      <ol className="flex flex-col gap-4 border-l pl-4">
+        {i.updates.map((u, n) => (
+          <li key={n} className="flex flex-col gap-1.5">
+            <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+              <LabelBadge label={u.label} />
+              {stamp(u.at)}
+            </span>
+            <p className="whitespace-pre-wrap break-words">{u.message}</p>
+          </li>
+        ))}
+      </ol>
+    </>
+  );
+}
+
+/** A past incident as one line in a list card: title, state and when. It opens to its updates. */
+export function IncidentRow({ incident: i }: { incident: PublicIncident }): ReactElement {
+  const [kind, word] = incidentState(i);
+  return (
+    <details className="group border-b last:border-0">
+      <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-4 gap-y-1.5 px-5 py-3.5 [&::-webkit-details-marker]:hidden">
+        <strong className="min-w-0 flex-1 basis-56 font-semibold">{i.title}</strong>
+        <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+          <StateBadge kind={kind} label={word} />
+          {when(i)}
+        </span>
+        <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
+      </summary>
+      <div className="flex flex-col gap-4 px-5 pb-5">
+        <Updates incident={i} />
+      </div>
+    </details>
+  );
+}
+
 /** A public incident, folded unless it is still open. SEC-21: no author, no cause. */
 export function IncidentCard({ incident: i }: { incident: PublicIncident }): ReactElement {
   const [kind, word] = incidentState(i);
@@ -63,18 +103,7 @@ export function IncidentCard({ incident: i }: { incident: PublicIncident }): Rea
         </span>
       </summary>
       <div className="flex flex-col gap-4 px-5 pb-5">
-        <p className="text-sm text-muted-foreground">Affects {i.items.join(", ")}.</p>
-        <ol className="flex flex-col gap-4 border-l pl-4">
-          {i.updates.map((u, n) => (
-            <li key={n} className="flex flex-col gap-1.5">
-              <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-                <LabelBadge label={u.label} />
-                {stamp(u.at)}
-              </span>
-              <p className="whitespace-pre-wrap break-words">{u.message}</p>
-            </li>
-          ))}
-        </ol>
+        <Updates incident={i} />
       </div>
     </details>
   );
