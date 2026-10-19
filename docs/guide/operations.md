@@ -26,6 +26,20 @@ Monita cannot alert about its own outage. Run a second Monita at another site an
 
 If one site loses power, the other sends "monita-a missed its heartbeat". A free Better Stack heartbeat works the same way in place of Monita B. `GET /healthz` returns 503 when the database fails or the scheduler stops ticking, for a load balancer or an uptime check.
 
+## Email
+
+Monita picks its mail server in this order:
+
+1. The server a super admin saved on **Admin**, **Outgoing email**.
+2. The `MONITA_SMTP_URL` variable in the env file.
+3. None. Monita writes each email to its log.
+
+So `MONITA_SMTP_URL` is a fallback. Saving a server on the page replaces it for the next email, with no restart. **Remove saved server** returns to the variable.
+
+Use **Test connection** to check a server before you save it. Use **Send a test email** to see a real delivery. The page also counts emails sent, waiting and failed. See [Admin and roles](admin.md#outgoing-email).
+
+The saved password is stored as you entered it. Only the database file holds it. Back up that file with care.
+
 ## Lost super admin password
 
 ```sh

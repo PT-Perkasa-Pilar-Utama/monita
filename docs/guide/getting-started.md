@@ -10,8 +10,9 @@ Monita watches the systems of every project in a team and tells people when one 
 - A **heartbeat** waits for a ping from a cron job. A ping that does not come in time opens an incident.
 - An **incident** sends email and webhook alerts, and shows on the project's public **status page**.
 - Users file **tickets** through the status page, and the tech lead sorts them on the ticket board.
+- A **changelog** lists each release for your users.
 
-A super admin invites tech leads. Each tech lead owns their projects and sees only those.
+A super admin invites users. Each tech lead owns their projects and sees only those. A supervisor sees every project and changes nothing. See [Admin and roles](admin.md#roles).
 
 ## Run it locally
 
@@ -30,28 +31,28 @@ curl -s -X POST http://127.0.0.1:7466/admin/reset-state -H 'x-reset-token: dev' 
   -H 'content-type: application/json' -d '{"seed":"dev"}'
 ```
 
-Sign in as `tl@monita.test` with the password `monita-dev-password`.
+Sign in as `tl@monita.test` (a tech lead) or `admin@monita.test` (a super admin) with the password `monita-dev-password`.
 
 ## Add a project
 
-1. On **Projects**, select **New project** and enter a name. Monita makes the slug from the name plus 6 random characters, for example `payments-k3x9qa`. The status page lives at `/status/<slug>`.
-   You may add a description and an icon. The page shrinks the icon to a small square before it sends it. A super admin can also type the owner's email; a tech lead owns the projects they create.
-2. Open the project. Its tabs are Overview, Monitors, Heartbeats, Incidents, Tickets and Settings. Settings holds General, Status page, Alerts, API keys and Allowlist.
+1. On **Projects**, select **New project**. Enter a name and the **Homepage**, the address of the system. Monita makes the slug from the name plus 6 random characters, for example `payments-k3x9qa`. The status page lives at `/status/<slug>`.
+   You may add a description and an icon. The page shrinks the icon to a small square before it sends it. A super admin can also pick the owner; a tech lead owns the projects they create.
+2. Open the project. Its tabs are Overview, Monitors, Heartbeats, Incidents, Tickets, Changelog and Settings. Settings holds General, Status page, Alerts, API keys, Secrets and Allowlist. See [Projects and settings](project-settings.md).
 
 ## Watch a URL
 
 1. Open **Monitors** and select **New monitor**.
-2. Enter a name and the URL. Keep the defaults: every minute, 10 s timeout, any `2xx` status.
-3. Under **Status page**, tick **Show this monitor and its incidents on the public status page** if users may see it.
+2. Enter a name and the URL. Keep the defaults: GET, every minute, 10 s timeout, any `2xx` status.
+3. Under **Alerts and status page**, tick **Show this monitor and its incidents on the public status page** if users may see it.
 4. Save. The first check runs within one interval.
 
-The monitor page shows the state, the response time chart and the availability. See [Monitors](monitors.md).
+The monitor page shows the state, the response time chart and the availability. Until the first check, the state reads **No data yet**. See [Monitors](monitors.md).
 
 ## Watch a cron job
 
 1. Open **Heartbeats** and select **New heartbeat**.
-2. Pick how often the job runs and how late it may be.
-3. Save, then copy the ping URL into the job:
+2. Pick how often the job runs (**Runs every**) and how late it may be (**Can be late by**).
+3. Save, then copy the ping URL into the job. **Details** on the heartbeat page has commands in Shell, Node.js and Python:
 
 ```sh
 backup.sh && curl -fsS -m 10 https://monita.example.com/ping/<token>
@@ -61,5 +62,8 @@ See [Heartbeats](heartbeats.md) for failure reports and more examples.
 
 ## Next steps
 
-- Set who gets alerts: [Incidents and alerts](incidents.md).
+- Set who gets alerts: [Alerts](alerts.md).
+- Learn how incidents work: [Incidents](incidents.md).
+- Choose what the public sees: [Status page](status-page.md).
+- Invite your team and set the mail server: [Admin and roles](admin.md).
 - Put Monita on a server: [Install](install.md).

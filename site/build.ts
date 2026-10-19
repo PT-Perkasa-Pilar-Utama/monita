@@ -36,10 +36,10 @@ type Group = { title: string; icon: string; blurb: string; pages: string[] };
 
 /** The sidebar, in reading order. Every guide file belongs to one group. */
 const GROUPS: Group[] = [
-  { title: "Start", icon: "play", blurb: "What Monita does, a first monitor on your laptop, and a production install.", pages: ["getting-started", "install"] },
+  { title: "Start", icon: "play", blurb: "What Monita does, a first monitor on your laptop, a production install, and project settings.", pages: ["getting-started", "install", "project-settings"] },
   { title: "Watch", icon: "pulse", blurb: "HTTP monitors for URLs and heartbeats for cron jobs.", pages: ["monitors", "heartbeats"] },
-  { title: "Respond", icon: "bell", blurb: "Incidents, alerts, the public status page and bug tickets.", pages: ["incidents", "status-page", "tickets"] },
-  { title: "Operate", icon: "wrench", blurb: "Configuration, the command line, backups, upgrades and limits.", pages: ["configuration", "cli", "operations", "limits"] },
+  { title: "Respond", icon: "bell", blurb: "Incidents, alerts, the public status page, bug tickets and the changelog.", pages: ["incidents", "alerts", "status-page", "tickets", "changelog"] },
+  { title: "Operate", icon: "wrench", blurb: "Users and roles, configuration, the command line, backups, upgrades and limits.", pages: ["admin", "configuration", "cli", "operations", "limits"] },
 ];
 
 const ICONS: Record<string, string> = {

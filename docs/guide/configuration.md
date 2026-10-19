@@ -10,7 +10,7 @@ Monita reads `MONITA_*` environment variables at start. `monita setup` writes th
 | `MONITA_DB_PATH` | Database file | `/var/lib/monita/monita.db` |
 | `MONITA_BACKUP_DIR` | Daily backup folder; empty turns backups off | `/var/backups/monita` |
 | `MONITA_BACKUP_KEEP` | Backups kept | `7` |
-| `MONITA_SMTP_URL` | `smtps://user:pass@host:465`. A mail server saved on Admin, Outgoing email replaces it; with neither, Monita logs emails instead | your mail server, or set it on the Outgoing email page |
+| `MONITA_SMTP_URL` | `smtps://user:pass@host:465`. A fallback: a mail server saved on Admin, Outgoing email wins. With neither, Monita logs emails instead. | your mail server, or leave it empty and set the server on the Outgoing email page |
 | `MONITA_MAIL_FROM` | Sender | `Monita <monita@example.com>` |
 | `MONITA_PING_URL` | A heartbeat Monita pings every 60 s, to be watched from outside | a peer's ping URL |
 | `MONITA_TRUST_PROXY` | Read the client IP from `X-Forwarded-For` | `true` behind a proxy |
@@ -22,17 +22,21 @@ Monita reads `MONITA_*` environment variables at start. `monita setup` writes th
 
 ## Runtime limits
 
-Admins see every value on this page, except secrets, on the **System** page under Admin. That page also shows whether email delivery works and sends a test email. Changing a variable takes an edit of the env file and `sudo systemctl restart monita`.
+Admins see these values, except secrets, on **System information** under Admin. Changing a variable takes an edit of the env file and `sudo systemctl restart monita`.
 
-A super admin changes these on **System** without a restart:
+Email delivery and the mail server live on **Outgoing email**, with a **Test connection** button and a **Send a test email** form. See [Admin and roles](admin.md#outgoing-email).
+
+A super admin changes these on **Rate limits** without a restart:
 
 | Setting | Default |
 | --- | --- |
-| Checks running at once | 50 |
-| Public requests per minute per IP | 60 |
-| API requests per minute per key | 120 |
-| Pings per second per heartbeat | 1 |
-| Tickets per ref ID per day | 5 |
-| Tickets per project per day | 100 |
+| Checks at the same time | 50 |
+| Visits per minute from one address | 60 |
+| API calls per minute from one key | 120 |
+| Pings per second for one heartbeat | 1 |
+| Bug reports per user per day | 5 |
+| Bug reports per project per day | 100 |
+
+The time zone for every page is also an admin setting, not a variable. See [Time zone](admin.md#time-zone).
 
 The full reference, with dev and test values, is [spec 11](../technical-specs/11-environment-configuration.md).

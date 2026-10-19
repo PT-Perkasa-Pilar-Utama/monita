@@ -1,70 +1,82 @@
-# Incidents and alerts
+# Incidents
 
-An incident records a problem from start to end, sends alerts, and tells users on the status page.
+An incident records a problem from start to end, sends alerts, and tells users on the status page. Alert settings have their own page: [Alerts](alerts.md).
 
 ## Automatic incidents
 
 | Source | Opens | Closes |
 | --- | --- | --- |
-| Monitor | 2 failed checks in a row, or the count the monitor sets (1 to 99) | The first passing check |
+| Monitor | The monitor's number of failed checks in a row (1 to 99, default 2) | The first passing check |
 | Heartbeat | A missed deadline, or a call to `/fail` | The next ping |
 
-Monita posts the first update, **Investigating**, with the cause. A tech lead can add updates while it is open.
+A monitor or heartbeat with **Open an incident** off opens nothing. It sends a `[DOWN]` and an `[UP]` alert instead. See [Alerts](alerts.md#alerts-without-an-incident).
+
+Monita posts the first update, **Investigating**, with the cause. A tech lead can add updates while the incident is open.
+
+## The incident page
+
+The page shows the updates as a thread, newest first. Monita's own updates read "Monita". A sidebar shows:
+
+- **Affects**: the monitors and heartbeats.
+- **Cause**: the technical cause Monita recorded. The status page never shows it.
+- **Dates**: when it started, when it ended and how long it lasted.
+- **How it closes**: what ends this incident.
+
+## Post an update
+
+Select **Post update**. A side panel opens.
+
+1. Pick a **Label**.
+2. Edit the **Message**. It starts from a template for the label.
+3. Select **Post update**.
+
+The update appears on the status page at once, without your name.
+
+| Label | Means | Starting message |
+| --- | --- | --- |
+| Investigating | Something is wrong and you are looking into it | We are looking into the problem. We will post an update when we know more. |
+| Identified | You found the cause and are working on a fix | We found the cause and are working on a fix. We will post an update when it is out. |
+| Monitoring | A fix is out. You are watching to be sure it holds. | A fix is out. We are watching to make sure it holds. |
+| Resolved | It is over | The problem is fixed and everything works again. |
+
+The panel opens on **Monitoring**. When you pick another label, the message changes to that label's template. Your own text stays. Reopening the panel resets the label and the message.
+
+A closed incident takes only follow-up notes labelled **Resolved**. An incident has at most 50 updates.
+
+## Resolve an automatic incident by hand
+
+Post **Resolved** on an open automatic incident to close it yourself, for example when you retire a job. Monita closes it now and sends the resolved alert. The panel says "marked resolved by a tech lead".
+
+The source then starts over:
+
+- A monitor needs its full count of new failed checks to open the next incident.
+- A heartbeat gets a new deadline: now plus **Runs every** plus **Can be late by**. A job that stays silent opens a new incident at that time.
 
 ## Manual incidents
 
-Use **Report incident** for a problem no check catches, such as slow sign-in for some users. Pick the monitors and heartbeats it affects, a severity and a first message. A manual incident marks its items as **Issue**, not down, and closes only when a tech lead posts **Resolved**.
+Use **Report incident** for a problem no check catches, such as slow sign-in for some users. Report one too when a monitor with incidents off goes down and users should know.
 
-## Status updates
+1. Open **Incidents** in a project and select **Report incident**. Select **When to report an incident** for a short guide.
+2. Enter a **Title** and pick a severity.
+3. Tick the monitors and heartbeats it affects. **Find a monitor or heartbeat by name** narrows the list.
+4. Write the first **Message**.
 
-Each update has a label and a message:
+A manual incident marks its items as **Issue**, not down. It never counts as downtime. It closes only when a tech lead posts **Resolved**. A project holds at most 20 open manual incidents. A manual incident sends no alert.
 
-| Label | Means |
-| --- | --- |
-| Investigating | We know and we are looking |
-| Identified | We found the cause |
-| Monitoring | A fix is in; we are watching |
-| Resolved | It is over |
+## The Incidents page
 
-Updates show on the status page without the author's name.
+A project's **Incidents** page lists its incidents with severity, latest update, start and duration. Filter by **Open**, **Resolved** or **All**. Search by title and filter by severity.
 
-## Alert routes
+### Across projects
 
-Each project has two routes, one per severity. Open **Settings**, then **Alerts**, to set them.
+**Incidents** in the top menu lists the incidents of every project you can open. A tech lead sees the projects they own. A super admin and a supervisor see all.
 
-| Severity | Default | Gets |
-| --- | --- | --- |
-| Critical | Email and webhook | Incidents of critical monitors and heartbeats |
-| Warning | Email only | Incidents of warning items, and new tickets when its webhook is on |
-
-A route takes up to 20 email addresses and one webhook URL. **Send a test** checks both.
-
-Alerts leave through an outbox: a slow mail server never delays a check, and a failed delivery is tried again.
-
-## Webhook payload
-
-Monita posts JSON. The `text` field makes it work as-is with Slack and Microsoft Teams incoming webhooks.
-
-```json
-{
-  "text": "[CRITICAL] Payments / API health is down: HTTP 503, expected 2xx after 2 checks",
-  "event": "incident.opened",
-  "project": "payments",
-  "source": "API health",
-  "severity": "critical",
-  "cause": "HTTP 503, expected 2xx after 2 checks",
-  "incident_url": "https://monita.example.com/projects/payments/incidents/42",
-  "at": 1792137600
-}
-```
-
-| `event` | When |
-| --- | --- |
-| `incident.opened` | An incident opens |
-| `incident.resolved` | It closes. Adds `duration_s`. |
-| `ticket.created` | A ticket arrives and the warning route's webhook is on. Adds `ticket_number`, `title` and `ticket_url`. |
-| `test` | The test button |
+- The list shows open incidents first. Critical ones come first.
+- Use the state filter for **Open**, **Resolved** or **Open and resolved**. Use **Search incidents** and the severity filter to narrow the list.
+- Sort by **Severity** or **Started**.
+- The list shows 25 a page. A count on the menu shows the open incidents.
+- A row opens the incident. The crumb **All incidents** returns to the same search and page.
 
 ## Daily digest
 
-Once a day, at `MONITA_DIGEST_UTC_HOUR`, each project owner gets one email listing new tickets still in Triage. No email goes out when there are none.
+Once a day, at `MONITA_DIGEST_UTC_HOUR`, each project owner gets one email listing new tickets still in Triage. No email goes out when there are none. A project can turn this off in [Ticket alerts](alerts.md#ticket-alerts).
