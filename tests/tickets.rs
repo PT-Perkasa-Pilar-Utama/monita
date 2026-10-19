@@ -92,6 +92,12 @@ async fn a_reporter_submits_through_the_api_and_the_form() {
     assert_eq!(ticket["page_url"], "https://shop.example/pay");
     assert_eq!(ticket["stage"], "triage");
     assert_eq!(ticket["ref_revoked"], false);
+    assert_eq!(
+        ticket["ref_tail"].as_str(),
+        Some(&rid[rid.len() - 4..]),
+        "the team tells ref IDs apart by their last 4 characters"
+    );
+    assert!(!ticket.to_string().contains(&rid), "never the whole ref ID");
 
     let form = app
         .api_post(

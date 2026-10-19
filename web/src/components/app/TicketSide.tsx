@@ -12,6 +12,7 @@ import { api, ApiError, errorText } from "@/lib/api";
 import { REASONS, STAGES } from "@/lib/tickets";
 import { ago, day } from "@/lib/time";
 import type { CloseReason, Stage, TicketRow } from "@/lib/types";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 export type Move = (to: Stage, reason: CloseReason | null) => Promise<string | null>;
@@ -124,23 +125,28 @@ export function PublicTitle({ t, path, onSaved }: { t: TicketRow; path: string; 
       setBusy(false);
     }
   };
+  const box = "mt-1 rounded-lg border bg-card px-4 py-3 shadow-xs";
   if (!editing) {
     return (
-      <p className="flex min-w-0 items-center gap-1.5 text-sm">
-        <span className="shrink-0 text-muted-foreground">Public title</span>
-        <span className="min-w-0 truncate">{t.public_title ?? <span className="text-muted-foreground">same as the title</span>}</span>
-        <Button type="button" variant="ghost" size="icon" className="size-7 shrink-0" aria-label="Edit the public title" onClick={() => setEditing(true)}>
+      <div className={cn(box, "flex min-w-0 items-center gap-3")}>
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className="text-xs font-medium text-muted-foreground">Public title</span>
+          <span className="truncate text-sm">{t.public_title ?? <span className="text-muted-foreground">Same as the title</span>}</span>
+        </div>
+        <Button type="button" variant="ghost" size="icon" className="size-8 shrink-0" aria-label="Edit the public title" onClick={() => setEditing(true)}>
           <Pencil />
         </Button>
-      </p>
+      </div>
     );
   }
   return (
-    <form onSubmit={(e) => void save(e)} noValidate className="flex flex-col gap-1.5">
+    <form onSubmit={(e) => void save(e)} noValidate className={cn(box, "flex flex-col gap-1.5")}>
       <Field data-invalid={error ? true : undefined}>
-        <FieldLabel htmlFor="public-title">Public title, when the reporter's title says too much</FieldLabel>
+        <FieldLabel htmlFor="public-title" className="text-xs text-muted-foreground">
+          Public title
+        </FieldLabel>
         <div className="flex flex-col gap-2 sm:flex-row">
-          <Input id="public-title" autoFocus maxLength={120} placeholder={t.title} aria-invalid={error ? true : undefined} value={title} onChange={(e) => setTitle(e.target.value)} />
+          <Input id="public-title" autoFocus maxLength={120} placeholder="Empty shows the reporter's title" aria-invalid={error ? true : undefined} value={title} onChange={(e) => setTitle(e.target.value)} />
           <div className="flex shrink-0 gap-2">
             <Button type="button" variant="ghost" onClick={cancel}>
               Cancel
@@ -153,7 +159,6 @@ export function PublicTitle({ t, path, onSaved }: { t: TicketRow; path: string; 
         </div>
         {error && <FieldError>{error}</FieldError>}
       </Field>
-      <p className="text-[13px] text-muted-foreground">Leave it empty to show the reporter's title.</p>
     </form>
   );
 }

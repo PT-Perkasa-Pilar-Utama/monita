@@ -4,15 +4,48 @@ import { Side } from "@/components/app/Side";
 import { ColumnPicker, type Move, PublicPreview, PublicTitle } from "@/components/app/TicketSide";
 import { ReasonBadge, StageBadge } from "@/components/app/Tone";
 import { UserRound } from "@/components/icons";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api, ApiError, errorText } from "@/lib/api";
 import { stageLabel } from "@/lib/tickets";
-import { ago, stamp } from "@/lib/time";
+import { ago, day, stamp } from "@/lib/time";
 import type { TicketRow } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 import { toast } from "sonner";
+
+/** The reporter's ref ID: its last 4 characters (the whole value is never stored), whether it
+ * still files tickets, and the button that stops it. */
+function RefIdLine({ t, path, onChanged }: { t: TicketRow; path: string; onChanged: () => void }): ReactElement {
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
+      <span className="text-muted-foreground">Ref ID</span>
+      <code className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-[13px]">{t.ref_tail ? `rf_…${t.ref_tail}` : `issued ${t.ref_issued_at ? day(t.ref_issued_at) : "earlier"}`}</code>
+      {t.ref_revoked ? (
+        <Badge variant="unknown">Revoked</Badge>
+      ) : (
+        <>
+          <Badge variant="up">Active</Badge>
+          <ConfirmDialog
+            trigger={
+              <Button variant="danger" size="sm" className="h-7">
+                Revoke
+              </Button>
+            }
+            title="Revoke this ref ID?"
+            description="The reporter can no longer file tickets with it. Their tickets stay. You cannot undo this."
+            action="Revoke"
+            onConfirm={async () => {
+              await api(`${path}/revoke-ref`, "POST");
+              onChanged();
+            }}
+          />
+        </>
+      )}
+    </div>
+  );
+}
 
 function Body({ t, path, onChanged }: { t: TicketRow; path: string; onChanged: () => void }): ReactElement {
   const move: Move = async (to, reason) => {
@@ -31,7 +64,6 @@ function Body({ t, path, onChanged }: { t: TicketRow; path: string; onChanged: (
         <SheetTitle className="text-2xl leading-tight break-words">
           {t.title} <span className="font-normal text-muted-foreground">#{t.number}</span>
         </SheetTitle>
-        <PublicTitle t={t} path={path} onSaved={onChanged} />
         <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           <StageBadge stage={t.stage} />
           {t.close_reason && <ReasonBadge reason={t.close_reason} />}
@@ -39,6 +71,8 @@ function Body({ t, path, onChanged }: { t: TicketRow; path: string; onChanged: (
             {t.filed_by ? `Filed by ${t.filed_by}` : "Reported"} {ago(t.created_at)}
           </span>
         </div>
+        {!t.filed_by && <RefIdLine t={t} path={path} onChanged={onChanged} />}
+        <PublicTitle t={t} path={path} onSaved={onChanged} />
       </SheetHeader>
       <div className="grid flex-1 content-start gap-8 overflow-y-auto px-6 py-6 md:grid-cols-[minmax(0,1fr)_17rem]">
         <div className="flex min-w-0 flex-col gap-8">
@@ -66,31 +100,6 @@ function Body({ t, path, onChanged }: { t: TicketRow; path: string; onChanged: (
         <aside className="flex flex-col gap-5">
           <ColumnPicker t={t} move={move} />
           <PublicPreview t={t} />
-          {t.filed_by ? (
-            <Side title="Filed by">
-              <p className="text-sm break-all">{t.filed_by}, from the board</p>
-            </Side>
-          ) : (
-            <Side title="Reporter's ref ID">
-              <p className="text-sm">{t.ref_revoked ? "Revoked. The reporter cannot file new tickets." : "Active. The reporter can file new tickets."}</p>
-              {!t.ref_revoked && (
-                <ConfirmDialog
-                  trigger={
-                    <Button variant="danger" size="sm" className="self-start">
-                      Revoke ref ID
-                    </Button>
-                  }
-                  title="Revoke this ref ID?"
-                  description="The reporter can no longer file tickets with it. Their tickets stay. You cannot undo this."
-                  action="Revoke"
-                  onConfirm={async () => {
-                    await api(`${path}/revoke-ref`, "POST");
-                    onChanged();
-                  }}
-                />
-              )}
-            </Side>
-          )}
           <Side title="Dates">
             <dl className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-sm">
               <dt className="text-muted-foreground">Reported</dt>

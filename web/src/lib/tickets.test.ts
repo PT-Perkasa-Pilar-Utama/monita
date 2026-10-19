@@ -29,6 +29,8 @@ const row = (number: number, stage: TicketRow["stage"]): TicketRow => ({
   updated_at: 10,
   ref_revoked: false,
   filed_by: null,
+  ref_tail: null,
+  ref_issued_at: null,
 });
 const board: TicketBoard = { tickets: [row(1, "triage"), row(2, "backlog"), row(3, "done")], counts: { triage: 1, backlog: 1, in_progress: 0, done: 1 } };
 

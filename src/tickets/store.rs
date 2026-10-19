@@ -28,6 +28,9 @@ pub struct TicketRow {
     pub ref_revoked: bool,
     /// The team member who filed it; `None` for a reporter's ticket.
     pub filed_by: Option<String>,
+    /// The ref ID's last 4 characters; `None` for a team ticket or a ref ID issued before 0017.
+    pub ref_tail: Option<String>,
+    pub ref_issued_at: Option<i64>,
 }
 
 /// SEC-14 public fields only: number, title, stage, dates. The close reason is the TL's verdict
@@ -55,12 +58,13 @@ pub async fn insert_ref(
     c: &Connection,
     project_id: i64,
     hash: &str,
+    tail: &str,
     single_use: bool,
     at: i64,
 ) -> anyhow::Result<()> {
     c.execute(
-        "INSERT INTO ref_ids (project_id, token_hash, single_use, created_at) VALUES (?1, ?2, ?3, ?4)",
-        (project_id, hash, single_use, at),
+        "INSERT INTO ref_ids (project_id, token_hash, single_use, created_at, tail) VALUES (?1, ?2, ?3, ?4, ?5)",
+        (project_id, hash, single_use, at, tail),
     )
     .await?;
     Ok(())
@@ -145,7 +149,7 @@ pub async fn insert_ticket(
     Ok(number)
 }
 
-const COLS: &str = "t.number, t.title, t.public_title, t.description, t.page_url, t.stage, t.close_reason, t.created_at, t.updated_at, r.revoked_at IS NOT NULL, u.email";
+const COLS: &str = "t.number, t.title, t.public_title, t.description, t.page_url, t.stage, t.close_reason, t.created_at, t.updated_at, r.revoked_at IS NOT NULL, u.email, r.tail, r.created_at";
 /// A team ticket has no ref ID, and a reporter's ticket no member, so both joins are LEFT.
 const WHO: &str = "LEFT JOIN ref_ids r ON r.id = t.ref_id LEFT JOIN users u ON u.id = t.created_by";
 
@@ -162,6 +166,8 @@ fn row(r: &turso::Row) -> turso::Result<TicketRow> {
         updated_at: r.get(8)?,
         ref_revoked: r.get::<i64>(9)? == 1,
         filed_by: r.get(10)?,
+        ref_tail: r.get(11)?,
+        ref_issued_at: r.get(12)?,
     })
 }
 

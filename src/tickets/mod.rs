@@ -49,7 +49,8 @@ pub async fn issue_ref_id(
     let raw = format!("rf_{}", token::random_token());
     let hash = token::hash(&raw);
     let t = now();
-    db.write(async |c| store::insert_ref(c, project_id, &hash, single_use, t).await)
+    let tail = &raw[raw.len() - 4..];
+    db.write(async |c| store::insert_ref(c, project_id, &hash, tail, single_use, t).await)
         .await?;
     Ok((raw, t))
 }

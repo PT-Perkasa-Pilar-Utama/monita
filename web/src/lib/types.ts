@@ -240,6 +240,9 @@ export type TicketRow = {
   created_at: number;
   updated_at: number;
   ref_revoked: boolean;
+  /** The ref ID's last 4 characters; null for a team ticket or an older ref ID. */
+  ref_tail: string | null;
+  ref_issued_at: number | null;
   // The team member who filed it; null for a reporter's ticket.
   filed_by: string | null;
 };
