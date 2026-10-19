@@ -397,3 +397,13 @@ pub async fn count_monitors(c: &Connection, project_id: i64) -> anyhow::Result<i
     .await?
     .unwrap_or(0))
 }
+
+pub async fn secret_users(c: &Connection, secret_id: i64) -> anyhow::Result<i64> {
+    Ok(crate::platform::db::query_i64(
+        c,
+        "SELECT count(*) FROM monitors WHERE auth_secret_id = ?1 AND auth_kind != 'none'",
+        [secret_id],
+    )
+    .await?
+    .unwrap_or(0))
+}

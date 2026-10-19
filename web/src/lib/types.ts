@@ -313,3 +313,6 @@ export type MailView = {
   has_password: boolean;
   skip_verify: boolean;
 };
+
+/** A sealed project secret, by name. Its value never reaches the browser. */
+export type Secret = { id: number; name: string; updated_at: number; used_by: number };

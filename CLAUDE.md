@@ -44,7 +44,7 @@ site/                 landing page and docs site builder    docs/guide/ user doc
 | Module | Owns tables | Interface others call |
 | --- | --- | --- |
 | accounts | users, invites, sessions | `CurrentUser` and `AdminUser` extractors, `purge_expired` |
-| projects | projects, project_icons, api_keys | `ApiProject` extractor, `find_for`, `can_manage` |
+| projects | projects, project_icons, api_keys, project_secrets | `ApiProject` extractor, `find_for`, `can_manage` |
 | checks | monitors, heartbeats, check_results, pings, daily_summaries | `probe`, `heartbeat::admit` and `record`, `scheduler::spawn` |
 | incidents | incidents, incident_items, incident_sources, status_updates | `observe` (the only door for check results), `open_manual`, `post_update`, `states_for`, `source_deleted` |
 | notify | alert_routes, outbox | `send(Event)`: inserts outbox rows, never blocks; `create_routes`, `purge_delivered` |

@@ -328,6 +328,11 @@ pub async fn rearm_heartbeat(c: &turso::Connection, id: i64, now: i64) -> anyhow
     store::heartbeats::rearm(c, id, now).await
 }
 
+/// How many monitors authenticate with project secret `id`.
+pub async fn secret_users(c: &turso::Connection, id: i64) -> anyhow::Result<i64> {
+    store::secret_users(c, id).await
+}
+
 /// Whether a source's failures alert, on the caller's connection. A deleted source counts as on.
 pub async fn alert_on(
     c: &turso::Connection,

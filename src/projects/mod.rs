@@ -7,6 +7,7 @@ mod icon;
 mod overview;
 mod profile;
 pub mod routes;
+pub mod secrets;
 mod settings_api;
 mod store;
 

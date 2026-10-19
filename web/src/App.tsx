@@ -8,6 +8,7 @@ import { SettingsLayout } from "@/layouts/SettingsLayout";
 import { Alerts } from "@/pages/project/Alerts";
 import { Allowlist } from "@/pages/project/Allowlist";
 import { General } from "@/pages/project/General";
+import { Secrets } from "@/pages/project/Secrets";
 import { StatusPageSettings } from "@/pages/project/StatusPageSettings";
 import { Heartbeat } from "@/pages/project/Heartbeat";
 import { Incident } from "@/pages/project/Incident";
@@ -70,6 +71,7 @@ export default function App(): ReactElement {
           <Route path="settings" element={<General />} />
           <Route path="settings/status-page" element={<StatusPageSettings />} />
           <Route path="settings/keys" element={<Keys />} />
+          <Route path="settings/secrets" element={<Secrets />} />
           <Route path="settings/allowlist" element={<Allowlist />} />
           <Route path="settings/alerts" element={<Alerts />} />
         </Route>

@@ -15,6 +15,9 @@ pub const HEARTBEATS_FULL: &str = "This project has 100 heartbeats, its limit. D
 pub const SOURCES_PER_PROJECT: i64 = MONITORS_PER_PROJECT + HEARTBEATS_PER_PROJECT;
 /// Live API keys per project. Settings also shows the newest revoked ones, up to this many.
 pub const KEYS_PER_PROJECT: i64 = 20;
+/// Sealed secrets in one project, and the longest value.
+pub const SECRETS_PER_PROJECT: i64 = 20;
+pub const SECRET_VALUE_MAX: usize = 4096;
 /// Addresses in one alert route.
 pub const EMAILS_PER_ROUTE: usize = 20;
 /// Status updates posted on one incident.
