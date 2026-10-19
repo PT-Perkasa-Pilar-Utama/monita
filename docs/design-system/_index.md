@@ -1,7 +1,7 @@
 # Monita Design System
 
 **Version:** 2.0  
-**Date:** 2026-10-18  
+**Date:** 2026-10-19  
 **Author:** snowfluke  
 **Status:** Matches the code  
 
@@ -22,9 +22,9 @@ Flavor: Lunear ([source](source-lunear.md)), adapted for an ops tool. The UI is 
 
 ## Table of Contents
 
-1. [Foundations](01-foundations.md): tokens, themes, type, shape, motion, icons
-2. [Components](02-components.md): every component, its variants and its use
-3. [Patterns](03-patterns.md): shells, navigation, page recipes, forms, copy rules, do and don't
+1. [Foundations](01-foundations.md): tokens, themes, type, shape, motion, icons, pointer, mascot
+2. [Components](02-components.md): every component, its variants and its use, including tickets and illustrations
+3. [Patterns](03-patterns.md): shells, navigation, page recipes, forms, copy rules, do and don't, footer illustrations, settings pages, read-only pages
 
 ## Deviations from Lunear
 
