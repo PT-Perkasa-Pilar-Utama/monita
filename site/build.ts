@@ -86,6 +86,10 @@ function load(slug: string): Page {
     headings.push([id, inner]);
     return `<h2 id="${id}"><a class="anchor" href="#${id}">${inner}</a></h2>`;
   });
+  body = body.replace(/<h3>(.*?)<\/h3>/g, (_, inner: string) => {
+    const id = slugify(inner);
+    return `<h3 id="${id}"><a class="anchor" href="#${id}">${inner}</a></h3>`;
+  });
   body = links(body);
   body = body.replace(/<!-- brand:(\w+) -->/g, (_, set: string) => brandTiles(set, "../../"));
   body = body.replace(/<table>/g, '<div class="table-scroll"><table>').replace(/<\/table>/g, "</table></div>");

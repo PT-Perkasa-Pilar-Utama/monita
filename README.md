@@ -65,7 +65,10 @@ This README and the guide use each of these words with one meaning.
 
 ## Install
 
-On a Linux server (x86-64), download the archive from
+Monita needs a 64-bit x86 Linux server with systemd, 512 MB of memory and 5 GB of disk.
+For 500 monitors, give it 2 vCPU, 1 GB of memory and 20 GB of disk.
+
+Download the archive from
 [Releases](https://github.com/PT-Perkasa-Pilar-Utama/monita/releases), unpack it, and install the binary:
 
 ```sh
@@ -81,7 +84,7 @@ sudo monita service install
 
 Monita listens on `127.0.0.1:7466`. Put a web server that handles HTTPS, such as Caddy or nginx, in
 front of it. The [install guide](https://pt-perkasa-pilar-utama.github.io/monita/docs/install/)
-explains these steps. The [operations guide](https://pt-perkasa-pilar-utama.github.io/monita/docs/operations/)
+explains these steps and how to build Monita from source. The [operations guide](https://pt-perkasa-pilar-utama.github.io/monita/docs/operations/)
 explains backups, restores and upgrades.
 
 ## Send a ping from a cron job

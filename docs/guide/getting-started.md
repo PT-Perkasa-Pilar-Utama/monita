@@ -16,7 +16,7 @@ A super admin invites users. Each tech lead owns their projects and sees only th
 
 ## Run it locally
 
-You need Rust (the toolchain installs itself from `rust-toolchain.toml`).
+You need Rust, Bun 1.4 and a C compiler. The Rust version installs itself from `rust-toolchain.toml`. [Install](install.md#from-source) lists where to get each one.
 
 ```sh
 git clone https://github.com/PT-Perkasa-Pilar-Utama/monita.git
