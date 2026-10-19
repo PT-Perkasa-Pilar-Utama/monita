@@ -1,29 +1,33 @@
 import { useState } from "react";
 import type { ReactElement } from "react";
+import { CheckCards } from "@/components/app/ChoiceCards";
+import type { CheckCard } from "@/components/app/ChoiceCards";
 import { SettingsSection } from "@/components/app/SettingsSection";
 import { ExternalLink } from "@/components/icons";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Field, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
 import { Spinner } from "@/components/ui/spinner";
 import { api, errorText } from "@/lib/api";
 import { useProject } from "@/lib/project";
 import type { PublicPages } from "@/lib/types";
 import { toast } from "sonner";
 
-const TABS: { key: keyof PublicPages; label: string }[] = [
-  { key: "incidents", label: "Incidents: what is wrong now, the last 7 days and the history, with your updates" },
-  { key: "known_issues", label: "Known issues: the tickets your team has sorted, by title only" },
-  { key: "report", label: "Report a bug: the form on the status page. Your app can still file tickets through the API." },
-  { key: "mine", label: "My tickets: a reporter looks up their own tickets by ref ID" },
+type TabKey = keyof PublicPages | "uptime";
+
+const TABS: CheckCard<TabKey>[] = [
+  { key: "uptime", title: "Uptime", description: "Each public system with 90 days of bars. Always shown.", locked: true },
+  { key: "incidents", title: "Incidents", description: "What is wrong now and every past incident, with your updates." },
+  { key: "known_issues", title: "Known issues", description: "The tickets your team has sorted, by title only." },
+  { key: "report", title: "Report a bug", description: "A form for visitors. Your app can still file tickets through the API." },
+  { key: "mine", title: "My tickets", description: "A reporter looks up their own tickets by ref ID." },
 ];
+const KEYS: (keyof PublicPages)[] = ["incidents", "known_issues", "report", "mine"];
 
 /** The status page's address and which tabs visitors see. Uptime always shows. */
 export function StatusPageSection(): ReactElement {
   const { project: p, reload } = useProject();
   const [pages, setPages] = useState<PublicPages>(p.pages);
   const [busy, setBusy] = useState(false);
-  const changed = TABS.some((t) => pages[t.key] !== p.pages[t.key]);
+  const changed = KEYS.some((k) => pages[k] !== p.pages[k]);
   const save = async (): Promise<void> => {
     setBusy(true);
     try {
@@ -54,23 +58,13 @@ export function StatusPageSection(): ReactElement {
         </Button>
       }
     >
-      <FieldSet className="gap-3">
-        <FieldLegend className="sr-only">Tabs visitors see</FieldLegend>
-        <Field orientation="horizontal" data-disabled>
-          <Checkbox id="tab-uptime" checked disabled />
-          <FieldLabel htmlFor="tab-uptime" className="font-normal">
-            Uptime: each public system with 90 days of bars, always shown
-          </FieldLabel>
-        </Field>
-        {TABS.map((t) => (
-          <Field key={t.key} orientation="horizontal">
-            <Checkbox id={`tab-${t.key}`} checked={pages[t.key]} onCheckedChange={(v) => setPages({ ...pages, [t.key]: v === true })} />
-            <FieldLabel htmlFor={`tab-${t.key}`} className="font-normal">
-              {t.label}
-            </FieldLabel>
-          </Field>
-        ))}
-      </FieldSet>
+      <CheckCards
+        id="tab"
+        legend="Tabs visitors see"
+        cards={TABS}
+        value={{ ...pages, uptime: true }}
+        onChange={(k, on) => k !== "uptime" && setPages({ ...pages, [k]: on })}
+      />
     </SettingsSection>
   );
 }
