@@ -1,4 +1,5 @@
-//! One HTTP check. Never fails: every problem becomes a `CheckResult` with `ok = false`.
+//! One check: HTTP, a TCP connection or a DNS lookup (v1.1 Q16). Never fails: every problem
+//! becomes a `CheckResult` with `ok = false`.
 
 use std::time::{Duration, Instant};
 
@@ -212,6 +213,69 @@ pub async fn probe(t: &Target<'_>, clients: &Clients) -> CheckResult {
         status_code: Some(code),
         latency_ms: start.elapsed().as_millis() as i64,
         error: None,
+    }
+}
+
+/// A failed result started at `checked_at`, `start` ago.
+fn failed(checked_at: i64, start: Instant, error: String) -> CheckResult {
+    CheckResult {
+        checked_at,
+        ok: false,
+        status_code: None,
+        latency_ms: start.elapsed().as_millis() as i64,
+        error: Some(error),
+    }
+}
+
+/// Passes when a TCP connection to `host:port` opens within the timeout. The name is resolved
+/// first, inside the same timeout.
+pub async fn probe_tcp(target: &str, timeout_ms: i64) -> CheckResult {
+    let checked_at = now();
+    let start = Instant::now();
+    let limit = Duration::from_millis(timeout_ms as u64);
+    match tokio::time::timeout(limit, tokio::net::TcpStream::connect(target)).await {
+        Ok(Ok(_)) => CheckResult {
+            checked_at,
+            ok: true,
+            status_code: None,
+            latency_ms: start.elapsed().as_millis() as i64,
+            error: None,
+        },
+        Ok(Err(e)) => failed(checked_at, start, format!("Connection failed: {e}")),
+        Err(_) => failed(checked_at, start, format!("Timeout after {timeout_ms} ms")),
+    }
+}
+
+/// Passes when `host` resolves with the server's resolver and, when `expected` is set, one A or
+/// AAAA answer equals it. A failure names the answers it got.
+pub async fn probe_dns(host: &str, expected: Option<&str>, timeout_ms: i64) -> CheckResult {
+    let checked_at = now();
+    let start = Instant::now();
+    let limit = Duration::from_millis(timeout_ms as u64);
+    let answers: Vec<std::net::IpAddr> =
+        match tokio::time::timeout(limit, tokio::net::lookup_host((host, 0))).await {
+            Ok(Ok(addrs)) => addrs.map(|a| a.ip()).collect(),
+            Ok(Err(e)) => return failed(checked_at, start, format!("Lookup failed: {e}")),
+            Err(_) => return failed(checked_at, start, format!("Timeout after {timeout_ms} ms")),
+        };
+    let wanted = expected.and_then(|e| e.parse::<std::net::IpAddr>().ok());
+    match wanted {
+        _ if answers.is_empty() => failed(checked_at, start, "No address in the answer".into()),
+        Some(ip) if !answers.contains(&ip) => {
+            let got: Vec<String> = answers.iter().take(5).map(ToString::to_string).collect();
+            failed(
+                checked_at,
+                start,
+                format!("Resolved to {}, expected {ip}", got.join(", ")),
+            )
+        }
+        _ => CheckResult {
+            checked_at,
+            ok: true,
+            status_code: None,
+            latency_ms: start.elapsed().as_millis() as i64,
+            error: None,
+        },
     }
 }
 

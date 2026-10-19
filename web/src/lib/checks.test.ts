@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { envName, headerText, parseHeaderLines, signInWords, whenItFails } from "@/lib/checks";
+import { envName, headerText, parseHeaderLines, signInWords, targetField, whenItFails } from "@/lib/checks";
 
 test("each pair of failure boxes has its own sentence", () => {
   expect(whenItFails(true, true)).toBe("Sends alerts and opens an incident");
@@ -32,4 +32,10 @@ test("sign-in words name the secret, never a value", () => {
   expect(signInWords({ ...m, auth_kind: "bearer" })).toBe("Bearer token from secret API_TOKEN");
   expect(signInWords({ ...m, auth_kind: "basic" })).toBe("User svc, password from secret API_TOKEN");
   expect(signInWords({ ...m, auth_kind: "header", auth_secret_name: null })).toBe("X-Api-Key header from secret (deleted)");
+});
+
+test("the target field names what each kind of check needs", () => {
+  expect(targetField("http").label).toBe("URL");
+  expect(targetField("tcp")).toEqual({ label: "Host and port", placeholder: "db.internal:5432" });
+  expect(targetField("dns").label).toBe("Host name");
 });

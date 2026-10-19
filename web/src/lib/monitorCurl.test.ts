@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { monitorCurl, shellQuote } from "@/lib/monitorCurl";
+import { monitorCommand, monitorCurl, shellQuote } from "@/lib/monitorCurl";
 
 const base = { url: "https://api.x/health", method: "GET", headers: "", body: null, timeout_s: 10, skip_tls_verify: false, expected_status: "2xx" };
 
@@ -28,4 +28,11 @@ test("a check that signs in reads its secret from a shell variable, never a valu
   expect(signed("basic", { auth_user: 'sv"c$' })).toContain(`-u "sv\\"c\\$:$API_TOKEN"`);
   expect(signed("header", { auth_header: "X-Api-Key" })).toContain(`-H "X-Api-Key: $API_TOKEN"`);
   expect(signed("none")).toStartWith("curl");
+});
+
+test("a TCP check tries the port with nc, and a DNS check asks the system resolver", () => {
+  expect(monitorCommand({ ...base, kind: "tcp", url: "db.internal:5432", timeout_s: 5 })).toBe("nc -vz -w 5 'db.internal' 5432");
+  expect(monitorCommand({ ...base, kind: "tcp", url: "[2001:db8::1]:443" })).toBe("nc -vz -w 10 '2001:db8::1' 443");
+  expect(monitorCommand({ ...base, kind: "dns", url: "api.example.com" })).toBe("getent ahosts 'api.example.com'");
+  expect(monitorCommand({ ...base, kind: "http" })).toBe(monitorCurl(base));
 });

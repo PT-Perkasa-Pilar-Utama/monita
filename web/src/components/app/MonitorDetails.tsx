@@ -3,43 +3,15 @@ import { CodeCopy, CopyField } from "@/components/app/CopyField";
 import { DetailPart, DetailsSheet } from "@/components/app/DetailsSheet";
 import { Facts } from "@/components/app/Facts";
 import { parseHeaderLines, signInWords, whenItFails } from "@/lib/checks";
-import { monitorCurl } from "@/lib/monitorCurl";
+import { monitorCommand } from "@/lib/monitorCurl";
 import { stamp } from "@/lib/time";
 import type { MonitorView } from "@/lib/types";
 
-/** A monitor's request, what a pass means, what a failure does, and a curl command to try it. */
+/** A monitor's request, what a pass means, what a failure does, and a command to try it. */
 export function MonitorDetails({ m }: { m: MonitorView }): ReactElement {
-  const headers = parseHeaderLines(m.headers);
   return (
-    <DetailsSheet title={m.name} description="What Monita sends, what counts as a pass, and what a failure does.">
-      <DetailPart title="Request">
-        <CopyField id="monitor-url" value={m.url} />
-        <Facts
-          rows={[
-            ["Method", m.method],
-            ["Sign-in", signInWords(m)],
-            ["Headers", headers.length === 0 ? "None" : headers.map(([n]) => n).join(", ")],
-            ["Request body", m.body ? `${m.body.length.toLocaleString()} characters` : "None"],
-            ["Timeout", `${m.timeout_s} seconds`],
-            ["Every", m.every],
-          ]}
-        />
-      </DetailPart>
-      <DetailPart title="Try it yourself">
-        <p className="text-muted-foreground">
-          This curl command sends the same request and prints the status code and the time.{m.auth_kind !== "none" && " Set the secret's value in your shell first, as its first line shows."}
-        </p>
-        <CodeCopy id="monitor-curl" title="Same request as the check" code={monitorCurl(m)} />
-      </DetailPart>
-      <DetailPart title="A check passes when">
-        <Facts
-          rows={[
-            ["The status code matches", <span className="font-mono">{m.expected_status}</span>],
-            ["The response body has", m.keyword ? <span className="font-mono">{m.keyword}</span> : "Anything"],
-            ["The certificate", m.skip_tls_verify ? "May be self-signed" : "Must be valid"],
-          ]}
-        />
-      </DetailPart>
+    <DetailsSheet title={m.name} description="What Monita checks, what counts as a pass, and what a failure does.">
+      {m.kind === "http" ? <HttpParts m={m} /> : <PlainParts m={m} />}
       <DetailPart title="When it fails">
         <Facts
           rows={[
@@ -58,5 +30,73 @@ export function MonitorDetails({ m }: { m: MonitorView }): ReactElement {
         />
       </DetailPart>
     </DetailsSheet>
+  );
+}
+
+/** A TCP or DNS check: its target, a command to try it, and what a pass means. */
+function PlainParts({ m }: { m: MonitorView }): ReactElement {
+  const tcp = m.kind === "tcp";
+  return (
+    <>
+      <DetailPart title={tcp ? "TCP port" : "DNS name"}>
+        <CopyField id="monitor-url" value={m.url} />
+        <Facts
+          rows={[
+            ["Timeout", `${m.timeout_s} seconds`],
+            ["Every", m.every],
+          ]}
+        />
+      </DetailPart>
+      <DetailPart title="Try it yourself">
+        <p className="text-muted-foreground">{tcp ? "This command opens a connection to the same port." : "This command asks the server's resolver, as the check does."}</p>
+        <CodeCopy id="monitor-curl" title="Same check as Monita" code={monitorCommand(m)} />
+      </DetailPart>
+      <DetailPart title="A check passes when">
+        <Facts
+          rows={
+            tcp
+              ? [["The port", "Accepts a connection"]]
+              : [["The name resolves to", m.expected_address ? <span className="font-mono">{m.expected_address}</span> : "Any address"]]
+          }
+        />
+      </DetailPart>
+    </>
+  );
+}
+
+/** An HTTP check: the request, a curl command, and what a pass means. */
+function HttpParts({ m }: { m: MonitorView }): ReactElement {
+  const headers = parseHeaderLines(m.headers);
+  return (
+    <>
+      <DetailPart title="Request">
+        <CopyField id="monitor-url" value={m.url} />
+        <Facts
+          rows={[
+            ["Method", m.method],
+            ["Sign-in", signInWords(m)],
+            ["Headers", headers.length === 0 ? "None" : headers.map(([n]) => n).join(", ")],
+            ["Request body", m.body ? `${m.body.length.toLocaleString()} characters` : "None"],
+            ["Timeout", `${m.timeout_s} seconds`],
+            ["Every", m.every],
+          ]}
+        />
+      </DetailPart>
+      <DetailPart title="Try it yourself">
+        <p className="text-muted-foreground">
+          This curl command sends the same request and prints the status code and the time.{m.auth_kind !== "none" && " Set the secret's value in your shell first, as its first line shows."}
+        </p>
+        <CodeCopy id="monitor-curl" title="Same request as the check" code={monitorCommand(m)} />
+      </DetailPart>
+      <DetailPart title="A check passes when">
+        <Facts
+          rows={[
+            ["The status code matches", <span className="font-mono">{m.expected_status}</span>],
+            ["The response body has", m.keyword ? <span className="font-mono">{m.keyword}</span> : "Anything"],
+            ["The certificate", m.skip_tls_verify ? "May be self-signed" : "Must be valid"],
+          ]}
+        />
+      </DetailPart>
+    </>
   );
 }

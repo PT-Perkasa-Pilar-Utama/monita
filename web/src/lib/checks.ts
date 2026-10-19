@@ -1,5 +1,21 @@
 // Words for a monitor's or heartbeat's settings, shared by both detail pages.
 
+import type { CheckKind } from "@/lib/types";
+
+/** What a monitor can check, as its form offers it. */
+export const CHECK_KINDS: { value: CheckKind; label: string }[] = [
+  { value: "http", label: "HTTP" },
+  { value: "tcp", label: "TCP port" },
+  { value: "dns", label: "DNS name" },
+];
+
+/** The target field of the monitor form for each kind: its label and its example. */
+export function targetField(kind: CheckKind): { label: string; placeholder: string } {
+  if (kind === "tcp") return { label: "Host and port", placeholder: "db.internal:5432" };
+  if (kind === "dns") return { label: "Host name", placeholder: "api.example.com" };
+  return { label: "URL", placeholder: "https://api.example.com/healthz" };
+}
+
 /** What a failure does, from the two "When it fails" boxes. */
 export function whenItFails(alert: boolean, autoIncident: boolean): string {
   if (alert && autoIncident) return "Sends alerts and opens an incident";

@@ -57,3 +57,15 @@ export function monitorCurl(m: CurlInput): string {
   const command = parts.join(" \\\n  ");
   return auth ? `# Set the secret first: export ${envName(m.auth_secret_name ?? null)}='…'\n${command}` : command;
 }
+
+/** The check as a terminal command: curl for HTTP, `nc` for a TCP port, and `getent` for a DNS
+ * name, which asks the same system resolver that Monita asks. */
+export function monitorCommand(m: CurlInput & { kind: string }): string {
+  if (m.kind === "tcp") {
+    const at = m.url.lastIndexOf(":");
+    const host = m.url.slice(0, at).replace(/^\[(.*)\]$/, "$1");
+    return `nc -vz -w ${m.timeout_s} ${shellQuote(host)} ${m.url.slice(at + 1)}`;
+  }
+  if (m.kind === "dns") return `getent ahosts ${shellQuote(m.url)}`;
+  return monitorCurl(m);
+}

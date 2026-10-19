@@ -7,12 +7,14 @@ import { Field, FieldError, FieldLabel, FieldLegend, FieldSet } from "@/componen
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { AUTH_KINDS } from "@/lib/checks";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { AUTH_KINDS, CHECK_KINDS, targetField } from "@/lib/checks";
 import type { AuthKind, HeaderRow } from "@/lib/checks";
-import type { Choice, Secret } from "@/lib/types";
+import type { CheckKind, Choice, Secret } from "@/lib/types";
 
 /** The part of the monitor form that says what one check sends. */
 export type RequestPart = {
+  kind: CheckKind;
   method: string;
   url: string;
   interval_s: number;
@@ -57,26 +59,41 @@ function Pick({ id, value, items, onChange, mono, invalid, placeholder = "Pick o
   );
 }
 
-/** Method, URL, how often and how long, and the body for POST and PUT. */
+/** What to check, the target, how often and how long, and for HTTP the method and the body. */
 export function RequestFields<F extends RequestPart>({ form, set, err, intervals }: Props<F>): ReactElement {
+  const http = form.kind === "http";
+  const target = targetField(form.kind);
   return (
     <FieldSet className="gap-5">
-      <FieldLegend>Request</FieldLegend>
-      <div className="grid gap-5 sm:grid-cols-[8rem_minmax(0,1fr)]">
-        <Field data-invalid={err("method") ? true : undefined}>
-          <FieldLabel htmlFor="m-method">Method</FieldLabel>
-          <Pick id="m-method" mono value={form.method} items={METHODS.map((m) => ({ value: m, label: m }))} onChange={(v) => set("method", v)} />
-          {err("method") && <FieldError>{err("method")}</FieldError>}
-        </Field>
+      <FieldLegend>Check</FieldLegend>
+      <Field data-invalid={err("kind") ? true : undefined}>
+        <FieldLabel id="m-kind-label">What it checks</FieldLabel>
+        <ToggleGroup type="single" variant="outline" aria-labelledby="m-kind-label" value={form.kind} onValueChange={(v) => v && set("kind", v as CheckKind)} className="flex-wrap">
+          {CHECK_KINDS.map((k) => (
+            <ToggleGroupItem key={k.value} value={k.value} className="px-3">
+              {k.label}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+        {err("kind") && <FieldError>{err("kind")}</FieldError>}
+      </Field>
+      <div className={http ? "grid gap-5 sm:grid-cols-[8rem_minmax(0,1fr)]" : "grid gap-5"}>
+        {http && (
+          <Field data-invalid={err("method") ? true : undefined}>
+            <FieldLabel htmlFor="m-method">Method</FieldLabel>
+            <Pick id="m-method" mono value={form.method} items={METHODS.map((m) => ({ value: m, label: m }))} onChange={(v) => set("method", v)} />
+            {err("method") && <FieldError>{err("method")}</FieldError>}
+          </Field>
+        )}
         <Field data-invalid={err("url") ? true : undefined}>
           <FieldLabel htmlFor="m-url" required>
-            URL
+            {target.label}
           </FieldLabel>
-          <Input id="m-url" type="url" aria-required aria-invalid={err("url") ? true : undefined} className="font-mono" value={form.url} onChange={(e) => set("url", e.target.value)} placeholder="https://api.example.com/healthz" />
+          <Input id="m-url" type={http ? "url" : "text"} spellCheck={false} aria-required aria-invalid={err("url") ? true : undefined} className="font-mono" value={form.url} onChange={(e) => set("url", e.target.value)} placeholder={target.placeholder} />
           {err("url") && <FieldError>{err("url")}</FieldError>}
         </Field>
       </div>
-      {sendsBody(form.method) && (
+      {http && sendsBody(form.method) && (
         <Field data-invalid={err("body") ? true : undefined}>
           <FieldLabel htmlFor="m-body">Request body</FieldLabel>
           <Textarea id="m-body" rows={4} spellCheck={false} aria-invalid={err("body") ? true : undefined} className="font-mono text-[13px]" value={form.body} onChange={(e) => set("body", e.target.value)} placeholder='{"ping": true}' />

@@ -45,9 +45,15 @@ export function Monitor({ editing = false }: { editing?: boolean }): ReactElemen
             meta={
               <>
                 <StateBadge id="state" kind={m.state} />
-                <a href={m.url} target="_blank" rel="noreferrer" className="min-w-0 truncate font-mono text-sm text-link hover:underline">
-                  {m.url}
-                </a>
+                {m.kind === "http" ? (
+                  <a href={m.url} target="_blank" rel="noreferrer" className="min-w-0 truncate font-mono text-sm text-link hover:underline">
+                    {m.url}
+                  </a>
+                ) : (
+                  <span className="min-w-0 truncate font-mono text-sm text-muted-foreground">
+                    {m.kind === "tcp" ? "TCP" : "DNS"} {m.url}
+                  </span>
+                )}
                 <SeverityBadge severity={m.severity} />
                 {m.is_public && <Badge variant="outline">On the status page</Badge>}
               </>

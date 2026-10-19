@@ -81,10 +81,17 @@ export type AlertRoute = { severity: Severity; emails: string[]; webhook_url: st
 
 export type LastCheck = { checked_at: number; ok: boolean; summary: string };
 
+/** What a monitor checks (v1.1 Q16). */
+export type CheckKind = "http" | "tcp" | "dns";
+
 export type MonitorView = {
   id: number;
   name: string;
+  kind: CheckKind;
+  /** The URL, `host:port` for TCP, or the host name for DNS. */
   url: string;
+  /** DNS only: the address one answer must equal. */
+  expected_address: string | null;
   interval_s: number;
   every: string;
   timeout_s: number;

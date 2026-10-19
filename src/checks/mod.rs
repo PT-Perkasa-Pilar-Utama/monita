@@ -141,6 +141,7 @@ pub async fn create_monitor(
     project_id: i64,
     input: &MonitorInput,
 ) -> anyhow::Result<Saved> {
+    let input = &input.for_kind();
     let next = now() + first_check_offset(input.interval_s);
     db.write(async |c| {
         if store::count_monitors(c, project_id).await? >= caps::MONITORS_PER_PROJECT {
@@ -163,6 +164,7 @@ pub async fn update_monitor(
     id: i64,
     input: &MonitorInput,
 ) -> anyhow::Result<Saved> {
+    let input = &input.for_kind();
     let next = now() + first_check_offset(input.interval_s);
     db.write(async |c| {
         if !own_secret(c, project_id, input).await? {
@@ -186,6 +188,14 @@ pub const SECRET_GONE: &str =
 /// Probes one claimed monitor, with its secret's value when it signs in. `Err` only when the
 /// secret could not be read: the check is skipped then, not failed.
 pub async fn run_check(db: &Db, clients: &Clients, m: &Monitor) -> anyhow::Result<CheckResult> {
+    match m.kind.as_str() {
+        "tcp" => return Ok(probe::probe_tcp(&m.url, m.timeout_ms).await),
+        "dns" => {
+            let expected = m.expected_address.as_deref();
+            return Ok(probe::probe_dns(&m.url, expected, m.timeout_ms).await);
+        }
+        _ => {}
+    }
     if m.auth_kind == "none" {
         return Ok(probe(&m.target(None), clients).await);
     }

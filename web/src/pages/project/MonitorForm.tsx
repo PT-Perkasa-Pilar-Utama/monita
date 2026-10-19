@@ -24,6 +24,7 @@ import { toast } from "sonner";
 
 type Form = RequestPart & {
   name: string;
+  expected_address: string;
   expected_status: string;
   keyword: string;
   skip_tls_verify: boolean;
@@ -55,12 +56,12 @@ function MonitorFormBody({ id, onClose, onSaved }: { id: string | undefined; onC
     setForm(
       m
         ? {
-            name: m.name, url: m.url, interval_s: m.interval_s, timeout_s: String(m.timeout_s), expected_status: m.expected_status, keyword: m.keyword ?? "", skip_tls_verify: m.skip_tls_verify, severity: m.severity, is_public: m.is_public, alert: m.alert, auto_incident: m.auto_incident, method: m.method, body: m.body ?? "", fails_to_open: String(m.fails_to_open),
+            name: m.name, kind: m.kind, url: m.url, expected_address: m.expected_address ?? "", interval_s: m.interval_s, timeout_s: String(m.timeout_s), expected_status: m.expected_status, keyword: m.keyword ?? "", skip_tls_verify: m.skip_tls_verify, severity: m.severity, is_public: m.is_public, alert: m.alert, auto_incident: m.auto_incident, method: m.method, body: m.body ?? "", fails_to_open: String(m.fails_to_open),
             header_rows: parseHeaderLines(m.headers).map(([name, value]) => ({ name, value })),
             auth_kind: m.auth_kind, auth_secret_id: m.auth_secret_id, auth_user: m.auth_user ?? "", auth_header: m.auth_header ?? "",
           }
         : {
-            name: "", url: "", interval_s: o.monitor.interval_s, timeout_s: String(o.monitor.timeout_s), expected_status: o.monitor.expected_status, keyword: "", skip_tls_verify: false, severity: o.monitor.severity, is_public: false, alert: true, auto_incident: true, method: "GET", body: "", fails_to_open: "2",
+            name: "", kind: "http", url: "", expected_address: "", interval_s: o.monitor.interval_s, timeout_s: String(o.monitor.timeout_s), expected_status: o.monitor.expected_status, keyword: "", skip_tls_verify: false, severity: o.monitor.severity, is_public: false, alert: true, auto_incident: true, method: "GET", body: "", fails_to_open: "2",
             header_rows: [], auth_kind: "none", auth_secret_id: null, auth_user: "", auth_header: "",
           },
     );
@@ -150,6 +151,23 @@ function MonitorFormBody({ id, onClose, onSaved }: { id: string | undefined; onC
                   <FieldSeparator />
                   <RequestFields {...parts} />
                   <FieldSeparator />
+                  {form.kind === "dns" && (
+                    <>
+                      <FieldSet className="gap-3">
+                        <FieldLegend>A check passes when</FieldLegend>
+                        <Field data-invalid={err("expected_address") ? true : undefined}>
+                          <FieldLabel htmlFor="m-address" className="font-normal">
+                            The name resolves to
+                          </FieldLabel>
+                          <Input id="m-address" spellCheck={false} aria-invalid={err("expected_address") ? true : undefined} className="font-mono" placeholder="Any address, or one such as 203.0.113.10" value={form.expected_address} onChange={(e) => set("expected_address", e.target.value)} />
+                          {err("expected_address") && <FieldError>{err("expected_address")}</FieldError>}
+                        </Field>
+                      </FieldSet>
+                      <FieldSeparator />
+                    </>
+                  )}
+                  {form.kind === "http" && (
+                  <>
                   <AuthFields {...parts} />
                   <FieldSeparator />
                   <HeaderFields {...parts} />
@@ -180,6 +198,8 @@ function MonitorFormBody({ id, onClose, onSaved }: { id: string | undefined; onC
                     </Field>
                   </FieldSet>
                   <FieldSeparator />
+                  </>
+                  )}
                   <FieldSet className="gap-7">
                   <FieldLegend>Alerts and status page</FieldLegend>
                   <SeverityField value={form.severity} onChange={(v) => set("severity", v)} />

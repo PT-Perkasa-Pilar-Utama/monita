@@ -10,7 +10,11 @@ pub struct Monitor {
     pub id: i64,
     pub project_id: i64,
     pub name: String,
+    /// `http`, `tcp` or `dns`.
+    pub kind: String,
     pub url: String,
+    /// `dns` only.
+    pub expected_address: Option<String>,
     pub interval_s: i64,
     pub timeout_ms: i64,
     pub expected_status: String,
@@ -37,7 +41,9 @@ impl Monitor {
     pub fn input(&self) -> MonitorInput {
         MonitorInput {
             name: self.name.clone(),
+            kind: self.kind.clone(),
             url: self.url.clone(),
+            expected_address: self.expected_address.clone(),
             interval_s: self.interval_s,
             timeout_ms: self.timeout_ms,
             expected_status: self.expected_status.clone(),
@@ -105,7 +111,7 @@ impl Monitor {
     }
 }
 
-const COLS: &str = "m.id, m.project_id, m.name, m.url, m.interval_s, m.timeout_ms, m.expected_status, m.keyword, m.skip_tls_verify, m.severity, m.is_public, m.next_check_at, c.checked_at, c.ok, c.status_code, c.latency_ms, c.error, m.created_at, c.id, m.alert, m.auto_incident, m.method, m.headers, m.body, m.fails_to_open, m.auth_kind, m.auth_secret_id, m.auth_user, m.auth_header";
+const COLS: &str = "m.id, m.project_id, m.name, m.url, m.interval_s, m.timeout_ms, m.expected_status, m.keyword, m.skip_tls_verify, m.severity, m.is_public, m.next_check_at, c.checked_at, c.ok, c.status_code, c.latency_ms, c.error, m.created_at, c.id, m.alert, m.auto_incident, m.method, m.headers, m.body, m.fails_to_open, m.auth_kind, m.auth_secret_id, m.auth_user, m.auth_header, m.kind, m.expected_address";
 const FROM: &str = "FROM monitors m LEFT JOIN check_results c ON c.id = (SELECT id FROM check_results WHERE monitor_id = m.id ORDER BY checked_at DESC, id DESC LIMIT 1)";
 
 fn monitor(r: &turso::Row) -> turso::Result<Monitor> {
@@ -142,6 +148,8 @@ fn monitor(r: &turso::Row) -> turso::Result<Monitor> {
         auth_secret_id: r.get(26)?,
         auth_user: r.get(27)?,
         auth_header: r.get(28)?,
+        kind: r.get(29)?,
+        expected_address: r.get(30)?,
         next_check_at: r.get(11)?,
         last,
         created_at: r.get(17)?,
@@ -189,7 +197,8 @@ async fn set_switches(c: &Connection, id: i64, m: &MonitorInput) -> anyhow::Resu
     };
     c.execute(
         "UPDATE monitors SET alert = ?1, auto_incident = ?2, method = ?3, headers = ?4, body = ?5, fails_to_open = ?7,
-           auth_kind = ?8, auth_secret_id = ?9, auth_user = ?10, auth_header = ?11 WHERE id = ?6",
+           auth_kind = ?8, auth_secret_id = ?9, auth_user = ?10, auth_header = ?11, kind = ?12, expected_address = ?13
+         WHERE id = ?6",
         (
             m.alert,
             m.auto_incident,
@@ -202,6 +211,8 @@ async fn set_switches(c: &Connection, id: i64, m: &MonitorInput) -> anyhow::Resu
             m.auth_secret_id.filter(|_| kind != "none"),
             trimmed(&m.auth_user).filter(|_| kind == "basic"),
             trimmed(&m.auth_header).filter(|_| kind == "header"),
+            m.kind(),
+            m.expected_address.as_deref(),
         ),
     )
     .await?;

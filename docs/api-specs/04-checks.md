@@ -55,7 +55,9 @@ The monitor form sends these fields. The view returns the same fields, plus thos
 | Field | Type | Rule |
 | --- | --- | --- |
 | `name` | string | 1 to 80 characters |
-| `url` | string | starts with `http://` or `https://`; no user name or password in it (use `auth_kind`) |
+| `kind` | string | `http`, `tcp` or `dns`; blank or missing is `http`. A TCP or DNS monitor stores none of the HTTP fields (`method`, `headers`, `body`, `auth_*`, `keyword`, `expected_status`, `skip_tls_verify`); they come back as their defaults. (v1.1 Q16) |
+| `url` | string | `http`: starts with `http://` or `https://`, with no user name or password in it (use `auth_kind`). `tcp`: `host:port` or `[ipv6]:port`, port 1 to 65535. `dns`: a host name or an IP address, without a port |
+| `expected_address` | string | `dns` only: an IPv4 or IPv6 address; blank means any answer passes. Ignored for other kinds |
 | `method` | string | `GET`, `HEAD`, `POST` or `PUT`; blank is `GET` |
 | `headers` | string | `Name: value` lines. Up to 20 headers and 4 KB a value. `Host` and `Content-Length` are refused. A header may not repeat the one that Authentication sends. |
 | `body` | string | Sent with `POST` and `PUT` only, up to 64 KB. A body with another method is 422 on `body`. Blank is none. |

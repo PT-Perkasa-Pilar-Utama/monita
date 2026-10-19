@@ -70,6 +70,26 @@ test("a POST monitor sends its header and body, counts down after 1 failure, and
   await expect(page.getByRole("dialog").getByText("1 failed check")).toBeVisible();
 });
 
+test("a TCP monitor needs a port, hides the HTTP fields, and Details tries it with nc", async ({ page }) => {
+  const slug = await apiProject(page, "Ports");
+  await page.goto(`/projects/${slug}/monitors/new`);
+  await page.locator("#m-name").fill("Database");
+  await page.getByRole("radio", { name: "TCP port" }).click();
+  await expect(page.getByLabel("Host and port")).toBeVisible();
+  await expect(page.locator("#m-method")).toHaveCount(0);
+  await expect(page.getByText("Sign in with")).toHaveCount(0);
+  await page.locator("#m-url").fill("127.0.0.1");
+  await page.getByRole("button", { name: "Save monitor" }).click();
+  await expect(page.getByText("Enter a host and a port, such as db.internal:5432")).toBeVisible();
+  await page.locator("#m-url").fill("127.0.0.1:18080");
+  await page.getByRole("button", { name: "Save monitor" }).click();
+  await expect(page.getByRole("heading", { name: "Database" })).toBeVisible();
+  await expect(page.getByText("TCP 127.0.0.1:18080")).toBeVisible();
+
+  await page.getByRole("button", { name: "Details" }).click();
+  await expect(page.locator("#monitor-curl")).toContainText("nc -vz -w 10 '127.0.0.1' 18080");
+});
+
 test("heartbeat Details gives the call in Shell, Node.js and Python, and remembers the pick", async ({ page }) => {
   const slug = await apiProject(page, "Snippets");
   const { id, pingUrl } = await apiHeartbeat(page, slug);
