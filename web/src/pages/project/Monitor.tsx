@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { Facts } from "@/components/app/Facts";
 import { HistoryPager } from "@/components/app/History";
+import { MonitorDetails } from "@/components/app/MonitorDetails";
 import { AvailabilityCard, ChartCard, StatCards } from "@/components/app/Insight";
 import { TableCard } from "@/components/app/TableCard";
 import { SeverityBadge, StateBadge } from "@/components/app/Tone";
@@ -10,18 +10,17 @@ import { Crumbs, PageHeader } from "@/components/layout/Page";
 import { TableEmpty } from "@/components/list/TableEmpty";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useProject } from "@/lib/project";
-import { headerCount, whenItFails } from "@/lib/checks";
 import { stamp } from "@/lib/time";
 import type { MonitorDetail } from "@/lib/types";
 import { useDetail } from "@/lib/useDetail";
 import { NotFound } from "@/pages/NotFound";
 import { MonitorFormSheet } from "@/pages/project/MonitorForm";
 
-/** One monitor: four numbers, the response-time chart, availability, settings and its checks. */
+/** One monitor: four numbers, the response-time chart, availability and its checks. Details
+ * holds the request, the pass rule, the failure rule and a curl command. */
 export function Monitor({ editing = false }: { editing?: boolean }): ReactElement {
   const navigate = useNavigate();
   const { project: p } = useProject();
@@ -52,39 +51,21 @@ export function Monitor({ editing = false }: { editing?: boolean }): ReactElemen
               </>
             }
             actions={
-              <Button asChild variant="secondary">
-                <Link to={`${base}/${m.id}/edit`}>
-                  <Pencil data-icon="inline-start" />
-                  Edit
-                </Link>
-              </Button>
+              <>
+                <MonitorDetails m={m} />
+                <Button asChild variant="secondary">
+                  <Link to={`${base}/${m.id}/edit`}>
+                    <Pencil data-icon="inline-start" />
+                    Edit
+                  </Link>
+                </Button>
+              </>
             }
           />
           <div className="flex flex-col gap-6">
             <StatCards stats={d.stats} />
             <ChartCard insight={d.insight} />
-            <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
-              <AvailabilityCard insight={d.insight} />
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-[15px]">Settings</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Facts
-                    rows={[
-                      ["Every", m.every],
-                      ["Request", headerCount(m.headers) ? `${m.method}, ${headerCount(m.headers)} ${headerCount(m.headers) === 1 ? "header" : "headers"}` : m.method],
-                      ["Timeout", `${m.timeout_s} seconds`],
-                      ["Expects", m.keyword ? `${m.expected_status} with "${m.keyword}"` : m.expected_status],
-                      ["TLS", m.skip_tls_verify ? "Not verified" : "Verified"],
-                      ["Counts as down after", m.fails_to_open === 1 ? "1 failed check" : `${m.fails_to_open} failed checks in a row`],
-                      ["When it fails", whenItFails(m.alert, m.auto_incident)],
-                      ["Next check", stamp(m.next_check_at)],
-                    ]}
-                  />
-                </CardContent>
-              </Card>
-            </div>
+            <AvailabilityCard insight={d.insight} />
             <TableCard title="Checks, last 7 days">
               {d.checks.length === 0 ? (
                 <TableEmpty title="Waiting for the first check" description="The first check runs within one interval of saving." />

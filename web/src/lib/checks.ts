@@ -8,7 +8,14 @@ export function whenItFails(alert: boolean, autoIncident: boolean): string {
   return "Nothing: Monita only records it";
 }
 
-/** How many `Name: value` lines a monitor sends; the values stay on its form. */
-export function headerCount(headers: string): number {
-  return headers.split("\n").filter((l) => l.trim() !== "").length;
+/** `Name: value` lines as pairs; a line without a colon is skipped (the server refuses it). */
+export function parseHeaderLines(headers: string): [string, string][] {
+  return headers
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l.includes(":"))
+    .map((l) => {
+      const at = l.indexOf(":");
+      return [l.slice(0, at).trim(), l.slice(at + 1).trim()];
+    });
 }

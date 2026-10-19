@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { headerCount, whenItFails } from "@/lib/checks";
+import { parseHeaderLines, whenItFails } from "@/lib/checks";
 
 test("each pair of failure boxes has its own sentence", () => {
   expect(whenItFails(true, true)).toBe("Sends alerts and opens an incident");
@@ -8,7 +8,9 @@ test("each pair of failure boxes has its own sentence", () => {
   expect(whenItFails(false, false)).toBe("Nothing: Monita only records it");
 });
 
-test("blank header lines do not count", () => {
-  expect(headerCount("")).toBe(0);
-  expect(headerCount("Authorization: Bearer x\n\nX-Env: prod\n")).toBe(2);
+test("header lines become pairs, blank and colon-less lines skipped", () => {
+  expect(parseHeaderLines("Authorization: Bearer a:b\n\nno colon\nX-Env: prod")).toEqual([
+    ["Authorization", "Bearer a:b"],
+    ["X-Env", "prod"],
+  ]);
 });
