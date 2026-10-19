@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { FormEvent, ReactElement, ReactNode } from "react";
 import { PageHeader } from "@/components/layout/Page";
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { useCanEdit } from "@/lib/session";
 import { cn } from "@/lib/utils";
 
 export type TocItem = { id: string; label: string };
@@ -98,18 +99,29 @@ export function SettingsSection({
   flush?: boolean;
   children?: ReactNode;
 }): ReactElement {
+  // A supervisor sees the values in disabled fields, with no actions to change them.
+  const canEdit = useCanEdit();
+  const shownFooter = canEdit ? footer : undefined;
   const body = (
     <>
       <CardHeader className="border-b py-5 [.border-b]:pb-5">
         <CardTitle className={cn(danger && "text-destructive")}>{title}</CardTitle>
         {description && <CardDescription>{description}</CardDescription>}
-        {action && <CardAction>{action}</CardAction>}
+        {action && (
+          <CardAction>
+            {canEdit ? action : <fieldset disabled className="contents">{action}</fieldset>}
+          </CardAction>
+        )}
       </CardHeader>
-      {children && <CardContent className={cn(flush ? "px-0" : "py-5")}>{children}</CardContent>}
-      {(footer || footerNote) && (
+      {children && (
+        <CardContent className={cn(flush ? "px-0" : "py-5")}>
+          {canEdit ? children : <fieldset disabled className="contents">{children}</fieldset>}
+        </CardContent>
+      )}
+      {(shownFooter || footerNote) && (
         <CardFooter className="justify-between gap-3 rounded-b-xl border-t bg-paper py-3 [.border-t]:pt-3">
           <span className="text-[13px] text-muted-foreground">{footerNote}</span>
-          <span className="flex items-center gap-2">{footer}</span>
+          <span className="flex items-center gap-2">{shownFooter}</span>
         </CardFooter>
       )}
     </>

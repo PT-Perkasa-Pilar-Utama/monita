@@ -92,7 +92,7 @@ Not in v1: remote probes, hot standby, and shared databases. The check runner si
 | Module | Owns tables | Others call |
 | --- | --- | --- |
 | accounts | users, invites, sessions | `CurrentUser`, `AdminUser`, `is_active_tl`, `purge_expired` |
-| projects | projects, api_keys | `ApiProject`, `find_for`, `can_manage` |
+| projects | projects, api_keys | `ApiProject`, `find_for`, `can_view` |
 | checks | monitors, heartbeats, check_results, pings, daily_summaries | `probe`, `heartbeat::admit`, `heartbeat::record`, `list_monitors`, `heartbeat::list` |
 | incidents | incidents, incident_items, incident_sources, status_updates | `observe`, `states_for`, `source_deleted` |
 | notify | alert_routes, outbox | `send`, `create_routes`, `purge_delivered` |

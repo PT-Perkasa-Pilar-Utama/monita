@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Writable } from "@/lib/session";
 import type { FormEvent, ReactElement } from "react";
 import { SettingsSection } from "@/components/app/SettingsSection";
 import { PageHeader } from "@/components/layout/Page";
@@ -76,16 +77,18 @@ function LimitsForm({ d, onSaved }: { d: SystemView; onSaved: () => void }): Rea
           </div>
         </SettingsSection>
       ))}
-      <div className="flex items-center justify-end gap-3">
-        {error && Object.keys(error.fields).length === 0 && <p className="mr-auto text-sm text-destructive">{error.message}</p>}
-        <Button type="button" variant="ghost" disabled={!changed || busy} onClick={() => setValues(initial)}>
-          Discard changes
-        </Button>
-        <Button type="submit" disabled={!changed || busy}>
-          {busy && <Spinner data-icon="inline-start" />}
-          Save limits
-        </Button>
-      </div>
+      <Writable>
+        <div className="flex items-center justify-end gap-3">
+          {error && Object.keys(error.fields).length === 0 && <p className="mr-auto text-sm text-destructive">{error.message}</p>}
+          <Button type="button" variant="ghost" disabled={!changed || busy} onClick={() => setValues(initial)}>
+            Discard changes
+          </Button>
+          <Button type="submit" disabled={!changed || busy}>
+            {busy && <Spinner data-icon="inline-start" />}
+            Save limits
+          </Button>
+        </div>
+      </Writable>
     </form>
   );
 }

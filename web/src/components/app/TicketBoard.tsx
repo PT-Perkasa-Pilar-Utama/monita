@@ -51,7 +51,7 @@ export function TicketBoard<T extends { number: number; stage: Stage }>({
   notes?: Partial<Record<Stage, string>>;
   // Under the cards when the column holds more than it shows.
   footer?: (stage: Stage, shown: number, total: number) => ReactNode;
-  onMove?: (t: T, to: Stage) => void;
+  onMove?: ((t: T, to: Stage) => void) | undefined;
 }): ReactElement {
   // dataTransfer is unreadable during dragover, so the dragged card lives here.
   const [dragging, setDragging] = useState<T | null>(null);

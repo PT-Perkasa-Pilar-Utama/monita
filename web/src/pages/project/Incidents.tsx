@@ -1,4 +1,5 @@
 import type { ReactElement } from "react";
+import { Writable } from "@/lib/session";
 import { Link, useNavigate } from "react-router-dom";
 import { LinkRow, ROW_LINK } from "@/components/app/LinkRow";
 import { ListFilters, type Option } from "@/components/app/ListFilters";
@@ -58,12 +59,14 @@ export function Incidents({ creating = false }: { creating?: boolean }): ReactEl
         actions={
           <>
             <IncidentGuide />
-            <Button asChild>
-              <Link to={`${base}/new`}>
-                <Plus data-icon="inline-start" />
-                Report incident
-              </Link>
-            </Button>
+            <Writable>
+              <Button asChild>
+                <Link to={`${base}/new`}>
+                  <Plus data-icon="inline-start" />
+                  Report incident
+                </Link>
+              </Button>
+            </Writable>
           </>
         }
       />

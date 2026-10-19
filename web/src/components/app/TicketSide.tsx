@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useCanEdit, Writable } from "@/lib/session";
 import type { FormEvent, ReactElement } from "react";
 import { Side } from "@/components/app/Side";
 import { StageRing, TicketCard } from "@/components/app/TicketBoard";
@@ -19,6 +20,7 @@ export type Move = (to: Stage, reason: CloseReason | null) => Promise<string | n
 
 /** The column, saved on pick. Done waits for its close reason, picked just under it. */
 export function ColumnPicker({ t, move }: { t: TicketRow; move: Move }): ReactElement {
+  const canEdit = useCanEdit();
   const [stage, setStage] = useState<Stage>(t.stage);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +41,7 @@ export function ColumnPicker({ t, move }: { t: TicketRow; move: Move }): ReactEl
   };
   return (
     <Side title="Column">
-      <Select value={stage} onValueChange={pick} disabled={busy}>
+      <Select value={stage} onValueChange={pick} disabled={busy || !canEdit}>
         <SelectTrigger aria-label="Column">
           <SelectValue />
         </SelectTrigger>
@@ -59,7 +61,7 @@ export function ColumnPicker({ t, move }: { t: TicketRow; move: Move }): ReactEl
           <FieldLabel htmlFor="close-reason" required>
             Close reason
           </FieldLabel>
-          <Select value={t.stage === "done" ? (t.close_reason ?? undefined) : undefined} onValueChange={(v) => void save("done", v as CloseReason)} disabled={busy}>
+          <Select value={t.stage === "done" ? (t.close_reason ?? undefined) : undefined} onValueChange={(v) => void save("done", v as CloseReason)} disabled={busy || !canEdit}>
             <SelectTrigger id="close-reason" aria-required>
               <SelectValue placeholder="Pick a reason to close it" />
             </SelectTrigger>
@@ -133,9 +135,11 @@ export function PublicTitle({ t, path, onSaved }: { t: TicketRow; path: string; 
           <span className="text-xs font-medium text-muted-foreground">Public title</span>
           <span className="truncate text-sm">{t.public_title ?? <span className="text-muted-foreground">Same as the title</span>}</span>
         </div>
-        <Button type="button" variant="ghost" size="icon" className="size-8 shrink-0" aria-label="Edit the public title" onClick={() => setEditing(true)}>
-          <Pencil />
-        </Button>
+        <Writable>
+          <Button type="button" variant="ghost" size="icon" className="size-8 shrink-0" aria-label="Edit the public title" onClick={() => setEditing(true)}>
+            <Pencil />
+          </Button>
+        </Writable>
       </div>
     );
   }

@@ -38,7 +38,9 @@ pub fn session_token(headers: &HeaderMap) -> Option<String> {
 }
 
 /// The signed-in user. Without a valid session a page request goes to `/login`, and an `/api/`
-/// request gets 401 in the JSON envelope.
+/// request gets 401 in the JSON envelope. A supervisor gets 403 on any method but GET and HEAD:
+/// every signed-in route that changes something takes this extractor, so this one check keeps
+/// the role read-only.
 pub struct CurrentUser(pub User);
 
 impl FromRequestParts<AppState> for CurrentUser {
@@ -66,6 +68,7 @@ impl FromRequestParts<AppState> for CurrentUser {
             .map_err(|e| PageError::from(e).into_response())?;
         match store::find_session_user(&conn, &token::hash(&raw), now()).await {
             Ok(Some(u)) => match Role::parse(&u.role) {
+                Some(Role::Supervisor) if !parts.method.is_safe() => Err(forbidden(api)),
                 Some(role) => Ok(CurrentUser(User {
                     id: u.id,
                     email: u.email,
@@ -79,7 +82,15 @@ impl FromRequestParts<AppState> for CurrentUser {
     }
 }
 
-/// A signed-in super admin. Others get 403.
+fn forbidden(api: bool) -> Response {
+    if api {
+        crate::platform::ui::UiError::Forbidden.into_response()
+    } else {
+        PageError::Forbidden.into_response()
+    }
+}
+
+/// A signed-in super admin, or a supervisor reading. Others get 403.
 pub struct AdminUser(pub User);
 
 impl FromRequestParts<AppState> for AdminUser {
@@ -90,12 +101,10 @@ impl FromRequestParts<AppState> for AdminUser {
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
         let CurrentUser(user) = CurrentUser::from_request_parts(parts, state).await?;
-        if user.is_admin() {
+        if user.sees_all() {
             Ok(AdminUser(user))
-        } else if parts.uri.path().starts_with("/api/") {
-            Err(crate::platform::ui::UiError::Forbidden.into_response())
         } else {
-            Err(PageError::Forbidden.into_response())
+            Err(forbidden(parts.uri.path().starts_with("/api/")))
         }
     }
 }

@@ -1,4 +1,5 @@
 import { RefreshButton } from "@/components/app/RefreshButton";
+import { Writable } from "@/lib/session";
 import type { ReactElement } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { CopyField } from "@/components/app/CopyField";
@@ -58,18 +59,20 @@ export function Heartbeat({ editing = false }: { editing?: boolean }): ReactElem
             actions={
               <>
                 <RefreshButton onClick={res.refresh} busy={res.refreshing} />
-                <HeartbeatDetails h={h} pingUrl={d.ping_url} />
-                <Button asChild variant="secondary">
-                  <Link to={`${base}/${h.id}/edit`}>
-                    <Pencil data-icon="inline-start" />
-                    Edit
-                  </Link>
-                </Button>
+                {d.ping_url && <HeartbeatDetails h={h} pingUrl={d.ping_url} />}
+                <Writable>
+                  <Button asChild variant="secondary">
+                    <Link to={`${base}/${h.id}/edit`}>
+                      <Pencil data-icon="inline-start" />
+                      Edit
+                    </Link>
+                  </Button>
+                </Writable>
               </>
             }
           />
           <div className="flex flex-col gap-6">
-            {fresh && (
+            {fresh && d.ping_url && (
               <Card>
                 <CardHeader>
                   <CardTitle>The job has not called yet</CardTitle>

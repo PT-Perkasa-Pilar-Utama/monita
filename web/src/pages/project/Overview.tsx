@@ -1,4 +1,5 @@
 import type { ReactElement, ReactNode } from "react";
+import { Writable } from "@/lib/session";
 import { Link } from "react-router-dom";
 import { LinkRow, ROW_LINK } from "@/components/app/LinkRow";
 import { ProjectAbout, useProjectEdit } from "@/components/app/ProjectAbout";
@@ -84,10 +85,12 @@ export function Overview(): ReactElement {
               </Button>
             </>
           ) : (
-            <Button variant="outline" onClick={edit.start}>
-              <Pencil data-icon="inline-start" />
-              Edit project
-            </Button>
+            <Writable>
+              <Button variant="outline" onClick={edit.start}>
+                <Pencil data-icon="inline-start" />
+                Edit project
+              </Button>
+            </Writable>
           )
         }
       />

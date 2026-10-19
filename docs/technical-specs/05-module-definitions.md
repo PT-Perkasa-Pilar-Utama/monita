@@ -27,7 +27,7 @@ Each module owns its tables (see [06](06-data-model.md)). Other modules use only
 | --- | --- |
 | `ApiProject` extractor | Reads `Authorization: Bearer mk_...`, hashes it, finds a live key, checks the allowlist against the client IP. 401 for a missing or bad key, 403 for an IP outside the list. Updates `last_used_at` at most once per minute. |
 | `find_for(db, user, slug) -> Project` | The project a user may manage, or 404 so other projects' names do not leak. |
-| `can_manage(user, project) -> bool` | True for the owner and for every super admin. |
+| `can_view(user, project) -> bool` | True for the owner, every super admin and every supervisor. A supervisor's writes are refused earlier, in `CurrentUser`. |
 | `tab_counts(db, project_id)` | The numbers beside the project tabs, each read through its module. |
 | `create(db, acting, input)` | US-06. Makes the slug from the name. A TL owns what they create; a super admin owns it unless `owner_email` names an eligible owner. An unknown owner, a description over 280 characters or a bad icon is a form error. |
 | `eligible_owners(db, acting)` | The owners a super admin may pick: the acting super admin first, then active TLs. |

@@ -15,6 +15,7 @@ import { ACTION_LABEL, type UserAction } from "@/lib/users";
 const WHAT: Record<UserAction, string> = {
   make_admin: "A super admin manages every project, the users and the system settings.",
   make_tl: "A tech lead keeps the projects they own and loses the admin pages from their next click.",
+  make_supervisor: "A supervisor sees every project, the users and the system settings, and changes nothing. Someone who owns a project cannot become one.",
   reset: "Monita emails a new sign-up link. Their password and sessions stop working until they use it.",
   disable: "Monita signs them out now, and they can no longer sign in. Their projects stay. You can enable them again.",
   enable: "They sign in with their old password. Someone who never set one needs a new invite.",

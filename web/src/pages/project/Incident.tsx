@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Writable } from "@/lib/session";
 import type { FormEvent, ReactElement } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { ChoiceCards } from "@/components/app/ChoiceCards";
@@ -75,7 +76,9 @@ function PostUpdate({ path, labels, auto, onPosted }: { path: string; labels: Up
   const messageError = error?.fields.message ?? (error && !labelError ? error.message : undefined);
   return (
     <>
-      <Button onClick={show}>Post update</Button>
+      <Writable>
+        <Button onClick={show}>Post update</Button>
+      </Writable>
       <FormSheet open={open} onClose={() => setOpen(false)}>
         <FormSheetBody
           title="Post an update"

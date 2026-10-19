@@ -29,7 +29,7 @@ pub fn router() -> Router<AppState> {
 
 /// Whose projects a list reads: `None` reads every project.
 fn owner(user: &User) -> Option<i64> {
-    (!user.is_admin()).then_some(user.id)
+    (!user.sees_all()).then_some(user.id)
 }
 
 /// The list's URL: `?q=&state=&severity=&sort=&page=`. Unknown values read as the default.

@@ -10,6 +10,8 @@ pub enum AdminError {
     Yourself,
     #[error("No such user, or the change does not apply to them.")]
     NotFound,
+    #[error("This person owns projects. Give their projects to another owner first.")]
+    OwnsProjects,
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 }
@@ -30,15 +32,21 @@ fn found(changed: bool) -> Result<(), AdminError> {
     }
 }
 
-/// Makes an active user a super admin or a tech lead. The role is read on every request,
-/// so the change holds from their next click.
+/// Makes an active user a super admin, a tech lead or a supervisor. The role is read on every
+/// request, so the change holds from their next click. A project owner cannot become a
+/// supervisor: an owner must be able to change their project.
 pub async fn set_role(db: &Db, actor: i64, user_id: i64, role: Role) -> Result<(), AdminError> {
     not_self(actor, user_id)?;
     let at = now();
-    found(
-        db.write(async |c| store::set_role(c, user_id, role, at).await)
-            .await?,
-    )
+    let changed = db
+        .write(async |c| {
+            if role == Role::Supervisor && crate::projects::owns_any(c, user_id).await? {
+                return Ok(Err(AdminError::OwnsProjects));
+            }
+            Ok(Ok(store::set_role(c, user_id, role, at).await?))
+        })
+        .await??;
+    found(changed)
 }
 
 /// US-04: signs them out at once and drops their invites. Their projects stay theirs.

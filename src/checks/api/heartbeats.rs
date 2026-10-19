@@ -118,8 +118,9 @@ async fn list(
 #[derive(Serialize)]
 struct DetailView {
     heartbeat: HeartbeatView,
-    /// The URL a job calls; the token in it is the heartbeat's whole secret.
-    ping_url: String,
+    /// The URL a job calls; the token in it is the heartbeat's whole secret. `None` for a
+    /// supervisor: with it they could keep a dead job alive.
+    ping_url: Option<String>,
     stats: Vec<views::StatView>,
     insight: views::InsightView,
     pings: Vec<PingRow>,
@@ -175,7 +176,8 @@ async fn detail(
         insight.incidents_stat(),
     ]);
     Ok(data(DetailView {
-        ping_url: format!("{}/ping/{}", state.config.base_url, hb.token),
+        ping_url: (!user.is_read_only())
+            .then(|| format!("{}/ping/{}", state.config.base_url, hb.token)),
         heartbeat: view(hb, newest, s, insight.now),
         stats,
         insight: insight.into(),

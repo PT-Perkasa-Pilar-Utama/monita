@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Writable } from "@/lib/session";
 import type { FormEvent, ReactElement } from "react";
 import { ConfirmDialog } from "@/components/app/ConfirmDialog";
 import { FormSheet, FormSheetBody } from "@/components/app/FormSheet";
@@ -79,10 +80,12 @@ export function Changelog(): ReactElement {
         title="Changelog"
         filtered={q.filtered}
         actions={
-          <Button onClick={() => open("new")}>
-            <Plus data-icon="inline-start" />
-            New release
-          </Button>
+          <Writable>
+            <Button onClick={() => open("new")}>
+              <Plus data-icon="inline-start" />
+              New release
+            </Button>
+          </Writable>
         }
       />
       <div className="flex flex-col gap-6 pb-4">

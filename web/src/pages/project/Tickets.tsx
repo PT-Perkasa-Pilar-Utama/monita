@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useCanEdit, Writable } from "@/lib/session";
 import type { FormEvent, ReactElement } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ConnectApp } from "@/components/app/ConnectApp";
@@ -70,6 +71,7 @@ function CloseReasonDialog({ ticket, onPick, onCancel }: { ticket: TicketRow | n
 
 /** The project's ticket board. A card opens its ticket in a panel, and drags to another column. */
 export function Tickets(): ReactElement {
+  const canEdit = useCanEdit();
   const { project: p, reload: reloadProject } = useProject();
   const { number } = useParams();
   const navigate = useNavigate();
@@ -113,9 +115,13 @@ export function Tickets(): ReactElement {
         title="Tickets"
         actions={
           <>
-            <IssueRefId />
+            <Writable>
+              <IssueRefId />
+            </Writable>
             <ConnectApp slug={p.slug} />
-            <NewTicketSheet slug={p.slug} onFiled={changed} />
+            <Writable>
+              <NewTicketSheet slug={p.slug} onFiled={changed} />
+            </Writable>
           </>
         }
       />
@@ -134,7 +140,7 @@ export function Tickets(): ReactElement {
           tickets={d.tickets}
           counts={d.counts}
           notes={STAGE_NOTES}
-          onMove={drop}
+          onMove={canEdit ? drop : undefined}
           footer={(s, _shown, total) =>
             s === "done" ? (
               <Button asChild variant="ghost" size="sm" className="w-full text-muted-foreground">

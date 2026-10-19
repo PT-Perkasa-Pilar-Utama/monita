@@ -12,11 +12,13 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { errorText } from "@/lib/api";
+import { useCanEdit } from "@/lib/session";
 import { toast } from "sonner";
 
 /**
  * Asks before a risky action: delete, revoke, disable. Cancel takes the focus, so Enter never
- * confirms by default. The confirm button repeats the action's label.
+ * confirms by default. The confirm button repeats the action's label. Every use changes
+ * something, so a supervisor sees neither the dialog nor its trigger.
  */
 export function ConfirmDialog({
   trigger,
@@ -30,8 +32,9 @@ export function ConfirmDialog({
   description: string;
   action: string;
   onConfirm: () => Promise<void>;
-}): ReactElement {
+}): ReactElement | null {
   const [open, setOpen] = useState(false);
+  if (!useCanEdit()) return null;
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>

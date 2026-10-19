@@ -208,7 +208,8 @@ export type PingRow = { id: number; received_at: number; kind: "ok" | "fail"; so
 
 export type HeartbeatDetail = {
   heartbeat: HeartbeatView;
-  ping_url: string;
+  /** Null for a supervisor, who must not get the heartbeat's token. */
+  ping_url: string | null;
   stats: Stat[];
   insight: Insight;
   pings: PingRow[];
@@ -317,7 +318,7 @@ export type PublicStatus = {
 
 export type PublicHistory = { project: PublicProject; incidents: PublicIncident[]; older: string | null };
 
-export type AdminUserRow = { id: number; email: string; role: "super_admin" | "tl"; status: "active" | "invited" | "disabled"; created_at: number };
+export type AdminUserRow = { id: number; email: string; role: "super_admin" | "tl" | "supervisor"; status: "active" | "invited" | "disabled"; created_at: number };
 
 export type Invited = { email: string; link: string };
 

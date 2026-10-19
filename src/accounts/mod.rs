@@ -24,6 +24,8 @@ pub const MIN_PASSWORD: usize = 12;
 pub enum Role {
     SuperAdmin,
     Tl,
+    /// Sees everything a super admin sees and changes nothing.
+    Supervisor,
 }
 
 impl Role {
@@ -31,6 +33,7 @@ impl Role {
         match self {
             Role::SuperAdmin => "super_admin",
             Role::Tl => "tl",
+            Role::Supervisor => "supervisor",
         }
     }
 
@@ -38,6 +41,7 @@ impl Role {
         match s {
             "super_admin" => Some(Role::SuperAdmin),
             "tl" => Some(Role::Tl),
+            "supervisor" => Some(Role::Supervisor),
             _ => None,
         }
     }
@@ -51,8 +55,19 @@ pub struct User {
 }
 
 impl User {
+    /// May change anything, in every project and in the admin pages.
     pub fn is_admin(&self) -> bool {
         self.role == Role::SuperAdmin
+    }
+
+    /// Sees every project and the admin pages: a super admin or a supervisor.
+    pub fn sees_all(&self) -> bool {
+        matches!(self.role, Role::SuperAdmin | Role::Supervisor)
+    }
+
+    /// Reads only. `CurrentUser` refuses every request from them that would change something.
+    pub fn is_read_only(&self) -> bool {
+        self.role == Role::Supervisor
     }
 }
 

@@ -1,4 +1,5 @@
 import { RefreshButton } from "@/components/app/RefreshButton";
+import { Writable } from "@/lib/session";
 import type { ReactElement } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { LinkRow, ROW_LINK } from "@/components/app/LinkRow";
@@ -42,12 +43,14 @@ export function Monitors({ creating = false }: { creating?: boolean }): ReactEle
     { name: (m) => m.name, state: (m) => m.state, every: (m) => m.interval_s, severity: (m) => m.severity, last: (m) => m.last?.checked_at },
   );
   const newButton = (
-    <Button asChild>
-      <Link to={`${base}/new`}>
-        <Plus data-icon="inline-start" />
-        New monitor
-      </Link>
-    </Button>
+    <Writable>
+      <Button asChild>
+        <Link to={`${base}/new`}>
+          <Plus data-icon="inline-start" />
+          New monitor
+        </Link>
+      </Button>
+    </Writable>
   );
 
   return (

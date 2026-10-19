@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Writable } from "@/lib/session";
 import type { FormEvent, ReactElement } from "react";
 import { ConfirmDialog } from "@/components/app/ConfirmDialog";
 import { FormSheet, FormSheetBody } from "@/components/app/FormSheet";
@@ -62,10 +63,12 @@ export function Secrets(): ReactElement {
         <TableCard
           title={list.data ? `${rows.length} ${rows.length === 1 ? "secret" : "secrets"}` : "Secrets"}
           tools={
-            <Button size="sm" onClick={() => open("new")}>
-              <Plus data-icon="inline-start" />
-              New secret
-            </Button>
+            <Writable>
+              <Button size="sm" onClick={() => open("new")}>
+                <Plus data-icon="inline-start" />
+                New secret
+              </Button>
+            </Writable>
           }
         >
           {!list.data ? (
@@ -92,9 +95,11 @@ export function Secrets(): ReactElement {
                     <TableCell className="text-muted-foreground max-sm:hidden">{ago(s.updated_at)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Button variant="outline" size="sm" onClick={() => open(s)}>
-                          Replace value
-                        </Button>
+                        <Writable>
+                          <Button variant="outline" size="sm" onClick={() => open(s)}>
+                            Replace value
+                          </Button>
+                        </Writable>
                         <ConfirmDialog
                           trigger={
                             <Button variant="danger" size="sm" disabled={s.used_by > 0} title={s.used_by > 0 ? `${usedBy(s.used_by)} use it. Change them first.` : undefined}>

@@ -1,4 +1,5 @@
 import { RefreshButton } from "@/components/app/RefreshButton";
+import { Writable } from "@/lib/session";
 import type { ReactElement } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { LinkRow, ROW_LINK } from "@/components/app/LinkRow";
@@ -42,12 +43,14 @@ export function Heartbeats({ creating = false }: { creating?: boolean }): ReactE
     { name: (h) => h.name, state: (h) => h.state, deadline: (h) => h.deadline_at, every: (h) => h.period_s, severity: (h) => h.severity, last: (h) => h.last?.at ?? null },
   );
   const newButton = (
-    <Button asChild>
-      <Link to={`${base}/new`}>
-        <Plus data-icon="inline-start" />
-        New heartbeat
-      </Link>
-    </Button>
+    <Writable>
+      <Button asChild>
+        <Link to={`${base}/new`}>
+          <Plus data-icon="inline-start" />
+          New heartbeat
+        </Link>
+      </Button>
+    </Writable>
   );
 
   return (

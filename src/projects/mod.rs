@@ -71,7 +71,7 @@ pub async fn page_for(
 ) -> anyhow::Result<ProjectPage> {
     let q: String = q.trim().to_lowercase().chars().take(100).collect();
     let f = store::Filter {
-        owner_id: (!user.is_admin()).then_some(user.id),
+        owner_id: (!user.sees_all()).then_some(user.id),
         q: &q,
         owner_email: owner.trim(),
         sort,
@@ -172,15 +172,23 @@ pub async fn eligible_owners(
     Ok(all)
 }
 
-pub fn can_manage(user: &User, project: &Project) -> bool {
-    user.is_admin() || project.owner_id == user.id
+/// Runs inside the caller's write: a user who owns a project cannot become a supervisor, since
+/// an owner must be able to change their project.
+pub async fn owns_any(c: &turso::Connection, user_id: i64) -> anyhow::Result<bool> {
+    store::owns_any(c, user_id).await
 }
 
-/// The project a user may manage, or 404 so other projects' names do not leak.
+/// A super admin and a supervisor see every project; a tech lead sees their own. A supervisor's
+/// writes never get this far: `CurrentUser` refuses them.
+pub fn can_view(user: &User, project: &Project) -> bool {
+    user.sees_all() || project.owner_id == user.id
+}
+
+/// The project a user may open, or 404 so other projects' names do not leak.
 pub async fn find_for(db: &Db, user: &User, slug: &str) -> Result<Project, PageError> {
     let project = store::find_by_slug(&db.read().await?, slug).await?;
     match project {
-        Some(p) if can_manage(user, &p) => Ok(p),
+        Some(p) if can_view(user, &p) => Ok(p),
         _ => Err(PageError::NotFound),
     }
 }

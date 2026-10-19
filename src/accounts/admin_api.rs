@@ -73,14 +73,15 @@ struct Invited {
 #[serde(default)]
 struct InviteForm {
     email: String,
-    /// `tl` (the default) or `super_admin`.
+    /// `tl` (the default), `supervisor` or `super_admin`.
     role: String,
 }
 
 fn role_of(raw: &str) -> Result<Role, UiError> {
     match raw {
         "" => Ok(Role::Tl),
-        r => Role::parse(r).ok_or_else(|| UiError::field("role", "Pick tech lead or super admin.")),
+        r => Role::parse(r)
+            .ok_or_else(|| UiError::field("role", "Pick tech lead, supervisor or super admin.")),
     }
 }
 
@@ -89,6 +90,7 @@ impl From<AdminError> for UiError {
         match e {
             AdminError::Yourself => UiError::invalid(e.to_string()),
             AdminError::NotFound => UiError::NotFound,
+            AdminError::OwnsProjects => UiError::field("role", e.to_string()),
             AdminError::Other(e) => UiError::Internal(e),
         }
     }
@@ -143,7 +145,8 @@ struct RoleForm {
     role: String,
 }
 
-/// Makes another active user a super admin or a tech lead. 204.
+/// Makes another active user a super admin, a tech lead or a supervisor. 204; 422 on `role`
+/// when a project owner would become a supervisor.
 async fn set_role(
     State(state): State<AppState>,
     AdminUser(me): AdminUser,
@@ -151,7 +154,7 @@ async fn set_role(
     Body(f): Body<RoleForm>,
 ) -> UiResult {
     let role = Role::parse(&f.role)
-        .ok_or_else(|| UiError::field("role", "Pick tech lead or super admin."))?;
+        .ok_or_else(|| UiError::field("role", "Pick tech lead, supervisor or super admin."))?;
     super::set_role(&state.db, me.id, id, role).await?;
     Ok(StatusCode::NO_CONTENT.into_response())
 }

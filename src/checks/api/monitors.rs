@@ -84,7 +84,23 @@ struct LastCheck {
     summary: String,
 }
 
-fn view(m: Monitor, state: &'static str) -> MonitorView {
+/// What a supervisor sees of a request: header names and whether a body is sent, never the
+/// values, which often carry credentials (technical-specs 07: owner and super admin only).
+const HIDDEN: &str = "(hidden)";
+
+fn hide_values(headers: &str) -> String {
+    headers
+        .lines()
+        .map(|l| match l.split_once(':') {
+            Some((name, _)) => format!("{name}: {HIDDEN}"),
+            None => HIDDEN.to_string(),
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn view(m: Monitor, state: &'static str, read_only: bool) -> MonitorView {
+    let headers = m.headers.unwrap_or_default();
     MonitorView {
         id: m.id,
         every: interval_label(m.interval_s),
@@ -99,8 +115,14 @@ fn view(m: Monitor, state: &'static str) -> MonitorView {
         auto_incident: m.auto_incident,
         fails_to_open: m.fails_to_open,
         method: m.method,
-        headers: m.headers.unwrap_or_default(),
-        body: m.body,
+        headers: if read_only {
+            hide_values(&headers)
+        } else {
+            headers
+        },
+        body: m
+            .body
+            .map(|b| if read_only { HIDDEN.to_string() } else { b }),
         auth_kind: m.auth_kind,
         auth_secret_id: m.auth_secret_id,
         auth_secret_name: None,
@@ -164,7 +186,7 @@ async fn list(
             let s = state_of(&m);
             Row {
                 day: days.remove(&m.id),
-                monitor: view(m, s),
+                monitor: view(m, s, user.is_read_only()),
             }
         })
         .collect();
@@ -238,7 +260,7 @@ async fn detail(
     Ok(data(DetailView {
         monitor: MonitorView {
             auth_secret_name: secret_name,
-            ..view(m, s)
+            ..view(m, s, user.is_read_only())
         },
         stats,
         insight: insight.into(),

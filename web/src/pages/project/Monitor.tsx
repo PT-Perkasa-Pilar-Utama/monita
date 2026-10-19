@@ -1,4 +1,5 @@
 import { RefreshButton } from "@/components/app/RefreshButton";
+import { Writable } from "@/lib/session";
 import type { ReactElement } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { HistoryPager } from "@/components/app/History";
@@ -55,12 +56,14 @@ export function Monitor({ editing = false }: { editing?: boolean }): ReactElemen
               <>
                 <RefreshButton onClick={res.refresh} busy={res.refreshing} />
                 <MonitorDetails m={m} />
-                <Button asChild variant="secondary">
-                  <Link to={`${base}/${m.id}/edit`}>
-                    <Pencil data-icon="inline-start" />
-                    Edit
-                  </Link>
-                </Button>
+                <Writable>
+                  <Button asChild variant="secondary">
+                    <Link to={`${base}/${m.id}/edit`}>
+                      <Pencil data-icon="inline-start" />
+                      Edit
+                    </Link>
+                  </Button>
+                </Writable>
               </>
             }
           />

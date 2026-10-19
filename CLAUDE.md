@@ -43,8 +43,8 @@ site/                 landing page and docs site builder    docs/guide/ user doc
 
 | Module | Owns tables | Interface others call |
 | --- | --- | --- |
-| accounts | users, invites, sessions | `CurrentUser` and `AdminUser` extractors, `purge_expired` |
-| projects | projects, project_icons, api_keys, project_secrets | `ApiProject` extractor, `find_for`, `can_manage` |
+| accounts | users, invites, sessions | `CurrentUser` (refuses a supervisor's writes) and `AdminUser` (super admin, or a supervisor reading) extractors, `purge_expired` |
+| projects | projects, project_icons, api_keys, project_secrets | `ApiProject` extractor, `find_for`, `can_view`, `owns_any` |
 | checks | monitors, heartbeats, check_results, pings, daily_summaries | `probe`, `heartbeat::admit` and `record`, `scheduler::spawn` |
 | incidents | incidents, incident_items, incident_sources, status_updates | `observe` (the only door for check results), `open_manual`, `post_update`, `states_for`, `source_deleted` |
 | notify | alert_routes, outbox | `send(Event)`: inserts outbox rows, never blocks; `create_routes`, `purge_delivered` |
@@ -54,7 +54,7 @@ site/                 landing page and docs site builder    docs/guide/ user doc
 | tickets | ref_ids, tickets | `issue_ref_id`, `submit` |
 | platform | settings, schema_migrations | `Db`, `ui` (envelope, `Body`, `public_cache`), `now`, config |
 
-Roles: `super_admin`, `tl`. A TL manages only projects they own; a non-owner gets 404. Matrix: technical-specs 09 section 9.3.
+Roles: `super_admin`, `tl`, `supervisor`. A TL manages only projects they own; a non-owner gets 404. A supervisor sees what a super admin sees and changes nothing: `CurrentUser` answers 403 to any method but GET and HEAD, and a supervisor never gets a heartbeat ping URL, a header value or a request body. A project owner cannot become a supervisor. Matrix: technical-specs 09 section 9.3.
 
 ## Work model
 

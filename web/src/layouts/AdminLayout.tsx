@@ -12,9 +12,9 @@ export function AdminLayout(): ReactElement {
   const me = useMe();
   const { pathname } = useLocation();
   useEffect(() => {
-    if (me.is_admin) rememberAdminPage(pathname);
-  }, [me.is_admin, pathname]);
-  if (!me.is_admin) return <NotFound />;
+    if (me.sees_all) rememberAdminPage(pathname);
+  }, [me.sees_all, pathname]);
+  if (!me.sees_all) return <NotFound />;
   const item = (to: string, label: string, icon: typeof Users) => ({ to, label, icon, active: pathname === to });
   return (
     <SidebarFrame nav={<SideNav

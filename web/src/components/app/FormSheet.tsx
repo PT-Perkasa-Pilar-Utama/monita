@@ -1,10 +1,13 @@
 import type { FormEvent, ReactElement, ReactNode } from "react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { useCanEdit } from "@/lib/session";
 
-/** The half-width panel a create or edit form opens in, over the page it came from. */
+/** The half-width panel a create or edit form opens in, over the page it came from. It never
+ * opens for a supervisor, even from a typed `/new` or `/edit` URL. */
 export function FormSheet({ open, onClose, children }: { open: boolean; onClose: () => void; children: ReactNode }): ReactElement {
+  const canEdit = useCanEdit();
   return (
-    <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
+    <Sheet open={open && canEdit} onOpenChange={(o) => !o && onClose()}>
       <SheetContent
         size="half"
         aria-describedby={undefined}

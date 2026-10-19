@@ -18,7 +18,7 @@ import { useTheme } from "@/components/layout/ThemeProvider";
 import { api } from "@/lib/api";
 import { lastAdminPage } from "@/lib/adminPage";
 import { lastProject } from "@/lib/lastProject";
-import { useMe } from "@/lib/session";
+import { ROLE_LABEL, useMe } from "@/lib/session";
 import { cn } from "@/lib/utils";
 
 export const DOCS = "https://pt-perkasa-pilar-utama.github.io/monita/docs/";
@@ -59,7 +59,7 @@ function AreaLinks(): ReactElement {
       <AreaLink to="/incidents" label="Incidents" icon={<AlertTriangle />} active={at("/incidents")} />
       <AreaLink to="/tickets" label="Tickets" icon={<Ticket />} active={at("/tickets")} />
       {/* On a phone these two move into the account menu, so the project name keeps its room. */}
-      {me.is_admin && <AreaLink to={at("/admin") ? pathname : lastAdminPage()} label="Admin" icon={<Settings />} active={at("/admin")} className="max-sm:hidden" />}
+      {me.sees_all && <AreaLink to={at("/admin") ? pathname : lastAdminPage()} label="Admin" icon={<Settings />} active={at("/admin")} className="max-sm:hidden" />}
       <AreaLink to={DOCS} label="Documentation" icon={<BookOpen />} active={false} external className="max-sm:hidden" />
     </>
   );
@@ -92,11 +92,11 @@ function AccountMenu(): ReactElement {
       <DropdownMenuContent align="end" className="w-64">
         <DropdownMenuLabel className="flex flex-col gap-0.5 py-2 font-normal">
           <span className="break-all font-medium text-foreground">{me.email}</span>
-          <span className="text-xs text-muted-foreground">{me.is_admin ? "Super admin" : "Tech lead"}</span>
+          <span className="text-xs text-muted-foreground">{ROLE_LABEL[me.role]}</span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          {me.is_admin && (
+          {me.sees_all && (
             <DropdownMenuItem asChild className="sm:hidden">
               <Link to={pathname.startsWith("/admin/") ? pathname : lastAdminPage()}>
                 <Settings />

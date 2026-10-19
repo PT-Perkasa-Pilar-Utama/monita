@@ -44,7 +44,12 @@ fn signed_in(state: &AppState, raw: &str) -> Response {
 pub struct Me {
     pub email: String,
     pub role: &'static str,
+    /// Changes anything: a super admin.
     pub is_admin: bool,
+    /// Sees every project and the admin pages: a super admin or a supervisor.
+    pub sees_all: bool,
+    /// Reads only: a supervisor.
+    pub read_only: bool,
     /// Minutes east of UTC that pages show times in.
     pub utc_offset_min: i64,
 }
@@ -54,7 +59,9 @@ async fn me(State(state): State<AppState>, CurrentUser(user): CurrentUser) -> Ui
     Ok(data(Me {
         utc_offset_min,
         is_admin: user.is_admin(),
-        role: if user.is_admin() { "super_admin" } else { "tl" },
+        sees_all: user.sees_all(),
+        read_only: user.is_read_only(),
+        role: user.role.as_str(),
         email: user.email,
     }))
 }

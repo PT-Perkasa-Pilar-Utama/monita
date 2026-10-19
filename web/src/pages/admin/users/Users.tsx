@@ -20,6 +20,7 @@ import { useSort } from "@/lib/useSort";
 import { ACTION_LABEL, availableActions, planAction, type UserAction } from "@/lib/users";
 import { toast } from "sonner";
 import { ActionDialog } from "./ActionDialog";
+import { Writable } from "@/lib/session";
 import { InviteSheet } from "./InviteSheet";
 import { UsersTable } from "./UsersTable";
 
@@ -28,6 +29,7 @@ const PAGE = 20;
 const CALL: Record<UserAction, (id: number) => Promise<unknown>> = {
   make_admin: (id) => api(`/admin/users/${id}/role`, "PUT", { role: "super_admin" }),
   make_tl: (id) => api(`/admin/users/${id}/role`, "PUT", { role: "tl" }),
+  make_supervisor: (id) => api(`/admin/users/${id}/role`, "PUT", { role: "supervisor" }),
   reset: (id) => api<Invited>(`/admin/users/${id}/invite`, "POST"),
   disable: (id) => api(`/admin/users/${id}/disable`, "POST"),
   enable: (id) => api(`/admin/users/${id}/enable`, "POST"),
@@ -102,7 +104,7 @@ export function Users(): ReactElement {
   const plan = pending ? planAction(pending.action, pending.rows, me) : null;
   return (
     <>
-      <PageHeader title="User management" filtered={filtered} actions={<InviteSheet onInvited={(i) => (setInvited(i), res.reload())} />} />
+      <PageHeader title="User management" filtered={filtered} actions={<Writable><InviteSheet onInvited={(i) => (setInvited(i), res.reload())} /></Writable>} />
       {invited && (
         <Alert role="status" className="mb-5">
           <AlertTitle>Invite sent to {invited.email}. The link works once and expires in 72 hours.</AlertTitle>
@@ -143,6 +145,7 @@ export function Users(): ReactElement {
                 options={[
                   { value: "", label: "Any role" },
                   { value: "super_admin", label: "Super admin" },
+                  { value: "supervisor", label: "Supervisor" },
                   { value: "tl", label: "Tech lead" },
                 ]}
                 onChange={(v) => set({ role: v })}

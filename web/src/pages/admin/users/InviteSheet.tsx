@@ -10,7 +10,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { api, ApiError, errorText } from "@/lib/api";
 import type { Invited } from "@/lib/types";
 
-type Role = "tl" | "super_admin";
+type Role = "tl" | "super_admin" | "supervisor";
 
 
 /** Invites a new user as a tech lead or a super admin, in the wide panel. Monita emails the one-time link. */
@@ -77,6 +77,7 @@ export function InviteSheet({ onInvited }: { onInvited: (i: Invited) => void }):
               onChange={setRole}
               choices={[
                 { value: "tl", title: "Tech lead", description: "Manages the projects they own." },
+                { value: "supervisor", title: "Supervisor", description: "Sees every project, the users and the system settings, and changes nothing." },
                 { value: "super_admin", title: "Super admin", description: "Manages every project, the users and the system settings." },
               ]}
             />

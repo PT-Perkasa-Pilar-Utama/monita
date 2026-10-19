@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Writable } from "@/lib/session";
 import type { FormEvent, ReactElement } from "react";
 import { ConfirmDialog } from "@/components/app/ConfirmDialog";
 import { CopyField } from "@/components/app/CopyField";
@@ -72,10 +73,12 @@ export function Keys(): ReactElement {
       <TableCard
         title={keys.data ? `${list.length} ${list.length === 1 ? "key" : "keys"}` : "Keys"}
         tools={
-          <Button size="sm" onClick={() => setOpen(true)}>
-            <Plus data-icon="inline-start" />
-            New API key
-          </Button>
+          <Writable>
+            <Button size="sm" onClick={() => setOpen(true)}>
+              <Plus data-icon="inline-start" />
+              New API key
+            </Button>
+          </Writable>
         }
       >
         {!keys.data ? (

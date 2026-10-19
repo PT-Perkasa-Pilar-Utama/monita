@@ -1,4 +1,5 @@
 import { useId, useState } from "react";
+import { Writable } from "@/lib/session";
 import type { ReactElement } from "react";
 import { Upload, X } from "@/components/icons";
 import { Button } from "@/components/ui/button";
@@ -40,11 +41,13 @@ export function IconPicker({
         <span className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-lg border bg-muted">
           {shown ? <img src={shown} alt="" data-icon-preview className="size-full object-cover" /> : <Upload className="size-5 text-muted-foreground" />}
         </span>
-        <Button asChild variant="outline" size="sm">
-          <label htmlFor={id} className="cursor-pointer">
-            {shown ? "Replace picture" : "Choose a picture"}
-          </label>
-        </Button>
+        <Writable>
+          <Button asChild variant="outline" size="sm">
+            <label htmlFor={id} className="cursor-pointer">
+              {shown ? "Replace picture" : "Choose a picture"}
+            </label>
+          </Button>
+        </Writable>
         <input
           id={id}
           type="file"

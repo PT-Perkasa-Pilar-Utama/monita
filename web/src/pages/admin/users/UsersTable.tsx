@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import type { Sort } from "@/lib/sort";
 import { day } from "@/lib/time";
 import type { AdminUserRow } from "@/lib/types";
+import { useCanEdit } from "@/lib/session";
 import { ACTION_LABEL, appliesTo, type UserAction } from "@/lib/users";
 
 const STATUS = {
@@ -25,14 +26,15 @@ function RoleBadge({ role }: { role: AdminUserRow["role"] }): ReactElement {
       Super admin
     </Badge>
   ) : (
-    <Badge variant="outline">Tech lead</Badge>
+    <Badge variant="outline">{role === "supervisor" ? "Supervisor" : "Tech lead"}</Badge>
   );
 }
 
 /** One row's actions: the role change, a new invite, then disable or enable. */
 function RowMenu({ u, me, onAction }: { u: AdminUserRow; me: string; onAction: (a: UserAction, u: AdminUserRow) => void }): ReactElement | null {
+  const canEdit = useCanEdit();
   const fits = (a: UserAction): boolean => appliesTo(a, u, me);
-  if (!(["make_admin", "make_tl", "reset", "disable", "enable"] as const).some(fits)) return null;
+  if (!canEdit || !(["make_admin", "make_tl", "make_supervisor", "reset", "disable", "enable"] as const).some(fits)) return null;
   const item = (a: UserAction): ReactElement | null =>
     fits(a) ? (
       <DropdownMenuItem key={a} variant={a === "disable" ? "destructive" : "default"} onSelect={() => onAction(a, u)}>
@@ -50,6 +52,7 @@ function RowMenu({ u, me, onAction }: { u: AdminUserRow; me: string; onAction: (
         <DropdownMenuGroup>
           {item("make_admin")}
           {item("make_tl")}
+          {item("make_supervisor")}
           {item("reset")}
         </DropdownMenuGroup>
         {(fits("disable") || fits("enable")) && <DropdownMenuSeparator />}
@@ -82,6 +85,8 @@ export function UsersTable({
   onSort: (by: string) => void;
   onAction: (a: UserAction, u: AdminUserRow) => void;
 }): ReactElement {
+  // A supervisor reads the list: no boxes, so no batch actions.
+  const canEdit = useCanEdit();
   const pickable = rows.filter((u) => u.email !== me);
   const picked = pickable.filter((u) => selected.has(u.id)).length;
   const all = picked === 0 ? false : picked === pickable.length ? true : "indeterminate";
@@ -90,7 +95,7 @@ export function UsersTable({
       <TableHeader>
         <TableRow>
           <TableHead className="w-10">
-            <Checkbox aria-label="Select every user on this page" checked={all} disabled={pickable.length === 0} onCheckedChange={(on) => onTogglePage(on === true)} />
+            {canEdit && <Checkbox aria-label="Select every user on this page" checked={all} disabled={pickable.length === 0} onCheckedChange={(on) => onTogglePage(on === true)} />}
           </TableHead>
           <SortHead by="email" label="User" sort={sort} onSort={onSort} />
           <SortHead by="role" label="Role" sort={sort} onSort={onSort} />
@@ -106,7 +111,7 @@ export function UsersTable({
           const self = u.email === me;
           return (
             <TableRow key={u.id} data-state={selected.has(u.id) ? "selected" : undefined}>
-              <TableCell>{!self && <Checkbox aria-label={`Select ${u.email}`} checked={selected.has(u.id)} onCheckedChange={() => onToggle(u.id)} />}</TableCell>
+              <TableCell>{!self && canEdit && <Checkbox aria-label={`Select ${u.email}`} checked={selected.has(u.id)} onCheckedChange={() => onToggle(u.id)} />}</TableCell>
               <TableCell className="max-w-72">
                 <div className="flex items-center gap-3">
                   <span aria-hidden="true" className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-[13px] font-semibold text-muted-foreground">
