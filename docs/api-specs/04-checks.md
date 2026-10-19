@@ -55,7 +55,10 @@ The React page `/admin/settings` calls these routes. A tech lead gets 403 on eac
 | Method | Path | Access | Input | Behavior | AC |
 | --- | --- | --- | --- | --- | --- |
 | GET | `/api/ui/admin/system` | super_admin | | `mail` (server and sender from config, never the password), `email` (counts for 7 days and the newest error), `server` (the configuration as label and value), `limits` (each runtime limit with its group, help, value, default, maximum and log-scale positions), and `caps` (the fixed caps, with the account count). | AC-11.03, AC-31.03 |
-| POST | `/api/ui/admin/test-email` | super_admin | | Queue a test email to the signed-in admin through the outbox. `{sent_to}`. | |
+| PUT | `/api/ui/admin/mail` | super_admin | | Save the mail server. A blank password keeps the saved one. 204, or 422 on the field. | |
+| DELETE | `/api/ui/admin/mail` | super_admin | | Remove the saved mail server; `MONITA_SMTP_URL` or the log applies. 204. | |
+| POST | `/api/ui/admin/mail/test-connection` | super_admin | | Try the form's values without saving: connect, TLS, sign in. `{ok, server}` or `{ok: false, error}`. | |
+| POST | `/api/ui/admin/mail/test-send` | super_admin | | Send one email now to `to` through the mail server in use. `{ok, to, source, error?}`; 422 on a bad address. | |
 | PUT | `/api/ui/admin/limits` | super_admin | each `settings` key, a number or a numeric string | Every key must be a whole number from 1 to its maximum, or nothing is saved and each bad key is 422 on that key. 204. | AC-11.03, AC-31.03 |
 
 Validation: `interval_s` in {30, 60, 180, 300}. `timeout_s` 1 to 30. `expected_status` is a comma list of classes (`2xx`) or codes (`200`); spaces around commas are allowed, and `2xx,301` mixes both. `url` is `http` or `https`. A blank or non-numeric number is a 422 on that field.

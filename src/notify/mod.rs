@@ -20,7 +20,7 @@ use crate::{
 
 pub use delivery::{deliver_due, spawn_delivery};
 pub use digest::digest;
-pub use mailer::{Mailer, SentEmail};
+pub use mailer::{Mailer, SentEmail, test_connection};
 pub use preview::{Preview, previews};
 pub use store::{Route, TicketAlerts};
 pub use tickets::{

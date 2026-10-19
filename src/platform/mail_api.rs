@@ -1,18 +1,28 @@
-//! The System page's mail server form: save it, or clear it so `MONITA_SMTP_URL` or the log applies.
+//! The Email page's mail server form: save it, clear it so `MONITA_SMTP_URL` or the log applies,
+//! test the connection, and send a test email.
 
 use std::collections::BTreeMap;
 
-use axum::{Router, extract::State, http::StatusCode, response::IntoResponse, routing::put};
+use axum::{
+    Router,
+    extract::State,
+    http::StatusCode,
+    response::IntoResponse,
+    routing::{post, put},
+};
 use serde::Deserialize;
 
 use super::{
     settings::{self, MailSettings},
-    ui::{Body, UiError, UiResult},
+    ui::{Body, UiError, UiResult, data},
 };
 use crate::{accounts::AdminUser, app::AppState};
 
 pub fn router() -> Router<AppState> {
-    Router::new().route("/api/ui/admin/mail", put(save).delete(clear))
+    Router::new()
+        .route("/api/ui/admin/mail", put(save).delete(clear))
+        .route("/api/ui/admin/mail/test-connection", post(test_connection))
+        .route("/api/ui/admin/mail/test-send", post(test_send))
 }
 
 /// The form as sent. A blank password keeps the saved one; `remove_password` clears it.
@@ -147,6 +157,64 @@ async fn save(State(state): State<AppState>, _: AdminUser, Body(f): Body<MailInp
         .write(async |c| settings::set_mail(c, Some(&m)).await)
         .await?;
     Ok(StatusCode::NO_CONTENT.into_response())
+}
+
+/// Tries the form's values, saved or not: connect, start TLS, sign in. 200 either way; the
+/// body says whether it connected and, if not, why.
+async fn test_connection(
+    State(state): State<AppState>,
+    _: AdminUser,
+    Body(f): Body<MailInput>,
+) -> UiResult {
+    let saved = settings::mail(&state.db.read().await?).await?;
+    let m = f.settings(saved.as_ref()).map_err(UiError::fields)?;
+    Ok(data(match crate::notify::test_connection(&m).await {
+        Ok(()) => serde_json::json!({ "ok": true, "server": format!("{}:{}", m.host, m.port) }),
+        Err(e) => serde_json::json!({ "ok": false, "error": format!("{e:#}") }),
+    }))
+}
+
+#[derive(Deserialize, Default)]
+#[serde(default)]
+struct TestSendInput {
+    to: String,
+}
+
+/// Sends one email now through the mail server in use. 200 either way; the body says whether it
+/// went, through which source, and the error if not.
+async fn test_send(
+    State(state): State<AppState>,
+    _: AdminUser,
+    Body(f): Body<TestSendInput>,
+) -> UiResult {
+    let to = f.to.trim().to_string();
+    if to.parse::<lettre::Address>().is_err() {
+        return Err(UiError::field(
+            "to",
+            "Enter an email address, for example you@company.co.id.",
+        ));
+    }
+    let saved = settings::mail(&state.db.read().await?).await?;
+    let source = view(
+        saved.as_ref(),
+        state.config.smtp_url.as_deref(),
+        &state.config.mail_from,
+    )
+    .source;
+    let email = crate::notify::SentEmail {
+        to: to.clone(),
+        subject: "Monita test email".into(),
+        body: format!(
+            "This is a test email from Monita at {}. If you can read it, alerts reach you.",
+            state.config.base_url
+        ),
+    };
+    Ok(data(match state.mailer.send_now(&state.db, email).await {
+        Ok(()) => serde_json::json!({ "ok": true, "to": to, "source": source }),
+        Err(e) => {
+            serde_json::json!({ "ok": false, "to": to, "source": source, "error": format!("{e:#}") })
+        }
+    }))
 }
 
 async fn clear(State(state): State<AppState>, _: AdminUser) -> UiResult {

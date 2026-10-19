@@ -9,27 +9,86 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
-import { api, errorText } from "@/lib/api";
+import { Send } from "@/components/icons";
+import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { api, ApiError, dropField, errorText } from "@/lib/api";
+import { useMe } from "@/lib/session";
 import { ago } from "@/lib/time";
 import type { SystemView } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
 
-function DeliverySection({ d }: { d: SystemView }): ReactElement {
+type Sent = { ok: boolean; to: string; source: "saved" | "env" | "none"; error?: string };
+
+/** Sends one email now through the mail server in use, to any address, and says what happened. */
+function TestSendSection(): ReactElement {
+  const me = useMe();
+  const [to, setTo] = useState(me.email);
   const [busy, setBusy] = useState(false);
-  const [sentTo, setSentTo] = useState<string | null>(null);
-  const e = d.email;
-  const test = async (): Promise<void> => {
+  const [sent, setSent] = useState<Sent | null>(null);
+  const [error, setError] = useState<ApiError | null>(null);
+  const send = async (): Promise<void> => {
     setBusy(true);
+    setSent(null);
+    setError(null);
     try {
-      setSentTo((await api<{ sent_to: string }>("/admin/test-email", "POST")).sent_to);
+      setSent(await api<Sent>("/admin/mail/test-send", "POST", { to }));
     } catch (err) {
-      toast.error(errorText(err));
+      setError(err instanceof ApiError ? err : new ApiError(0, "error", errorText(err)));
     } finally {
       setBusy(false);
     }
   };
+  return (
+    <SettingsSection
+      id="test-send"
+      title="Send a test email"
+      description="Monita sends it now through the mail server in use, so you see the result here."
+      onSubmit={() => void send()}
+      footer={
+        <Button type="submit" variant="secondary" disabled={busy}>
+          {busy ? <Spinner data-icon="inline-start" /> : <Send data-icon="inline-start" />}
+          Send test email
+        </Button>
+      }
+    >
+      <FieldGroup className="gap-5">
+        <Field data-invalid={error?.fields.to ? true : undefined} className="max-w-md">
+          <FieldLabel htmlFor="test-to" required>
+            Send it to
+          </FieldLabel>
+          <Input
+            id="test-to"
+            type="email"
+            aria-required
+            aria-invalid={error?.fields.to ? true : undefined}
+            value={to}
+            onChange={(e) => {
+              setTo(e.target.value);
+              setError((x) => x && dropField(x, "to"));
+            }}
+          />
+          {error?.fields.to && <FieldError>{error.fields.to}</FieldError>}
+        </Field>
+        {sent && (
+          <Alert role="status" variant={sent.ok ? "default" : "destructive"}>
+            <AlertTitle>
+              {!sent.ok ? `The test email to ${sent.to} did not go out.` : sent.source === "none" ? "No mail server is set, so the test went to Monita's log." : `Sent to ${sent.to}.`}
+            </AlertTitle>
+            <AlertDescription className={sent.ok ? undefined : "font-mono text-[13px] break-all"}>
+              {!sent.ok ? sent.error : sent.source === "none" ? "Save a mail server above to send real email." : "Check that inbox, and its spam folder."}
+            </AlertDescription>
+          </Alert>
+        )}
+        {error && !error.fields.to && <p className="text-sm text-destructive">{error.message}</p>}
+      </FieldGroup>
+    </SettingsSection>
+  );
+}
+
+function DeliverySection({ d }: { d: SystemView }): ReactElement {
+  const e = d.email;
   const counts = [
     [e.sent, `Sent in ${d.email_days} days`, false],
     [e.waiting, "Waiting or retrying", false],
@@ -38,23 +97,10 @@ function DeliverySection({ d }: { d: SystemView }): ReactElement {
   return (
     <SettingsSection
       title="Email delivery"
-      description={d.mail.server ? "What went out through the mail server, and a test you can send." : "No mail server is set, so Monita writes each email to its log."}
+      description={d.mail.server ? "Alerts, digests and invites that went out in the last days." : "No mail server is set, so Monita writes each email to its log."}
       action={d.mail.server ? <StateBadge kind="up" label="Sending" /> : <StateBadge kind="issue" label="Log only" />}
-      footerNote={d.mail.server ? undefined : "Set a mail server to send a test email."}
-      footer={
-        <Button variant="secondary" onClick={() => void test()} disabled={busy || !d.mail.server}>
-          {busy && <Spinner data-icon="inline-start" />}
-          Send a test email to me
-        </Button>
-      }
     >
       <div className="flex flex-col gap-5">
-        {sentTo && (
-          <Alert role="status">
-            <AlertTitle>Test email queued for {sentTo}.</AlertTitle>
-            <AlertDescription>Monita sends it within a few seconds, and the counts below show the result.</AlertDescription>
-          </Alert>
-        )}
         <Facts
           rows={[
             ["Mail server", <span className="font-mono text-[13px]">{d.mail.server ?? "Not set"}</span>],
@@ -92,6 +138,7 @@ export function Email(): ReactElement {
       ) : (
         <div className="flex flex-col gap-6">
           <MailServerSection key={JSON.stringify(d.mail)} mail={d.mail} onSaved={res.reload} />
+          <TestSendSection />
           <DeliverySection d={d} />
         </div>
       )}

@@ -89,3 +89,58 @@ async fn an_admin_saves_the_mail_server_and_the_password_stays_on_the_server() {
         "back to the log"
     );
 }
+
+#[tokio::test]
+async fn a_test_email_goes_out_at_once_and_says_whether_it_went() {
+    let app = TestApp::spawn("test").await;
+    let admin = app.super_admin("root@x.co").await;
+    let tl = app.tl("rina@x.co").await;
+    let path = "/api/ui/admin/mail/test-send";
+    let to = json!({ "to": "ops@x.co" });
+    assert_eq!(
+        app.api_post(path, to.clone(), Some(&tl)).await.status(),
+        403
+    );
+    let bad = app
+        .api_post(path, json!({ "to": "not an address" }), Some(&admin))
+        .await;
+    assert_eq!(bad.status(), 422);
+    assert!(json_of(bad).await["error"]["fields"]["to"].is_string());
+
+    let res = json_of(app.api_post(path, to, Some(&admin)).await).await;
+    assert_eq!(res["data"]["ok"], true);
+    let sent = app.state.mailer.sent();
+    assert_eq!(
+        (sent.len(), sent[0].to.as_str()),
+        (1, "ops@x.co"),
+        "sent now, not queued"
+    );
+}
+
+#[tokio::test]
+async fn a_connection_test_tries_the_form_and_says_why_it_failed() {
+    let app = TestApp::spawn("test").await;
+    let admin = app.super_admin("root@x.co").await;
+    let path = "/api/ui/admin/mail/test-connection";
+    let mut form = form("");
+    form["port"] = json!("70000");
+    assert_eq!(
+        app.api_post(path, form.clone(), Some(&admin))
+            .await
+            .status(),
+        422
+    );
+
+    // Nothing listens on port 9, so the connection is refused at once.
+    form["host"] = json!("127.0.0.1");
+    form["port"] = json!("9");
+    form["security"] = json!("none");
+    let res = json_of(app.api_post(path, form, Some(&admin)).await).await;
+    assert_eq!(res["data"]["ok"], false);
+    assert!(!res["data"]["error"].as_str().unwrap().is_empty(), "{res}");
+    assert_eq!(
+        mail(&app, &admin).await.0["source"],
+        "none",
+        "a test saves nothing"
+    );
+}

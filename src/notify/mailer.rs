@@ -65,7 +65,26 @@ pub fn transport(m: &MailSettings) -> anyhow::Result<AsyncSmtpTransport<Tokio1Ex
     Ok(b.build())
 }
 
+/// Connects to the mail server and signs in, without sending. The error says what failed.
+pub async fn test_connection(m: &MailSettings) -> anyhow::Result<()> {
+    let t = transport(m)?;
+    match tokio::time::timeout(SEND_TIMEOUT, t.test_connection()).await {
+        Ok(Ok(true)) => Ok(()),
+        Ok(Ok(false)) => anyhow::bail!("the server answered, but not as a mail server"),
+        Ok(Err(e)) => Err(e.into()),
+        Err(_) => anyhow::bail!("no answer within {} seconds", SEND_TIMEOUT.as_secs()),
+    }
+}
+
 impl Mailer {
+    /// Sends one email now, outside the outbox, for the admin's test. The error says what failed.
+    pub async fn send_now(&self, db: &Db, email: SentEmail) -> anyhow::Result<()> {
+        match tokio::time::timeout(SEND_TIMEOUT, self.send(db, email)).await {
+            Ok(r) => r,
+            Err(_) => anyhow::bail!("no answer within {} seconds", SEND_TIMEOUT.as_secs()),
+        }
+    }
+
     pub fn from_config(config: &Config) -> anyhow::Result<Self> {
         let env = match &config.smtp_url {
             Some(url) => Some(EnvMail {

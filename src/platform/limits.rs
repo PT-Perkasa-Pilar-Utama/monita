@@ -6,7 +6,7 @@ use axum::{
     extract::State,
     http::StatusCode,
     response::IntoResponse,
-    routing::{get, post, put},
+    routing::{get, put},
 };
 use serde::Serialize;
 use std::collections::HashMap;
@@ -28,7 +28,6 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/api/ui/admin/system", get(page))
         .route("/api/ui/admin/limits", put(save))
-        .route("/api/ui/admin/test-email", post(test_email))
         .route("/api/ui/admin/time-zone", put(save_time_zone))
 }
 
@@ -306,21 +305,6 @@ async fn save_time_zone(
         .write(async |c| settings::set_utc_offset(c, min).await)
         .await?;
     Ok(StatusCode::NO_CONTENT.into_response())
-}
-
-/// Queues a test email to the signed-in admin through the outbox, like any alert.
-async fn test_email(State(state): State<AppState>, AdminUser(admin): AdminUser) -> UiResult {
-    let to = admin.email.clone();
-    let body = format!(
-        "This is a test email from Monita at {}. If you can read it, email alerts reach you.",
-        state.config.base_url
-    );
-    let at = now();
-    state
-        .db
-        .write(async |c| notify::queue_email(c, &to, "Monita test email", &body, at).await)
-        .await?;
-    Ok(data(serde_json::json!({ "sent_to": to })))
 }
 
 /// AC-11.03, AC-31.03. Every limit must be a whole number from 1 to its maximum, or nothing is

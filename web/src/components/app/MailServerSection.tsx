@@ -1,6 +1,8 @@
 import { useState } from "react";
 import type { ComponentProps, ReactElement } from "react";
 import { SettingsSection } from "@/components/app/SettingsSection";
+import { Plug } from "@/components/icons";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -40,10 +42,13 @@ export function MailServerSection({ mail, onSaved }: { mail: MailView; onSaved: 
   const [form, setForm] = useState(initial);
   const [error, setError] = useState<ApiError | null>(null);
   const [busy, setBusy] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [tested, setTested] = useState<{ ok: boolean; server?: string; error?: string } | null>(null);
   const err = (k: string): string | undefined => error?.fields[k];
   const set = <K extends keyof Form>(k: K, v: Form[K]): void => {
     setForm((f) => ({ ...f, [k]: v }));
     setError((e) => e && dropField(e, k));
+    setTested(null);
   };
   const pickSecurity = (s: string): void => {
     // A port still on another choice's usual value follows the new choice.
@@ -62,6 +67,18 @@ export function MailServerSection({ mail, onSaved }: { mail: MailView; onSaved: 
       setError(e instanceof ApiError ? e : new ApiError(0, "error", errorText(e)));
     } finally {
       setBusy(false);
+    }
+  };
+  const test = async (): Promise<void> => {
+    setTesting(true);
+    setError(null);
+    setTested(null);
+    try {
+      setTested(await api<{ ok: boolean; server?: string; error?: string }>("/admin/mail/test-connection", "POST", form));
+    } catch (e) {
+      setError(e instanceof ApiError ? e : new ApiError(0, "error", errorText(e)));
+    } finally {
+      setTesting(false);
     }
   };
   const clear = async (): Promise<void> => {
@@ -102,6 +119,10 @@ export function MailServerSection({ mail, onSaved }: { mail: MailView; onSaved: 
               Remove saved server
             </Button>
           )}
+          <Button type="button" variant="secondary" disabled={testing || busy} onClick={() => void test()}>
+            {testing ? <Spinner data-icon="inline-start" /> : <Plug data-icon="inline-start" />}
+            Test connection
+          </Button>
           <Button type="submit" disabled={busy || !changed}>
             {busy && <Spinner data-icon="inline-start" />}
             Save changes
@@ -164,6 +185,14 @@ export function MailServerSection({ mail, onSaved }: { mail: MailView; onSaved: 
             The server's certificate may be self-signed
           </FieldLabel>
         </Field>
+        {tested && (
+          <Alert role="status" variant={tested.ok ? "default" : "destructive"}>
+            <AlertTitle>{tested.ok ? `Connected to ${tested.server} and signed in.` : "Monita could not connect."}</AlertTitle>
+            <AlertDescription className={tested.ok ? undefined : "font-mono text-[13px] break-all"}>
+              {tested.ok ? (changed ? "Save changes to use these settings." : "These are the saved settings.") : tested.error}
+            </AlertDescription>
+          </Alert>
+        )}
       </FieldGroup>
     </SettingsSection>
   );
