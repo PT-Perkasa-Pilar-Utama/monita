@@ -31,6 +31,17 @@ pub(super) async fn hash_password(password: &str) -> Result<String, AccountError
     Ok(hashed)
 }
 
+/// An argon2 hash, at the default cost, of 24 random bytes nobody kept. A sign-in with no
+/// password to check runs against it, so it takes as long as a real one: the answer's timing
+/// does not tell which emails have accounts.
+const NO_ACCOUNT: &str = "$argon2id$v=19$m=19456,t=2,p=1$TkbtZai7kbGkr09VcoBdXA$dpaolgd3dJjqNnz616Z7SolFqFI5byhCWBC5vuSQy4Y";
+
+/// Spends one password check and refuses: for an unknown, disabled or not yet activated account.
+pub(super) async fn refuse_like_a_check(password: &str) -> bool {
+    let _ = verify_password(password, NO_ACCOUNT).await;
+    false
+}
+
 /// False for a wrong password. A stored hash that does not parse, or a hashing task that dies,
 /// also refuses the sign-in, but is logged: those are faults, not wrong passwords.
 pub(super) async fn verify_password(password: &str, stored: &str) -> bool {

@@ -159,17 +159,18 @@ pub async fn reset_super_admin_password(
 pub async fn login(db: &Db, email: &str, password: &str) -> Result<String, AccountError> {
     let email = email_key(email).ok_or(AccountError::BadCredentials)?;
     let user = store::find_user_by_email(&db.read().await?, &email).await?;
-    // ponytail: an unknown email skips argon2, so its timing differs; verify a dummy hash if enumeration matters.
-    let Some(user) = user.filter(|u| u.disabled_at.is_none()) else {
-        return Err(AccountError::BadCredentials);
+    // An unknown, disabled or not yet activated account costs one argon2 run, as a real one does.
+    let signed_in = match user.as_ref().filter(|u| u.disabled_at.is_none()) {
+        Some(u) => match u.password_hash.as_deref() {
+            Some(stored) => verify_password(password, stored).await,
+            None => password::refuse_like_a_check(password).await,
+        },
+        None => password::refuse_like_a_check(password).await,
     };
-    let Some(stored) = user.password_hash.as_deref() else {
-        return Err(AccountError::BadCredentials);
-    };
-    if !verify_password(password, stored).await {
-        return Err(AccountError::BadCredentials);
+    match user {
+        Some(u) if signed_in => new_session(db, u.id).await,
+        _ => Err(AccountError::BadCredentials),
     }
-    new_session(db, user.id).await
 }
 
 async fn new_session(db: &Db, user_id: i64) -> Result<String, AccountError> {

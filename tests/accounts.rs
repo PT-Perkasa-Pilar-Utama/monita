@@ -557,3 +557,92 @@ async fn a_corrupt_stored_hash_refuses_the_sign_in_without_a_crash() {
         .await;
     assert_eq!(res.status(), 422);
 }
+
+/// No account to sign in to (unknown, disabled with the right password, or invited and never
+/// activated) gets the same refusal as a wrong password.
+#[tokio::test]
+async fn a_sign_in_without_a_usable_account_is_refused_like_a_wrong_password() {
+    let app = TestApp::spawn("test").await;
+    let admin = app.super_admin("admin@x.co").await;
+    app.tl("rina@x.co").await;
+    monita::accounts::invite_tl(&app.state.db, common::BASE_URL, "new@x.co")
+        .await
+        .unwrap();
+    let users = common::json_of(app.api_get("/api/ui/admin/users", Some(&admin)).await).await;
+    let rina = users["data"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|u| u["email"] == "rina@x.co")
+        .unwrap()["id"]
+        .as_i64()
+        .unwrap();
+    let off = app
+        .api_post(
+            &format!("/api/ui/admin/users/{rina}/disable"),
+            json!({}),
+            Some(&admin),
+        )
+        .await;
+    assert_eq!(off.status(), 204);
+    let login = async |email: &str, password: &str| {
+        let res = app
+            .api_post(
+                "/api/ui/login",
+                json!({ "email": email, "password": password }),
+                None,
+            )
+            .await;
+        (
+            res.status(),
+            common::json_of(res).await["error"]["message"].clone(),
+        )
+    };
+    let wrong = login("admin@x.co", "not-the-password").await;
+    assert_eq!(wrong.0, 422);
+    for email in ["nobody@x.co", "rina@x.co", "new@x.co"] {
+        assert_eq!(login(email, PASSWORD).await, wrong, "{email}");
+    }
+}
+
+/// Two super admins acting on each other at once: the second write finds its actor already
+/// disabled or demoted, so one active super admin always remains.
+#[tokio::test]
+async fn an_admin_disabled_or_demoted_meanwhile_cannot_act_on_the_other() {
+    let app = TestApp::spawn("test").await;
+    app.super_admin("a@x.co").await;
+    app.super_admin("b@x.co").await;
+    let id = async |email: &str| {
+        monita::platform::db::query_i64(
+            &app.state.db.read().await.unwrap(),
+            "SELECT id FROM users WHERE email = ?1",
+            [email],
+        )
+        .await
+        .unwrap()
+        .unwrap()
+    };
+    let (a, b) = (id("a@x.co").await, id("b@x.co").await);
+    // A's change lands first; B's request had already passed its role check.
+    accounts::disable(&app.state.db, a, b).await.unwrap();
+    assert!(matches!(
+        accounts::disable(&app.state.db, b, a).await,
+        Err(accounts::AdminError::NotSuperAdmin)
+    ));
+    accounts::enable(&app.state.db, b).await.unwrap();
+    accounts::set_role(&app.state.db, a, b, accounts::Role::Tl)
+        .await
+        .unwrap();
+    assert!(matches!(
+        accounts::set_role(&app.state.db, b, a, accounts::Role::Tl).await,
+        Err(accounts::AdminError::NotSuperAdmin)
+    ));
+    let admins = monita::platform::db::query_i64(
+        &app.state.db.read().await.unwrap(),
+        "SELECT count(*) FROM users WHERE role = 'super_admin' AND disabled_at IS NULL",
+        (),
+    )
+    .await
+    .unwrap();
+    assert_eq!(admins, Some(1));
+}

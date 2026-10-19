@@ -677,14 +677,10 @@ async fn the_digest_skips_a_disabled_owner() {
     let s = setup(&app).await;
     let rid = ref_id(&app, &s.key, false).await;
     submit(&app, &rid, "Checkout broken").await;
-    let rina = monita::accounts::list_users(&app.state.db)
-        .await
-        .unwrap()
-        .into_iter()
-        .find(|u| u.email == "rina@x.co")
-        .unwrap()
-        .id;
-    monita::accounts::disable(&app.state.db, 0, rina)
+    app.super_admin("admin@x.co").await;
+    let users = monita::accounts::list_users(&app.state.db).await.unwrap();
+    let id_of = |email: &str| users.iter().find(|u| u.email == email).unwrap().id;
+    monita::accounts::disable(&app.state.db, id_of("admin@x.co"), id_of("rina@x.co"))
         .await
         .unwrap();
     assert_eq!(

@@ -1,5 +1,6 @@
 //! What a super admin does to other accounts: change a role, disable, enable, reset sign-in.
-//! Nobody acts on their own account here, so at least one active super admin always remains.
+//! Nobody acts on their own account here, and the actor must still be an active super admin when
+//! the change is written, so two admins acting on each other at once cannot leave none.
 
 use super::{Role, store};
 use crate::platform::{db::Db, now};
@@ -12,6 +13,8 @@ pub enum AdminError {
     NotFound,
     #[error("This person owns projects. Give their projects to another owner first.")]
     OwnsProjects,
+    #[error("Your account is no longer an active super admin.")]
+    NotSuperAdmin,
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 }
@@ -40,6 +43,9 @@ pub async fn set_role(db: &Db, actor: i64, user_id: i64, role: Role) -> Result<(
     let at = now();
     let changed = db
         .write(async |c| {
+            if !store::is_active_super_admin(c, actor).await? {
+                return Ok(Err(AdminError::NotSuperAdmin));
+            }
             if role == Role::Supervisor && crate::projects::owns_any(c, user_id).await? {
                 return Ok(Err(AdminError::OwnsProjects));
             }
@@ -53,10 +59,15 @@ pub async fn set_role(db: &Db, actor: i64, user_id: i64, role: Role) -> Result<(
 pub async fn disable(db: &Db, actor: i64, user_id: i64) -> Result<(), AdminError> {
     not_self(actor, user_id)?;
     let at = now();
-    found(
-        db.write(async |c| store::disable_user(c, user_id, at).await)
-            .await?,
-    )
+    let changed = db
+        .write(async |c| {
+            if !store::is_active_super_admin(c, actor).await? {
+                return Ok(Err(AdminError::NotSuperAdmin));
+            }
+            Ok(Ok(store::disable_user(c, user_id, at).await?))
+        })
+        .await??;
+    found(changed)
 }
 
 /// Undoes a disable. A user who had set a password signs in with it again; one who had not

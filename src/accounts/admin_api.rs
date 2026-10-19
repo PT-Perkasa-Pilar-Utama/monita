@@ -92,6 +92,7 @@ impl From<AdminError> for UiError {
             AdminError::Yourself => UiError::invalid(e.to_string()),
             AdminError::NotFound => UiError::NotFound,
             AdminError::OwnsProjects => UiError::field("role", e.to_string()),
+            AdminError::NotSuperAdmin => UiError::Forbidden,
             AdminError::Other(e) => UiError::Internal(e),
         }
     }

@@ -115,6 +115,18 @@ pub async fn set_role(c: &Connection, user_id: i64, role: Role, at: i64) -> anyh
     Ok(n > 0)
 }
 
+/// Read inside the write that acts on another account: the request's role check ran before the
+/// writer was taken, and another admin's change may have landed in between.
+pub async fn is_active_super_admin(c: &Connection, user_id: i64) -> anyhow::Result<bool> {
+    let n = crate::platform::db::query_i64(
+        c,
+        "SELECT count(*) FROM users WHERE id = ?1 AND role = 'super_admin' AND disabled_at IS NULL",
+        [user_id],
+    )
+    .await?;
+    Ok(n == Some(1))
+}
+
 pub async fn enable_user(c: &Connection, user_id: i64, at: i64) -> anyhow::Result<bool> {
     let n = c
         .execute(
