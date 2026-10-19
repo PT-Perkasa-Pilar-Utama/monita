@@ -95,6 +95,29 @@ pub(super) async fn revoke_ref(
 
 #[derive(Deserialize, Default)]
 #[serde(default)]
+pub(super) struct RefIdForm {
+    single_use: bool,
+}
+
+/// US-23 from the board: the team issues a ref ID for someone who reports outside the app.
+/// 201 with the raw ref ID, shown once; only its hash is stored.
+pub(super) async fn issue_ref_id(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(slug): Path<String>,
+    Body(f): Body<RefIdForm>,
+) -> UiResult {
+    let p = projects::find_for(&state.db, &user, &slug).await?;
+    let (ref_id, created_at) = crate::tickets::issue_ref_id(&state.db, p.id, f.single_use).await?;
+    Ok(crate::platform::ui::created(serde_json::json!({
+        "ref_id": ref_id,
+        "single_use": f.single_use,
+        "created_at": created_at,
+    })))
+}
+
+#[derive(Deserialize, Default)]
+#[serde(default)]
 pub(super) struct FileForm {
     title: String,
     description: String,

@@ -121,6 +121,7 @@ export {
   Hourglass,
   House,
   Tray as Inbox,
+  IdentificationCard,
   Info,
   Info as InfoIcon,
   Key,

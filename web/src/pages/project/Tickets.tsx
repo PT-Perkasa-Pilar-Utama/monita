@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { FormEvent, ReactElement } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ConnectApp } from "@/components/app/ConnectApp";
+import { IssueRefId } from "@/components/app/IssueRefId";
 import { NewTicketSheet } from "@/components/app/NewTicketSheet";
 import { ShowMore, TicketBoard, TicketCard } from "@/components/app/TicketBoard";
 import { TicketPanel } from "@/components/app/TicketPanel";
@@ -112,6 +113,7 @@ export function Tickets(): ReactElement {
         title="Tickets"
         actions={
           <>
+            <IssueRefId />
             <ConnectApp slug={p.slug} />
             <NewTicketSheet slug={p.slug} onFiled={changed} />
           </>

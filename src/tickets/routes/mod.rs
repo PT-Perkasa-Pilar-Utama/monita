@@ -61,6 +61,7 @@ pub fn router() -> Router<AppState> {
             "/api/ui/projects/{slug}/tickets/{number}/revoke-ref",
             post(board::revoke_ref),
         )
+        .route("/api/ui/projects/{slug}/ref-ids", post(board::issue_ref_id))
 }
 
 impl From<TicketError> for UiError {

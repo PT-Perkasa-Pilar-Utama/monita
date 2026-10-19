@@ -734,3 +734,34 @@ async fn a_public_tab_turned_off_answers_404_and_the_app_api_still_files() {
         .await;
     assert_eq!(mine.status(), 200);
 }
+
+#[tokio::test]
+async fn the_team_issues_a_ref_id_from_the_board_and_it_files_tickets() {
+    let app = TestApp::spawn("test").await;
+    let s = setup(&app).await;
+    let path = "/api/ui/projects/payments/ref-ids";
+    let other = app.tl("budi@x.co").await;
+    assert_eq!(
+        app.api_post(path, json!({}), Some(&other)).await.status(),
+        404,
+        "only the owner"
+    );
+
+    let res = app
+        .api_post(path, json!({ "single_use": true }), Some(&s.tl))
+        .await;
+    assert_eq!(res.status(), 201);
+    let rid = json_of(res).await["data"]["ref_id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    assert!(rid.starts_with("rf_"), "{rid}");
+    assert_eq!(submit(&app, &rid, "Reported by phone").await.status(), 201);
+    assert_eq!(
+        submit(&app, &rid, "A second report").await.status(),
+        422,
+        "single use"
+    );
+    let stored = format!("SELECT count(*) FROM ref_ids WHERE token_hash = '{rid}'");
+    assert_eq!(count(&app, &stored).await, 0, "only the hash is stored");
+}
