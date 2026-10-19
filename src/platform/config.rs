@@ -75,6 +75,11 @@ impl Config {
             .filter(|u| u.path() == "/" && u.query().is_none() && u.fragment().is_none())
             .context("MONITA_BASE_URL must be an origin such as https://monita.company.co.id")?;
         let base_url = parsed.origin().ascii_serialization();
+        // A relay may refuse a sender at `localhost`, so the default names Monita's own host.
+        let default_from = format!(
+            "Monita <monita@{}>",
+            parsed.host_str().unwrap_or("localhost")
+        );
         if env == Env::Prod && !base_url.starts_with("https://") {
             bail!("MONITA_BASE_URL must start with https:// when MONITA_ENV=prod");
         }
@@ -102,7 +107,7 @@ impl Config {
             backup_dir: var("MONITA_BACKUP_DIR").map(PathBuf::from),
             backup_keep: parse_num("MONITA_BACKUP_KEEP", 7)? as usize,
             smtp_url: var("MONITA_SMTP_URL"),
-            mail_from: var("MONITA_MAIL_FROM").unwrap_or_else(|| "monita@localhost".into()),
+            mail_from: var("MONITA_MAIL_FROM").unwrap_or(default_from),
             ping_url: var("MONITA_PING_URL"),
             trust_proxy: flag(
                 var("MONITA_TRUST_PROXY"),
@@ -147,6 +152,20 @@ mod tests {
         assert!(cfg(&[]).is_err());
         let c = cfg(&[("MONITA_ENV", "dev")]).unwrap();
         assert_eq!(c.base_url, "http://localhost:7466");
+    }
+
+    #[test]
+    fn the_sender_defaults_to_monitas_own_host() {
+        let prod = [
+            ("MONITA_ENV", "prod"),
+            ("MONITA_BASE_URL", "https://Monita.Example.com"),
+        ];
+        assert_eq!(
+            cfg(&prod).unwrap().mail_from,
+            "Monita <monita@monita.example.com>"
+        );
+        let set = cfg(&[prod[0], prod[1], ("MONITA_MAIL_FROM", "ops@example.com")]).unwrap();
+        assert_eq!(set.mail_from, "ops@example.com");
     }
 
     #[test]
