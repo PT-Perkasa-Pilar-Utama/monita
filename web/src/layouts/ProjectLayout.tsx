@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import type { ReactElement } from "react";
-import { Link, Outlet, useParams } from "react-router-dom";
+import { Link, Outlet, useLocation, useParams } from "react-router-dom";
+import { MonitorsFooter } from "@/components/app/PrimitiveFooter";
 import { ProjectBadge } from "@/components/app/ProjectBadge";
 import { AlertTriangle, ExternalLink, Globe, Heartbeat, LayoutGrid, Activity, ScrollText, Settings, Ticket } from "@/components/icons";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,7 @@ import { useApi } from "@/lib/useApi";
 
 function ProjectChrome(): ReactElement | null {
   const { slug = "" } = useParams();
+  const { pathname } = useLocation();
   const me = useMe();
   const head = useApi<ProjectHead>(`/projects/${encodeURIComponent(slug)}`);
   const opened = head.data?.project;
@@ -82,10 +84,13 @@ function ProjectChrome(): ReactElement | null {
   );
   return (
     <ProjectProvider value={{ ...head.data, reload: head.reload }}>
-      <TopBar crumb={crumb} tabs={tabs} />
-      <PageFrame>
-        <Outlet />
-      </PageFrame>
+      <div className="flex min-h-dvh flex-col">
+        <TopBar crumb={crumb} tabs={tabs} />
+        <PageFrame>
+          <Outlet />
+        </PageFrame>
+        {pathname.startsWith(`${base}/monitors`) && <MonitorsFooter />}
+      </div>
     </ProjectProvider>
   );
 }

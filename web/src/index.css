@@ -147,3 +147,8 @@
    panels sit under it. */
 :root { --bar-h: 57px; }
 body:has(header[data-has-tabs]) { --bar-h: 101px; }
+
+/* The footer illustrations. Reduced motion stops them through the rule in the base layer. */
+@keyframes monita-ping { to { stroke-dashoffset: -22; } }
+@keyframes monita-blink { 0%, 94%, 100% { transform: scaleY(1); } 97% { transform: scaleY(0.1); } }
+@keyframes monita-beat { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
