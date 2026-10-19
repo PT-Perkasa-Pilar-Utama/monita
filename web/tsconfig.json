@@ -33,6 +33,7 @@
   },
   "include": [
     "src",
+    "scripts",
     "build.ts"
   ],
   "exclude": [

@@ -1,6 +1,9 @@
 <div align="center">
 
-<img src="docs/assets/logo.svg" alt="Monita" width="236">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/brand/logo-on-dark.svg">
+  <img src="docs/assets/brand/logo.svg" alt="Monita" width="228">
+</picture>
 
 ### Site reliability for every project your team ships.
 
@@ -15,7 +18,7 @@ You run it on your own server as one program, and it keeps all its data in one S
 **[Docs](https://pt-perkasa-pilar-utama.github.io/monita/docs/)** &nbsp;&nbsp;
 **[Install](#install)**
 
-<img src="docs/assets/moni.svg" alt="Moni, the Monita mascot, and friends at play: flying a kite, playing catch, stacking uptime blocks and blowing bubbles" width="100%">
+<img src="docs/assets/brand/moni-friends.svg" alt="Moni, the Monita mascot, and friends at play: flying a kite, playing catch, stacking uptime blocks and blowing bubbles" width="100%">
 
 </div>
 

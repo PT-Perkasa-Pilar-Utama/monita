@@ -1,8 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="236" height="64" viewBox="0 0 236 64" fill="none" role="img" aria-label="Monita">
-  <style>.word{fill:#16171a}@media (prefers-color-scheme:dark){.word{fill:#f7f8f8}}</style>
-  <g transform="translate(4 4) scale(2.8)" stroke="#e0369f" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="10" cy="10" r="8.25"/>
-    <path d="M4.5 10.5h2.5l1.5-3.5 3 6 1.5-2.5h2.5"/>
-  </g>
-  <text class="word" x="76" y="45" font-family="Inter, -apple-system, 'Segoe UI', system-ui, sans-serif" font-size="40" font-weight="600" letter-spacing="-1.2">monita</text>
-</svg>

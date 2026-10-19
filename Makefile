@@ -1,4 +1,4 @@
-.PHONY: setup web web-check run dev fmt check-fast check release-check e2e e2e-full release clean-stale
+.PHONY: setup web web-check run dev fmt check-fast check release-check e2e e2e-full release brand clean-stale
 
 # Keep the laptop usable while rustc runs: 4 jobs at low priority. CI sets CARGO_BUILD_JOBS itself.
 export CARGO_BUILD_JOBS ?= 4
@@ -52,6 +52,11 @@ e2e-full: web
 
 release: web
 	$(CARGO) build --release --target x86_64-unknown-linux-musl
+
+# The logo and Moni as files (docs/assets/brand), drawn by the app's own components.
+brand:
+	cd web && bun scripts/brand.tsx
+	cd e2e && bun brand-png.ts
 
 # Drop build artifacts not used for 14 days (cargo's own cache GC).
 clean-stale:

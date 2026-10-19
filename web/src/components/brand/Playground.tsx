@@ -43,16 +43,17 @@ export function Playground(): ReactElement {
   return (
     <div className="relative size-full border-b border-input">
       <svg aria-hidden="true" viewBox="0 0 1200 220" preserveAspectRatio="xMidYMax slice" className="absolute inset-0 size-full sm:hidden">
-        <Scene />
+        <PlaygroundScene />
       </svg>
       <svg aria-hidden="true" viewBox="0 0 1200 220" preserveAspectRatio="xMidYMax meet" className="absolute inset-0 size-full max-sm:hidden">
-        <Scene />
+        <PlaygroundScene />
       </svg>
     </div>
   );
 }
 
-function Scene(): ReactElement {
+/** The playground drawing alone, in a 1200 by 220 view box. The brand files reuse it. */
+export function PlaygroundScene(): ReactElement {
   return (
     <>
       <Cloud x={70} y={46} />
