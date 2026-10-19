@@ -46,7 +46,7 @@ The motto from the scope decision is: easy to integrate, simple features, lightw
 - Every list has a hard cap, and every background job works in batches.
 - Roles: super admin, tech lead and supervisor. A tech lead sees only their own projects. A supervisor sees every project and changes nothing.
 - Version 1 does not include: checks from more than one place, TCP, ping or DNS checks, text-message or phone alerts, on-call rotations, single sign-on, two-factor sign-in, or file uploads on tickets.
-- Terms have one meaning each. The README's Terms table is the reference: say "tech lead", not "TL", and "ticket board", not "kanban".
+- Terms have one meaning each. `docs/GLOSSARY.md` is the reference: say "tech lead", not "TL", and "ticket board", not "kanban".
 
 ## Brand Commitments
 
