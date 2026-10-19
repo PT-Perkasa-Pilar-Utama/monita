@@ -58,6 +58,8 @@ pub struct Source {
     pub alert: bool,
     /// Its failures open an incident. Off: it goes Down on the team's pages and alerts only.
     pub auto_incident: bool,
+    /// Failed checks in a row that count as down; a heartbeat ignores it.
+    pub fails_to_open: u32,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -121,7 +123,10 @@ fn title_and_cause(source: &Source, sig: &Signal) -> (String, String) {
     match sig {
         Signal::CheckFailed { cause } => (
             format!("{} is down", source.name),
-            format!("{cause} after {} checks", engine::FAILS_TO_OPEN),
+            match source.fails_to_open {
+                1 => format!("{cause} on 1 check"),
+                n => format!("{cause} after {n} checks"),
+            },
         ),
         Signal::HeartbeatMissed => (
             format!("{} missed its heartbeat", source.name),
@@ -144,7 +149,7 @@ pub async fn observe(
     now: i64,
 ) -> anyhow::Result<Option<Event>> {
     let (state, open_id, down_since) = store::load_source(c, source.kind, source.id).await?;
-    let (next, effect) = engine::step(state, sig);
+    let (next, effect) = engine::step(state, sig, source.fails_to_open);
     let mut opened = open_id;
     let mut since = down_since;
     let event = match effect {

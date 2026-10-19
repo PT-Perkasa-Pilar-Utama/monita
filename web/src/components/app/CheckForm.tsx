@@ -1,4 +1,4 @@
-import type { ReactElement } from "react";
+import type { ReactElement, ReactNode } from "react";
 import { ChoiceCards } from "@/components/app/ChoiceCards";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldError, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
@@ -61,21 +61,25 @@ export function ChoiceField({
   );
 }
 
-/** The two switches a monitor or heartbeat has for a failure. Both start on. */
+/** The two switches a monitor or heartbeat has for a failure. Both start on. A monitor puts its
+ * failure count first. */
 export function WhenItFails({
   id,
   alert,
   autoIncident,
   onChange,
+  children,
 }: {
   id: string;
   alert: boolean;
   autoIncident: boolean;
   onChange: (k: "alert" | "auto_incident", v: boolean) => void;
+  children?: ReactNode;
 }): ReactElement {
   return (
     <FieldSet className="gap-3">
       <FieldLegend variant="label">When it fails</FieldLegend>
+      {children}
       <Field orientation="horizontal">
         <Checkbox id={`${id}-alert`} checked={alert} onCheckedChange={(v) => onChange("alert", v === true)} />
         <FieldLabel htmlFor={`${id}-alert`} className="font-normal">

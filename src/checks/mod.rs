@@ -63,6 +63,8 @@ pub struct MonitorInput {
     pub alert: bool,
     /// A failure opens an incident on its own. Off: only an alert, and you report one by hand.
     pub auto_incident: bool,
+    /// Failed checks in a row that count as down: 1, 2, 3 or 5.
+    pub fails_to_open: i64,
     /// GET, HEAD, POST or PUT; empty reads as GET.
     pub method: String,
     /// `Name: value` lines, as entered.
@@ -83,6 +85,7 @@ impl MonitorInput {
             severity: "warning".into(),
             alert: true,
             auto_incident: true,
+            fails_to_open: 2,
             ..Self::default()
         }
     }
@@ -117,6 +120,12 @@ impl MonitorInput {
         }
         if !matches!(self.severity.as_str(), "critical" | "warning") {
             e.insert("severity", "Pick critical or warning.");
+        }
+        if !crate::incidents::engine::FAILS_CHOICES
+            .iter()
+            .any(|&n| i64::from(n) == self.fails_to_open)
+        {
+            e.insert("fails_to_open", "Pick 1, 2, 3 or 5 failed checks.");
         }
         if !probe::METHODS.contains(&self.method()) {
             e.insert("method", "Pick GET, HEAD, POST or PUT.");

@@ -19,7 +19,7 @@ The first check runs at a random moment within the first interval, so monitors a
 
 ## When an incident opens
 
-- Two failed checks in a row open an automatic incident and send alerts.
+- 2 failed checks in a row open an automatic incident and send alerts. Pick another count (1, 2, 3 or 5) under **When it fails**.
 - The first passing check closes it and sends a recovery alert.
 - A tech lead can also open an incident by hand. See [Incidents and alerts](incidents.md).
 

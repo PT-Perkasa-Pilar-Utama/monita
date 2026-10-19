@@ -107,7 +107,7 @@ export function MonitorGuide(): ReactElement {
       steps={[
         "Monita sends a GET request to the URL at the interval you choose.",
         <PassRules />,
-        "Two failed checks in a row open an incident. The first passing check closes it.",
+        "A monitor counts as down after 2 failed checks in a row, or the count you pick: 1, 2, 3 or 5. That opens an incident. The first passing check closes it.",
         "A critical monitor alerts by email and webhook. A warning monitor alerts by email only.",
         "With incidents off, a failure only sends a down alert, and recovery sends an up alert. The status page shows nothing.",
       ]}

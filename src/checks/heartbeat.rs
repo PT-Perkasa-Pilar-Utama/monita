@@ -78,6 +78,7 @@ impl Heartbeat {
             severity: self.severity.clone(),
             alert: self.alert,
             auto_incident: self.auto_incident,
+            fails_to_open: 1,
         }
     }
 

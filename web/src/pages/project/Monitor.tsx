@@ -77,6 +77,7 @@ export function Monitor({ editing = false }: { editing?: boolean }): ReactElemen
                       ["Timeout", `${m.timeout_s} seconds`],
                       ["Expects", m.keyword ? `${m.expected_status} with "${m.keyword}"` : m.expected_status],
                       ["TLS", m.skip_tls_verify ? "Not verified" : "Verified"],
+                      ["Counts as down after", m.fails_to_open === 1 ? "1 failed check" : `${m.fails_to_open} failed checks in a row`],
                       ["When it fails", whenItFails(m.alert, m.auto_incident)],
                       ["Next check", stamp(m.next_check_at)],
                     ]}

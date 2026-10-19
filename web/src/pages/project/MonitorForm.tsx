@@ -35,6 +35,7 @@ type Form = {
   method: string;
   headers: string;
   body: string;
+  fails_to_open: number;
 };
 
 const METHODS = ["GET", "HEAD", "POST", "PUT"];
@@ -60,8 +61,8 @@ function MonitorFormBody({ id, onClose, onSaved }: { id: string | undefined; onC
     if (id && !m) return;
     setForm(
       m
-        ? { name: m.name, url: m.url, interval_s: m.interval_s, timeout_s: String(m.timeout_s), expected_status: m.expected_status, keyword: m.keyword ?? "", skip_tls_verify: m.skip_tls_verify, severity: m.severity, is_public: m.is_public, alert: m.alert, auto_incident: m.auto_incident, method: m.method, headers: m.headers, body: m.body ?? "" }
-        : { name: "", url: "", interval_s: o.monitor.interval_s, timeout_s: String(o.monitor.timeout_s), expected_status: o.monitor.expected_status, keyword: "", skip_tls_verify: false, severity: o.monitor.severity, is_public: false, alert: true, auto_incident: true, method: "GET", headers: "", body: "" },
+        ? { name: m.name, url: m.url, interval_s: m.interval_s, timeout_s: String(m.timeout_s), expected_status: m.expected_status, keyword: m.keyword ?? "", skip_tls_verify: m.skip_tls_verify, severity: m.severity, is_public: m.is_public, alert: m.alert, auto_incident: m.auto_incident, method: m.method, headers: m.headers, body: m.body ?? "", fails_to_open: m.fails_to_open }
+        : { name: "", url: "", interval_s: o.monitor.interval_s, timeout_s: String(o.monitor.timeout_s), expected_status: o.monitor.expected_status, keyword: "", skip_tls_verify: false, severity: o.monitor.severity, is_public: false, alert: true, auto_incident: true, method: "GET", headers: "", body: "", fails_to_open: 2 },
     );
   }, [form, id, options.data, current.data]);
 
@@ -76,7 +77,7 @@ function MonitorFormBody({ id, onClose, onSaved }: { id: string | undefined; onC
     setBusy(true);
     setError(null);
     // A body typed for POST stays in the box after a switch to GET, but only POST and PUT send it.
-    const body = { ...form, interval_s: String(form.interval_s), body: sendsBody(form.method) ? form.body : "" };
+    const body = { ...form, interval_s: String(form.interval_s), fails_to_open: String(form.fails_to_open), body: sendsBody(form.method) ? form.body : "" };
     try {
       if (id) {
         await api(`${base}/${id}`, "PUT", body);
@@ -218,7 +219,28 @@ function MonitorFormBody({ id, onClose, onSaved }: { id: string | undefined; onC
                     </Field>
                   </FieldSet>
                   <SeverityField value={form.severity} onChange={(v) => set("severity", v)} />
-                  <WhenItFails id="m" alert={form.alert} autoIncident={form.auto_incident} onChange={set} />
+                  <WhenItFails id="m" alert={form.alert} autoIncident={form.auto_incident} onChange={set}>
+                    <Field data-invalid={err("fails_to_open") ? true : undefined} className="max-w-sm">
+                      <FieldLabel htmlFor="m-fails" className="font-normal">
+                        It counts as down after
+                      </FieldLabel>
+                      <Select value={String(form.fails_to_open)} onValueChange={(v) => set("fails_to_open", Number(v))}>
+                        <SelectTrigger id="m-fails">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectGroup>
+                            {options.data.fails.map((n) => (
+                              <SelectItem key={n} value={String(n)}>
+                                {n === 1 ? "1 failed check" : `${n} failed checks in a row`}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                      {err("fails_to_open") && <FieldError>{err("fails_to_open")}</FieldError>}
+                    </Field>
+                  </WhenItFails>
                   <PublicField id="m" noun="monitor" checked={form.is_public} onChange={(v) => set("is_public", v)} />
                 </FieldGroup>
               

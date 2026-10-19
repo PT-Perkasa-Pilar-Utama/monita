@@ -35,6 +35,10 @@ const MIGRATIONS: &[(i64, &str)] = &[
         13,
         include_str!("../../migrations/0013_monitor_request.sql"),
     ),
+    (
+        14,
+        include_str!("../../migrations/0014_monitor_fails_to_open.sql"),
+    ),
 ];
 
 pub async fn run(db: &Db) -> anyhow::Result<()> {

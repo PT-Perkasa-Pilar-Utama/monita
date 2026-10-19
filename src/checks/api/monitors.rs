@@ -57,6 +57,7 @@ struct MonitorView {
     is_public: bool,
     alert: bool,
     auto_incident: bool,
+    fails_to_open: i64,
     method: String,
     /// `Name: value` lines. Owner and super admin only, like the rest of this view.
     headers: String,
@@ -89,6 +90,7 @@ fn view(m: Monitor, state: &'static str) -> MonitorView {
         is_public: m.is_public,
         alert: m.alert,
         auto_incident: m.auto_incident,
+        fails_to_open: m.fails_to_open,
         method: m.method,
         headers: m.headers.unwrap_or_default(),
         body: m.body,
@@ -246,6 +248,8 @@ struct MonitorForm {
     method: String,
     headers: String,
     body: String,
+    /// Missing means 2, the count every monitor used before it could choose.
+    fails_to_open: Option<String>,
 }
 
 impl From<MonitorForm> for MonitorInput {
@@ -269,6 +273,7 @@ impl From<MonitorForm> for MonitorInput {
             is_public: f.is_public,
             alert: f.alert.unwrap_or(true),
             auto_incident: f.auto_incident.unwrap_or(true),
+            fails_to_open: f.fails_to_open.map_or(2, |n| n.trim().parse().unwrap_or(0)),
             method: f.method.trim().to_uppercase(),
             headers: f.headers,
             body: Some(f.body).filter(|b| !b.trim().is_empty()),

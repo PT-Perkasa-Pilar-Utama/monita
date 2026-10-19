@@ -190,3 +190,49 @@ async fn with_alerts_off_an_incident_opens_and_closes_without_a_message() {
         "the invite only"
     );
 }
+
+#[tokio::test]
+async fn a_monitor_set_to_one_failure_opens_at_once_and_two_waits() {
+    let app = TestApp::spawn("test").await;
+    let tl = app.tl("rina@x.co").await;
+    app.project(&tl, "Payments", "payments").await;
+    let (url, up) = switchable().await;
+    for (name, fails_to_open) in [("at once", 1), ("waits", 2)] {
+        let m = MonitorInput {
+            name: name.into(),
+            url: url.clone(),
+            fails_to_open,
+            ..MonitorInput::defaults()
+        };
+        checks::create_monitor(&app.state.db, 1, &m).await.unwrap();
+    }
+    up.store(false, Ordering::SeqCst);
+    // Both monitors check in the same tick, so wait for two results.
+    app.state
+        .db
+        .write(async |c| {
+            c.execute("UPDATE monitors SET next_check_at = 0", ())
+                .await?;
+            Ok(())
+        })
+        .await
+        .unwrap();
+    for _ in 0..50 {
+        if count(&app, "SELECT count(*) FROM check_results").await >= 2 {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    let open = "SELECT count(*) FROM incidents WHERE resolved_at IS NULL";
+    assert_eq!(count(&app, open).await, 1, "only the one set to 1 opened");
+    let title = "SELECT count(*) FROM incidents WHERE title = 'at once is down'";
+    assert_eq!(count(&app, title).await, 1);
+
+    let bad = serde_json::json!({ "name": "x", "url": url, "interval_s": "60", "timeout_s": "5",
+        "expected_status": "2xx", "severity": "warning", "fails_to_open": "4" });
+    let res = app
+        .api_post("/api/ui/projects/payments/monitors", bad, Some(&tl))
+        .await;
+    assert_eq!(res.status(), 422);
+    assert!(json_of(res).await["error"]["fields"]["fails_to_open"].is_string());
+}

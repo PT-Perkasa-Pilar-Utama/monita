@@ -3,8 +3,10 @@
 
 use super::Signal;
 
-/// Confirmation for monitors: this many failed checks in a row open an incident (Q4).
+/// Confirmation for monitors: this many failed checks in a row open an incident (Q4). Each
+/// monitor may choose another count from `FAILS_CHOICES`.
 pub const FAILS_TO_OPEN: u32 = 2;
+pub const FAILS_CHOICES: [u32; 4] = [1, 2, 3, 5];
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct SourceState {
@@ -19,11 +21,12 @@ pub enum Effect {
     Resolve,
 }
 
-pub fn step(s: SourceState, sig: &Signal) -> (SourceState, Option<Effect>) {
+/// `fails_to_open` is the monitor's count of failed checks in a row; heartbeats ignore it.
+pub fn step(s: SourceState, sig: &Signal, fails_to_open: u32) -> (SourceState, Option<Effect>) {
     match (s.open, sig) {
         (false, Signal::CheckFailed { .. }) => {
             let streak = s.fail_streak + 1;
-            if streak >= FAILS_TO_OPEN {
+            if streak >= fails_to_open.max(1) {
                 (
                     SourceState {
                         fail_streak: streak,
@@ -120,7 +123,12 @@ mod tests {
             (state(0, false), Signal::CheckOk, state(0, false), None),
         ];
         for (i, (from, sig, to, effect)) in rows.into_iter().enumerate() {
-            assert_eq!(step(from, &sig), (to, effect), "row {}", i + 1);
+            assert_eq!(
+                step(from, &sig, FAILS_TO_OPEN),
+                (to, effect),
+                "row {}",
+                i + 1
+            );
         }
     }
 
@@ -134,9 +142,22 @@ mod tests {
             Signal::CheckOk,
             failed(),
         ] {
-            let (next, effect) = step(s, &sig);
+            let (next, effect) = step(s, &sig, FAILS_TO_OPEN);
             assert_eq!(effect, None);
             s = next;
         }
+    }
+
+    #[test]
+    fn a_monitor_opens_after_its_own_count_of_failures() {
+        let at_once = step(state(0, false), &failed(), 1);
+        assert_eq!(at_once, (state(1, true), Some(Effect::Open)));
+        let mut s = SourceState::default();
+        for _ in 0..2 {
+            let (next, effect) = step(s, &failed(), 3);
+            assert_eq!(effect, None, "fewer than 3 failures");
+            s = next;
+        }
+        assert_eq!(step(s, &failed(), 3), (state(3, true), Some(Effect::Open)));
     }
 }

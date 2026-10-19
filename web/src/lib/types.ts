@@ -86,6 +86,7 @@ export type MonitorView = {
   is_public: boolean;
   alert: boolean;
   auto_incident: boolean;
+  fails_to_open: number;
   method: "GET" | "HEAD" | "POST" | "PUT";
   /** `Name: value` lines. */
   headers: string;
@@ -204,6 +205,8 @@ export type CheckOptions = {
   intervals: Choice[];
   periods: Choice[];
   graces: Choice[];
+  /** Failed checks in a row a monitor may count as down. */
+  fails: number[];
   monitor: { interval_s: number; timeout_s: number; expected_status: string; severity: Severity };
   heartbeat: { period_s: number; grace_s: number; severity: Severity };
 };
