@@ -85,7 +85,22 @@ export function WhenItFails({
       <Field orientation="horizontal">
         <Checkbox id={`${id}-auto`} checked={autoIncident} onCheckedChange={(v) => onChange("auto_incident", v === true)} />
         <FieldLabel htmlFor={`${id}-auto`} className="font-normal">
-          Open an incident, which shows on the status page
+          Open an incident
+        </FieldLabel>
+      </Field>
+    </FieldSet>
+  );
+}
+
+/** Whether visitors see this monitor or heartbeat. Its incidents reach the status page only when they do. */
+export function PublicField({ id, noun, checked, onChange }: { id: string; noun: "monitor" | "heartbeat"; checked: boolean; onChange: (v: boolean) => void }): ReactElement {
+  return (
+    <FieldSet className="gap-3">
+      <FieldLegend variant="label">Status page</FieldLegend>
+      <Field orientation="horizontal">
+        <Checkbox id={`${id}-public`} checked={checked} onCheckedChange={(v) => onChange(v === true)} />
+        <FieldLabel htmlFor={`${id}-public`} className="font-normal">
+          Show this {noun} and its incidents on the public status page
         </FieldLabel>
       </Field>
     </FieldSet>

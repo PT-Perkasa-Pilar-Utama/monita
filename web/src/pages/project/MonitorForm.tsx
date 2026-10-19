@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { FormEvent, ReactElement } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChoiceField, SeverityField, WhenItFails } from "@/components/app/CheckForm";
+import { ChoiceField, PublicField, SeverityField, WhenItFails } from "@/components/app/CheckForm";
 import { FormSheet, FormSheetBody } from "@/components/app/FormSheet";
 import { MonitorGuide } from "@/components/app/Guides";
 import { ConfirmDialog } from "@/components/app/ConfirmDialog";
@@ -160,20 +160,15 @@ function MonitorFormBody({ id, onClose, onSaved }: { id: string | undefined; onC
                     <Input id="m-keyword" maxLength={200} aria-invalid={err("keyword") ? true : undefined} value={form.keyword} onChange={(e) => set("keyword", e.target.value)} />
                     {err("keyword") && <FieldError>{err("keyword")}</FieldError>}
                   </Field>
-                  <SeverityField value={form.severity} onChange={(v) => set("severity", v)} />
-                  <WhenItFails id="m" alert={form.alert} autoIncident={form.auto_incident} onChange={set} />
-                  <Field orientation="horizontal">
-                    <Checkbox id="m-public" checked={form.is_public} onCheckedChange={(v) => set("is_public", v === true)} />
-                    <FieldLabel htmlFor="m-public" className="font-normal">
-                      Show on the public status page
-                    </FieldLabel>
-                  </Field>
                   <Field orientation="horizontal">
                     <Checkbox id="m-tls" checked={form.skip_tls_verify} onCheckedChange={(v) => set("skip_tls_verify", v === true)} />
                     <FieldLabel htmlFor="m-tls" className="font-normal">
                       Accept self-signed certificates
                     </FieldLabel>
                   </Field>
+                  <SeverityField value={form.severity} onChange={(v) => set("severity", v)} />
+                  <WhenItFails id="m" alert={form.alert} autoIncident={form.auto_incident} onChange={set} />
+                  <PublicField id="m" noun="monitor" checked={form.is_public} onChange={(v) => set("is_public", v)} />
                 </FieldGroup>
               
       )}

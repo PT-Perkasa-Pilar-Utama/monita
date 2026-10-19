@@ -42,7 +42,7 @@ Sign in as `tl@monita.test` with the password `monita-dev-password`.
 
 1. Open **Monitors** and select **New monitor**.
 2. Enter a name and the URL. Keep the defaults: every minute, 10 s timeout, any `2xx` status.
-3. Tick **Show on the public status page** if users may see it.
+3. Under **Status page**, tick **Show this monitor and its incidents on the public status page** if users may see it.
 4. Save. The first check runs within one interval.
 
 The monitor page shows the state, the response time chart and the availability. See [Monitors](monitors.md).
