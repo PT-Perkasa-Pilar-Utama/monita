@@ -26,6 +26,7 @@ pub async fn save_ticket_alerts(
         return Err(RouteError::BadWebhook);
     }
     let a = TicketAlerts {
+        // Not written: saving keeps the on and off switch as it is (`set_enabled` owns it).
         enabled: true,
         digest,
         webhook_url: (!webhook.is_empty()).then(|| webhook.to_string()),

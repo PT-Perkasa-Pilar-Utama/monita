@@ -2,7 +2,7 @@
 
 Monita is a self-hosted uptime and incident service for every project in the IT department. It is a small version of Better Stack. It checks project URLs, receives heartbeat pings from project jobs, opens and closes incidents, sends alerts, publishes a status page per project, and collects bug tickets from project users. It ships as one binary with one SQLite-format database file.
 
-> **Terminology.** The terms Monitor, Heartbeat, Incident, Status update, Ref ID and Ticket are defined in the [decision log](../decisions/2026-10-16-monita-v1-scope.md#terms). `docs/GLOSSARY.md` takes them over when `project-docs` runs.
+> **Terminology.** The terms Monitor, Heartbeat, Incident, Status update, Ref ID and Ticket are defined in the [decision log](../decisions/2026-10-16-monita-v1-scope.md#terms). The README's [Terms](../../README.md#terms) table is the short reference.
 
 > **Language policy.** UI copy, code identifiers and docs are in English.
 

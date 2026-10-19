@@ -83,7 +83,7 @@ The web pages are built into the binary. A binary built without `make web` (or `
    monita whereis               # env file, database, backups, unit, logs
    ```
 
-3. Put the company reverse proxy in front for HTTPS. Setup's defaults, `MONITA_TRUST_PROXY=true` and `MONITA_BIND=127.0.0.1:7466`, assume one. If other hosts can reach the port, they can forge `X-Forwarded-For`.
+3. Put the company reverse proxy in front for HTTPS. Setup's defaults, `MONITA_TRUST_PROXY=true` and `MONITA_BIND=127.0.0.1:7466`, assume one. If other hosts can reach the port, they can forge `X-Forwarded-For`. With `MONITA_TRUST_PROXY=false` behind a proxy, every visitor has the proxy's address, so one person can use up the per-address limits, sign-in included, for everyone.
 
 `monita service status`, `monita service logs -f` and `monita service uninstall` cover the rest. `service install` writes the same unit as [deploy/monita.service](../../deploy/monita.service), with this host's paths.
 

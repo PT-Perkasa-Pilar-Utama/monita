@@ -30,7 +30,7 @@
 | Scope decision log | [../decisions/2026-10-16-monita-v1-scope.md](../decisions/2026-10-16-monita-v1-scope.md) |
 | API specs | [../api-specs/](../api-specs/) |
 | Design system | [../design-system/](../design-system/) |
-| Glossary | [../GLOSSARY.md](../GLOSSARY.md) |
+| Glossary | [README Terms](../../README.md#terms) |
 | Coding standard | [../coding-standard/](../coding-standard/) |
 | Task breakdown | [../task-breakdown/](../task-breakdown/) |
 | Deployment plan | [../deployment-plan/](../deployment-plan/) |

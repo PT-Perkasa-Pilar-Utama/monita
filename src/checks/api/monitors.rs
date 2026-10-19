@@ -47,7 +47,7 @@ struct MonitorView {
     name: String,
     url: String,
     interval_s: i64,
-    /// `30s`, `1m`, `3m` or `5m`.
+    /// `30 seconds`, `1 minute`, `3 minutes` or `5 minutes`.
     every: &'static str,
     timeout_s: i64,
     expected_status: String,
