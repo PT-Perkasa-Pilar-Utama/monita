@@ -101,7 +101,7 @@ export function SettingsSection({
   const body = (
     <>
       <CardHeader className="border-b py-5 [.border-b]:pb-5">
-        <CardTitle className={cn("text-[15px]", danger && "text-destructive")}>{title}</CardTitle>
+        <CardTitle className={cn(danger && "text-destructive")}>{title}</CardTitle>
         {description && <CardDescription>{description}</CardDescription>}
         {action && <CardAction>{action}</CardAction>}
       </CardHeader>

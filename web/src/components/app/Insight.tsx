@@ -141,7 +141,7 @@ export function ChartCard({ insight }: { insight: InsightData }): ReactElement {
   return (
     <Card className="gap-2 pb-3">
       <CardHeader>
-        <CardTitle className="text-[15px]">{insight.title}</CardTitle>
+        <CardTitle>{insight.title}</CardTitle>
         <CardDescription>
           {insight.total.toLocaleString()} {response ? (insight.total === 1 ? "check" : "checks") : insight.total === 1 ? "ping" : "pings"}
           {response && `, mean ${mean}`}
