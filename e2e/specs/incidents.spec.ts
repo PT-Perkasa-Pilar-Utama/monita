@@ -37,6 +37,7 @@ test("@US-14 @US-17 @US-18 @US-19 a failing job opens an incident, the TL update
 
   await page.getByRole("button", { name: "Post update" }).click();
   const dialog = page.getByRole("dialog");
+  await dialog.getByLabel("Message").fill("");
   await dialog.getByRole("button", { name: "Post update" }).click();
   await expect(dialog.getByRole("alert")).toHaveText("Write a message.");
   await dialog.getByRole("radio", { name: "Identified" }).click();

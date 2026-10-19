@@ -17,6 +17,7 @@ import { api, ApiError, dropField, errorText } from "@/lib/api";
 import { useProject } from "@/lib/project";
 import { ago, duration, nowSecs, utc } from "@/lib/time";
 import type { IncidentDetail, UpdateLabel } from "@/lib/types";
+import { nextMessage, TEMPLATES } from "@/lib/updates";
 import { useApi } from "@/lib/useApi";
 import { cn } from "@/lib/utils";
 import { NotFound } from "@/pages/NotFound";
@@ -42,15 +43,25 @@ function PostUpdate({ path, labels, auto, onPosted }: { path: string; labels: Up
   const [open, setOpen] = useState(false);
   const first = labels.includes("monitoring") ? "monitoring" : (labels[0] ?? "resolved");
   const [label, setLabel] = useState<UpdateLabel>(first);
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(TEMPLATES[first]);
   const [error, setError] = useState<ApiError | null>(null);
+  const show = (): void => {
+    setLabel(first);
+    setMessage(TEMPLATES[first]);
+    setError(null);
+    setOpen(true);
+  };
+  const pick = (l: UpdateLabel): void => {
+    setLabel(l);
+    setMessage((m) => nextMessage(m, l));
+    setError((e) => e && dropField(e, "message"));
+  };
   const [busy, setBusy] = useState(false);
   const submit = async (_e: FormEvent): Promise<void> => {
     setBusy(true);
     setError(null);
     try {
       await api(`${path}/updates`, "POST", { label, message });
-      setMessage("");
       setOpen(false);
       onPosted();
       toast.success("Update posted.");
@@ -64,7 +75,7 @@ function PostUpdate({ path, labels, auto, onPosted }: { path: string; labels: Up
   const messageError = error?.fields.message ?? (error && !labelError ? error.message : undefined);
   return (
     <>
-      <Button onClick={() => setOpen(true)}>Post update</Button>
+      <Button onClick={show}>Post update</Button>
       <FormSheet open={open} onClose={() => setOpen(false)}>
         <FormSheetBody
           title="Post an update"
@@ -83,7 +94,7 @@ function PostUpdate({ path, labels, auto, onPosted }: { path: string; labels: Up
           }
         >
           <FieldGroup className="gap-5">
-            <ChoiceCards id="label" legend="Label" value={label} onChange={setLabel} choices={LABELS.map((l) => ({ ...l, description: auto && l.value === "resolved" ? RESOLVE_AUTO : l.description, unavailable: unavailable(l.value, labels) }))} />
+            <ChoiceCards id="label" legend="Label" value={label} onChange={pick} choices={LABELS.map((l) => ({ ...l, description: auto && l.value === "resolved" ? RESOLVE_AUTO : l.description, unavailable: unavailable(l.value, labels) }))} />
             {labelError && <FieldError>{labelError}</FieldError>}
             <Field data-invalid={messageError ? true : undefined}>
               <FieldLabel htmlFor="update-message" required>
