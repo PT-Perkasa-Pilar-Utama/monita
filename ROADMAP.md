@@ -10,19 +10,25 @@ For released work, see [CHANGELOG.md](CHANGELOG.md).
 - Fix reported bugs, and answer security reports within the times in [SECURITY.md](SECURITY.md).
 - Keep the footprint small: one binary, one SQLite file, and the memory and size targets in [spec 08](docs/technical-specs/08-non-functional-requirements.md).
 
-## Next: the open list
+## Next: 1.1
 
-[docs/followups.md](docs/followups.md) holds the known gaps: browser tests for rare states, form errors that should clear as you type, and a few small API answers to settle. Work starts there.
+[The v1.1 decision](docs/decisions/2026-10-19-v1.1-scope.md) takes four of the gaps a comparison with Uptime Kuma and Gatus found:
 
-## Out of scope for 1.x
+- TCP and DNS checks ([#9](https://github.com/PT-Perkasa-Pilar-Utama/monita/issues/9)).
+- Discord, Telegram, ntfy and PagerDuty alerts ([#10](https://github.com/PT-Perkasa-Pilar-Utama/monita/issues/10)).
+- Maintenance windows ([#11](https://github.com/PT-Perkasa-Pilar-Utama/monita/issues/11)).
+- Two-factor sign-in ([#12](https://github.com/PT-Perkasa-Pilar-Utama/monita/issues/12)).
 
-Version 1 leaves these out on purpose. The landing page and [the scope decision](docs/decisions/2026-10-16-monita-v1-scope.md) explain why. Any of them would start with a new decision in [docs/decisions/](docs/decisions/), not a pull request.
+[docs/followups.md](docs/followups.md) holds the smaller known gaps.
 
-- Checks from more than one place.
-- TCP, ping and DNS checks.
-- Text-message or phone alerts, and on-call rotations.
-- Single sign-on and two-factor sign-in.
-- Files attached to tickets.
+## Later, with a decision first
+
+Each of these needs a decision in [docs/decisions/](docs/decisions/) before a pull request:
+
+- Checks from more than one place: a v2 design with probe agents ([#6](https://github.com/PT-Perkasa-Pilar-Utama/monita/issues/6)).
+- ICMP ping, which needs a raw-socket privilege ([#7](https://github.com/PT-Perkasa-Pilar-Utama/monita/issues/7)).
+- TLS certificate expiry, which needs a separate TLS handshake ([#8](https://github.com/PT-Perkasa-Pilar-Utama/monita/issues/8)).
+- Text-message or phone alerts and on-call rotations; single sign-on; files attached to tickets.
 
 ## Proposing changes
 
