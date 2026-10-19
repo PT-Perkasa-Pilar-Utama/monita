@@ -40,11 +40,11 @@ The motto from the scope decision is: easy to integrate, simple features, lightw
 
 - HTTP monitors at 30, 60, 180 or 300 seconds. A 2xx answer within 10 seconds passes, and a monitor can also require a word in the body.
 - Heartbeats with a period and a grace time. A call to `/ping/<token>/fail` opens an incident at once.
-- Automatic incidents open after two failed checks and close on the first pass. Manual incidents close only when a tech lead posts "Resolved". Update labels: investigating, identified, monitoring, resolved.
+- Automatic incidents open after two failed checks by default (each monitor sets 1 to 99) and close on the first pass. Manual incidents close only when a tech lead posts "Resolved". Update labels: investigating, identified, monitoring, resolved.
 - Alerts go through an outbox: email to listed addresses and one webhook per severity. A slow mail server never delays a check.
 - Tickets move through triage, backlog, in progress and done. Triage is private. Ticket descriptions never appear in public.
 - Every list has a hard cap, and every background job works in batches.
-- Roles: super admin and tech lead. A tech lead sees only their own projects.
+- Roles: super admin, tech lead and supervisor. A tech lead sees only their own projects. A supervisor sees every project and changes nothing.
 - Version 1 does not include: checks from more than one place, TCP, ping or DNS checks, text-message or phone alerts, on-call rotations, single sign-on, two-factor sign-in, or file uploads on tickets.
 - Terms have one meaning each. The README's Terms table is the reference: say "tech lead", not "TL", and "ticket board", not "kanban".
 
@@ -58,10 +58,12 @@ The motto from the scope decision is: easy to integrate, simple features, lightw
 ## Evidence on Hand
 
 - The static demo with three sample projects (`seeds/demo.sql`, published at `/demo/`).
-- Screenshots in `docs/assets/screens/`: monitor, monitors, incident, heartbeat, status page, status history and ticket board. `e2e/demo/snapshot.ts --screens` regenerates them.
+- Screenshots in `docs/assets/screens/`: monitor, monitors, incident, heartbeat, status page (desktop and phone), status history, changelog and ticket board. `e2e/demo/snapshot.ts --screens` regenerates them.
+- Moni, the mascot, and one scene per primitive in `docs/assets/brand/`, drawn from the app's components by `make brand`.
+- Measured on an Apple M1 on 2026-10-19 with a debug build: 500 monitors at a 60 s interval used 49 MB of memory and 1 to 8 % of one core. `docs/guide/install.md` turns this into the server requirements.
 - Measured on macOS arm64 on 2026-10-17: the release binary is 25,789,648 bytes, and memory use stayed between 20.5 and 23.3 MiB while 100 monitors ran every 30 seconds for 142 seconds. The v0.1.0 Linux release (x86-64, static) is 31,508,016 bytes, in a 12,919,831-byte archive, which is above the 30 MB target in NFR-07. Memory on Linux has not been measured.
 - A teammate can supply one real quote later. No quote exists yet; future pages must not invent one.
-- On 2026-10-17 the GitHub releases page had no binary. A page must not tell people to download one until a `v*` release exists.
+- v0.1.0 was released on GitHub on 2026-10-17 with a Linux x86-64 archive. v0.1.1 is not tagged yet.
 - There are no customers, user counts, testimonials, benchmarks against other tools, or press. Future pages must not invent them.
 
 ## Product Principles

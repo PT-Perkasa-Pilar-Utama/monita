@@ -221,10 +221,16 @@ async function screenshots(browser: Browser, cookie: string, dir: string): Promi
     ["incident.png", "/projects/payments/incidents/6"],
     ["heartbeat.png", "/projects/portal/heartbeats/1"],
     ["history.png", "/status/payments/history"],
+    ["changelog.png", "/status/portal/changelog"],
   ] as const) {
     await render(page, path);
     await page.screenshot({ path: join(dir, file) });
   }
+  // The status page as its users mostly read it: on a phone. The landing page's hero shows it.
+  const phone = await browser.newPage({ viewport: { width: 390, height: 760 }, deviceScaleFactor: 3, colorScheme: "light" });
+  await render(phone, "/status/payments");
+  await phone.screenshot({ path: join(dir, "status-phone.png") });
+  await phone.close();
   // The 1200x630 link-preview image, drawn from site/og.html and the monitors screenshot above.
   const og = await browser.newPage({ viewport: { width: 1200, height: 630 }, deviceScaleFactor: 1, colorScheme: "light" });
   await og.goto(`file://${join(ROOT, "site/og.html")}`);

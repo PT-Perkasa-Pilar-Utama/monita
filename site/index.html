@@ -17,8 +17,8 @@
 <!-- topbar -->
 <main class="landing">
   <section class="lp-hero">
-    <h1>Find out a service is down before your users write to you.</h1>
-    <p>Monita checks the URLs and cron jobs of every project your team runs. When one fails, it opens an incident, alerts the people you choose, and shows the outage on a public status page.</p>
+    <h1>Site reliability for every project your team ships.</h1>
+    <p>Monita checks the URLs and cron jobs of every project your team runs. When one fails, it opens an incident, alerts the people you choose, and shows the outage on a public status page. You run it on your own server.</p>
     <div class="lp-cta">
       <a class="btn btn--accent" href="demo/">Open the live demo</a>
       <a class="btn" href="#get">Install Monita</a>
@@ -26,9 +26,42 @@
     <div class="lp-shot" data-tilt>
       <button class="lp-frame" type="button" data-zoom="0" aria-label="Enlarge the monitor page screenshot">
         <span class="lp-frame__bar"><span></span><span></span><span></span><b>monita.example.com/projects/portal/monitors/2</b></span>
-        <img src="assets/monitor.png" alt="A monitor page with its uptime, last check, mean response time, a response-time chart and availability for today and the last 7 days" width="2880" height="1800">
+        <img src="assets/monitor.png" alt="What the team sees: a monitor page with its uptime, last check, mean response time, a response-time chart and availability" width="2880" height="1800">
       </button>
+      <div class="lp-phone">
+        <img class="lp-phone__moni" src="assets/brand/moni-peek.svg" alt="" width="296" height="156">
+        <button class="lp-phone__screen" type="button" data-zoom="1" aria-label="Enlarge the status page screenshot">
+          <img src="assets/status-phone.png" alt="What users see on a phone: the Payments status page says Settlement export is down, with 90 days of uptime for each system" width="1170" height="2280">
+        </button>
+      </div>
     </div>
+  </section>
+
+  <section class="lp-section" id="parts">
+    <h2>What Monita keeps for each project</h2>
+    <p class="lp-lead">A project in Monita has monitors, heartbeats, incidents, tickets and a changelog. Moni, the Monita mascot, shows what each one does. The same drawings sit at the foot of each page in the app.</p>
+    <ul class="lp-parts">
+      <li>
+        <!-- scene:monitors -->
+        <div><h3>Monitors</h3><p>Monita requests your health URL every 30, 60, 180 or 300 seconds. An answer with the expected status inside the timeout passes. A monitor can also send a POST with headers and require a word in the body.</p><a href="docs/monitors/">How monitors work</a></div>
+      </li>
+      <li>
+        <!-- scene:heartbeats -->
+        <div><h3>Heartbeats</h3><p>A scheduled job calls its ping URL when it finishes. If the call does not arrive within the period and the grace time, Monita opens an incident. A call to <code>/fail</code> opens one at once.</p><a href="docs/heartbeats/">How heartbeats work</a></div>
+      </li>
+      <li>
+        <!-- scene:incidents -->
+        <div><h3>Incidents</h3><p>Failed checks open an incident, an alert goes out by email and webhook, and the first passing check closes it. The team posts updates, and each update appears on the public status page.</p><a href="docs/incidents/">How incidents work</a></div>
+      </li>
+      <li>
+        <!-- scene:tickets -->
+        <div><h3>Tickets</h3><p>Users report bugs from the status page or from your app. The tech lead sorts the reports on a ticket board. A report stays private until it leaves Triage, and its description never becomes public.</p><a href="docs/tickets/">How tickets work</a></div>
+      </li>
+      <li>
+        <!-- scene:changelog -->
+        <div><h3>Changelog</h3><p>The team writes each release into the project's changelog. Users read the releases on the status page, newest first.</p><a href="docs/changelog/">How the changelog works</a></div>
+      </li>
+    </ul>
   </section>
 
   <section class="lp-section lp-get" id="get">
@@ -36,7 +69,7 @@
       <h2>Small enough to run on a server you already have</h2>
       <ul class="lp-motto">
         <li><b>One program and one file.</b> Monita is a single binary of about 31 MB, a 13 MB download, that keeps all its data in one SQLite file. It does not need Docker, a separate database or a message queue.</li>
-        <li><b>Light on memory.</b> In a two-minute test on a Mac, Monita used about 21 MB of memory while it checked 100 URLs every 30 seconds.</li>
+        <li><b>Light on memory.</b> In a test on a Mac, Monita used 49 MB of memory while it checked 500 URLs every minute. A server with 512 MB of memory and 5 GB of disk is enough to start. <a href="docs/install/#requirements">See the requirements.</a></li>
         <li><b>Easy to connect.</b> A project needs a health URL, one curl line per cron job and, for bug reports, two HTTP calls. <a href="#connect">See each one below.</a></li>
         <li><b>Alerts survive a restart.</b> Monita saves every alert before it sends it, and it tries again after a failed delivery or a restart. A slow mail server never delays a check.</li>
       </ul>
@@ -50,7 +83,7 @@ sudo install -m 0755 monita /usr/local/bin/monita
 sudo monita setup
 sudo monita service install</code></pre>
       <p><code>monita setup</code> asks for the public URL, the mail server and the first admin account. <code>monita service install</code> starts Monita now and after every reboot.</p>
-      <p>You can also <a href="demo/">try the demo in your browser</a> first. It needs no account.</p>
+      <p>To build it yourself, see <a href="docs/install/#from-source">building from source</a>. You can also <a href="demo/">try the demo in your browser</a> first. It needs no account.</p>
     </div>
   </section>
 
@@ -110,7 +143,7 @@ sudo monita service install</code></pre>
 }</code></pre>
         </div>
         <div class="lp-tabs__panel" role="tabpanel" id="panel-3" aria-labelledby="tab-3" hidden>
-          <p>Link to the project's public status page, or build your own banner from its JSON. The endpoint is public and allows requests from any origin.</p>
+          <p>Link to the project's public status page, or build your own page from its JSON. The endpoint is public and allows requests from any origin. The project's status page settings also offer an HTML template that reads it.</p>
 <pre class="code"><code class="language-sh">curl -s https://monita.example.com/api/v1/public/status/payments?days=30</code></pre>
 <pre class="code"><code class="language-json">{ "data": { "overall": "down", "items": [ { "name": "API health", "state": "down", "uptime_90d": 99.95 } ] } }</code></pre>
         </div>
@@ -129,7 +162,7 @@ curl -s -X POST https://monita.example.com/api/v1/tickets -H 'content-type: appl
 
   <section class="lp-section">
     <h2>What Monita does when a check fails</h2>
-    <p class="lp-lead">This is the sequence for an HTTP monitor that checks every 30 seconds. A single failed check does not alert anyone, because one dropped request is common. The second failure in a row opens the incident.</p>
+    <p class="lp-lead">This is the sequence for an HTTP monitor that checks every 30 seconds. A single failed check does not alert anyone, because one dropped request is common. The second failure in a row opens the incident. Each monitor can set its own count, from 1 to 99.</p>
     <div class="lp-sim" data-sim>
       <div class="lp-term">
         <div class="lp-term__bar"><span></span><span></span><span></span><b>api.example.com/healthz</b></div>
@@ -149,12 +182,12 @@ curl -s -X POST https://monita.example.com/api/v1/tickets -H 'content-type: appl
     <h2>The pages your team and your users see</h2>
     <p class="lp-lead">These screenshots come from the demo. Select one to see it at full size.</p>
     <div class="lp-gallery">
-      <button type="button" data-zoom="1"><img src="assets/monitors.png" alt="The monitors of a project, each with its state, interval and response time" width="2880" height="1800" loading="lazy"><span>Every monitor of a project, with its state and response time</span></button>
-      <button type="button" data-zoom="2"><img src="assets/incident.png" alt="An open incident with its cause, timeline and status updates" width="2880" height="1800" loading="lazy"><span>An open incident with its cause and the updates the team posted</span></button>
-      <button type="button" data-zoom="3"><img src="assets/heartbeat.png" alt="A heartbeat with its schedule, last ping and the list of pings" width="2880" height="1800" loading="lazy"><span>A heartbeat with its deadline and the pings it received</span></button>
-      <button type="button" data-zoom="4"><img src="assets/status.png" alt="A project's public status page with 90 days of uptime per service" width="2880" height="1800" loading="lazy"><span>The public status page with 90 days of uptime</span></button>
-      <button type="button" data-zoom="5"><img src="assets/tickets.png" alt="The ticket board with triage, backlog, in progress and done" width="2880" height="1800" loading="lazy"><span>The ticket board where the tech lead sorts bug reports</span></button>
-      <button type="button" data-zoom="6"><img src="assets/history.png" alt="The status page history with every past incident, grouped by month" width="2880" height="1800" loading="lazy"><span>Every past incident on the status page, grouped by month</span></button>
+      <button type="button" data-zoom="2"><img src="assets/monitors.png" alt="The monitors of a project, each with its state, interval and response time" width="2880" height="1800" loading="lazy"><span>Every monitor of a project, with its state and response time</span></button>
+      <button type="button" data-zoom="3"><img src="assets/incident.png" alt="An open incident with its cause, timeline and status updates" width="2880" height="1800" loading="lazy"><span>An open incident with its cause and the updates the team posted</span></button>
+      <button type="button" data-zoom="4"><img src="assets/heartbeat.png" alt="A heartbeat with its schedule, last ping and the list of pings" width="2880" height="1800" loading="lazy"><span>A heartbeat with its deadline and the pings it received</span></button>
+      <button type="button" data-zoom="5"><img src="assets/status.png" alt="A project's public status page with 90 days of uptime per service" width="2880" height="1800" loading="lazy"><span>The public status page with 90 days of uptime</span></button>
+      <button type="button" data-zoom="6"><img src="assets/tickets.png" alt="The ticket board with triage, backlog, in progress and done" width="2880" height="1800" loading="lazy"><span>The ticket board where the tech lead sorts bug reports</span></button>
+      <button type="button" data-zoom="7"><img src="assets/changelog.png" alt="The Changelog tab of a status page with a project's latest release and its changes" width="2880" height="1800" loading="lazy"><span>The releases a project publishes on its status page</span></button>
     </div>
   </section>
 
@@ -172,8 +205,9 @@ curl -s -X POST https://monita.example.com/api/v1/tickets -H 'content-type: appl
   </section>
 
   <section class="lp-final">
+    <img class="lp-final__moni" src="assets/brand/moni-friends.svg" alt="" width="1200" height="230" loading="lazy">
     <h2>See it with real data first</h2>
-    <p>The demo is a copy of Monita with three sample projects, open incidents and a ticket board. It runs in your browser and needs no account.</p>
+    <p>The demo is a copy of Monita with three sample projects, open incidents, a ticket board and changelogs. It runs in your browser and needs no account.</p>
     <div class="lp-cta"><a class="btn btn--accent" href="demo/">Open the live demo</a><a class="btn" href="docs/">Read the documentation</a></div>
   </section>
 
