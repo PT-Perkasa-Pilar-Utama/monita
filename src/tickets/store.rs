@@ -340,3 +340,52 @@ pub async fn open_count(c: &Connection, project_id: i64) -> anyhow::Result<i64> 
     .await?
     .unwrap_or(0))
 }
+
+/// A new ticket in Triage, for the cross-project Tickets list.
+#[derive(serde::Serialize)]
+pub struct TriageRow {
+    #[serde(skip)]
+    pub project_id: i64,
+    pub number: i64,
+    pub title: String,
+    pub created_at: i64,
+}
+
+/// Every project when `?1` is NULL, else the ones `?1` owns: a read-only look at `projects`.
+const OWNED_BY: &str =
+    "(?1 IS NULL OR project_id IN (SELECT id FROM projects WHERE owner_id = ?1))";
+
+pub async fn triage_across(
+    c: &Connection,
+    owner: Option<i64>,
+    limit: i64,
+    offset: i64,
+) -> anyhow::Result<Vec<TriageRow>> {
+    crate::platform::db::query_all(
+        c,
+        format!(
+            "SELECT project_id, number, title, created_at FROM tickets WHERE stage = 'triage' AND {OWNED_BY}
+             ORDER BY created_at DESC, id DESC LIMIT ?2 OFFSET ?3"
+        ),
+        (owner, limit, offset),
+        |r| {
+            Ok(TriageRow {
+                project_id: r.get(0)?,
+                number: r.get(1)?,
+                title: r.get(2)?,
+                created_at: r.get(3)?,
+            })
+        },
+    )
+    .await
+}
+
+pub async fn count_triage_across(c: &Connection, owner: Option<i64>) -> anyhow::Result<i64> {
+    Ok(crate::platform::db::query_i64(
+        c,
+        &format!("SELECT count(*) FROM tickets WHERE stage = 'triage' AND {OWNED_BY}"),
+        [owner],
+    )
+    .await?
+    .unwrap_or(0))
+}

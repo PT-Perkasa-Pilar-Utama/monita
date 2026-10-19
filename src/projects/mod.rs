@@ -25,7 +25,7 @@ use crate::{
 };
 
 pub use profile::{ProfileInput, ProjectInput, create, find_owner, icon, slug_for, update_profile};
-pub use store::{ApiKeyRow, Project, PublicPages, Sort};
+pub use store::{ApiKeyRow, Project, Sort};
 
 #[derive(Debug, thiserror::Error)]
 pub enum ProjectError {
@@ -100,6 +100,21 @@ pub async fn after_id(
 
 pub use pulse::{Pulse, pulse};
 
+/// The public tabs a project shows besides Uptime, which always shows.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct PublicPages {
+    /// Missing means on, so a client that never sends it keeps the tab.
+    #[serde(default = "on")]
+    pub incidents: bool,
+    pub known_issues: bool,
+    /// The Report a bug tab: the form and the reporter's own tickets, both behind a ref ID.
+    pub report: bool,
+}
+
+fn on() -> bool {
+    true
+}
+
 /// The numbers beside the project tabs: monitors, heartbeats, open incidents, open tickets.
 #[derive(Default, serde::Serialize)]
 pub struct TabCounts {
@@ -142,6 +157,18 @@ pub async fn find_for(db: &Db, user: &User, slug: &str) -> Result<Project, PageE
         Some(p) if can_manage(user, &p) => Ok(p),
         _ => Err(PageError::NotFound),
     }
+}
+
+/// The projects a cross-project page names, keyed by id. Ids come from rows the caller may see.
+pub async fn by_ids(
+    db: &Db,
+    ids: &[i64],
+) -> anyhow::Result<std::collections::HashMap<i64, Project>> {
+    Ok(store::by_ids(&db.read().await?, ids)
+        .await?
+        .into_iter()
+        .map(|p| (p.id, p))
+        .collect())
 }
 
 pub async fn find_public(db: &Db, slug: &str) -> anyhow::Result<Option<Project>> {

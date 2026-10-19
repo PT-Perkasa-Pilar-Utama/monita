@@ -345,3 +345,14 @@ export type MailView = {
 
 /** A sealed project secret, by name. Its value never reaches the browser. */
 export type Secret = { id: number; name: string; updated_at: number; used_by: number };
+
+/** An open incident with the project it belongs to, for the cross-project Incidents page. */
+export type HomeIncident = IncidentRow & { project: Project };
+
+/** A new ticket in Triage with its project, for the cross-project Tickets page. */
+export type HomeTicket = { project: Project; number: number; title: string; created_at: number };
+
+export type HomeList<K extends string, T> = Record<K, T[]> & { total: number; page: number; page_size: number };
+
+/** The numbers beside the top menu. */
+export type HomeCounts = { projects: number; incidents: number; tickets: number };

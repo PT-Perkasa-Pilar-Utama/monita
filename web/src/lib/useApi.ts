@@ -9,6 +9,9 @@ export type Loaded<T> = {
   error: ApiError | undefined;
   loading: boolean;
   reload: () => void;
+  /** Reads again in place, for a Refresh button: the data stays until the new data lands. */
+  refresh: () => void;
+  refreshing: boolean;
 };
 
 /** Reads `path` once, and again on `reload()` or when `path` changes. `null` reads nothing.
@@ -20,6 +23,18 @@ export function useApi<T>(path: string | null, pollMs?: number): Loaded<T> {
   const [loading, setLoading] = useState(path !== null);
   const [tick, setTick] = useState(0);
   const reload = useCallback(() => setTick((t) => t + 1), []);
+  const [refreshing, setRefreshing] = useState(false);
+  const refresh = useCallback(() => {
+    if (path === null) return;
+    setRefreshing(true);
+    api<T>(path, "GET", undefined, "no-cache")
+      .then((d) => {
+        setData(d);
+        setError(undefined);
+      })
+      .catch((e: unknown) => setError(e instanceof ApiError ? e : new ApiError(0, "network", "Monita did not answer. Check the connection.")))
+      .finally(() => setRefreshing(false));
+  }, [path]);
 
   useEffect(() => {
     if (path === null) return;
@@ -60,5 +75,5 @@ export function useApi<T>(path: string | null, pollMs?: number): Loaded<T> {
     };
   }, [path, pollMs]);
 
-  return { data, error, loading, reload };
+  return { data, error, loading, reload, refresh, refreshing };
 }

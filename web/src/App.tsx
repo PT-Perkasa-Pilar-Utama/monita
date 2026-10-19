@@ -31,6 +31,8 @@ import { RateLimits } from "@/pages/admin/RateLimits";
 import { System } from "@/pages/admin/System";
 import { TimeZone } from "@/pages/admin/TimeZone";
 import { Users } from "@/pages/admin/users/Users";
+import { AllIncidents } from "@/pages/AllIncidents";
+import { AllTickets } from "@/pages/AllTickets";
 import { Invite } from "@/pages/Invite";
 import { Login } from "@/pages/Login";
 import { NotFound } from "@/pages/NotFound";
@@ -44,6 +46,8 @@ export default function App(): ReactElement {
       <Route path="/invite/:token" element={<Invite />} />
       <Route element={<AppLayout />}>
         <Route path="/" element={<Projects />} />
+        <Route path="/incidents" element={<AllIncidents />} />
+        <Route path="/tickets" element={<AllTickets />} />
         <Route element={<AdminLayout />}>
           <Route path="/admin/users" element={<Users />} />
           <Route path="/admin/limits" element={<RateLimits />} />

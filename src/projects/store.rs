@@ -2,6 +2,7 @@
 
 use turso::Connection;
 
+use super::PublicPages;
 use crate::platform::caps;
 
 pub struct Project {
@@ -17,21 +18,6 @@ pub struct Project {
     /// When the icon was last set; `None` when the project has none.
     pub icon_at: Option<i64>,
     pub pages: PublicPages,
-}
-
-/// The public tabs a project shows besides Uptime, which always shows.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub struct PublicPages {
-    /// Missing means on, so a client that never sends it keeps the tab.
-    #[serde(default = "on")]
-    pub incidents: bool,
-    pub known_issues: bool,
-    /// The Report a bug tab: the form and the reporter's own tickets, both behind a ref ID.
-    pub report: bool,
-}
-
-fn on() -> bool {
-    true
 }
 
 #[derive(serde::Serialize)]
@@ -389,4 +375,15 @@ pub async fn delete_project(c: &Connection, id: i64) -> anyhow::Result<()> {
     c.execute("DELETE FROM projects WHERE id = ?1", [id])
         .await?;
     Ok(())
+}
+
+/// The projects with these ids, at most one page of a cross-project list.
+pub async fn by_ids(c: &Connection, ids: &[i64]) -> anyhow::Result<Vec<Project>> {
+    let list = ids.iter().map(i64::to_string).collect::<Vec<_>>().join(",");
+    many(
+        c,
+        format!("SELECT {COLS} FROM projects p JOIN users u ON u.id = p.owner_id WHERE p.id IN ({list}) LIMIT ?1"),
+        [caps::ACROSS_PAGE],
+    )
+    .await
 }

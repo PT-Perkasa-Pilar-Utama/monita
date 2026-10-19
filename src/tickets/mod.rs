@@ -17,6 +17,23 @@ pub async fn open_count(db: &Db, project_id: i64) -> anyhow::Result<i64> {
     store::open_count(&db.read().await?, project_id).await
 }
 
+pub use store::TriageRow;
+
+/// One page of new tickets in Triage across every project (`owner` None) or the projects `owner`
+/// owns, newest first; and how many there are in all.
+pub async fn triage_across(
+    db: &Db,
+    owner: Option<i64>,
+    page: i64,
+) -> anyhow::Result<(Vec<TriageRow>, i64)> {
+    let c = db.read().await?;
+    let offset = (page.max(1) - 1).saturating_mul(crate::platform::caps::ACROSS_PAGE);
+    Ok((
+        store::triage_across(&c, owner, crate::platform::caps::ACROSS_PAGE, offset).await?,
+        store::count_triage_across(&c, owner).await?,
+    ))
+}
+
 /// How many tickets sit in each stage; a stage with none is missing.
 pub async fn stage_counts(db: &Db, project_id: i64) -> anyhow::Result<Vec<(String, i64)>> {
     store::stage_counts(&db.read().await?, project_id).await

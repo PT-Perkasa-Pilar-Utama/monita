@@ -273,10 +273,10 @@ pub async fn open_manual(
     Ok(id)
 }
 
-const COLS: &str = "i.id, i.origin, i.title, i.severity, i.cause, i.started_at, i.resolved_at,
+pub(super) const COLS: &str = "i.id, i.origin, i.title, i.severity, i.cause, i.started_at, i.resolved_at,
     (SELECT label FROM status_updates WHERE incident_id = i.id ORDER BY created_at DESC, id DESC LIMIT 1)";
 
-fn row(r: &turso::Row) -> turso::Result<IncidentRow> {
+pub(super) fn row(r: &turso::Row) -> turso::Result<IncidentRow> {
     Ok(IncidentRow {
         id: r.get(0)?,
         origin: r.get(1)?,

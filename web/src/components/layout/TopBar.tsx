@@ -1,8 +1,8 @@
 import type { ReactElement, ReactNode } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Mark } from "@/components/brand/Mark";
 import { ProjectBadge } from "@/components/app/ProjectBadge";
-import { BookOpen, Folder, LogOut, Moon, Settings, Sun, Undo2 } from "@/components/icons";
+import { Folder, LogOut, Moon, Sun, Undo2 } from "@/components/icons";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,7 +20,7 @@ import { lastProject } from "@/lib/lastProject";
 import { useMe } from "@/lib/session";
 import { cn } from "@/lib/utils";
 
-const DOCS = "https://pt-perkasa-pilar-utama.github.io/monita/docs/";
+export const DOCS = "https://pt-perkasa-pilar-utama.github.io/monita/docs/";
 
 /** An area link at the top bar's right end. The open area is a raised pill. */
 function AreaLink({ to, label, icon, active }: { to: string; label: string; icon: ReactNode; active: boolean }): ReactElement {
@@ -40,7 +40,7 @@ function AreaLink({ to, label, icon, active }: { to: string; label: string; icon
   );
 }
 
-/** The account menu: who is signed in, admin settings, the theme, the docs and sign out. */
+/** The account menu: who is signed in, the theme and sign out. */
 function AccountMenu(): ReactElement {
   const me = useMe();
   const { resolved, setTheme } = useTheme();
@@ -70,26 +70,9 @@ function AccountMenu(): ReactElement {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          {me.is_admin && (
-            <DropdownMenuItem asChild>
-              <Link to="/admin/users">
-                <Settings />
-                Admin settings
-              </Link>
-            </DropdownMenuItem>
-          )}
           <DropdownMenuItem onSelect={() => setTheme(resolved === "dark" ? "light" : "dark")}>
             {resolved === "dark" ? <Sun /> : <Moon />}
             Toggle theme
-          </DropdownMenuItem>
-        </DropdownMenuGroup>
-        <DropdownMenuSeparator />
-        <DropdownMenuGroup>
-          <DropdownMenuItem asChild>
-            <a href={DOCS}>
-              <BookOpen />
-              Documentation
-            </a>
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
@@ -110,8 +93,6 @@ function AccountMenu(): ReactElement {
  */
 export function TopBar({ crumb, tabs }: { crumb?: ReactNode; tabs?: ReactNode }): ReactElement {
   const me = useMe();
-  const { pathname } = useLocation();
-  const at = (prefix: string): boolean => pathname.startsWith(prefix);
   // Outside a project, the way back to the one opened last in this browser.
   const last = crumb ? null : lastProject(me.email);
   const place =
@@ -145,7 +126,7 @@ export function TopBar({ crumb, tabs }: { crumb?: ReactNode; tabs?: ReactNode })
             </>
           )}
           <nav aria-label="Account" className="ml-auto flex items-center gap-3">
-            <AreaLink to="/" label="Projects" icon={<Folder />} active={!at("/admin")} />
+            {crumb && <AreaLink to="/" label="Projects" icon={<Folder />} active={false} />}
             <AccountMenu />
           </nav>
         </div>

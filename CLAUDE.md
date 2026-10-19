@@ -49,6 +49,7 @@ site/                 landing page and docs site builder    docs/guide/ user doc
 | incidents | incidents, incident_items, incident_sources, status_updates | `observe` (the only door for check results), `open_manual`, `post_update`, `states_for`, `source_deleted` |
 | notify | alert_routes, outbox | `send(Event)`: inserts outbox rows, never blocks; `create_routes`, `purge_delivered` |
 | status | none | public page and JSON |
+| home | none | cross-project Incidents and Tickets pages, top menu counts |
 | tickets | ref_ids, tickets | `issue_ref_id`, `submit` |
 | platform | settings, schema_migrations | `Db`, `ui` (envelope, `Body`, `public_cache`), `now`, config |
 
@@ -60,7 +61,7 @@ Two builders (the user and Claude), 2 days, sprints 1 to 4 in `docs/business/spr
 
 ## Architecture laws
 
-- A module writes only its own tables. A read-only `JOIN users` for an email or name is allowed. Cross-module calls go through `pub` items in `mod.rs`. Never import another module's `store` or `engine`.
+- A module writes only its own tables. A read-only `JOIN users` for an email or name is allowed, and so is a read-only `project_id IN (SELECT id FROM projects WHERE owner_id = ?)` that scopes a cross-project list to a tech lead's projects. Cross-module calls go through `pub` items in `mod.rs`. Never import another module's `store` or `engine`.
 - Handlers in `api.rs` (or `routes.rs` for the ping and `/api/v1` routes) parse, call, answer. No SQL and no business rules in handlers.
 - SQL lives in `store.rs`. Rules live in `mod.rs` or a named logic file (`engine.rs`, `probe.rs`).
 - Every write goes through `Db::write` (one writer connection, `BEGIN IMMEDIATE`). Reads use `Db::read()`. Never open a writing connection elsewhere.
