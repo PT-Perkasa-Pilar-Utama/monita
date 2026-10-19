@@ -5,9 +5,9 @@ name: release
 # Write the notes with the release-notes skill, then publish the draft. The tag must match the
 # version in Cargo.toml.
 #
-# Run it by hand with an existing tag to add the archives that release lacks. It builds the
-# tag's source, keeps every archive already published byte for byte, and appends the new
-# checksums. Run it by hand with `build_only` on a branch to build and boot every target from
+# Run it by hand with an existing tag to finish or extend its release. It builds the tag's
+# source; with no release yet it drafts one, otherwise it keeps every archive already published
+# byte for byte and appends the new checksums. Run it by hand with `build_only` on a branch to build and boot every target from
 # that branch without touching any release.
 on:
   push:
@@ -139,28 +139,39 @@ jobs:
           pattern: monita_*
           merge-multiple: true
           path: dist
+      # A first run creates the draft. A later run on the same tag, by hand or a re-run, finds
+      # the release and adds only what it lacks, so a published archive never changes.
       - name: keep what the release already has
-        if: github.event_name == 'workflow_dispatch'
+        id: release
         run: |
-          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets -q '.assets[].name' > published.txt
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets -q '.assets[].name' > published.txt; then
+            echo "exists=yes" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=no" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           for f in dist/monita_*; do
             if grep -qx "$(basename "$f")" published.txt; then
               echo "keeps the published $(basename "$f")"
               rm "$f"
             fi
           done
-          if ! ls dist/monita_* >/dev/null 2>&1; then
-            echo "::notice::$TAG already has every archive"
-            exit 0
-          fi
           if grep -qx checksums.txt published.txt; then
             gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern checksums.txt --dir old
           fi
       - name: checksums
         run: |
-          ls dist/monita_* >/dev/null 2>&1 || exit 0
+          if ! ls dist/monita_* >/dev/null 2>&1; then
+            echo "::notice::$TAG already has every archive"
+            exit 0
+          fi
           (cd dist && sha256sum ./monita_* > new.txt)
-          cat old/checksums.txt dist/new.txt 2>/dev/null | sort -k2 -u > dist/checksums.txt
+          # The runner's bash has pipefail on, so a missing old file must not reach `cat`.
+          if [ -f old/checksums.txt ]; then
+            cat old/checksums.txt dist/new.txt
+          else
+            cat dist/new.txt
+          fi | sort -k2 -u > dist/checksums.txt
           rm dist/new.txt
           cat dist/checksums.txt
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
@@ -168,10 +179,10 @@ jobs:
         with:
           subject-path: dist/monita_*
       - name: draft the release
-        if: github.event_name == 'push'
-        run: gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --draft --title "$TAG" --notes "Draft. Write the notes with the release-notes skill, then publish." dist/*
+        if: steps.release.outputs.exists == 'no'
+        run: gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --draft --title "$TAG" --notes "Draft. Write the notes with the release-notes skill, then publish." dist/*
       - name: add the new archives
-        if: github.event_name == 'workflow_dispatch' && hashFiles('dist/monita_*') != ''
+        if: steps.release.outputs.exists == 'yes' && hashFiles('dist/monita_*') != ''
         run: |
           gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" dist/monita_*
           gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber dist/checksums.txt
