@@ -30,29 +30,39 @@ Legend: `OK` implemented and tested, `WIP` in progress, `TODO` not started, `SCA
 
 | Group | File | Status |
 | --- | --- | --- |
-| Sign-in, invites, TL management | [02](02-authentication.md) | OK |
-| Projects, API keys | [03](03-projects.md) | OK |
-| Monitors, heartbeats | [04](04-checks.md#43-frontend-routes) | OK |
-| System page | [04](04-checks.md#44-system-page) | OK |
-| Incidents | [05](05-incidents.md) | OK |
-| Alert routes | [06](06-notify.md) | OK |
-| Status page | [07](07-status.md#72-frontend-routes) | OK |
-| Ticket board, public board, ticket form | [08](08-tickets.md#85-frontend-routes) | OK |
+| Sign-in, invites, `me` (`role`, `sees_all`, `read_only`) | [02](02-authentication.md#22-sign-in-and-invites) | OK |
+| Admin users: list, create, invite, disable, enable, role | [02](02-authentication.md#23-admin-users) | OK |
+| Projects: list (`owner`, `sort`, `pulse`), create, detail (`counts`), delete, overview, profile (`homepage_url`), icon, owners | [03](03-projects.md#31-frontend-routes) | OK |
+| API keys, allowlist, public pages (`public-pages`) | [03](03-projects.md#31-frontend-routes) | OK |
+| Secrets: list, create, replace, delete | [03](03-projects.md#33-secrets) | OK |
+| Check options, monitors (method, headers, body, `fails_to_open`, `auth_*`), heartbeats (`last`, `alert`, `auto_incident`) | [04](04-checks.md#43-frontend-routes) | OK |
+| System page, mail server and its tests, limits, time zone | [04](04-checks.md#44-system-page) | OK |
+| Project incidents, incident items, updates | [05](05-incidents.md#51-frontend-routes) | OK |
+| Incidents across projects (`/api/ui/incidents`) | [05](05-incidents.md#52-incidents-across-projects) | OK |
+| Alert routes, the on/off switch, alerts preview | [06](06-notify.md#61-frontend-routes) | OK |
+| Ticket alerts (`webhook_moves`) and their test | [06](06-notify.md#61-frontend-routes) | OK |
+| Status page: status, history | [07](07-status.md#72-frontend-routes) | OK |
+| Status page: past uptime, incidents by month | [07](07-status.md#72-frontend-routes) | OK |
+| Ticket board, team-filed tickets, ref IDs from the board, public board, report form, reporter's tickets | [08](08-tickets.md#85-frontend-routes) | OK |
+| Tickets across projects (`/api/ui/tickets`) | [08](08-tickets.md#86-tickets-across-projects) | OK |
+| Changelog: team list and form | [11](11-changelog.md#111-team-routes) | OK |
+| Changelog: public index and release | [11](11-changelog.md#112-public-routes) | OK |
 
 ## Files in This Directory
 
 | File | Content |
 | --- | --- |
 | [01-conventions.md](01-conventions.md) | Envelope, errors, status codes, rate limits, roles |
-| [02-authentication.md](02-authentication.md) | Sessions, sign-in, invites, TL management |
-| [03-projects.md](03-projects.md) | Projects, API keys, allowlist |
-| [04-checks.md](04-checks.md) | Ping API, monitor and heartbeat routes |
-| [05-incidents.md](05-incidents.md) | Incident routes |
-| [06-notify.md](06-notify.md) | Alert route settings, webhook payload |
-| [07-status.md](07-status.md) | Public status JSON and page |
-| [08-tickets.md](08-tickets.md) | Ref IDs, tickets |
+| [02-authentication.md](02-authentication.md) | Sessions, sign-in, invites, user management and roles |
+| [03-projects.md](03-projects.md) | Projects, API keys, allowlist, public pages, secrets |
+| [04-checks.md](04-checks.md) | Ping API, monitor and heartbeat routes, the System page |
+| [05-incidents.md](05-incidents.md) | Incident routes, the cross-project list |
+| [06-notify.md](06-notify.md) | Alert and ticket-alert settings, webhook payloads |
+| [07-status.md](07-status.md) | Public status JSON and page routes |
+| [08-tickets.md](08-tickets.md) | Ref IDs, tickets, the board, the cross-project list |
 | [09-system.md](09-system.md) | Health, reset-state |
 | [10-cli.md](10-cli.md) | The `monita` command line: setup, service, whereis, the env file |
+| [11-changelog.md](11-changelog.md) | Release notes per project: team routes and the public tab |
 
 ## Companion Documents
 

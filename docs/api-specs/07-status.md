@@ -7,7 +7,7 @@
 | Purpose | Give a project the data for its own status page. |
 | Access | public, 60/min per IP, CORS `*`, `Cache-Control: max-age=30` |
 | Input | Path `slug`. Query `days` 1 to 90, default 90. Any other value is 400 `invalid_request`. |
-| Behavior | Load public monitors and heartbeats only (AC-21.02). Current state from `incidents::states_for`. Daily uptime from the overlap of automatic incidents with each UTC day (manual incidents are not downtime), computed live. `daily_summaries` is the archival record after raw rows are swept (Q12, AC-32.01); no page reads it in v1. Incidents that touch a public item and started within `days` or are still open, newest first; their item lists show public items only. Updates carry label, message and time, never the author. The JSON is built from wire types that live in `status` and are not shared with `incidents`, so a field added on the incident side reaches the public JSON only by an edit in `status`; Monita's own detection entry reads `Detected.` without its cause (SEC-21). (AC-22.01) |
+| Behavior | Load public monitors and heartbeats only (AC-21.02). Current state from `incidents::states_for`. Daily uptime from the overlap of automatic incidents with each day (manual incidents are not downtime), computed live. A day runs midnight to midnight in the admin's time zone offset (4.4); the default offset is UTC. `daily_summaries` is the archival record after raw rows are swept (Q12, AC-32.01); no page reads it in v1. Incidents that touch a public item and started within `days` or are still open, newest first, at most 200; their item lists show public items only. With the project's Incidents tab off, `incidents` is empty (3.1, `public-pages`). Updates carry label, message and time, never the author. The JSON is built from wire types that live in `status` and are not shared with `incidents`, so a field added on the incident side reaches the public JSON only by an edit in `status`; Monita's own detection entry reads `Detected.` without its cause (SEC-21). (AC-22.01) |
 | Errors | 404 `not_found` for an unknown slug. 429 `rate_limited`. |
 
 Output 200:
@@ -20,6 +20,7 @@ Output 200:
     "items": [
       {
         "kind": "monitor",
+        "id": 7,
         "name": "API health",
         "state": "down",
         "uptime_90d": 99.95,
@@ -46,15 +47,21 @@ Output 200:
 
 | Field | Values |
 | --- | --- |
+| `id` | The item's id. With `kind` it picks the item on the past-uptime route (7.2). It is not secret. |
 | `state` | `up`, `down`, `issue` (open manual incident), `unknown` (no data yet) |
 | `overall` | `down` if any item is down, else `issue` if any has an issue, else `up` |
+| `days[].day` | `YYYY-MM-DD` in the admin's time zone offset |
 | `days[].uptime` | `null` for a day before the item existed. The page renders a grey bar. |
 
 ## 7.2 Frontend routes
 
-The React pages `/status/{slug}` and `/status/{slug}/history` call these routes with no sign-in. Both carry the 7.1 wire types, so neither sends an author or Monita's cause text (SEC-21). Both are `Cache-Control: public, max-age=30`, and the per-IP limit covers `/api/ui/public/` and the pages under `/status/`.
+The React pages under `/status/{slug}` call these routes with no sign-in. The page has an Uptime tab (always shown) and tabs for Incidents, Known issues, Report a bug and Changelog; a project switches the last four with `public-pages` (3.1). A route of a tab that is off answers 404, so the page and the route agree. The Uptime tab, `/status/{slug}/uptime` and the Incidents tab show the 7.1 wire types, so none sends an author or Monita's cause text (SEC-21). All are `Cache-Control: public, max-age=30`, and the per-IP limit covers `/api/ui/public/` and the pages under `/status/`. The page's Refresh button skips that cache.
 
 | Method | Path | Access | Behavior | AC |
 | --- | --- | --- | --- | --- |
-| GET | `/api/ui/public/{slug}/status` | public, 60/min per IP | `status`: the project, `overall`, every public item with 90 days, and every open incident however old, with its updates. `recent`: the newest 10 incidents resolved in the last 7 days. The page shows two columns from 1000 px: systems on the left, incidents on the right; one column below, with active incidents first. The headline counts systems up. Systems with a problem come first; they and the first 12 others show 90 daily bars, the rest a plain list. Resolved incidents are folded. | AC-06.03, AC-21.01, AC-21.02 |
-| GET | `/api/ui/public/{slug}/history` | public, 60/min per IP | `?before=<started_at>.<id>` from `older`. `incidents`: every incident that touched a public system, newest first, 25 per page; `older` is the next cursor or null. The page groups them under month headings. | AC-22.01 |
+| GET | `/api/ui/public/{slug}/status` | public, 60/min per IP | `status`: the project, `overall`, every public item with 90 daily bars, and every open incident however old, with its updates (`incidents`). `recent`: the newest 10 incidents resolved in the last 7 days. With the Incidents tab off, both lists of incidents are empty. The Uptime tab shows the systems as a two-column grid of cards (name, state, 90 bars, uptime) and links the banner to open incidents. Systems with a problem come first. | AC-06.03, AC-21.01, AC-21.02 |
+| GET | `/api/ui/public/{slug}/uptime` | public, 60/min per IP | Query `kind` (`monitor` or `heartbeat`) and `id` together, or neither; `to` (a Unix time inside the last month wanted; a bad value reads now). Three months of one public system, a square per day. `project`; `systems`, every public system for the picker (`kind`, `id`, `name`); `system`, the one shown (the first when `kind` and `id` are absent; null when the project has no public system); `months`, oldest first: `month` (`2026-10`), `uptime` (percent over the days with data, or null) and `days` (as `days` in 7.1). `prev_to` and `next_to` are a `to` for the window before and after, or null at the ends: no window starts before the system was created or ends after the current month. A system that is not public, a half pair, a bad `kind` or a bad `id` is 404. | |
+| GET | `/api/ui/public/{slug}/incidents` | public, 60/min per IP | Query `to` as above. Three months of public incidents, newest month first. `project`; `months`: `month` (`2026-10`), `incidents` (the wire type of 7.1, newest first, 25 at most) and `more` (a `before` cursor for the history route below, set when the month holds a full page of 25, else null); `prev_to` and `next_to` as for `uptime`. 404 with the Incidents tab off. | |
+| GET | `/api/ui/public/{slug}/history` | public, 60/min per IP | `?before=<started_at>.<id>` from `older`. `project`; `incidents`: every incident that touched a public system, newest first, 25 per page; `older` is the next cursor or null. 404 with the Incidents tab off. | AC-22.01 |
+
+The months follow the admin's time zone offset (4.4).

@@ -4,13 +4,20 @@ Fields: [../technical-specs/06-data-model.md section 6.3.6](../technical-specs/0
 
 ## 6.1 Frontend routes
 
-The React page `/projects/{slug}/alerts` calls these (conventions 1.10).
+The React page `/projects/{slug}/settings/alerts` calls these (conventions 1.10). It holds three settings, Critical, Warning and Ticket alerts, each with an on/off switch. A supervisor may read and gets 403 on every write; the read hides each `webhook_url` that is set as `"(hidden)"` (conventions 1.9).
 
 | Method | Path | Access | Input | Behavior | AC |
 | --- | --- | --- | --- | --- | --- |
-| GET | `/api/ui/projects/{slug}/alerts` | owner, super_admin | | One route per severity, critical first: `severity`, `emails`, `webhook_url`, `use_webhook`. | AC-15.01, AC-15.02 |
-| PUT | `/api/ui/projects/{slug}/alerts/{severity}` | owner, super_admin | `emails` (one per line), `webhook_url`, `use_webhook` (boolean) | Validate each email (ASCII, a name domain, one the SMTP client accepts) and the URL (`http://` or `https://` with a host, no spaces). Save, 204. A bad address is 422 on `emails`; a bad URL on `webhook_url`. An unknown severity is 404. | AC-15.01 |
-| POST | `/api/ui/projects/{slug}/alerts/{severity}/test` | owner, super_admin | | Queue one test email per recipient and the webhook. 200 `{sent_to}`, the number of recipients. | |
+| GET | `/api/ui/projects/{slug}/alerts` | owner, super_admin, supervisor | | One route per severity, critical first: `severity`, `emails` (a list), `webhook_url`, `use_webhook`, `enabled`. | AC-15.01, AC-15.02 |
+| PUT | `/api/ui/projects/{slug}/alerts/{severity}` | owner, super_admin | `emails` (one per line, 20 at most), `webhook_url`, `use_webhook` (boolean) | Validate each email (ASCII, a name domain, one the SMTP client accepts) and the URL (`http://` or `https://` with a host, no spaces; blank turns it off). Save, 204. A bad address or too many is 422 on `emails`; a bad URL on `webhook_url`. An unknown severity is 404. It does not change `enabled`. | AC-15.01 |
+| POST | `/api/ui/projects/{slug}/alerts/{severity}/test` | owner, super_admin | | Queue one test email per recipient and the webhook when it is on. 200 `{sent_to}`, the number queued: recipients, plus one for the webhook. It is 0 when the route has nothing to send to, or when its switch is off. | |
+| PUT | `/api/ui/projects/{slug}/alerts/{route}/enabled` | owner, super_admin | `enabled` (boolean) | Switch `critical`, `warning` or `ticket` alerts on or off. Off sends nothing and keeps the recipients and the webhook for when it comes back on. 204. Another route name is 404. | |
+| GET | `/api/ui/projects/{slug}/ticket-alerts` | owner, super_admin, supervisor | | `enabled`, `digest` (the owner's daily digest), `webhook_url`, `use_webhook` (a webhook per new ticket) and `webhook_moves` (a webhook per column move). A project with no saved row reads digest on, both webhooks off, `enabled` on. | AC-30.01 |
+| PUT | `/api/ui/projects/{slug}/ticket-alerts` | owner, super_admin | `digest`, `webhook_url`, `use_webhook`, `webhook_moves` (booleans and a URL) | Save, 204. The URL is required when `use_webhook` or `webhook_moves` is on, and it must be `http://` or `https://`: 422 on `webhook_url` otherwise. A URL kept while both boxes are off waits for the next time. It does not change `enabled`. | AC-30.03 |
+| POST | `/api/ui/projects/{slug}/ticket-alerts/test` | owner, super_admin | | Send one `test` event to the ticket webhook. 200 `{sent_to}`: 1, or 0 when the ticket alerts are off, neither webhook box is on, or no URL is saved. | |
+| GET | `/api/ui/projects/{slug}/alerts-preview` | owner, super_admin, supervisor | | Sample alerts of every kind, built by the code that sends the real ones, with this project's name: a list of `{event, label, route, email, webhook}`. `event` is the webhook `event` (6.2). `route` is the setting that sends it: `critical`, `warning` or `ticket`. `email` is `{subject, body}`, or null for a kind that sends no email. | |
+
+Ticket alerts are apart from the severities. The Warning webhook no longer receives tickets.
 
 ## 6.2 Outgoing webhook
 
@@ -29,12 +36,17 @@ The React page `/projects/{slug}/alerts` calls these (conventions 1.10).
 }
 ```
 
-| `event` | When | AC |
-| --- | --- | --- |
-| `incident.opened` | Incident opens | AC-16.01 |
-| `incident.resolved` | Incident closes. Adds `duration_s`. | AC-16.02 |
-| `ticket.created` | Ticket submitted, when the warning route's webhook is on. Adds `ticket_number`, `title` and `ticket_url`; `text` reads `[TICKET] Payments #17: <title>`. | AC-30.03 |
-| `test` | Test button | |
+| `event` | When | Sent to | AC |
+| --- | --- | --- | --- |
+| `incident.opened` | Incident opens | the source's severity route | AC-16.01 |
+| `incident.resolved` | Incident closes. Adds `duration_s`. `text` reads "is up", "was deleted" or "was marked resolved by a tech lead". | the severity route | AC-16.02 |
+| `source.down` | A monitor or heartbeat fails while its incident switch is off. Adds `source_url` in place of `incident_url`; `text` reads `[DOWN] Payments / <title>: <cause>`. | the severity route | |
+| `source.up` | The same source recovers. Adds `duration_s` and `source_url`; `text` reads `[UP] Payments / <source> is up after 4m 12s`. | the severity route | |
+| `ticket.created` | A reporter submits a ticket, when the ticket webhook is on. Adds `ticket_number`, `title` and `ticket_url`; `text` reads `[TICKET] Payments #17: <title>`. A ticket the team files sends nothing. | the ticket webhook | AC-30.03 |
+| `ticket.moved` | A ticket moves to another column, when "ticket moves" is on. Adds `ticket_number`, `title`, `from`, `to`, `close_reason` (null unless `to` is `done`) and `ticket_url`; `text` reads `[TICKET] Payments #17 moved from In progress to Done (Fixed): <title>`. A move to the same column sends nothing. | the ticket webhook | |
+| `test` | Test button. Adds `severity` on the alerts test and `link` on the ticket test. | the tested route | |
+
+A monitor or heartbeat with its alert switch off sends none of the first four (4.3).
 
 ## 6.3 Outgoing email
 
@@ -42,7 +54,11 @@ The React page `/projects/{slug}/alerts` calls these (conventions 1.10).
 | --- | --- |
 | Opened | `[CRITICAL] Payments / API health is down` |
 | Resolved | `[RESOLVED] Payments / API health is up after 4m 12s` |
+| Down (incident switch off) | `[DOWN] Payments / API health is down` |
+| Up (incident switch off) | `[UP] Payments / API health is up after 4m 12s` |
 | Digest | `[Monita] Payments: 3 new tickets` |
 | Invite | `You are invited to Monita` |
+| Test | `[TEST] Payments: alerts for critical reach this channel.` |
+| Mail test | `Monita test email` |
 
-Plain text body with the cause and the incident link (AC-16.01). The digest goes to the project owner. It lists number, title and link of tickets created after the previous digest (a ticket-id watermark in `settings`) and still in Triage (AC-30.01), never the description, and is not sent when there are none (AC-30.02). It runs once a day at `MONITA_DIGEST_UTC_HOUR`.
+Plain text body with the cause and the incident link (AC-16.01), or the monitor or heartbeat page for Down and Up. The digest goes to the project owner when the owner is not disabled and Ticket alerts have the digest on. It lists number, title and link of tickets created after the previous digest (a ticket-id watermark in `settings`) and still in Triage (AC-30.01), never the description, and is not sent when there are none (AC-30.02). It runs once a day at `MONITA_DIGEST_UTC_HOUR`. A ticket sends no other email.
