@@ -283,6 +283,15 @@ pub async fn send(c: &Connection, ev: &Event, base_url: &str) -> anyhow::Result<
     Ok(())
 }
 
+/// A reporter's words for a chat's `text` field: Slack reads `<...>` as a link or a mention such
+/// as `<!channel>`, so an anonymous title must not carry one into the team's channel. The
+/// `title` field keeps the raw words for code that reads the JSON.
+pub(super) fn chat_safe(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+}
+
 /// The webhook body for a new ticket. Tickets send no email.
 pub(super) fn ticket_json(
     name: &str,
@@ -293,7 +302,7 @@ pub(super) fn ticket_json(
     at: i64,
 ) -> serde_json::Value {
     serde_json::json!({
-        "text": format!("[TICKET] {name} #{number}: {title}"),
+        "text": format!("[TICKET] {name} #{number}: {}", chat_safe(title)),
         "event": "ticket.created",
         "project": slug,
         "ticket_number": number,

@@ -102,7 +102,7 @@ pub(super) fn ticket_moved_json(
     }
     let number = m.number;
     serde_json::json!({
-        "text": format!("[TICKET] {name} #{number} moved from {} to {to}: {}", label(m.from), m.title),
+        "text": format!("[TICKET] {name} #{number} moved from {} to {to}: {}", label(m.from), super::chat_safe(m.title)),
         "event": "ticket.moved",
         "project": slug,
         "ticket_number": number,
@@ -148,4 +148,37 @@ pub async fn send_ticket_test(db: &Db, project_id: i64, base_url: &str) -> anyho
         Ok(1)
     })
     .await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_reporters_title_cannot_add_a_link_or_mention_to_the_chat_text() {
+        let title = "<!channel> pay at <https://evil.example|bank> & more";
+        let created = ticket_json("Payments", "pay", 2, title, "https://m.co", 0);
+        assert_eq!(
+            created["text"],
+            "[TICKET] Payments #2: &lt;!channel&gt; pay at &lt;https://evil.example|bank&gt; &amp; more"
+        );
+        assert_eq!(
+            created["title"], title,
+            "code that reads the JSON gets the words"
+        );
+        let m = Moved {
+            number: 2,
+            title,
+            from: "triage",
+            to: "backlog",
+            close_reason: None,
+        };
+        let moved = ticket_moved_json("Payments", "pay", &m, "https://m.co", 0);
+        assert!(
+            moved["text"]
+                .as_str()
+                .unwrap()
+                .ends_with("&lt;!channel&gt; pay at &lt;https://evil.example|bank&gt; &amp; more")
+        );
+    }
 }

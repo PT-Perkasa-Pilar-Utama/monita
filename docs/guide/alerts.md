@@ -68,7 +68,7 @@ Select **How alerts work**, then **What recipients get**. Pick an alert to see t
 | `ticket.moved` | A ticket changes column. Adds `ticket_number`, `title`, `ticket_url`, `from`, `to` and `close_reason`. | Ticket |
 | `test` | The test button | The section tested |
 
-Every body has `text`, `event`, `project`, `at` (Unix seconds, UTC) and, for incidents, `source`, `severity` and `cause`. The `text` field makes the body work as-is with Slack and Google Chat incoming webhooks.
+Every body has `text`, `event`, `project`, `at` (Unix seconds, UTC) and, for incidents, `source`, `severity` and `cause`. The `text` field makes the body work as-is with Slack and Google Chat incoming webhooks. In a ticket's `text`, Monita writes `&`, `<` and `>` as `&amp;`, `&lt;` and `&gt;`, so a reporter's title cannot add a link or an `@channel` mention. The `title` field keeps the words as typed.
 
 ```json
 {
