@@ -2,21 +2,22 @@ import type { ReactElement } from "react";
 import { Link, useOutletContext } from "react-router-dom";
 import { SystemCard, uptimeText } from "@/components/app/PublicStatus";
 import { StateBadge } from "@/components/app/Tone";
-import { ArrowRight, RefreshCw } from "@/components/icons";
+import { ArrowRight } from "@/components/icons";
 import { PageHeader } from "@/components/layout/Page";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Spinner } from "@/components/ui/spinner";
 import { headline, splitSystems } from "@/lib/status";
 import type { PublicSite, PublicStatus } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 import { cn } from "@/lib/utils";
 
+/** The public page reads its status again this often, while the tab is visible. */
+const STATUS_LIVE_MS = 60_000;
+
 /** The public Uptime tab: one sentence, then the systems with 90 days of bars. Incidents have
  * their own tab, which the banner links to while one is open. */
 export function Status(): ReactElement {
   const project = useOutletContext<PublicSite>();
-  const res = useApi<PublicStatus>(`/public/${project.slug}/status`);
+  const res = useApi<PublicStatus>(`/public/${project.slug}/status`, STATUS_LIVE_MS);
   const d = res.data;
   if (!d) return <Skeleton className="h-96 rounded-xl" />;
   const { overall, items, incidents } = d.status;
@@ -25,15 +26,7 @@ export function Status(): ReactElement {
 
   return (
     <>
-      <PageHeader
-        title={`${project.name} status`}
-        actions={
-          <Button variant="secondary" onClick={res.reload} disabled={res.loading}>
-            {res.loading ? <Spinner data-icon="inline-start" /> : <RefreshCw data-icon="inline-start" />}
-            Refresh
-          </Button>
-        }
-      />
+      <PageHeader title={`${project.name} status`} />
       <p
         className={cn(
           "mb-8 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-6 py-5 text-xl font-semibold",
