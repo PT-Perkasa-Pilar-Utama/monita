@@ -1,5 +1,6 @@
 use std::sync::{Arc, atomic::AtomicI64};
 
+use anyhow::Context;
 use axum::{
     Router,
     extract::DefaultBodyLimit,
@@ -41,7 +42,12 @@ async fn start(
     config: Config,
     mailer: Mailer,
 ) -> anyhow::Result<(Router, AppState, tokio::task::JoinHandle<()>)> {
-    let db = Db::open(&config.db_path).await?;
+    let db = Db::open(&config.db_path).await.with_context(|| {
+        format!(
+            "could not open the database at {} (MONITA_DB_PATH)",
+            config.db_path.display()
+        )
+    })?;
     migrate::run(&db).await?;
     let state = AppState {
         db,

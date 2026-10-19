@@ -86,6 +86,10 @@ pub async fn run(path: &Path, yes: bool) -> anyhow::Result<()> {
         set.push((key, value));
     }
 
+    // Before the file is written: a scripted setup that cannot create its admin changes nothing.
+    if yes && admin_email_set() && admin_password().is_none() {
+        bail!("MONITA_ADMIN_PASSWORD is required with MONITA_ADMIN_EMAIL; nothing was written");
+    }
     let text = envfile::update(&old, &set)?;
     let file = envfile::parse(&text);
     let config = Config::from_lookup(|k| {
@@ -119,8 +123,7 @@ async fn first_admin(config: &Config, yes: bool) -> anyhow::Result<()> {
         return Ok(());
     }
     let password = if yes {
-        std::env::var("MONITA_ADMIN_PASSWORD")
-            .context("MONITA_ADMIN_PASSWORD is required with MONITA_ADMIN_EMAIL")?
+        admin_password().context("MONITA_ADMIN_PASSWORD is required with MONITA_ADMIN_EMAIL")?
     } else {
         let first = read_secret(&format!("Password for {email}: "))?;
         if read_secret("The same password again: ")? != first {
@@ -139,4 +142,14 @@ async fn first_admin(config: &Config, yes: bool) -> anyhow::Result<()> {
         Ok(())
     })
     .await
+}
+
+fn admin_email_set() -> bool {
+    std::env::var("MONITA_ADMIN_EMAIL").is_ok_and(|e| !e.trim().is_empty())
+}
+
+fn admin_password() -> Option<String> {
+    std::env::var("MONITA_ADMIN_PASSWORD")
+        .ok()
+        .filter(|p| !p.is_empty())
 }

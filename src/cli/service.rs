@@ -13,7 +13,7 @@ use anyhow::{Context, bail};
 use crate::platform::config::Config;
 
 pub const UNIT_PATH: &str = "/etc/systemd/system/monita.service";
-/// One source for the unit: the README's manual steps install the same file.
+/// One source for the unit: deploy/monita.service, filled in with this host's paths.
 const TEMPLATE: &str = include_str!("../../deploy/monita.service");
 const USER: &str = "monita";
 

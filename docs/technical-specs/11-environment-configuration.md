@@ -21,6 +21,6 @@ Monita reads its configuration from environment variables at start. systemd load
 
 Reset-state exists only where `MONITA_ENV` is `dev` or `test`. In prod, `MONITA_RESET_TOKEN` is absent and the route is never registered.
 
-Monita refuses to start when `MONITA_ENV=prod` and `MONITA_BASE_URL` is not `https://`.
+Monita refuses to start when `MONITA_ENV=prod` and `MONITA_BASE_URL` is not `https://`. It also refuses a value that does not parse, and the message names the variable: a bind address, a URL, a number, a true-or-false setting, the SMTP URL, the sender, the log filter or the peer ping URL. `monita setup` applies the same checks before it writes the file.
 
 `monita setup --yes` also reads `MONITA_ADMIN_EMAIL` and `MONITA_ADMIN_PASSWORD` for the first super admin. It never writes them to the file, and `serve` ignores them.

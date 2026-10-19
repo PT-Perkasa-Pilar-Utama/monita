@@ -103,22 +103,36 @@ pub async fn run(cli: Cli) -> anyhow::Result<()> {
         let path = cli.env_file.unwrap_or_else(|| ENV_FILE.into());
         return setup::run(&path, yes).await;
     }
+    // These read no settings, so they work with a broken env file, or after uninstall removed it.
+    match cli.cmd {
+        Cmd::Service {
+            cmd: ServiceCmd::Uninstall,
+        } => return service::uninstall(),
+        Cmd::Service {
+            cmd: ServiceCmd::Status,
+        } => return service::status(),
+        Cmd::Service {
+            cmd: ServiceCmd::Logs { follow },
+        } => return service::logs(follow),
+        Cmd::Whereis { what } => {
+            let (file, env_path) = read_env(cli.env_file)?;
+            whereis(&|k| lookup(&file, k), env_path.as_deref(), what);
+            return Ok(());
+        }
+        _ => {}
+    }
     let (config, env_path) = load(cli.env_file)?;
     init_tracing(&config);
     match cli.cmd {
-        Cmd::Setup { .. } => unreachable!("handled above"),
+        Cmd::Setup { .. } | Cmd::Whereis { .. } => unreachable!("handled above"),
         Cmd::Serve => crate::app::serve(config).await,
         Cmd::Migrate => offline(&config, async |_| Ok(())).await,
         Cmd::Service { cmd } => match cmd {
             ServiceCmd::Install => service::install(&config, env_path.as_deref()).await,
-            ServiceCmd::Uninstall => service::uninstall(),
-            ServiceCmd::Status => service::status(),
-            ServiceCmd::Logs { follow } => service::logs(follow),
+            ServiceCmd::Uninstall | ServiceCmd::Status | ServiceCmd::Logs { .. } => {
+                unreachable!("handled above")
+            }
         },
-        Cmd::Whereis { what } => {
-            whereis(&config, env_path.as_deref(), what);
-            Ok(())
-        }
         Cmd::Admin {
             cmd: AdminCmd::Create { email },
         } => {
@@ -144,26 +158,45 @@ pub async fn run(cli: Cli) -> anyhow::Result<()> {
     }
 }
 
-/// The config from the process env, then the env file. Returns the file it read, if any.
-fn load(env_file: Option<PathBuf>) -> anyhow::Result<(Config, Option<PathBuf>)> {
+/// An env file's `KEY=value` lines, in file order.
+type EnvLines = Vec<(String, String)>;
+
+/// The env file's lines, and its path: `--env-file`, or the default file when MONITA_ENV is unset.
+fn read_env(env_file: Option<PathBuf>) -> anyhow::Result<(EnvLines, Option<PathBuf>)> {
     let path = env_file.or_else(|| {
         let default = Path::new(ENV_FILE);
         (std::env::var_os("MONITA_ENV").is_none() && default.exists()).then(|| default.into())
     });
     let file = match &path {
-        Some(p) => envfile::parse(&std::fs::read_to_string(p).with_context(|| {
-            format!(
-                "could not read {}; it is readable by root only",
-                p.display()
-            )
-        })?),
+        Some(p) => match std::fs::read_to_string(p) {
+            Ok(text) => envfile::parse(&text),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                anyhow::bail!("{} does not exist", p.display())
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::PermissionDenied => {
+                anyhow::bail!(
+                    "could not read {}; it is readable by root only",
+                    p.display()
+                )
+            }
+            Err(e) => return Err(e).with_context(|| format!("could not read {}", p.display())),
+        },
         None => Vec::new(),
     };
-    let config = Config::from_lookup(|k| {
-        std::env::var(k)
-            .ok()
-            .or_else(|| file.iter().find(|(f, _)| f == k).map(|(_, v)| v.clone()))
-    })?;
+    Ok((file, path))
+}
+
+/// A variable from the process env, else from the env file: the process env wins.
+fn lookup(file: &[(String, String)], key: &str) -> Option<String> {
+    std::env::var(key)
+        .ok()
+        .or_else(|| file.iter().find(|(f, _)| f == key).map(|(_, v)| v.clone()))
+}
+
+/// The config from the process env, then the env file. Returns the file it read, if any.
+fn load(env_file: Option<PathBuf>) -> anyhow::Result<(Config, Option<PathBuf>)> {
+    let (file, path) = read_env(env_file)?;
+    let config = Config::from_lookup(|k| lookup(&file, k))?;
     Ok((config, path))
 }
 
@@ -175,7 +208,7 @@ async fn offline(
 ) -> anyhow::Result<()> {
     let db = Db::open(&config.db_path).await.with_context(|| {
         format!(
-            "could not open {}; if Monita is running, stop it first (systemctl stop monita)",
+            "could not open the database at {} (MONITA_DB_PATH); if Monita is running, stop it first (systemctl stop monita)",
             config.db_path.display()
         )
     })?;
@@ -213,7 +246,14 @@ fn own_like_folder(db_path: &Path) {
     }
 }
 
-fn whereis(config: &Config, env_path: Option<&Path>, what: Option<Place>) {
+/// Where things are, from the settings as written: it validates nothing, so it helps most when
+/// the settings are what is wrong.
+fn whereis(var: &dyn Fn(&str) -> Option<String>, env_path: Option<&Path>, what: Option<Place>) {
+    let set = |k: &str| {
+        var(k)
+            .map(|v| v.trim().to_string())
+            .filter(|v| !v.is_empty())
+    };
     let bin = std::env::current_exe()
         .map(|p| p.display().to_string())
         .unwrap_or_else(|_| "unknown".into());
@@ -225,14 +265,16 @@ fn whereis(config: &Config, env_path: Option<&Path>, what: Option<Place>) {
                 p.display().to_string()
             }),
         ),
-        (Place::Data, "data", config.db_path.display().to_string()),
+        (
+            Place::Data,
+            "data",
+            set("MONITA_DB_PATH")
+                .unwrap_or_else(|| crate::platform::config::DEFAULT_DB_PATH.into()),
+        ),
         (
             Place::Backups,
             "backups",
-            config
-                .backup_dir
-                .as_ref()
-                .map_or("none".into(), |d| d.display().to_string()),
+            set("MONITA_BACKUP_DIR").unwrap_or_else(|| "none".into()),
         ),
         (Place::Bin, "bin", bin),
         (Place::Service, "service", service::UNIT_PATH.into()),

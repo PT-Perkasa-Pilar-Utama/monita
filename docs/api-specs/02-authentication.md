@@ -9,7 +9,7 @@ Session strategy: [../technical-specs/07-security.md](../technical-specs/07-secu
 | Signature | `monita admin create --email <email>`. The password is read from a prompt, or from stdin when not a TTY. |
 | Behavior | Validates the email and a password of 12 or more chars. Inserts `users(role=super_admin)`. (AC-01.01) |
 | Output | Exit 0, prints `created super admin <email>`. |
-| Errors | Exit 1 `email already exists` (AC-01.02). Exit 1 `password too short`. |
+| Errors | Exit 1 `An account with this email already exists.` (AC-01.02). Exit 1 `Use at least 12 characters.` |
 
 ## 2.2 Sign-in and invites
 

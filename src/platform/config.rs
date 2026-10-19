@@ -4,6 +4,9 @@ use std::{net::SocketAddr, path::PathBuf};
 
 use anyhow::{Context, bail};
 
+/// Where the database lives when MONITA_DB_PATH is unset (spec 11).
+pub const DEFAULT_DB_PATH: &str = "./data/monita.db";
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Env {
     Dev,
@@ -96,19 +99,50 @@ impl Config {
             Env::Prod => None,
             _ => var("MONITA_RESET_TOKEN"),
         };
+        // Checked here so `serve`, `migrate` and `setup` refuse the same values, each naming its
+        // variable. The SMTP error is not passed on: it can quote the URL, password included.
+        let smtp_url = var("MONITA_SMTP_URL");
+        if let Some(u) = &smtp_url {
+            lettre::AsyncSmtpTransport::<lettre::Tokio1Executor>::from_url(u).map_err(|_| {
+                anyhow::anyhow!("MONITA_SMTP_URL must be a mail server URL such as smtps://user:password@host:465")
+            })?;
+        }
+        let mail_from = var("MONITA_MAIL_FROM").unwrap_or(default_from);
+        mail_from.parse::<lettre::message::Mailbox>().map_err(|_| {
+            anyhow::anyhow!(
+                "MONITA_MAIL_FROM must be an address such as Monita <monita@company.co.id>"
+            )
+        })?;
+        let ping_url = var("MONITA_PING_URL");
+        if ping_url
+            .as_deref()
+            .is_some_and(|u| !super::valid_http_url(u))
+        {
+            bail!("MONITA_PING_URL must be an http:// or https:// URL");
+        }
+        let log_filter = var("MONITA_LOG").unwrap_or_else(|| {
+            if env == Env::Dev {
+                "info,monita=debug"
+            } else {
+                "info"
+            }
+            .into()
+        });
+        tracing_subscriber::EnvFilter::try_new(&log_filter)
+            .context("MONITA_LOG must be a log filter such as info or info,monita=debug")?;
 
         Ok(Self {
             env,
             bind,
             base_url,
             db_path: var("MONITA_DB_PATH")
-                .unwrap_or_else(|| "./data/monita.db".into())
+                .unwrap_or_else(|| DEFAULT_DB_PATH.into())
                 .into(),
             backup_dir: var("MONITA_BACKUP_DIR").map(PathBuf::from),
             backup_keep: parse_num("MONITA_BACKUP_KEEP", 7)? as usize,
-            smtp_url: var("MONITA_SMTP_URL"),
-            mail_from: var("MONITA_MAIL_FROM").unwrap_or(default_from),
-            ping_url: var("MONITA_PING_URL"),
+            smtp_url,
+            mail_from,
+            ping_url,
             trust_proxy: flag(
                 var("MONITA_TRUST_PROXY"),
                 "MONITA_TRUST_PROXY",
@@ -117,14 +151,7 @@ impl Config {
             )?,
             digest_utc_hour,
             reset_token,
-            log_filter: var("MONITA_LOG").unwrap_or_else(|| {
-                if env == Env::Dev {
-                    "info,monita=debug"
-                } else {
-                    "info"
-                }
-                .into()
-            }),
+            log_filter,
             // Unset: json in prod for log shippers, pretty elsewhere (spec 11).
             log_json: match var("MONITA_LOG_FORMAT") {
                 None => env == Env::Prod,
@@ -166,6 +193,26 @@ mod tests {
         );
         let set = cfg(&[prod[0], prod[1], ("MONITA_MAIL_FROM", "ops@example.com")]).unwrap();
         assert_eq!(set.mail_from, "ops@example.com");
+    }
+
+    #[test]
+    fn mail_logging_and_peer_values_are_refused_at_start_by_name() {
+        let dev = ("MONITA_ENV", "dev");
+        for (key, bad) in [
+            ("MONITA_SMTP_URL", "not a url"),
+            ("MONITA_MAIL_FROM", "monita at company"),
+            ("MONITA_LOG", "info,monita=loud"),
+            ("MONITA_PING_URL", "ftp://peer.example/ping/x"),
+        ] {
+            let err = cfg(&[dev, (key, bad)]).unwrap_err();
+            assert!(format!("{err:#}").starts_with(key), "{key}: {err:#}");
+        }
+        let secret = cfg(&[dev, ("MONITA_SMTP_URL", "smtps://u:hunter2@ host:465")]).unwrap_err();
+        assert!(
+            !format!("{secret:#}").contains("hunter2"),
+            "the password stays out of the error"
+        );
+        assert!(cfg(&[dev, ("MONITA_SMTP_URL", "smtps://u:p@mail.example.com:465")]).is_ok());
     }
 
     #[test]

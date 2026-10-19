@@ -23,14 +23,14 @@ Every error prints `Error: <message>` to stderr and exits 1. A usage error exits
 | Default | Without the flag, Monita reads `/etc/monita/monita.env` when it exists and `MONITA_ENV` is unset. systemd sets `MONITA_ENV` from the same file, so `serve` under the unit and `make run` never read it twice. |
 | Order | A variable set in the process environment wins over the file. |
 | Format | `KEY=value` lines. `#` starts a comment. A value in single quotes is literal; a value in double quotes takes `\"` and `\\`. systemd's `EnvironmentFile=` and a POSIX shell read the file the same way. |
-| Errors | The file exists but cannot be read: exit 1, `could not read <path>; it is readable by root only`. |
+| Errors | The file does not exist: exit 1, `<path> does not exist`. It exists but this user may not read it: exit 1, `could not read <path>; it is readable by root only`. A bad value fails before anything starts, and the message names the variable. |
 
 ## 10.2 `monita setup`
 
 | Part | Contract |
 | --- | --- |
 | Input | It asks, in order: `MONITA_BASE_URL`, `MONITA_BIND`, `MONITA_TRUST_PROXY`, `MONITA_DB_PATH`, `MONITA_BACKUP_DIR`, `MONITA_SMTP_URL`, `MONITA_MAIL_FROM`. Each prompt shows the value in the file, or the prod value of spec 11. Enter keeps it; `-` leaves it empty. Then it asks the first super admin's email (blank skips) and the password twice, without echo. |
-| `--yes` | Asks nothing. Each value comes from the same `MONITA_*` variable, then the file, then the default. The admin comes from `MONITA_ADMIN_EMAIL` and `MONITA_ADMIN_PASSWORD`; without the email, no admin is created. |
+| `--yes` | Asks nothing. Each value comes from the same `MONITA_*` variable, then the file, then the default. The admin comes from `MONITA_ADMIN_EMAIL` and `MONITA_ADMIN_PASSWORD`; without the email, no admin is created. The email without the password is refused before the file is written. |
 | Behavior | 1. Sets `MONITA_ENV=prod`. 2. Validates the result as `serve` would. 3. Writes the file through a temporary file and a rename, mode 0600. A key already in the file keeps its line; other lines and comments stay; a new key goes at the end. 4. Creates the admin. An email that already has an account is kept. |
 | Output | `wrote <path>` or `nothing changed in <path>`, then `created super admin <email>` or `an account with <email> already exists; kept`, then `next: sudo monita service install`. A second run with the same answers changes nothing and exits 0. |
 | Errors | An invalid value: exit 1, the file is not written, and the message names the variable. A value with a single quote or a line break: exit 1. Two different passwords: exit 1, no account. |
@@ -51,4 +51,4 @@ Paths in the unit must be absolute and free of spaces. Root runs `setup` and the
 
 ## 10.4 `monita whereis`
 
-Without an argument it prints one `label value` row for `env`, `data`, `backups`, `bin`, `service` and `logs`. With one, it prints that value alone, for scripts: `monita whereis data` prints the database path.
+Without an argument it prints one `label value` row for `env`, `data`, `backups`, `bin`, `service` and `logs`. With one, it prints that value alone, for scripts: `monita whereis data` prints the database path. It prints the values as written and checks none of them, so it works when the settings are what is wrong. `service uninstall`, `status` and `logs` read no settings either.
