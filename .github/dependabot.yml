@@ -1,21 +1,26 @@
-# Weekly update pull requests for crates, the e2e packages, and the actions pinned by commit SHA.
+# Monthly update pull requests for crates, the web and e2e packages, and the actions pinned by
+# commit SHA. Minor and patch updates arrive as one grouped PR per ecosystem; a major update
+# gets its own PR, because it can need code changes.
 version: 2
 updates:
   - package-ecosystem: "cargo"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
     groups:
       minor-and-patch:
         update-types: ["minor", "patch"]
   - package-ecosystem: "bun"
-    directory: "/e2e"
+    directories: ["/web", "/e2e"]
     schedule:
-      interval: "weekly"
+      interval: "monthly"
+    groups:
+      minor-and-patch:
+        update-types: ["minor", "patch"]
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
     groups:
       actions:
         patterns: ["*"]
