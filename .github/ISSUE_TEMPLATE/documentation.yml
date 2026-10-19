@@ -1,0 +1,23 @@
+name: Documentation
+description: Something in the docs is wrong, unclear or missing.
+title: "docs: "
+labels: ["documentation"]
+body:
+  - type: input
+    id: page
+    attributes:
+      label: Page
+      description: The address of the docs page, or the file in docs/.
+      placeholder: https://pt-perkasa-pilar-utama.github.io/monita/docs/install/
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is wrong or missing?
+    validations:
+      required: true
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: What it should say

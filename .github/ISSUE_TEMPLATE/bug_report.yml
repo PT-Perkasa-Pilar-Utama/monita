@@ -1,0 +1,67 @@
+name: Bug report
+description: Something does not work as the docs say.
+title: "bug: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Search the open issues first. For a security problem, use the private form in SECURITY.md instead.
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: One paragraph. What you did, and what went wrong.
+      placeholder: A heartbeat with a 5-minute grace opened an incident 1 minute after its deadline.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Create a heartbeat with period 1 hour and grace 5 minutes.
+        2. Ping it once.
+        3. Wait 61 minutes.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or error text
+      description: "`sudo monita service logs` shows the service log. Remove any token, key or password first."
+      render: text
+  - type: input
+    id: version
+    attributes:
+      label: Monita version
+      description: The output of `monita --version`.
+      placeholder: monita 1.0.0
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where does it happen?
+      multiple: true
+      options:
+        - Team pages (signed in)
+        - Public status page
+        - Alerts (email or webhook)
+        - Public API or ping URLs
+        - Command line or the systemd service
+        - Not sure
+    validations:
+      required: true
+  - type: input
+    id: host
+    attributes:
+      label: Server
+      description: The OS and how Monita runs.
+      placeholder: Ubuntu 24.04, monita service install, behind nginx

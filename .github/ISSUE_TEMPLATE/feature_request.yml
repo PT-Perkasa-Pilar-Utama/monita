@@ -1,0 +1,44 @@
+name: Feature request
+description: Suggest something Monita should do.
+title: "feat: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Version 1 leaves some things out on purpose: checks from more than one place, TCP, ping and DNS checks, text-message or phone alerts, on-call rotations, single sign-on, and files on tickets. ROADMAP.md explains why.
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What do you need to do that Monita makes hard or impossible today?
+      placeholder: Our nightly backup runs for two hours, and I cannot tell a slow run from a stuck one.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you propose
+      description: How it would work, from the user's side.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you tried instead
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      multiple: true
+      options:
+        - Monitors
+        - Heartbeats
+        - Incidents and alerts
+        - Status page
+        - Tickets
+        - Changelog
+        - Admin and roles
+        - Command line and install
+    validations:
+      required: true
