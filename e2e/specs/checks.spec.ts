@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { apiHeartbeat, apiProject } from "../lib/api";
+import { apiHeartbeat, apiMonitor, apiProject } from "../lib/api";
 import { createProject } from "../lib/project";
 import { authFile } from "../lib/roles";
 
@@ -83,4 +83,31 @@ test("heartbeat Details gives the call in Shell, Node.js and Python, and remembe
   await page.reload();
   await page.getByRole("button", { name: "Details" }).click();
   await expect(page.getByRole("radio", { name: "Python" })).toBeChecked();
+});
+
+test("a fail ping shows its reason in the heartbeat's history, and the chart reads out where you point", async ({ page }) => {
+  const slug = await apiProject(page, "Reasons");
+  const { id, pingUrl } = await apiHeartbeat(page, slug);
+  expect((await page.request.post(`${pingUrl}/fail`, { data: "disk full on /backup" })).status()).toBe(200);
+  await page.goto(`/projects/${slug}/heartbeats/${id}`);
+  await expect(page.getByRole("cell", { name: "disk full on /backup" })).toBeVisible();
+
+  const chart = page.getByRole("img", { name: /^Recorded pings, last/ });
+  await chart.hover();
+  await expect(chart.locator("line[class*='stroke-foreground/40']")).toHaveCount(1);
+});
+
+test("a list sorts by a heading click, keeps the order in the URL, and a row click opens it", async ({ page }) => {
+  const slug = await apiProject(page, "Sorting");
+  await apiMonitor(page, slug, { name: "Alpha" });
+  await apiMonitor(page, slug, { name: "Bravo" });
+  await page.goto(`/projects/${slug}/monitors`);
+  const names = page.locator("tbody tr td:first-child a");
+  await page.getByRole("button", { name: "Monitor", exact: true }).click();
+  await expect(page).toHaveURL(/[?&]sort=name/);
+  const first = await names.first().textContent();
+  await page.getByRole("button", { name: "Monitor", exact: true }).click();
+  await expect(names.first()).not.toHaveText(first!);
+  await page.locator("tbody tr").filter({ hasText: "Alpha" }).locator("td").nth(1).click();
+  await expect(page.getByRole("heading", { name: "Alpha" })).toBeVisible();
 });

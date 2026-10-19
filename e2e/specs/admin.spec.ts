@@ -39,6 +39,13 @@ test("Test connection names the mail server that did not answer", async ({ page 
   await expect(page.getByRole("status")).toContainText("Monita could not connect.", { timeout: 15_000 });
 });
 
+test("with no mail server saved, a test email goes to the log and says so", async ({ page }) => {
+  await page.goto("/admin/email");
+  await page.locator("#test-to").fill("oncall@monita.test");
+  await page.getByRole("button", { name: "Send test email" }).click();
+  await expect(page.locator("#test-send").getByRole("status")).toContainText("No mail server is set, so the test went to Monita's log.");
+});
+
 test("a supervisor is invited, and a project owner cannot become one", async ({ page }) => {
   const email = `sup-${Date.now()}@monita.test`;
   await page.goto("/admin/users");

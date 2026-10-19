@@ -68,3 +68,13 @@ test("the project list pages 20 at a time and searches on the server", async ({ 
   await expect(pages).toHaveCount(0);
   await expect(page.getByText(`${stamp} 07`)).toBeVisible();
 });
+
+test("outside a project, the header leads back to the project opened last", async ({ page }) => {
+  const name = `Return ${Date.now()}`;
+  const slug = await apiProject(page, name);
+  await page.goto(`/projects/${slug}`);
+  await expect(page.getByRole("heading", { name, level: 1 })).toBeVisible();
+  await page.goto("/incidents");
+  await page.getByRole("link", { name: `Back to ${name}` }).click();
+  await expect(page).toHaveURL(new RegExp(`/projects/${slug}$`));
+});

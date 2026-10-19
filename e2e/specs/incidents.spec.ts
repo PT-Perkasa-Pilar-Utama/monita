@@ -38,6 +38,12 @@ test("@US-14 @US-17 @US-18 @US-19 a failing job opens an incident, the TL update
 
   await page.getByRole("button", { name: "Post update" }).click();
   const dialog = page.getByRole("dialog");
+  // Each label starts from its template until the TL writes their own words.
+  await dialog.getByRole("radio", { name: "Monitoring" }).click();
+  await expect(dialog.getByLabel("Message")).toHaveValue("A fix is out. We are watching to make sure it holds.");
+  await dialog.getByLabel("Message").fill("Our own words.");
+  await dialog.getByRole("radio", { name: "Identified" }).click();
+  await expect(dialog.getByLabel("Message")).toHaveValue("Our own words.");
   await dialog.getByLabel("Message").fill("");
   await dialog.getByRole("button", { name: "Post update" }).click();
   await expect(dialog.getByRole("alert")).toHaveText("Write a message.");
@@ -75,6 +81,12 @@ test("@US-20 TL reports an incident by hand and resolves it", async ({ page }) =
   await page.getByRole("link", { name: "Slow settlement reports" }).click();
   await page.getByRole("button", { name: "Post update" }).click();
   const dialog = page.getByRole("dialog");
+  // Each label starts from its template until the TL writes their own words.
+  await dialog.getByRole("radio", { name: "Monitoring" }).click();
+  await expect(dialog.getByLabel("Message")).toHaveValue("A fix is out. We are watching to make sure it holds.");
+  await dialog.getByLabel("Message").fill("Our own words.");
+  await dialog.getByRole("radio", { name: "Identified" }).click();
+  await expect(dialog.getByLabel("Message")).toHaveValue("Our own words.");
   await dialog.getByRole("radio", { name: "Resolved" }).click();
   await dialog.getByLabel("Message").fill("Index added. Reports take 90 seconds.");
   await dialog.getByRole("button", { name: "Post update" }).click();
