@@ -49,10 +49,50 @@ impl Clients {
 
 pub struct Target<'a> {
     pub url: &'a str,
+    pub method: &'a str,
+    /// Parsed from the monitor's `Name: value` lines.
+    pub headers: Vec<(String, String)>,
+    /// Sent with POST and PUT only.
+    pub body: Option<&'a str>,
     pub timeout_ms: i64,
     pub expected_status: &'a str,
     pub keyword: Option<&'a str>,
     pub skip_tls_verify: bool,
+}
+
+/// The methods a monitor may send. Only POST and PUT carry a body.
+pub const METHODS: [&str; 4] = ["GET", "HEAD", "POST", "PUT"];
+
+/// The most headers one monitor sends, and the longest value.
+const MAX_HEADERS: usize = 20;
+const MAX_HEADER_VALUE: usize = 4096;
+
+/// `Name: value` lines, as curl shows them. A blank line is skipped; a value keeps its inner
+/// colons. `Host` and `Content-Length` are refused: the client sets them.
+pub fn parse_headers(text: &str) -> Result<Vec<(String, String)>, &'static str> {
+    let mut out = Vec::new();
+    for line in text.lines().map(str::trim).filter(|l| !l.is_empty()) {
+        let Some((name, value)) = line.split_once(':') else {
+            return Err("Write one header per line, as Name: value.");
+        };
+        let (name, value) = (name.trim(), value.trim());
+        if reqwest::header::HeaderName::from_bytes(name.as_bytes()).is_err()
+            || reqwest::header::HeaderValue::from_str(value).is_err()
+        {
+            return Err("Write one header per line, as Name: value.");
+        }
+        if name.eq_ignore_ascii_case("host") || name.eq_ignore_ascii_case("content-length") {
+            return Err("Monita sets Host and Content-Length itself; remove them.");
+        }
+        if value.len() > MAX_HEADER_VALUE {
+            return Err("A header value can be at most 4 KB.");
+        }
+        out.push((name.to_string(), value.to_string()));
+    }
+    if out.len() > MAX_HEADERS {
+        return Err("Send at most 20 headers.");
+    }
+    Ok(out)
 }
 
 /// `2xx` matches 200 to 299; `200,204` matches either code.
@@ -86,10 +126,20 @@ pub async fn probe(t: &Target<'_>, clients: &Clients) -> CheckResult {
         latency_ms: start.elapsed().as_millis() as i64,
         error: Some(error),
     };
-    let request = client
-        .get(t.url)
-        .timeout(Duration::from_millis(t.timeout_ms as u64))
-        .send();
+    let method = reqwest::Method::from_bytes(t.method.as_bytes()).unwrap_or(reqwest::Method::GET);
+    let mut request = client
+        .request(method.clone(), t.url)
+        .timeout(Duration::from_millis(t.timeout_ms as u64));
+    for (name, value) in &t.headers {
+        request = request.header(name.as_str(), value.as_str());
+    }
+    if let Some(body) = t
+        .body
+        .filter(|_| method == reqwest::Method::POST || method == reqwest::Method::PUT)
+    {
+        request = request.body(body.to_string());
+    }
+    let request = request.send();
     let mut resp = match request.await {
         Ok(r) => r,
         Err(e) if e.is_timeout() => {
@@ -172,5 +222,22 @@ mod tests {
         assert!(status_matches("200,204", 204));
         assert!(!status_matches("200,204", 201));
         assert!(status_matches("3xx", 302));
+    }
+
+    #[test]
+    fn header_lines_parse_as_curl_shows_them() {
+        let h = parse_headers("Authorization: Bearer a:b\n\n  X-Env :  prod  \n").unwrap();
+        assert_eq!(
+            h,
+            [
+                ("Authorization".to_string(), "Bearer a:b".to_string()),
+                ("X-Env".to_string(), "prod".to_string())
+            ]
+        );
+        assert!(parse_headers("").unwrap().is_empty());
+        assert!(parse_headers("no colon here").is_err());
+        assert!(parse_headers("Host: example.com").is_err());
+        assert!(parse_headers("Bad Name: x").is_err());
+        assert!(parse_headers(&"A: 1\n".repeat(21)).is_err());
     }
 }

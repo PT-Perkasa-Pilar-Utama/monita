@@ -86,6 +86,10 @@ export type MonitorView = {
   is_public: boolean;
   alert: boolean;
   auto_incident: boolean;
+  method: "GET" | "HEAD" | "POST" | "PUT";
+  /** `Name: value` lines. */
+  headers: string;
+  body: string | null;
   created_at: number;
   next_check_at: number;
   state: StateKind;

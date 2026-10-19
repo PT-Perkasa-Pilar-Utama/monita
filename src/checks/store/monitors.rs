@@ -19,6 +19,9 @@ pub struct Monitor {
     pub is_public: bool,
     pub alert: bool,
     pub auto_incident: bool,
+    pub method: String,
+    pub headers: Option<String>,
+    pub body: Option<String>,
     pub next_check_at: i64,
     pub last: Option<CheckRow>,
     pub created_at: i64,
@@ -38,6 +41,9 @@ impl Monitor {
             is_public: self.is_public,
             alert: self.alert,
             auto_incident: self.auto_incident,
+            method: self.method.clone(),
+            headers: self.headers.clone().unwrap_or_default(),
+            body: self.body.clone(),
         }
     }
 
@@ -56,6 +62,13 @@ impl Monitor {
     pub fn target(&self) -> crate::checks::probe::Target<'_> {
         crate::checks::probe::Target {
             url: &self.url,
+            method: &self.method,
+            // Validated on save, so a parse error here means an edited row; send no headers.
+            headers: crate::checks::probe::parse_headers(
+                self.headers.as_deref().unwrap_or_default(),
+            )
+            .unwrap_or_default(),
+            body: self.body.as_deref(),
             timeout_ms: self.timeout_ms,
             expected_status: &self.expected_status,
             keyword: self.keyword.as_deref(),
@@ -74,7 +87,7 @@ pub struct CheckRow {
     pub error: Option<String>,
 }
 
-const COLS: &str = "m.id, m.project_id, m.name, m.url, m.interval_s, m.timeout_ms, m.expected_status, m.keyword, m.skip_tls_verify, m.severity, m.is_public, m.next_check_at, c.checked_at, c.ok, c.status_code, c.latency_ms, c.error, m.created_at, c.id, m.alert, m.auto_incident";
+const COLS: &str = "m.id, m.project_id, m.name, m.url, m.interval_s, m.timeout_ms, m.expected_status, m.keyword, m.skip_tls_verify, m.severity, m.is_public, m.next_check_at, c.checked_at, c.ok, c.status_code, c.latency_ms, c.error, m.created_at, c.id, m.alert, m.auto_incident, m.method, m.headers, m.body";
 const FROM: &str = "FROM monitors m LEFT JOIN check_results c ON c.id = (SELECT id FROM check_results WHERE monitor_id = m.id ORDER BY checked_at DESC, id DESC LIMIT 1)";
 
 fn monitor(r: &turso::Row) -> turso::Result<Monitor> {
@@ -103,6 +116,9 @@ fn monitor(r: &turso::Row) -> turso::Result<Monitor> {
         is_public: r.get::<i64>(10)? == 1,
         alert: r.get::<i64>(19)? == 1,
         auto_incident: r.get::<i64>(20)? == 1,
+        method: r.get(21)?,
+        headers: r.get(22)?,
+        body: r.get(23)?,
         next_check_at: r.get(11)?,
         last,
         created_at: r.get(17)?,
@@ -141,8 +157,15 @@ pub async fn insert_monitor(
 /// Whether a monitor's failures alert and open an incident, beside the main write.
 async fn set_switches(c: &Connection, id: i64, m: &MonitorInput) -> anyhow::Result<()> {
     c.execute(
-        "UPDATE monitors SET alert = ?1, auto_incident = ?2 WHERE id = ?3",
-        (m.alert, m.auto_incident, id),
+        "UPDATE monitors SET alert = ?1, auto_incident = ?2, method = ?3, headers = ?4, body = ?5 WHERE id = ?6",
+        (
+            m.alert,
+            m.auto_incident,
+            m.method(),
+            Some(m.headers.trim()).filter(|h| !h.is_empty()),
+            m.body.as_deref().filter(|b| !b.is_empty() && matches!(m.method(), "POST" | "PUT")),
+            id,
+        ),
     )
     .await?;
     Ok(())

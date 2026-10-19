@@ -57,6 +57,10 @@ struct MonitorView {
     is_public: bool,
     alert: bool,
     auto_incident: bool,
+    method: String,
+    /// `Name: value` lines. Owner and super admin only, like the rest of this view.
+    headers: String,
+    body: Option<String>,
     created_at: i64,
     next_check_at: i64,
     /// `up`, `down`, `issue` or `unknown` (waiting for the first check).
@@ -85,6 +89,9 @@ fn view(m: Monitor, state: &'static str) -> MonitorView {
         is_public: m.is_public,
         alert: m.alert,
         auto_incident: m.auto_incident,
+        method: m.method,
+        headers: m.headers.unwrap_or_default(),
+        body: m.body,
         created_at: m.created_at,
         next_check_at: m.next_check_at,
         state,
@@ -236,6 +243,9 @@ struct MonitorForm {
     /// Missing means on, so a client that never sends it keeps alerts and incidents.
     alert: Option<bool>,
     auto_incident: Option<bool>,
+    method: String,
+    headers: String,
+    body: String,
 }
 
 impl From<MonitorForm> for MonitorInput {
@@ -259,6 +269,9 @@ impl From<MonitorForm> for MonitorInput {
             is_public: f.is_public,
             alert: f.alert.unwrap_or(true),
             auto_incident: f.auto_incident.unwrap_or(true),
+            method: f.method.trim().to_uppercase(),
+            headers: f.headers,
+            body: Some(f.body).filter(|b| !b.trim().is_empty()),
         }
     }
 }

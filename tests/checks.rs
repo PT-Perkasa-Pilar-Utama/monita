@@ -107,6 +107,9 @@ async fn probe_judges_status_keyword_and_timeout() {
         async move {
             let t = checks::Target {
                 url: &url,
+                method: "GET",
+                headers: Vec::new(),
+                body: None,
                 timeout_ms,
                 expected_status: "2xx",
                 keyword,
@@ -147,6 +150,9 @@ async fn a_monitor_that_expects_a_redirect_sees_it_and_others_follow_it() {
     let url = format!("{base}/moved");
     let check = |expected_status| checks::Target {
         url: &url,
+        method: "GET",
+        headers: Vec::new(),
+        body: None,
         timeout_ms: 2000,
         expected_status,
         keyword: None,

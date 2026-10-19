@@ -10,9 +10,11 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
-import { api, ApiError, errorText } from "@/lib/api";
+import { Textarea } from "@/components/ui/textarea";
+import { api, ApiError, dropField, errorText } from "@/lib/api";
 import { useProject } from "@/lib/project";
 import type { CheckOptions, MonitorDetail, Severity } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
@@ -30,7 +32,13 @@ type Form = {
   is_public: boolean;
   alert: boolean;
   auto_incident: boolean;
+  method: string;
+  headers: string;
+  body: string;
 };
+
+const METHODS = ["GET", "HEAD", "POST", "PUT"];
+const sendsBody = (method: string): boolean => method === "POST" || method === "PUT";
 
 
 /** New monitor, or edit one when the URL names it. Edit also deletes. */
@@ -52,19 +60,23 @@ function MonitorFormBody({ id, onClose, onSaved }: { id: string | undefined; onC
     if (id && !m) return;
     setForm(
       m
-        ? { name: m.name, url: m.url, interval_s: m.interval_s, timeout_s: String(m.timeout_s), expected_status: m.expected_status, keyword: m.keyword ?? "", skip_tls_verify: m.skip_tls_verify, severity: m.severity, is_public: m.is_public, alert: m.alert, auto_incident: m.auto_incident }
-        : { name: "", url: "", interval_s: o.monitor.interval_s, timeout_s: String(o.monitor.timeout_s), expected_status: o.monitor.expected_status, keyword: "", skip_tls_verify: false, severity: o.monitor.severity, is_public: false, alert: true, auto_incident: true },
+        ? { name: m.name, url: m.url, interval_s: m.interval_s, timeout_s: String(m.timeout_s), expected_status: m.expected_status, keyword: m.keyword ?? "", skip_tls_verify: m.skip_tls_verify, severity: m.severity, is_public: m.is_public, alert: m.alert, auto_incident: m.auto_incident, method: m.method, headers: m.headers, body: m.body ?? "" }
+        : { name: "", url: "", interval_s: o.monitor.interval_s, timeout_s: String(o.monitor.timeout_s), expected_status: o.monitor.expected_status, keyword: "", skip_tls_verify: false, severity: o.monitor.severity, is_public: false, alert: true, auto_incident: true, method: "GET", headers: "", body: "" },
     );
   }, [form, id, options.data, current.data]);
 
-  const set = <K extends keyof Form>(k: K, v: Form[K]): void => setForm((f) => (f ? { ...f, [k]: v } : f));
+  const set = <K extends keyof Form>(k: K, v: Form[K]): void => {
+    setForm((f) => (f ? { ...f, [k]: v } : f));
+    setError((e) => e && dropField(e, k));
+  };
   const err = (k: string): string | undefined => error?.fields[k];
 
   const submit = async (_e: FormEvent): Promise<void> => {
     if (!form) return;
     setBusy(true);
     setError(null);
-    const body = { ...form, interval_s: String(form.interval_s) };
+    // A body typed for POST stays in the box after a switch to GET, but only POST and PUT send it.
+    const body = { ...form, interval_s: String(form.interval_s), body: sendsBody(form.method) ? form.body : "" };
     try {
       if (id) {
         await api(`${base}/${id}`, "PUT", body);
@@ -131,13 +143,45 @@ function MonitorFormBody({ id, onClose, onSaved }: { id: string | undefined; onC
                     <Input id="m-name" autoFocus={!id} maxLength={80} aria-required aria-invalid={err("name") ? true : undefined} value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="Checkout API" />
                     {err("name") && <FieldError>{err("name")}</FieldError>}
                   </Field>
-                  <Field data-invalid={err("url") ? true : undefined}>
-                    <FieldLabel htmlFor="m-url" required>
-                      URL
-                    </FieldLabel>
-                    <Input id="m-url" type="url" aria-required aria-invalid={err("url") ? true : undefined} className="font-mono" value={form.url} onChange={(e) => set("url", e.target.value)} placeholder="https://api.example.com/healthz" />
-                    {err("url") && <FieldError>{err("url")}</FieldError>}
+                  <div className="grid gap-5 sm:grid-cols-[8rem_minmax(0,1fr)]">
+                    <Field data-invalid={err("method") ? true : undefined}>
+                      <FieldLabel htmlFor="m-method">Method</FieldLabel>
+                      <Select value={form.method} onValueChange={(v) => set("method", v)}>
+                        <SelectTrigger id="m-method" className="font-mono">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectGroup>
+                            {METHODS.map((x) => (
+                              <SelectItem key={x} value={x} className="font-mono">
+                                {x}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                      {err("method") && <FieldError>{err("method")}</FieldError>}
+                    </Field>
+                    <Field data-invalid={err("url") ? true : undefined}>
+                      <FieldLabel htmlFor="m-url" required>
+                        URL
+                      </FieldLabel>
+                      <Input id="m-url" type="url" aria-required aria-invalid={err("url") ? true : undefined} className="font-mono" value={form.url} onChange={(e) => set("url", e.target.value)} placeholder="https://api.example.com/healthz" />
+                      {err("url") && <FieldError>{err("url")}</FieldError>}
+                    </Field>
+                  </div>
+                  <Field data-invalid={err("headers") ? true : undefined}>
+                    <FieldLabel htmlFor="m-headers">Headers, one per line as Name: value</FieldLabel>
+                    <Textarea id="m-headers" rows={2} spellCheck={false} aria-invalid={err("headers") ? true : undefined} className="font-mono text-[13px]" value={form.headers} onChange={(e) => set("headers", e.target.value)} />
+                    {err("headers") && <FieldError>{err("headers")}</FieldError>}
                   </Field>
+                  {sendsBody(form.method) && (
+                    <Field data-invalid={err("body") ? true : undefined}>
+                      <FieldLabel htmlFor="m-body">Request body</FieldLabel>
+                      <Textarea id="m-body" rows={3} spellCheck={false} aria-invalid={err("body") ? true : undefined} className="font-mono text-[13px]" value={form.body} onChange={(e) => set("body", e.target.value)} />
+                      {err("body") && <FieldError>{err("body")}</FieldError>}
+                    </Field>
+                  )}
                   <div className="grid gap-5 sm:grid-cols-2">
                     <ChoiceField id="m-interval" label="Check every" value={form.interval_s} choices={options.data.intervals} onChange={(v) => set("interval_s", v)} error={err("interval_s")} />
                     <Field data-invalid={err("timeout_s") ? true : undefined}>
@@ -160,7 +204,7 @@ function MonitorFormBody({ id, onClose, onSaved }: { id: string | undefined; onC
                       </Field>
                       <Field data-invalid={err("keyword") ? true : undefined}>
                         <FieldLabel htmlFor="m-keyword" className="font-normal">
-                          The body has this exact text somewhere
+                          The response body has this exact text somewhere
                         </FieldLabel>
                         <Input id="m-keyword" maxLength={200} aria-invalid={err("keyword") ? true : undefined} className="font-mono" value={form.keyword} onChange={(e) => set("keyword", e.target.value)} />
                         {err("keyword") && <FieldError>{err("keyword")}</FieldError>}

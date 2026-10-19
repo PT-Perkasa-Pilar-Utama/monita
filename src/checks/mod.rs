@@ -63,6 +63,12 @@ pub struct MonitorInput {
     pub alert: bool,
     /// A failure opens an incident on its own. Off: only an alert, and you report one by hand.
     pub auto_incident: bool,
+    /// GET, HEAD, POST or PUT; empty reads as GET.
+    pub method: String,
+    /// `Name: value` lines, as entered.
+    pub headers: String,
+    /// Sent with POST and PUT only.
+    pub body: Option<String>,
 }
 
 pub type FieldErrors = BTreeMap<&'static str, &'static str>;
@@ -112,7 +118,33 @@ impl MonitorInput {
         if !matches!(self.severity.as_str(), "critical" | "warning") {
             e.insert("severity", "Pick critical or warning.");
         }
+        if !probe::METHODS.contains(&self.method()) {
+            e.insert("method", "Pick GET, HEAD, POST or PUT.");
+        }
+        if let Err(m) = probe::parse_headers(&self.headers) {
+            e.insert("headers", m);
+        }
+        match &self.body {
+            Some(b) if !matches!(self.method(), "POST" | "PUT") && !b.is_empty() => {
+                e.insert(
+                    "body",
+                    "Only POST and PUT send a body. Pick one, or clear the body.",
+                );
+            }
+            Some(b) if b.len() > 65_536 => {
+                e.insert("body", "The body can be at most 64 KB.");
+            }
+            _ => {}
+        }
         e
+    }
+
+    pub fn method(&self) -> &str {
+        if self.method.is_empty() {
+            "GET"
+        } else {
+            &self.method
+        }
     }
 }
 

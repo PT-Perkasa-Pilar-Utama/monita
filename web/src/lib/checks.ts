@@ -7,3 +7,8 @@ export function whenItFails(alert: boolean, autoIncident: boolean): string {
   if (autoIncident) return "Opens an incident only";
   return "Nothing: Monita only records it";
 }
+
+/** How many `Name: value` lines a monitor sends; the values stay on its form. */
+export function headerCount(headers: string): number {
+  return headers.split("\n").filter((l) => l.trim() !== "").length;
+}

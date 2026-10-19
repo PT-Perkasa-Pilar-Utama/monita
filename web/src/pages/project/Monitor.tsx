@@ -14,7 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useProject } from "@/lib/project";
-import { whenItFails } from "@/lib/checks";
+import { headerCount, whenItFails } from "@/lib/checks";
 import { stamp } from "@/lib/time";
 import type { MonitorDetail } from "@/lib/types";
 import { useDetail } from "@/lib/useDetail";
@@ -73,6 +73,7 @@ export function Monitor({ editing = false }: { editing?: boolean }): ReactElemen
                   <Facts
                     rows={[
                       ["Every", m.every],
+                      ["Request", headerCount(m.headers) ? `${m.method}, ${headerCount(m.headers)} ${headerCount(m.headers) === 1 ? "header" : "headers"}` : m.method],
                       ["Timeout", `${m.timeout_s} seconds`],
                       ["Expects", m.keyword ? `${m.expected_status} with "${m.keyword}"` : m.expected_status],
                       ["TLS", m.skip_tls_verify ? "Not verified" : "Verified"],

@@ -71,7 +71,10 @@ function PassRules(): ReactElement {
         </TableBody>
       </Table>
       <span>
-        The body text is optional. Monita reads the first megabyte of the body as plain text and looks for your text anywhere in it, with the same capitals and spaces. It
+        For an endpoint that needs a token, add a header such as Authorization: Bearer followed by the token. Pick POST or PUT to send a request body.
+      </span>
+      <span>
+        The response text is optional. Monita reads the first megabyte of the body as plain text and looks for your text anywhere in it, with the same capitals and spaces. It
         does not read JSON keys.
       </span>
       <Table>
