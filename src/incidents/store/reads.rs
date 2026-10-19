@@ -176,6 +176,8 @@ pub enum Touching {
     ResolvedSince(i64),
     /// Every incident older than the `(started_at, id)` cursor: one page of the history.
     Before(Option<(i64, i64)>),
+    /// Started in `[from, to)`: one month of the public incidents tab.
+    Between(i64, i64),
 }
 
 /// Incidents that name one of `items`, newest first, at most `limit`.
@@ -193,6 +195,7 @@ pub async fn touching(
         Touching::ResolvedSince(since) => {
             ("i.resolved_at IS NOT NULL AND i.started_at >= ?2", since, 0)
         }
+        Touching::Between(from, to) => ("i.started_at >= ?2 AND i.started_at < ?3", from, to),
         Touching::Before(cursor) => {
             let (t, id) = cursor.unwrap_or((i64::MAX, i64::MAX));
             (

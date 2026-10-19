@@ -1,50 +1,74 @@
 import type { ReactElement } from "react";
 import { LabelBadge, StateBadge } from "@/components/app/Tone";
-import { ChevronDown } from "@/components/icons";
+import { AlertCircle, CheckCircle, ChevronDown, MinusCircle, XCircle } from "@/components/icons";
 import { barTitle, barTone, incidentState, when } from "@/lib/status";
 import { stamp } from "@/lib/time";
-import type { PublicIncident, PublicItem } from "@/lib/types";
+import type { PublicIncident, PublicItem, StateKind, UptimeDay } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const STATE_WORD = { up: "Up", down: "Down", issue: "Issue", unknown: "No data yet" } as const;
 
 export const uptimeText = (i: PublicItem): string => (i.uptime_90d === null ? "no data yet" : `${i.uptime_90d.toFixed(2)}% uptime`);
 
-/** One public system: its state, its 90-day uptime, and a bar per day. */
-export function SystemRow({ item }: { item: PublicItem }): ReactElement {
+const STATE_LINE = { up: "Normal", down: "Down", issue: "Has an issue", unknown: "No data yet" } as const;
+
+/** A check, a warning or a cross in the state's colour; a dash before the first check. */
+export function StateIcon({ kind }: { kind: StateKind }): ReactElement {
+  const label = STATE_WORD[kind];
+  if (kind === "up") return <CheckCircle weight="fill" aria-label={label} className="size-6 shrink-0 text-up" />;
+  if (kind === "down") return <XCircle weight="fill" aria-label={label} className="size-6 shrink-0 text-down" />;
+  if (kind === "issue") return <AlertCircle weight="fill" aria-label={label} className="size-6 shrink-0 text-issue" />;
+  return <MinusCircle weight="fill" aria-label={label} className="size-6 shrink-0 text-muted-foreground" />;
+}
+
+/** A bar per day, oldest on the left. */
+export function DayBars({ days }: { days: UptimeDay[] }): ReactElement {
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex h-9 gap-px sm:gap-[2px]" data-uptime-bars>
+      {days.map((d) => {
+        const tone = barTone(d);
+        return (
+          <span
+            key={d.day}
+            title={barTitle(d)}
+            className={cn(
+              "min-w-0 flex-1 rounded-[2px]",
+              tone === "up" && "bg-up",
+              tone === "partial" && "bg-issue",
+              tone === "down" && "bg-down",
+              tone === "none" && "bg-muted",
+            )}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+/** One public system as a cell of the uptime grid: name, state, 90 bars and the uptime between
+ * "90 days ago" and "Today". */
+export function SystemCard({ item }: { item: PublicItem }): ReactElement {
+  return (
+    <div className="flex min-w-0 flex-col gap-3 bg-card px-6 py-5">
       <div className="flex items-center justify-between gap-3">
-        <span className="flex min-w-0 items-center gap-2">
-          <StateBadge kind={item.state} label={STATE_WORD[item.state]} />
-          <strong className="truncate font-semibold">{item.name}</strong>
-        </span>
-        <span className="shrink-0 text-sm text-muted-foreground">{uptimeText(item)}</span>
+        <strong className="truncate text-[15px] font-semibold">{item.name}</strong>
+        <StateIcon kind={item.state} />
       </div>
-      <div className="flex h-8 gap-[2px]" data-uptime-bars>
-        {item.days.map((d) => {
-          const tone = barTone(d);
-          return (
-            <span
-              key={d.day}
-              title={barTitle(d)}
-              className={cn(
-                "min-w-0 flex-1 rounded-[2px]",
-                tone === "up" && "bg-up",
-                tone === "partial" && "bg-issue",
-                tone === "down" && "bg-down",
-                tone === "none" && "bg-muted",
-              )}
-            />
-          );
-        })}
+      <DayBars days={item.days} />
+      <div className="flex items-center gap-3 text-sm text-muted-foreground">
+        <span className="shrink-0">{item.days.length} days ago</span>
+        <span aria-hidden className="h-px min-w-4 flex-1 bg-border" />
+        <span className="shrink-0">{uptimeText(item)}</span>
+        <span aria-hidden className="h-px min-w-4 flex-1 bg-border" />
+        <span className="shrink-0">Today</span>
       </div>
+      <p className={cn("text-sm", item.state === "down" ? "text-down" : item.state === "issue" ? "text-issue" : "text-muted-foreground")}>{STATE_LINE[item.state]}</p>
     </div>
   );
 }
 
 /** The updates of a public incident, newest first. SEC-21: no author, no cause. */
-function Updates({ incident: i }: { incident: PublicIncident }): ReactElement {
+export function Updates({ incident: i }: { incident: PublicIncident }): ReactElement {
   return (
     <>
       <p className="text-sm text-muted-foreground">Affects {i.items.join(", ")}.</p>
@@ -60,26 +84,6 @@ function Updates({ incident: i }: { incident: PublicIncident }): ReactElement {
         ))}
       </ol>
     </>
-  );
-}
-
-/** A past incident as one line in a list card: title, state and when. It opens to its updates. */
-export function IncidentRow({ incident: i }: { incident: PublicIncident }): ReactElement {
-  const [kind, word] = incidentState(i);
-  return (
-    <details className="group border-b last:border-0">
-      <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-4 gap-y-1.5 px-5 py-3.5 [&::-webkit-details-marker]:hidden">
-        <strong className="min-w-0 flex-1 basis-56 font-semibold">{i.title}</strong>
-        <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-          <StateBadge kind={kind} label={word} />
-          {when(i)}
-        </span>
-        <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
-      </summary>
-      <div className="flex flex-col gap-4 px-5 pb-5">
-        <Updates incident={i} />
-      </div>
-    </details>
   );
 }
 

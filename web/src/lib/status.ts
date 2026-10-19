@@ -1,5 +1,5 @@
 // Wording and grading for the public status page. Kept pure so lib/status.test.ts checks it.
-import { day, duration, stamp } from "@/lib/time";
+import { day, duration, hhmm, stamp, zone } from "@/lib/time";
 import type { PublicIncident, PublicItem, StateKind, UptimeDay } from "@/lib/types";
 
 /** Operational systems drawn with bars; the rest fold into a list, so 200 systems stay readable. */
@@ -50,4 +50,38 @@ const MONTHS = ["January", "February", "March", "April", "May", "June", "July", 
 export function month(ts: number): string {
   const [y, m] = day(ts).split("-");
   return `${MONTHS[Number(m) - 1]} ${y}`;
+}
+
+/** "October 2026" for "2026-10". */
+export function monthName(ym: string): string {
+  const [y, m] = ym.split("-");
+  return `${MONTHS[Number(m) - 1]} ${y}`;
+}
+
+/** "August 2026 to October 2026" for a window of months, in any order. */
+export function windowLabel(months: string[]): string {
+  const sorted = [...months].sort();
+  if (sorted.length === 0) return "";
+  const [first, last] = [sorted[0]!, sorted[sorted.length - 1]!];
+  return first === last ? monthName(first) : `${monthName(first)} to ${monthName(last)}`;
+}
+
+/** Empty squares before the 1st in a calendar whose weeks start on Sunday. */
+export function blanksBefore(firstDay: string): number {
+  const [y, m, d] = firstDay.split("-").map(Number);
+  return new Date(Date.UTC(y!, m! - 1, d!)).getUTCDay();
+}
+
+/** "Oct 15" for a day string. */
+function shortDay(d: string): string {
+  return `${MONTHS[Number(d.slice(5, 7)) - 1]!.slice(0, 3)} ${Number(d.slice(8, 10))}`;
+}
+
+/** "Oct 15, 18:31 to 18:56 UTC+7", with the end day when it ends on another, or "since" while open. */
+export function span(i: PublicIncident): string {
+  const start = `${shortDay(day(i.started_at))}, ${hhmm(i.started_at)}`;
+  if (i.resolved_at === null) return `Since ${start} ${zone()}`;
+  const sameDay = day(i.started_at) === day(i.resolved_at);
+  const end = sameDay ? hhmm(i.resolved_at) : `${shortDay(day(i.resolved_at))}, ${hhmm(i.resolved_at)}`;
+  return `${start} to ${end} ${zone()}`;
 }

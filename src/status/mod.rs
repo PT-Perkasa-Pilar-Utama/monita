@@ -1,7 +1,9 @@
 //! status module: the public status page and its JSON (US-21, US-22).
 //! Spec: docs/api-specs/07-status.md. Owns no tables; reads through checks, incidents and projects.
 
+mod months;
 pub mod routes;
+mod uptime_calendar;
 
 use serde::Serialize;
 
@@ -29,6 +31,8 @@ pub struct ProjectRef {
 #[derive(Serialize)]
 pub struct ItemStatus {
     pub kind: &'static str,
+    /// With `kind`, picks the item on the past-uptime page.
+    pub id: i64,
     pub name: String,
     pub state: &'static str,
     /// Over the requested window.
@@ -77,6 +81,39 @@ fn uptime(down: i64, from: i64, to: i64) -> Option<f64> {
     (span > 0).then(|| round2(100.0 * (1.0 - down.min(span) as f64 / span as f64)))
 }
 
+/// `days` days from `first_day`, with the item's downtime, and the downtime summed over the days
+/// that have data. A day is null when it ended before the item existed or has not begun; an
+/// item created a moment ago has had no downtime yet, so its first day reads 100%.
+fn day_list(
+    spans: &[(i64, i64)],
+    first_day: i64,
+    days: usize,
+    created_at: i64,
+    t: i64,
+    off: i64,
+) -> (Vec<Day>, i64) {
+    let mut total_down = 0;
+    let list = history::per_day(spans, first_day, days)
+        .iter()
+        .enumerate()
+        .map(|(i, &down)| {
+            let start = first_day + i as i64 * 86_400;
+            let up = (start + 86_400 > created_at && start <= t).then(|| {
+                uptime(down, start.max(created_at), (start + 86_400).min(t)).unwrap_or(100.0)
+            });
+            if up.is_some() {
+                total_down += down;
+            }
+            Day {
+                day: time::day_at(start, off),
+                uptime: up,
+                downtime_s: if up.is_some() { down } else { 0 },
+            }
+        })
+        .collect();
+    (list, total_down)
+}
+
 /// The project, its public items with `days` of history, and the overall state.
 struct Items {
     project: projects::Project,
@@ -103,29 +140,7 @@ async fn items(db: &Db, slug: &str, days: usize) -> anyhow::Result<Option<Items>
         .map(|item| {
             let key = (item.kind, item.id);
             let spans = intervals.get(&key).map(Vec::as_slice).unwrap_or(&[]);
-            let per_day = history::per_day(spans, first_day, days);
-            let mut total_down = 0;
-            let day_list = per_day
-                .iter()
-                .enumerate()
-                .map(|(i, &down)| {
-                    let start = first_day + i as i64 * 86_400;
-                    // Null only for a day that ended before the item existed; an item created
-                    // a moment ago has had no downtime yet, so its first day reads 100%.
-                    let up = (start + 86_400 > item.created_at).then(|| {
-                        uptime(down, start.max(item.created_at), (start + 86_400).min(t))
-                            .unwrap_or(100.0)
-                    });
-                    if up.is_some() {
-                        total_down += down;
-                    }
-                    Day {
-                        day: time::day_at(start, off),
-                        uptime: up,
-                        downtime_s: if up.is_some() { down } else { 0 },
-                    }
-                })
-                .collect();
+            let (day_rows, total_down) = day_list(spans, first_day, days, item.created_at, t, off);
             let state = match states.get(&key) {
                 Some(ItemState::Down) => "down",
                 Some(ItemState::Issue) => "issue",
@@ -134,12 +149,13 @@ async fn items(db: &Db, slug: &str, days: usize) -> anyhow::Result<Option<Items>
             };
             ItemStatus {
                 kind: item.kind.as_str(),
+                id: item.id,
                 name: item.name.clone(),
                 state,
                 uptime_90d: Some(
                     uptime(total_down, first_day.max(item.created_at), t).unwrap_or(100.0),
                 ),
-                days: day_list,
+                days: day_rows,
             }
         })
         .collect();

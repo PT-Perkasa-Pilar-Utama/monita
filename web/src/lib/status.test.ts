@@ -1,8 +1,9 @@
 import { expect, test } from "bun:test";
-import { barTone, headline, incidentState, month, splitSystems, when } from "@/lib/status";
+import { barTone, blanksBefore, headline, incidentState, month, monthName, span, splitSystems, when, windowLabel } from "@/lib/status";
+import { setOffset } from "@/lib/time";
 import type { PublicIncident, PublicItem } from "@/lib/types";
 
-const item = (name: string, state: PublicItem["state"]): PublicItem => ({ kind: "monitor", name, state, uptime_90d: 100, days: [] });
+const item = (name: string, state: PublicItem["state"]): PublicItem => ({ kind: "monitor", id: 1, name, state, uptime_90d: 100, days: [] });
 
 test("the headline names a single down system and counts several", () => {
   expect(headline("down", [item("API", "down"), item("Site", "up")])).toBe("API is down");
@@ -46,4 +47,25 @@ test("problems come first with bars, then 12 others; the rest are a list", () =>
   expect(barred.map((i) => i.name).slice(0, 3)).toEqual(["Down one", "Issue one", "svc 0"]);
   expect(barred).toHaveLength(14);
   expect(rest.map((i) => i.name)).toEqual(["svc 12", "svc 13"]);
+});
+
+test("a window of months reads from the oldest to the newest", () => {
+  expect(monthName("2026-09")).toBe("September 2026");
+  expect(windowLabel(["2026-10", "2026-08", "2026-09"])).toBe("August 2026 to October 2026");
+  expect(windowLabel(["2026-10"])).toBe("October 2026");
+});
+
+test("a calendar week starts on Sunday", () => {
+  expect(blanksBefore("2026-09-01")).toBe(2); // a Tuesday
+  expect(blanksBefore("2026-11-01")).toBe(0); // a Sunday
+});
+
+test("an incident's span names the end day only when it differs", () => {
+  setOffset(0);
+  const oct15 = 1_792_022_400; // 2026-10-15 00:00 UTC
+  const at = (h: number, m: number): number => oct15 + h * 3600 + m * 60;
+  const base = { title: "t", origin: "auto" as const, severity: "warning" as const, items: [], updates: [] };
+  expect(span({ ...base, started_at: at(18, 31), resolved_at: at(18, 56) })).toBe("Oct 15, 18:31 to 18:56 UTC");
+  expect(span({ ...base, started_at: at(23, 50), resolved_at: at(24, 10) })).toBe("Oct 15, 23:50 to Oct 16, 00:10 UTC");
+  expect(span({ ...base, started_at: at(9, 5), resolved_at: null })).toBe("Since Oct 15, 09:05 UTC");
 });

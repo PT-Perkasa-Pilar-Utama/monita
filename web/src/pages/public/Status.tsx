@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 import { Link, useOutletContext } from "react-router-dom";
-import { SystemRow, uptimeText } from "@/components/app/PublicStatus";
+import { SystemCard, uptimeText } from "@/components/app/PublicStatus";
 import { StateBadge } from "@/components/app/Tone";
 import { ArrowRight, RefreshCw } from "@/components/icons";
 import { PageHeader } from "@/components/layout/Page";
@@ -53,24 +53,33 @@ export function Status(): ReactElement {
           )}
         </span>
       </p>
-      <div className="flex flex-col gap-5">
-        <section aria-labelledby="systems" className="flex flex-col gap-5">
-          <div className="flex items-baseline justify-between">
-            <h2 id="systems" className="font-semibold">
-              Systems
-            </h2>
-            <span className="text-sm text-muted-foreground">Last 90 days</span>
+      <section aria-labelledby="systems" className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+          <h2 id="systems" className="text-lg font-semibold">
+            Systems
+          </h2>
+          <span className="text-sm text-muted-foreground">
+            Uptime over the past 90 days.{" "}
+            <Link to={`/status/${project.slug}/uptime`} className="text-link underline-offset-4 hover:underline">
+              View past uptime
+            </Link>
+          </span>
+        </div>
+        {items.length === 0 && <p className="text-muted-foreground">This project has no public systems yet.</p>}
+        {barred.length > 0 && (
+          <div className="grid gap-px overflow-hidden rounded-xl border bg-border shadow-xs min-[1000px]:grid-cols-2">
+            {barred.map((i) => (
+              <SystemCard key={`${i.kind}${i.id}`} item={i} />
+            ))}
+            {barred.length % 2 === 1 && <div aria-hidden className="hidden bg-card min-[1000px]:block" />}
           </div>
-          {items.length === 0 && <p className="text-muted-foreground">This project has no public systems yet.</p>}
-          {barred.map((i) => (
-            <SystemRow key={`${i.kind}${i.name}`} item={i} />
-          ))}
-          {rest.length > 0 && (
+        )}
+        {rest.length > 0 && (
             <details className="rounded-xl border bg-card">
               <summary className="cursor-pointer px-5 py-3 text-sm font-medium">{rest.length} more systems</summary>
               <ul className="flex flex-col border-t">
                 {rest.map((i) => (
-                  <li key={`${i.kind}${i.name}`} className="flex items-center justify-between gap-3 border-b px-5 py-2.5 text-sm last:border-0">
+                  <li key={`${i.kind}${i.id}`} className="flex items-center justify-between gap-3 border-b px-5 py-2.5 text-sm last:border-0">
                     <span className="flex items-center gap-2">
                       {i.state !== "up" && <StateBadge kind={i.state} />}
                       {i.name}
@@ -81,8 +90,7 @@ export function Status(): ReactElement {
               </ul>
             </details>
           )}
-        </section>
-      </div>
+      </section>
     </>
   );
 }

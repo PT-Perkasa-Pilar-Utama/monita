@@ -1,61 +1,43 @@
 import type { ReactElement } from "react";
-import { Link, useOutletContext } from "react-router-dom";
-import { IncidentCard, IncidentRow } from "@/components/app/PublicStatus";
-import { ArrowRight, RefreshCw } from "@/components/icons";
+import { useOutletContext, useSearchParams } from "react-router-dom";
+import { IncidentMonthList } from "@/components/app/IncidentMonths";
+import { IncidentCard } from "@/components/app/PublicStatus";
+import { WindowNav } from "@/components/app/WindowNav";
 import { PageHeader } from "@/components/layout/Page";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Spinner } from "@/components/ui/spinner";
-import type { PublicSite, PublicStatus } from "@/lib/types";
+import type { PublicMonths, PublicSite, PublicStatus } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 
-/** The public Incidents tab: what is wrong now, the last 7 days, and a link to the history. */
+/** The public Incidents tab: what is wrong now, then three months of incidents at a time. */
 export function Incidents(): ReactElement {
   const project = useOutletContext<PublicSite>();
-  const res = useApi<PublicStatus>(`/public/${project.slug}/status`);
+  const [params, setParams] = useSearchParams();
+  const to = params.get("to");
+  const now = useApi<PublicStatus>(`/public/${project.slug}/status`);
+  const res = useApi<PublicMonths>(`/public/${project.slug}/incidents${to ? `?to=${encodeURIComponent(to)}` : ""}`);
+  const open = now.data?.status.incidents ?? [];
   const d = res.data;
   return (
-    <div className="mx-auto flex max-w-3xl flex-col">
-      <PageHeader
-        title={`${project.name} incidents`}
-        actions={
-          <Button variant="secondary" onClick={res.reload} disabled={res.loading}>
-            {res.loading ? <Spinner data-icon="inline-start" /> : <RefreshCw data-icon="inline-start" />}
-            Refresh
-          </Button>
-        }
-      />
+    <div className="flex flex-col">
+      <PageHeader title={`${project.name} incidents`} />
+      {open.length > 0 && (
+        <section aria-labelledby="active" className="mb-10 flex flex-col gap-3">
+          <h2 id="active" className="text-lg font-semibold">
+            Happening now
+          </h2>
+          {open.map((i, n) => (
+            <IncidentCard key={n} incident={i} />
+          ))}
+        </section>
+      )}
       {!d ? (
         <Skeleton className="h-96 rounded-xl" />
       ) : (
-        <div className="flex flex-col gap-10">
-          <section aria-labelledby="active" className="flex flex-col gap-3">
-            <h2 id="active" className="font-semibold">
-              Active incidents
-            </h2>
-            {d.status.incidents.length === 0 && <p className="text-muted-foreground">Every system is running normally.</p>}
-            {d.status.incidents.map((i, n) => (
-              <IncidentCard key={n} incident={i} />
-            ))}
-          </section>
-          <section aria-labelledby="past" className="flex flex-col gap-3">
-            <h2 id="past" className="font-semibold">
-              Past 7 days
-            </h2>
-            {d.recent.length === 0 ? (
-              <p className="text-muted-foreground">There were no incidents in the last 7 days.</p>
-            ) : (
-              <div className="overflow-hidden rounded-xl border bg-card shadow-xs">
-                {d.recent.map((i, n) => (
-                  <IncidentRow key={n} incident={i} />
-                ))}
-              </div>
-            )}
-            <Link to={`/status/${project.slug}/history`} className="flex items-center gap-1.5 text-sm text-link underline-offset-4 hover:underline">
-              Incident history
-              <ArrowRight className="size-3.5" />
-            </Link>
-          </section>
+        <div className="flex flex-col gap-10 rounded-xl border bg-card p-5 shadow-xs sm:p-8">
+          <WindowNav months={d.months.map((m) => m.month)} prev={d.prev_to} next={d.next_to} onMove={(t) => setParams({ to: String(t) })} />
+          {d.months.map((m) => (
+            <IncidentMonthList key={m.month} month={m} slug={project.slug} />
+          ))}
         </div>
       )}
     </div>

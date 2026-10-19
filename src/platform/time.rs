@@ -50,6 +50,28 @@ pub fn day_at(ts: i64, off: i64) -> String {
     day(ts + off * 60)
 }
 
+/// Unix seconds of the midnight, in the offset, that starts the month of `ts` there.
+pub fn month_start_at(ts: i64, off: i64) -> i64 {
+    let local_day = (ts + off * 60).div_euclid(86_400);
+    let (_, _, d) = civil_from_days(local_day);
+    (local_day - i64::from(d) + 1) * 86_400 - off * 60
+}
+
+/// The start of the month after the one `start` begins.
+pub fn next_month_at(start: i64, off: i64) -> i64 {
+    month_start_at(start + 32 * 86_400, off)
+}
+
+/// The start of the month before the one `start` begins.
+pub fn prev_month_at(start: i64, off: i64) -> i64 {
+    month_start_at(start - 86_400, off)
+}
+
+/// `2026-10`, the month a timestamp falls in, in the offset.
+pub fn month_at(ts: i64, off: i64) -> String {
+    day_at(ts, off)[..7].to_string()
+}
+
 /// `45s`, `6m 18s`, `2h 4m`, `3d 2h`.
 pub fn duration(secs: i64) -> String {
     let s = secs.max(0);
@@ -108,6 +130,22 @@ mod tests {
         assert_eq!(day_start_at(t, 0), 1_792_108_800);
         // 2026-10-16 02:00 UTC is still 2026-10-15 at UTC-3.
         assert_eq!(day_at(t, -180), "2026-10-15");
+    }
+
+    #[test]
+    fn a_month_starts_at_its_first_midnight_in_the_offset() {
+        const OCT_1: i64 = 1_790_812_800;
+        const NOV_1: i64 = 1_793_491_200;
+        let mid_oct = 1_792_108_800 + 2 * 3600;
+        assert_eq!(month_start_at(mid_oct, 0), OCT_1);
+        assert_eq!(month_start_at(mid_oct, 420), OCT_1 - 7 * 3600);
+        // 2026-10-31 20:00 UTC is already November at UTC+7, still October at UTC.
+        let late = NOV_1 - 4 * 3600;
+        assert_eq!(month_start_at(late, 420), NOV_1 - 7 * 3600);
+        assert_eq!(month_start_at(late, 0), OCT_1);
+        assert_eq!(next_month_at(OCT_1, 0), NOV_1);
+        assert_eq!(prev_month_at(NOV_1, 0), OCT_1);
+        assert_eq!(month_at(late, 420), "2026-11");
     }
 
     #[test]

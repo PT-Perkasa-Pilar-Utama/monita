@@ -23,6 +23,8 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/api/ui/public/{slug}/status", get(page))
         .route("/api/ui/public/{slug}/history", get(history))
+        .route("/api/ui/public/{slug}/incidents", get(incidents_by_month))
+        .route("/api/ui/public/{slug}/uptime", get(uptime_calendar))
         .route("/api/v1/public/status/{slug}", get(json))
 }
 
@@ -109,4 +111,50 @@ async fn history(
         .flatten();
     let body = serde_json::json!({ "project": project, "incidents": incidents, "older": older });
     Ok(crate::platform::ui::public_cache(data(body)))
+}
+
+/// A window query: `to` is any moment in the window's last month; a bad value reads as now.
+#[derive(Deserialize)]
+struct WindowQuery {
+    to: Option<String>,
+    kind: Option<String>,
+    id: Option<String>,
+}
+
+impl WindowQuery {
+    fn to(&self) -> Option<i64> {
+        self.to.as_deref().and_then(|t| t.parse().ok())
+    }
+}
+
+/// Three months of public incidents, newest month first. 404 with the Incidents tab off.
+async fn incidents_by_month(
+    State(state): State<AppState>,
+    Path(slug): Path<String>,
+    Query(q): Query<WindowQuery>,
+) -> UiResult {
+    let page = super::months::by_month(&state.db, &slug, q.to())
+        .await?
+        .ok_or(UiError::NotFound)?;
+    Ok(crate::platform::ui::public_cache(data(page)))
+}
+
+/// Three months of one public system's days. A system that is not public is not found.
+async fn uptime_calendar(
+    State(state): State<AppState>,
+    Path(slug): Path<String>,
+    Query(q): Query<WindowQuery>,
+) -> UiResult {
+    let pick = match (q.kind.as_deref(), q.id.as_deref()) {
+        (None, None) => None,
+        (Some(kind), Some(id)) => Some((
+            crate::incidents::SourceKind::parse(kind).ok_or(UiError::NotFound)?,
+            id.parse::<i64>().map_err(|_| UiError::NotFound)?,
+        )),
+        _ => return Err(UiError::NotFound),
+    };
+    let page = super::uptime_calendar::calendar(&state.db, &slug, pick, q.to())
+        .await?
+        .ok_or(UiError::NotFound)?;
+    Ok(crate::platform::ui::public_cache(data(page)))
 }

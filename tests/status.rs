@@ -11,6 +11,8 @@ use serde_json::Value;
 
 const PAGE: &str = "/api/ui/public/payments/status";
 const HISTORY: &str = "/api/ui/public/payments/history";
+const BY_MONTH: &str = "/api/ui/public/payments/incidents";
+const CALENDAR: &str = "/api/ui/public/payments/uptime";
 
 /// A public JSON response as text, for checks on what it must never carry.
 async fn text(app: &TestApp, path: &str) -> String {
@@ -368,4 +370,116 @@ async fn incidents_turned_off_leave_uptime_and_hide_every_incident() {
     let json = text(&app, "/api/v1/public/status/payments").await;
     assert!(!json.contains("Checkout is down"), "{json}");
     assert_eq!(app.get(HISTORY, None).await.status(), 404);
+    assert_eq!(app.get(BY_MONTH, None).await.status(), 404);
+}
+
+async fn json(app: &TestApp, path: &str) -> Value {
+    serde_json::from_str(&text(app, path).await).unwrap()
+}
+
+fn titles(month: &Value) -> Vec<String> {
+    month["incidents"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|i| i["title"].as_str().unwrap().to_string())
+        .collect()
+}
+
+#[tokio::test]
+async fn public_incidents_come_three_months_at_a_time_each_in_the_month_it_started() {
+    let app = TestApp::spawn("test").await;
+    setup(&app).await;
+    let month_start = monita::platform::time::month_start_at(now(), 0);
+    app.state
+        .db
+        .write(async |c| {
+            c.execute_batch(&format!(
+                "INSERT INTO incidents (id, project_id, origin, title, severity, started_at, resolved_at) VALUES
+                   (3, 1, 'auto', 'Started on the first', 'warning', {month_start}, {end}),
+                   (4, 1, 'auto', 'Started the day before', 'warning', {before}, {before_end});
+                 INSERT INTO incident_items VALUES (3, 'monitor', 1), (4, 'monitor', 1);",
+                end = month_start + 60,
+                before = month_start - 1,
+                before_end = month_start + 30,
+            ))
+            .await?;
+            Ok(())
+        })
+        .await
+        .unwrap();
+    let page = json(&app, BY_MONTH).await;
+    let months = page["data"]["months"].as_array().unwrap();
+    assert_eq!(months.len(), 3);
+    assert_eq!(
+        months[0]["month"],
+        monita::platform::time::month_at(now(), 0)
+    );
+    let this = titles(&months[0]);
+    assert!(
+        this.contains(&"Started on the first".to_string()),
+        "{this:?}"
+    );
+    assert!(
+        !this.contains(&"Admin DB slow".to_string()),
+        "a hidden system's incident"
+    );
+    assert_eq!(titles(&months[1])[0], "Started the day before");
+    assert!(page["data"]["next_to"].is_null());
+    assert!(!page.to_string().contains("db-7.corp.internal"));
+}
+
+#[tokio::test]
+async fn the_uptime_calendar_shows_a_public_system_only_and_no_days_before_it_existed() {
+    let app = TestApp::spawn("test").await;
+    setup(&app).await;
+    let fresh = MonitorInput {
+        name: "Fresh".into(),
+        url: "https://z.invalid/".into(),
+        is_public: true,
+        ..MonitorInput::defaults()
+    };
+    checks::create_monitor(&app.state.db, 1, &fresh)
+        .await
+        .unwrap();
+
+    let first = json(&app, CALENDAR).await;
+    assert_eq!(first["data"]["system"]["name"], "Checkout");
+    let months = first["data"]["months"].as_array().unwrap();
+    assert_eq!(months.len(), 3);
+    let today = monita::platform::time::day_at(now(), 0);
+    let day = months[2]["days"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|d| d["day"] == today.as_str())
+        .unwrap();
+    assert!(day["downtime_s"].as_i64().unwrap() > 0, "{day}");
+    assert_eq!(months[0]["uptime"], 100.0, "an old month without incidents");
+
+    let fresh = json(&app, &format!("{CALENDAR}?kind=monitor&id=3")).await;
+    let months = fresh["data"]["months"].as_array().unwrap();
+    assert!(months[0]["uptime"].is_null(), "before it existed");
+    assert!(
+        months[0]["days"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|d| d["uptime"].is_null())
+    );
+    assert!(fresh["data"]["prev_to"].is_null());
+
+    assert_eq!(
+        app.get(&format!("{CALENDAR}?kind=monitor&id=2"), None)
+            .await
+            .status(),
+        404,
+        "a hidden monitor"
+    );
+    assert_eq!(
+        app.get(&format!("{CALENDAR}?kind=monitor"), None)
+            .await
+            .status(),
+        404
+    );
 }

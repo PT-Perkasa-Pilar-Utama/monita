@@ -146,6 +146,7 @@ export {
   CornersIn as Minimize2,
   Minus,
   Minus as MinusIcon,
+  MinusCircle,
   Moon,
   DotsThree as MoreHorizontal,
   DotsThreeVertical as MoreVertical,

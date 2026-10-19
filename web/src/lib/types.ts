@@ -282,7 +282,20 @@ export type PublicIncident = {
 
 export type UptimeDay = { day: string; uptime: number | null; downtime_s: number };
 
-export type PublicItem = { kind: "monitor" | "heartbeat"; name: string; state: StateKind; uptime_90d: number | null; days: UptimeDay[] };
+export type PublicItem = { kind: "monitor" | "heartbeat"; id: number; name: string; state: StateKind; uptime_90d: number | null; days: UptimeDay[] };
+
+/** One public system, as the past-uptime picker lists it. */
+export type PublicSystem = { kind: "monitor" | "heartbeat"; id: number; name: string };
+
+export type UptimeMonth = { month: string; uptime: number | null; days: UptimeDay[] };
+
+/** Three months of one system. `to` values move the window; null at an end. */
+export type PublicCalendar = { project: PublicProject; systems: PublicSystem[]; system: PublicSystem | null; months: UptimeMonth[]; prev_to: number | null; next_to: number | null };
+
+/** One month of public incidents; `more` is the history cursor when the month has more than one page. */
+export type IncidentMonth = { month: string; incidents: PublicIncident[]; more: string | null };
+
+export type PublicMonths = { project: PublicProject; months: IncidentMonth[]; prev_to: number | null; next_to: number | null };
 
 export type PublicStatus = {
   status: { project: PublicProject; overall: StateKind; items: PublicItem[]; incidents: PublicIncident[] };
