@@ -34,7 +34,7 @@ test("@US-12 @US-13 @US-14 a job pings its heartbeat URL and the state follows",
   await page.getByLabel("Name").fill("nightly-settlement");
   await page.getByRole("button", { name: "Save heartbeat" }).click();
   await expect(page.locator("#state")).toHaveText("No data yet");
-  const pingUrl = (await page.locator("#ping-url").textContent())!.trim();
+  const pingUrl = (await page.locator("#ping-url-start").textContent())!.trim();
 
   expect((await page.request.get(pingUrl)).status()).toBe(200);
   await page.reload();

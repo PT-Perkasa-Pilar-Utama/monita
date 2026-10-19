@@ -9,22 +9,23 @@ async function projectWithHeartbeat(page: Page): Promise<{ slug: string; pingUrl
   await page.goto(`/projects/${slug}/heartbeats/new`);
   await page.getByLabel("Name").fill("nightly-settlement");
   await page.getByRole("button", { name: "Save heartbeat" }).click();
-  const pingUrl = (await page.locator("#ping-url").textContent())!.trim();
+  const pingUrl = (await page.locator("#ping-url-start").textContent())!.trim();
   return { slug, pingUrl };
 }
 
 test("@US-15 TL sets who gets critical alerts and sends a test", async ({ page }) => {
   const { slug } = await projectWithHeartbeat(page);
-  await page.goto(`/projects/${slug}/alerts`);
+  await page.goto(`/projects/${slug}/settings/alerts`);
+  const critical = page.locator("#critical");
   await expect(page.locator("#use-critical")).toBeChecked();
   await expect(page.locator("#use-warning")).not.toBeChecked();
   await page.locator("#emails-critical").fill("oncall@monita.test\nnot-an-email");
-  await page.getByRole("button", { name: "Save critical alerts" }).click();
-  await expect(page.getByRole("alert")).toHaveText("Not a valid email address: not-an-email");
+  await critical.getByRole("button", { name: "Save changes" }).click();
+  await expect(critical.getByRole("alert")).toHaveText("Not a valid email address: not-an-email");
   await page.locator("#emails-critical").fill("oncall@monita.test");
-  await page.getByRole("button", { name: "Save critical alerts" }).click();
-  await page.locator("#critical").getByRole("button", { name: "Send a test" }).click();
-  await expect(page.getByRole("status")).toHaveText("Test queued for 1 recipient. It arrives within a minute.");
+  await critical.getByRole("button", { name: "Save changes" }).click();
+  await critical.getByRole("button", { name: "Send a test" }).click();
+  await expect(critical.getByText("Test sent to 1 recipient.")).toBeVisible();
 });
 
 test("@US-14 @US-17 @US-18 @US-19 a failing job opens an incident, the TL updates it, the next ping closes it", async ({ page }) => {
@@ -50,8 +51,8 @@ test("@US-14 @US-17 @US-18 @US-19 a failing job opens an incident, the TL update
   await page.reload();
   await expect(page.getByText(/Recovered after/)).toBeVisible();
   await expect(page.locator("#state")).toContainText("Resolved");
-  // AC-18.02: the facts name the start, the end and the duration.
-  for (const fact of ["Started", "Ended", "Duration"]) await expect(page.locator("dt", { hasText: fact })).toBeVisible();
+  // AC-18.02: the facts name the start, the end and how long it lasted.
+  for (const fact of ["Started", "Ended", "Lasted"]) await expect(page.locator("dt", { hasText: fact })).toBeVisible();
   await expect(page.locator("dt", { hasText: "Ended" }).locator("+ dd")).toHaveText(/UTC$/);
 });
 

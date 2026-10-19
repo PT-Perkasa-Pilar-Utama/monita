@@ -7,10 +7,10 @@ test.describe("as the super admin", () => {
   test("@US-02 @US-03 super admin invites a TL, who sets a password and lands on projects", async ({ page, browser }) => {
     const email = `tl-${Date.now()}@monita.test`;
     await page.goto("/admin/users");
-    await page.getByRole("button", { name: "Invite tech lead" }).click();
-    await page.getByLabel("Email").fill(email);
+    await page.getByRole("button", { name: "Invite new user" }).click();
+    await page.locator("#invite-email").fill(email);
     await page.getByRole("button", { name: "Send invite" }).click();
-    await expect(page.getByRole("status")).toContainText(`Invite queued for ${email}`);
+    await expect(page.getByRole("status")).toContainText(`Invite sent to ${email}`);
     const link = (await page.locator("#invite-link").textContent())!.trim();
 
     const tl = await browser.newContext({ storageState: { cookies: [], origins: [] } });
@@ -20,7 +20,7 @@ test.describe("as the super admin", () => {
     await tlPage.getByLabel("Repeat password").fill("a-long-enough-password");
     await tlPage.getByRole("button", { name: "Save password" }).click();
     await expect(tlPage.getByRole("heading", { name: "Projects", exact: true })).toBeVisible({ timeout: 10_000 });
-    await expect(tlPage.getByRole("button", { name: email })).toBeVisible();
+    await expect(tlPage.getByRole("button", { name: `Account: ${email}` })).toBeVisible();
 
     await tlPage.goto(link);
     await expect(tlPage.getByRole("heading", { name: "Link not valid" })).toBeVisible();
