@@ -22,23 +22,13 @@ pub struct Day {
     pub mean_ms: Option<i64>,
 }
 
-/// The interval in words, for the form's select.
-pub fn interval_words(s: i64) -> &'static str {
+/// The interval in words, as the form and the lists show it.
+pub fn interval_label(s: i64) -> &'static str {
     match s {
         30 => "30 seconds",
         60 => "1 minute",
         180 => "3 minutes",
         300 => "5 minutes",
-        _ => "?",
-    }
-}
-
-pub fn interval_label(s: i64) -> &'static str {
-    match s {
-        30 => "30s",
-        60 => "1m",
-        180 => "3m",
-        300 => "5m",
         _ => "?",
     }
 }

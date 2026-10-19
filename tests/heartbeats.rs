@@ -198,6 +198,38 @@ async fn a_fail_ping_marks_the_heartbeat_down_at_once() {
 }
 
 #[tokio::test]
+async fn the_list_shows_the_newest_ping_even_when_it_failed() {
+    let app = TestApp::spawn("test").await;
+    let (tl, token) = setup(&app).await;
+    let res = app
+        .http
+        .post(app.url(&format!("/ping/{token}/fail")))
+        .body("disk full")
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), 200);
+    let list = json_of(
+        app.api_get("/api/ui/projects/payments/heartbeats", Some(&tl))
+            .await,
+    )
+    .await;
+    let hb = &list["data"]["heartbeats"][0];
+    assert!(hb["last_ping_at"].is_null(), "no good ping yet");
+    assert_eq!(hb["last"]["ok"], false);
+    assert_eq!(hb["last"]["cause"], "disk full");
+
+    let res = ping(&app, reqwest::Method::GET, &format!("/ping/{token}")).await;
+    assert_eq!(res.status(), 200);
+    let list = json_of(
+        app.api_get("/api/ui/projects/payments/heartbeats", Some(&tl))
+            .await,
+    )
+    .await;
+    assert_eq!(list["data"]["heartbeats"][0]["last"]["ok"], true);
+}
+
+#[tokio::test]
 async fn a_fail_right_after_a_success_ping_is_still_heard() {
     let app = TestApp::spawn("test").await;
     let (tl, token) = setup(&app).await;

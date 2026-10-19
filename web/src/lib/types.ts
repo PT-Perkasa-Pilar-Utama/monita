@@ -173,6 +173,8 @@ export type HeartbeatView = {
   alert: boolean;
   auto_incident: boolean;
   last_ping_at: number | null;
+  /** The newest ping, good or failed; `last_ping_at` counts good pings only. */
+  last: { ok: boolean; cause: string | null; at: number } | null;
   deadline_at: number | null;
   created_at: number;
   state: StateKind;

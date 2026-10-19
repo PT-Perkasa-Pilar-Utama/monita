@@ -110,7 +110,7 @@ export function Monitors({ creating = false }: { creating?: boolean }): ReactEle
                           <span className="text-muted-foreground">No checks yet</span>
                         )}
                       </TableCell>
-                      <TableCell className="font-mono max-md:hidden">{m.every}</TableCell>
+                      <TableCell className="max-md:hidden">{m.every}</TableCell>
                       <TableCell className="max-md:hidden">
                         <SeverityBadge severity={m.severity} />
                       </TableCell>

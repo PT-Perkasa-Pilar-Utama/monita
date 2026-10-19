@@ -2,7 +2,7 @@
 
 use turso::Connection;
 
-use crate::checks::heartbeat::{Heartbeat, HeartbeatInput, PingKind, PingRow};
+use crate::checks::heartbeat::{Heartbeat, HeartbeatInput, LastPing, PingKind, PingRow};
 use crate::platform::caps;
 
 const COLS: &str = "h.id, h.project_id, h.name, h.token, h.period_s, h.grace_s, h.severity, h.is_public, h.last_ping_at, h.deadline_at, h.created_at, h.alert, h.auto_incident";
@@ -88,6 +88,28 @@ pub async fn delete(c: &Connection, project_id: i64, id: i64) -> anyhow::Result<
     )
     .await?;
     Ok(())
+}
+
+/// The newest ping of each heartbeat in the project, of either kind, by heartbeat id.
+pub async fn last_pings(c: &Connection, project_id: i64) -> anyhow::Result<Vec<(i64, LastPing)>> {
+    crate::platform::db::query_all(
+        c,
+        "SELECT h.id, p.kind, p.cause, p.received_at FROM heartbeats h
+         JOIN pings p ON p.id = (SELECT id FROM pings WHERE heartbeat_id = h.id ORDER BY received_at DESC, id DESC LIMIT 1)
+         WHERE h.project_id = ?1 LIMIT ?2",
+        (project_id, caps::HEARTBEATS_PER_PROJECT),
+        |r| {
+            Ok((
+                r.get(0)?,
+                LastPing {
+                    ok: r.get::<String>(1)? == "ok",
+                    cause: r.get(2)?,
+                    at: r.get(3)?,
+                },
+            ))
+        },
+    )
+    .await
 }
 
 pub async fn list(c: &Connection, project_id: i64) -> anyhow::Result<Vec<Heartbeat>> {

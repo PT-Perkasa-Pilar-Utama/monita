@@ -199,6 +199,27 @@ pub async fn delete(db: &Db, base_url: &str, project_id: i64, id: i64) -> anyhow
     .await
 }
 
+/// The newest ping of a heartbeat, good or failed. `last_ping_at` counts good pings only,
+/// because only they move the deadline.
+#[derive(Clone, Debug, serde::Serialize)]
+pub struct LastPing {
+    pub ok: bool,
+    /// What a fail ping reported; `None` for a good ping.
+    pub cause: Option<String>,
+    pub at: i64,
+}
+
+/// The newest ping of each heartbeat in the project, by heartbeat id.
+pub async fn last_pings(
+    db: &Db,
+    project_id: i64,
+) -> anyhow::Result<std::collections::HashMap<i64, LastPing>> {
+    Ok(store::last_pings(&db.read().await?, project_id)
+        .await?
+        .into_iter()
+        .collect())
+}
+
 pub async fn list(db: &Db, project_id: i64) -> anyhow::Result<Vec<Heartbeat>> {
     store::list(&db.read().await?, project_id).await
 }

@@ -17,6 +17,7 @@ import { useProject } from "@/lib/project";
 import { ago } from "@/lib/time";
 import type { HeartbeatList } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
+import { cn } from "@/lib/utils";
 import { SortHead } from "@/components/list/SortHead";
 import { sortRows } from "@/lib/sort";
 import { useSort } from "@/lib/useSort";
@@ -37,7 +38,7 @@ export function Heartbeats({ creating = false }: { creating?: boolean }): ReactE
   const rows = sortRows(
     all.filter((h) => keeps(filter, [h.name], h.state, h.severity)),
     sort,
-    { name: (h) => h.name, state: (h) => h.state, deadline: (h) => h.deadline_at, every: (h) => h.period_s, severity: (h) => h.severity, last: (h) => h.last_ping_at },
+    { name: (h) => h.name, state: (h) => h.state, deadline: (h) => h.deadline_at, every: (h) => h.period_s, severity: (h) => h.severity, last: (h) => h.last?.at ?? null },
   );
   const newButton = (
     <Button asChild>
@@ -106,7 +107,18 @@ export function Heartbeats({ creating = false }: { creating?: boolean }): ReactE
                       <TableCell className="max-md:hidden">
                         <SeverityBadge severity={h.severity} />
                       </TableCell>
-                      <TableCell className="text-right text-muted-foreground max-sm:hidden">{h.last_ping_at ? ago(h.last_ping_at) : "Never"}</TableCell>
+                      <TableCell className="max-w-64 text-right max-sm:hidden">
+                        {h.last ? (
+                          <>
+                            <div className={cn("truncate text-[13px]", !h.last.ok && "font-mono text-down")} title={h.last.cause ?? undefined}>
+                              {h.last.ok ? "Ping" : (h.last.cause ?? "Fail ping")}
+                            </div>
+                            <div className="text-xs text-muted-foreground">{ago(h.last.at)}</div>
+                          </>
+                        ) : (
+                          <span className="text-muted-foreground">Never</span>
+                        )}
+                      </TableCell>
                     </LinkRow>
                   ))}
                 </TableBody>

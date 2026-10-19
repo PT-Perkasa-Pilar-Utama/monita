@@ -14,7 +14,7 @@ use crate::{
     accounts::CurrentUser,
     app::AppState,
     checks::{
-        heartbeat::{self, GRACES_S, Heartbeat, HeartbeatInput, PERIODS_S, PingRow},
+        heartbeat::{self, GRACES_S, Heartbeat, HeartbeatInput, LastPing, PERIODS_S, PingRow},
         insight::Insight,
         overview::{self, Due},
     },
@@ -49,6 +49,8 @@ struct HeartbeatView {
     alert: bool,
     auto_incident: bool,
     last_ping_at: Option<i64>,
+    /// The newest ping, good or failed.
+    last: Option<LastPing>,
     deadline_at: Option<i64>,
     created_at: i64,
     /// `up`, `down`, `issue` or `unknown` (waiting for the first ping).
@@ -57,7 +59,7 @@ struct HeartbeatView {
     due: Due,
 }
 
-fn view(h: Heartbeat, state: &'static str, now: i64) -> HeartbeatView {
+fn view(h: Heartbeat, last: Option<LastPing>, state: &'static str, now: i64) -> HeartbeatView {
     HeartbeatView {
         due: overview::due(&h, now),
         every: heartbeat::label(&PERIODS_S, h.period_s),
@@ -70,6 +72,7 @@ fn view(h: Heartbeat, state: &'static str, now: i64) -> HeartbeatView {
         alert: h.alert,
         auto_incident: h.auto_incident,
         last_ping_at: h.last_ping_at,
+        last,
         deadline_at: h.deadline_at,
         created_at: h.created_at,
         state,
@@ -90,6 +93,7 @@ async fn list(
 ) -> UiResult {
     let p = projects::find_for(&state.db, &user, &slug).await?;
     let all = heartbeat::list(&state.db, p.id).await?;
+    let mut lasts = heartbeat::last_pings(&state.db, p.id).await?;
     let states = incidents::team_states_for(&state.db, p.id).await?;
     let state_of = |h: &Heartbeat| {
         h.state(states.get(&(SourceKind::Heartbeat, h.id)).copied())
@@ -103,7 +107,8 @@ async fn list(
             .into_iter()
             .map(|h| {
                 let s = state_of(&h);
-                view(h, s, t)
+                let last = lasts.remove(&h.id);
+                view(h, last, s, t)
             })
             .collect(),
         summary: serde_json::json!({ "kind": kind, "text": text }),
@@ -143,12 +148,19 @@ async fn detail(
     let insight = Insight::heartbeat(&state.db, &hb, paging.range(), now()).await?;
     let every = heartbeat::label(&PERIODS_S, hb.period_s);
     let seen = hb.last_ping_at.is_some();
+    let newest = heartbeat::last_pings(&state.db, p.id).await?.remove(&id);
+    let failed_last = newest.as_ref().is_some_and(|l| !l.ok);
     let last = (
         "Last ping",
-        hb.last_ping_at
-            .map_or_else(|| "Never".into(), |t| time::ago(t, insight.now)),
-        format!("expected every {every}"),
-        "plain",
+        newest
+            .as_ref()
+            .map_or_else(|| "Never".into(), |l| time::ago(l.at, insight.now)),
+        if failed_last {
+            format!("a fail ping, expected every {every}")
+        } else {
+            format!("expected every {every}")
+        },
+        if failed_last { "down" } else { "plain" },
     );
     let failed = insight.failed();
     let pings_stat = (
@@ -165,7 +177,7 @@ async fn detail(
     ]);
     Ok(data(DetailView {
         ping_url: format!("{}/ping/{}", state.config.base_url, hb.token),
-        heartbeat: view(hb, s, insight.now),
+        heartbeat: view(hb, newest, s, insight.now),
         stats,
         insight: insight.into(),
         pings,

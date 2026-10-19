@@ -73,7 +73,7 @@ async fn options(CurrentUser(_): CurrentUser) -> UiResult {
         .iter()
         .map(|&s| Choice {
             value: s,
-            label: super::overview::interval_words(s).to_string(),
+            label: super::overview::interval_label(s).to_string(),
         })
         .collect();
     let m = super::MonitorInput::defaults();
