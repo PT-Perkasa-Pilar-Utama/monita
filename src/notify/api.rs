@@ -55,6 +55,7 @@ async fn list(
     if user.is_read_only() {
         for r in &mut routes {
             r.webhook_url = hidden(r.webhook_url.take());
+            r.webhook_key = hidden(r.webhook_key.take());
         }
     }
     Ok(data(routes))
@@ -75,6 +76,12 @@ struct RouteInput {
     webhook_url: String,
     #[serde(default)]
     use_webhook: bool,
+    /// `json`, `discord`, `telegram`, `ntfy` or `pagerduty`; missing is `json` (v1.1 Q17).
+    #[serde(default)]
+    webhook_format: String,
+    /// Telegram's chat ID or PagerDuty's routing key.
+    #[serde(default)]
+    webhook_key: String,
 }
 
 /// US-15: who gets this severity's alerts.
@@ -86,19 +93,21 @@ async fn save(
 ) -> UiResult {
     severity_ok(&severity)?;
     let p = projects::find_for(&state.db, &user, &slug).await?;
-    let saved = super::save_route(
-        &state.db,
-        p.id,
-        &severity,
-        &f.emails,
-        &f.webhook_url,
-        f.use_webhook,
-    )
-    .await;
-    match saved {
+    let form = super::RouteForm {
+        emails: &f.emails,
+        webhook_url: &f.webhook_url,
+        use_webhook: f.use_webhook,
+        webhook_format: &f.webhook_format,
+        webhook_key: &f.webhook_key,
+    };
+    match super::save_route(&state.db, p.id, &severity, &form).await {
         Ok(()) => Ok(StatusCode::NO_CONTENT.into_response()),
         Err(RouteError::Other(e)) => Err(e.into()),
-        Err(e @ RouteError::BadWebhook) => Err(UiError::field("webhook_url", e.to_string())),
+        Err(e @ (RouteError::BadWebhook | RouteError::NtfyTopic)) => {
+            Err(UiError::field("webhook_url", e.to_string()))
+        }
+        Err(e @ RouteError::BadFormat) => Err(UiError::field("webhook_format", e.to_string())),
+        Err(e @ RouteError::BadKey(_)) => Err(UiError::field("webhook_key", e.to_string())),
         Err(e) => Err(UiError::field("emails", e.to_string())),
     }
 }

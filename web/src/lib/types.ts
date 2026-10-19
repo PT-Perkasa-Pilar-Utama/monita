@@ -77,7 +77,17 @@ export type ApiKey = {
   created_at: number;
 };
 
-export type AlertRoute = { severity: Severity; emails: string[]; webhook_url: string | null; use_webhook: boolean; enabled: boolean };
+export type AlertRoute = {
+  severity: Severity;
+  emails: string[];
+  webhook_url: string | null;
+  use_webhook: boolean;
+  enabled: boolean;
+  /** How the webhook speaks (v1.1 Q17). */
+  webhook_format: import("@/lib/webhookFormats").WebhookFormat;
+  /** Telegram's chat ID or PagerDuty's routing key; "(hidden)" for a supervisor. */
+  webhook_key: string | null;
+};
 
 export type LastCheck = { checked_at: number; ok: boolean; summary: string };
 

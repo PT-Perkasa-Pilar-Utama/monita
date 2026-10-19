@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,6 +18,8 @@ import { api, ApiError, errorText } from "@/lib/api";
 import { useProject } from "@/lib/project";
 import type { AlertRoute, TicketAlerts } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
+import { WEBHOOK_FORMATS, webhookFields } from "@/lib/webhookFormats";
+import type { WebhookFormat } from "@/lib/webhookFormats";
 import { toast } from "sonner";
 
 const COPY = {
@@ -41,23 +44,35 @@ function RouteSection({ slug, route }: { slug: string; route: AlertRoute }): Rea
   const [emails, setEmails] = useState(route.emails.join("\n"));
   const [webhook, setWebhook] = useState(route.webhook_url ?? "");
   const [useWebhook, setUseWebhook] = useState(route.use_webhook);
+  const [format, setFormat] = useState<WebhookFormat>(route.webhook_format);
+  const [key, setKey] = useState(route.webhook_key ?? "");
+  const fields = webhookFields(format);
   const [error, setError] = useState<ApiError | null>(null);
   const [busy, setBusy] = useState(false);
   const [testing, setTesting] = useState(false);
   const [notice, setNotice] = useState("");
   const [enabled, setEnabled] = useState(route.enabled);
-  const changed = emails.trim() !== saved.emails.join("\n") || webhook.trim() !== (saved.webhook_url ?? "") || useWebhook !== saved.use_webhook;
+  const changed =
+    emails.trim() !== saved.emails.join("\n") ||
+    webhook.trim() !== (saved.webhook_url ?? "") ||
+    useWebhook !== saved.use_webhook ||
+    format !== saved.webhook_format ||
+    key.trim() !== (saved.webhook_key ?? "");
 
   const save = async (): Promise<void> => {
     setBusy(true);
     setError(null);
     setNotice("");
     try {
-      await api(`/projects/${slug}/alerts/${s}`, "PUT", { emails, webhook_url: webhook, use_webhook: useWebhook });
-      const list = emails.split("\n").map((e) => e.trim()).filter(Boolean);
-      setSaved({ severity: s, emails: list, webhook_url: webhook.trim() || null, use_webhook: useWebhook, enabled });
-      setEmails(list.join("\n"));
-      setWebhook(webhook.trim());
+      await api(`/projects/${slug}/alerts/${s}`, "PUT", { emails, webhook_url: webhook, use_webhook: useWebhook, webhook_format: format, webhook_key: key });
+      // The server is the source of what it stored: PagerDuty's fixed URL, a key it keeps or drops.
+      const stored = (await api<AlertRoute[]>(`/projects/${slug}/alerts`)).find((r) => r.severity === s);
+      if (stored) {
+        setSaved({ ...stored, enabled });
+        setEmails(stored.emails.join("\n"));
+        setWebhook(stored.webhook_url ?? "");
+        setKey(stored.webhook_key ?? "");
+      }
       toast.success(`${COPY[s].title} saved.`);
     } catch (err) {
       setError(err instanceof ApiError ? err : new ApiError(0, "error", errorText(err)));
@@ -120,14 +135,34 @@ function RouteSection({ slug, route }: { slug: string; route: AlertRoute }): Rea
           </FieldLabel>
         </Field>
         {useWebhook && (
+          <Field data-invalid={error?.fields.webhook_format ? true : undefined}>
+            <FieldLabel htmlFor={`format-${s}`}>Format</FieldLabel>
+            <Select value={format} onValueChange={(v) => setFormat(v as WebhookFormat)}>
+              <SelectTrigger id={`format-${s}`} aria-invalid={error?.fields.webhook_format ? true : undefined}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {WEBHOOK_FORMATS.map((f) => (
+                    <SelectItem key={f.value} value={f.value}>
+                      {f.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+            {error?.fields.webhook_format && <FieldError>{error.fields.webhook_format}</FieldError>}
+          </Field>
+        )}
+        {useWebhook && fields.url && (
           <Field data-invalid={error?.fields.webhook_url ? true : undefined}>
             <FieldLabel htmlFor={`webhook-${s}`} required>
-              Webhook URL
+              {fields.url.label}
             </FieldLabel>
             <Input
               id={`webhook-${s}`}
               type="url"
-              placeholder="https://hooks.slack.com/services/…"
+              placeholder={fields.url.placeholder}
               aria-invalid={error?.fields.webhook_url ? true : undefined}
               value={webhook}
               onChange={(e) => setWebhook(e.target.value)}
@@ -135,7 +170,16 @@ function RouteSection({ slug, route }: { slug: string; route: AlertRoute }): Rea
             {error?.fields.webhook_url && <FieldError>{error.fields.webhook_url}</FieldError>}
           </Field>
         )}
-        {error && !error.fields.emails && !error.fields.webhook_url && <p className="text-sm text-destructive">{error.message}</p>}
+        {useWebhook && fields.key && (
+          <Field data-invalid={error?.fields.webhook_key ? true : undefined}>
+            <FieldLabel htmlFor={`key-${s}`} required>
+              {fields.key.label}
+            </FieldLabel>
+            <Input id={`key-${s}`} className="font-mono" placeholder={fields.key.placeholder} aria-invalid={error?.fields.webhook_key ? true : undefined} value={key} onChange={(e) => setKey(e.target.value)} />
+            {error?.fields.webhook_key && <FieldError>{error.fields.webhook_key}</FieldError>}
+          </Field>
+        )}
+        {error && !error.fields.emails && !error.fields.webhook_url && !error.fields.webhook_key && !error.fields.webhook_format && <p className="text-sm text-destructive">{error.message}</p>}
       </FieldGroup>
       </fieldset>
     </SettingsSection>

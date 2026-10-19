@@ -223,24 +223,22 @@ async fn an_alert_route_takes_20_addresses() {
     let emails: Vec<String> = (0..=caps::EMAILS_PER_ROUTE)
         .map(|i| format!("a{i}@x.co"))
         .collect();
-    let err =
-        monita::notify::save_route(&app.state.db, 1, "critical", &emails.join("\n"), "", false)
-            .await
-            .unwrap_err();
+    let form = async |emails: &str| {
+        let f = monita::notify::RouteForm {
+            emails,
+            webhook_url: "",
+            use_webhook: false,
+            webhook_format: "",
+            webhook_key: "",
+        };
+        monita::notify::save_route(&app.state.db, 1, "critical", &f).await
+    };
+    let err = form(&emails.join("\n")).await.unwrap_err();
     assert!(
         matches!(err, monita::notify::RouteError::TooManyEmails),
         "{err}"
     );
-    monita::notify::save_route(
-        &app.state.db,
-        1,
-        "critical",
-        &emails[1..].join("\n"),
-        "",
-        false,
-    )
-    .await
-    .unwrap();
+    form(&emails[1..].join("\n")).await.unwrap();
 }
 
 #[tokio::test]

@@ -10,6 +10,10 @@ pub struct Route {
     pub use_webhook: bool,
     /// Off sends nothing and keeps the recipients for when it comes back on.
     pub enabled: bool,
+    /// One of `format::FORMATS` (migration 0025).
+    pub webhook_format: String,
+    /// Telegram's chat ID or PagerDuty's routing key. Like the URL, a supervisor never sees it.
+    pub webhook_key: Option<String>,
 }
 
 pub struct OutboxRow {
@@ -39,11 +43,13 @@ fn route_row(r: &turso::Row) -> turso::Result<Route> {
         webhook_url: r.get(2)?,
         use_webhook: r.get::<i64>(3)? == 1,
         enabled: r.get::<i64>(4)? == 1,
+        webhook_format: r.get(5)?,
+        webhook_key: r.get(6)?,
     })
 }
 
 pub async fn routes(c: &Connection, project_id: i64) -> anyhow::Result<Vec<Route>> {
-    crate::platform::db::query_all(c, "SELECT severity, emails, webhook_url, use_webhook, enabled FROM alert_routes WHERE project_id = ?1 ORDER BY severity LIMIT 2", [project_id], route_row).await
+    crate::platform::db::query_all(c, "SELECT severity, emails, webhook_url, use_webhook, enabled, webhook_format, webhook_key FROM alert_routes WHERE project_id = ?1 ORDER BY severity LIMIT 2", [project_id], route_row).await
 }
 
 pub async fn route(
@@ -53,7 +59,7 @@ pub async fn route(
 ) -> anyhow::Result<Option<Route>> {
     let mut rows = c
         .query(
-            "SELECT severity, emails, webhook_url, use_webhook, enabled FROM alert_routes WHERE project_id = ?1 AND severity = ?2",
+            "SELECT severity, emails, webhook_url, use_webhook, enabled, webhook_format, webhook_key FROM alert_routes WHERE project_id = ?1 AND severity = ?2",
             (project_id, severity),
         )
         .await?;
@@ -63,18 +69,22 @@ pub async fn route(
     })
 }
 
-pub async fn save_route(
-    c: &Connection,
-    project_id: i64,
-    severity: &str,
-    emails: &str,
-    webhook: Option<&str>,
-    use_webhook: bool,
-) -> anyhow::Result<()> {
+/// Saves the recipients and the webhook; `enabled` stays as it is (`set_enabled` owns it).
+pub async fn save_route(c: &Connection, project_id: i64, r: &Route) -> anyhow::Result<()> {
     c.execute(
-        "INSERT INTO alert_routes (project_id, severity, emails, webhook_url, use_webhook) VALUES (?1, ?2, ?3, ?4, ?5)
-         ON CONFLICT (project_id, severity) DO UPDATE SET emails = excluded.emails, webhook_url = excluded.webhook_url, use_webhook = excluded.use_webhook",
-        (project_id, severity, emails, webhook, use_webhook),
+        "INSERT INTO alert_routes (project_id, severity, emails, webhook_url, use_webhook, webhook_format, webhook_key)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+         ON CONFLICT (project_id, severity) DO UPDATE SET emails = excluded.emails, webhook_url = excluded.webhook_url,
+           use_webhook = excluded.use_webhook, webhook_format = excluded.webhook_format, webhook_key = excluded.webhook_key",
+        (
+            project_id,
+            r.severity.as_str(),
+            r.emails.join("\n"),
+            r.webhook_url.as_deref(),
+            r.use_webhook,
+            r.webhook_format.as_str(),
+            r.webhook_key.as_deref(),
+        ),
     )
     .await?;
     Ok(())

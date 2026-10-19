@@ -4,8 +4,10 @@
 //! so a slow SMTP server or webhook never blocks a check or a request.
 
 pub mod api;
+mod compose;
 mod delivery;
 mod digest;
+mod format;
 mod mailer;
 mod preview;
 mod store;
@@ -13,9 +15,11 @@ mod tickets;
 
 use turso::Connection;
 
+use compose::{chat_safe, compose, test_message, ticket_json};
+
 use crate::{
-    incidents::{Ended, Event},
-    platform::{db::Db, now, time},
+    incidents::Event,
+    platform::{db::Db, now},
 };
 
 pub use delivery::{deliver_due, spawn_delivery};
@@ -62,23 +66,41 @@ pub enum RouteError {
         crate::platform::caps::EMAILS_PER_ROUTE
     )]
     TooManyEmails,
+    #[error("Pick JSON, Discord, Telegram, ntfy or PagerDuty.")]
+    BadFormat,
+    #[error("Enter the topic URL, such as https://ntfy.sh/team-alerts.")]
+    NtfyTopic,
+    /// The chat ID or routing key the format needs, with what to enter.
+    #[error("{0}")]
+    BadKey(&'static str),
     #[error(transparent)]
     Other(#[from] anyhow::Error),
+}
+
+/// What a severity's form sends: who gets email, and the webhook in its format.
+pub struct RouteForm<'a> {
+    pub emails: &'a str,
+    pub webhook_url: &'a str,
+    pub use_webhook: bool,
+    /// One of `format::FORMATS`; empty reads as `json`.
+    pub webhook_format: &'a str,
+    /// Telegram's chat ID or PagerDuty's routing key.
+    pub webhook_key: &'a str,
 }
 
 pub async fn routes(db: &Db, project_id: i64) -> anyhow::Result<Vec<Route>> {
     store::routes(&db.read().await?, project_id).await
 }
 
-/// US-15. One email per line; an empty webhook URL turns the webhook off.
+/// US-15. One email per line; an empty webhook URL turns the webhook off, except for PagerDuty,
+/// whose URL is fixed (v1.1 Q17).
 pub async fn save_route(
     db: &Db,
     project_id: i64,
     severity: &str,
-    emails_raw: &str,
-    webhook_raw: &str,
-    use_webhook: bool,
+    form: &RouteForm<'_>,
 ) -> Result<(), RouteError> {
+    let emails_raw = form.emails;
     if !matches!(severity, "critical" | "warning") {
         return Err(RouteError::Other(anyhow::anyhow!(
             "unknown severity {severity}"
@@ -95,23 +117,21 @@ pub async fn save_route(
     if emails.len() > crate::platform::caps::EMAILS_PER_ROUTE {
         return Err(RouteError::TooManyEmails);
     }
-    let webhook = webhook_raw.trim();
-    if !webhook.is_empty() && !crate::platform::valid_http_url(webhook) {
-        return Err(RouteError::BadWebhook);
-    }
-    let webhook = (!webhook.is_empty()).then_some(webhook);
-    db.write(async |c| {
-        store::save_route(
-            c,
-            project_id,
-            severity,
-            &emails.join("\n"),
-            webhook,
-            use_webhook,
-        )
-        .await
-    })
-    .await?;
+    let webhook_format = Some(form.webhook_format.trim())
+        .filter(|f| !f.is_empty())
+        .unwrap_or("json");
+    let (url, key) = format::check(webhook_format, form.webhook_url, form.webhook_key)?;
+    let saved = store::Route {
+        severity: severity.to_string(),
+        emails,
+        webhook_url: url,
+        use_webhook: form.use_webhook,
+        enabled: true,
+        webhook_format: webhook_format.to_string(),
+        webhook_key: key,
+    };
+    db.write(async |c| store::save_route(c, project_id, &saved).await)
+        .await?;
     Ok(())
 }
 
@@ -122,134 +142,6 @@ pub async fn set_enabled(db: &Db, project_id: i64, route: &str, on: bool) -> any
     }
     db.write(async |c| store::set_enabled(c, project_id, route, on).await)
         .await
-}
-
-pub(super) struct Composed {
-    subject: String,
-    text: String,
-    json: serde_json::Value,
-}
-
-pub(super) fn compose(
-    ev: &Event,
-    project: &(String, String),
-    base_url: &str,
-) -> (String, Composed) {
-    let (name, slug) = project;
-    match ev {
-        Event::Opened {
-            incident_id,
-            title,
-            severity,
-            cause,
-            source_name,
-            ..
-        } => {
-            let url = format!("{base_url}/projects/{slug}/incidents/{incident_id}");
-            let sev = severity.to_uppercase();
-            let text = format!("[{sev}] {name} / {title}: {cause}");
-            (
-                severity.clone(),
-                Composed {
-                    subject: format!("[{sev}] {name} / {title}"),
-                    json: serde_json::json!({
-                        "text": text, "event": "incident.opened", "project": slug, "source": source_name,
-                        "severity": severity, "cause": cause, "incident_url": url, "at": now(),
-                    }),
-                    text: format!("{text}\n\nOpen the incident: {url}\n"),
-                },
-            )
-        }
-        Event::Resolved {
-            incident_id,
-            severity,
-            duration_s,
-            source_name,
-            ended,
-            ..
-        } => {
-            let url = format!("{base_url}/projects/{slug}/incidents/{incident_id}");
-            let how = match ended {
-                Ended::Recovered => "is up",
-                Ended::Deleted => "was deleted",
-                Ended::ByHand => "was marked resolved by a tech lead",
-            };
-            let text = format!(
-                "[RESOLVED] {name} / {source_name} {how} after {}",
-                time::duration(*duration_s)
-            );
-            (
-                severity.clone(),
-                Composed {
-                    subject: text.clone(),
-                    json: serde_json::json!({
-                        "text": text, "event": "incident.resolved", "project": slug, "source": source_name,
-                        "severity": severity, "duration_s": duration_s, "incident_url": url, "at": now(),
-                    }),
-                    text: format!("{text}\n\nTimeline: {url}\n"),
-                },
-            )
-        }
-        Event::Down {
-            kind,
-            source_id,
-            source_name,
-            title,
-            severity,
-            cause,
-            ..
-        } => {
-            let url = source_url(base_url, slug, *kind, *source_id);
-            let text = format!("[DOWN] {name} / {title}: {cause}");
-            (
-                severity.clone(),
-                Composed {
-                    subject: format!("[DOWN] {name} / {title}"),
-                    json: serde_json::json!({
-                        "text": text, "event": "source.down", "project": slug, "source": source_name,
-                        "severity": severity, "cause": cause, "source_url": url, "at": now(),
-                    }),
-                    text: format!(
-                        "{text}\n\nNo incident was opened. Report one if users should know.\n{url}\n"
-                    ),
-                },
-            )
-        }
-        Event::Up {
-            kind,
-            source_id,
-            source_name,
-            severity,
-            duration_s,
-            ..
-        } => {
-            let url = source_url(base_url, slug, *kind, *source_id);
-            let text = format!(
-                "[UP] {name} / {source_name} is up after {}",
-                time::duration(*duration_s)
-            );
-            (
-                severity.clone(),
-                Composed {
-                    subject: text.clone(),
-                    json: serde_json::json!({
-                        "text": text, "event": "source.up", "project": slug, "source": source_name,
-                        "severity": severity, "duration_s": duration_s, "source_url": url, "at": now(),
-                    }),
-                    text: format!("{text}\n\n{url}\n"),
-                },
-            )
-        }
-    }
-}
-
-/// The page of a monitor or a heartbeat, for an alert with no incident to link.
-fn source_url(base_url: &str, slug: &str, kind: crate::incidents::SourceKind, id: i64) -> String {
-    let path = match kind {
-        crate::incidents::SourceKind::Monitor => "monitors",
-        crate::incidents::SourceKind::Heartbeat => "heartbeats",
-    };
-    format!("{base_url}/projects/{slug}/{path}/{id}")
 }
 
 /// US-16. Queues one email per address and one webhook call for the event's severity.
@@ -275,55 +167,25 @@ pub async fn send(c: &Connection, ev: &Event, base_url: &str) -> anyhow::Result<
     for email in &route.emails {
         store::queue(c, "email", email, Some(&msg.subject), &msg.text, at).await?;
     }
-    if route.use_webhook
-        && let Some(url) = &route.webhook_url
-    {
-        store::queue(c, "webhook", url, None, &msg.json.to_string(), at).await?;
-    }
+    queue_webhook(c, &route, &project.1, &msg, at).await?;
     Ok(())
 }
 
-/// A reporter's words for a chat's `text` field: Slack reads `<...>` as a link or a mention such
-/// as `<!channel>`, so an anonymous title must not carry one into the team's channel. The
-/// `title` field keeps the raw words for code that reads the JSON.
-pub(super) fn chat_safe(s: &str) -> String {
-    s.replace('&', "&amp;")
-        .replace('<', "&lt;")
-        .replace('>', "&gt;")
-}
-
-/// The webhook body for a new ticket. Tickets send no email.
-pub(super) fn ticket_json(
-    name: &str,
+/// The route's webhook call for one alert, in the route's format, when the webhook is on.
+async fn queue_webhook(
+    c: &Connection,
+    route: &Route,
     slug: &str,
-    number: i64,
-    title: &str,
-    base_url: &str,
+    msg: &compose::Composed,
     at: i64,
-) -> serde_json::Value {
-    serde_json::json!({
-        "text": format!("[TICKET] {name} #{number}: {}", chat_safe(title)),
-        "event": "ticket.created",
-        "project": slug,
-        "ticket_number": number,
-        "title": title,
-        "ticket_url": format!("{base_url}/projects/{slug}/tickets/{number}"),
-        "at": at,
-    })
-}
-
-/// The test alert: its text, email body and webhook body.
-pub(super) fn test_message(
-    name: &str,
-    slug: &str,
-    severity: &str,
-    base_url: &str,
-    at: i64,
-) -> (String, String, serde_json::Value) {
-    let text = format!("[TEST] {name}: alerts for {severity} reach this channel.");
-    let body = format!("{text}\n\n{base_url}/projects/{slug}/settings/alerts\n");
-    let json = serde_json::json!({ "text": text, "event": "test", "project": slug, "severity": severity, "at": at });
-    (text, body, json)
+) -> anyhow::Result<bool> {
+    let Some(url) = route.webhook_url.as_deref().filter(|_| route.use_webhook) else {
+        return Ok(false);
+    };
+    let key = route.webhook_key.as_deref();
+    let (target, body) = format::webhook(&route.webhook_format, url, key, slug, msg);
+    store::queue(c, "webhook", &target, None, &body.to_string(), at).await?;
+    Ok(true)
 }
 
 /// The test button on the alerts page: one message per recipient of that severity.
@@ -350,9 +212,21 @@ pub async fn send_test(
             store::queue(c, "email", email, Some(&text), &body, at).await?;
             n += 1;
         }
-        if let Some(url) = route.webhook_url.as_deref().filter(|_| route.use_webhook) {
-            store::queue(c, "webhook", url, None, &json.to_string(), at).await?;
+        let mut msg = compose::Composed {
+            subject: text,
+            text: body,
+            json,
+            link: format!("{base_url}/projects/{slug}/settings/alerts"),
+            dedup: "test".into(),
+            resolves: false,
+        };
+        if queue_webhook(c, &route, &slug, &msg, at).await? {
             n += 1;
+            // A PagerDuty test opens an incident there; resolve it at once.
+            if route.webhook_format == "pagerduty" {
+                msg.resolves = true;
+                queue_webhook(c, &route, &slug, &msg, at).await?;
+            }
         }
         Ok(n)
     })

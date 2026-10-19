@@ -29,7 +29,17 @@ Each section has these fields:
 | --- | --- |
 | Email addresses | One per line, up to 20. A new project starts with its owner's email in both sections. |
 | Also send to a webhook | Tick it to add a webhook |
-| Webhook URL | Where Monita posts. Required when the box is ticked. |
+| Format | How the webhook speaks. See the table below. |
+| Webhook URL | Where Monita posts. Required when the box is ticked, except for PagerDuty. |
+| Chat ID or Routing key | Telegram and PagerDuty only |
+
+| Format | URL | Also needs | What Monita posts |
+| --- | --- | --- | --- |
+| JSON | Any receiver, Slack or Google Chat incoming webhook | | The body under [What recipients get](#what-recipients-get) |
+| Discord | The channel's webhook URL | | `content` with the alert line and a link. Mentions such as `@everyone` in the text do not ping. |
+| Telegram | `https://api.telegram.org/bot<token>/sendMessage` | The chat ID, such as `-1001234567890` or `@team_alerts` | The alert line and a link |
+| ntfy | The topic URL, such as `https://ntfy.sh/team-alerts` | | A title, the message and a link; priority 5 for critical, 4 for warning, 3 when it resolves |
+| PagerDuty | Fixed: the Events API v2 | The routing key of an Events API v2 integration | A trigger when an incident opens or a source goes down, and a resolve with the same dedup key when it ends. **Send a test** sends a trigger and its resolve. |
 
 Select **Save changes**. Then select **Send a test** to send a test alert to the saved recipients. A section with no saved recipient sends nothing and says so.
 

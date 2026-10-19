@@ -7,7 +7,7 @@ test("Uptime always leads the public tabs that are on", () => {
 });
 
 test("an alert line names who gets the alert, or says it is off", () => {
-  const r: AlertRoute = { severity: "critical", emails: ["a@x.co", "b@x.co"], webhook_url: "https://hook", use_webhook: true, enabled: true };
+  const r: AlertRoute = { severity: "critical", emails: ["a@x.co", "b@x.co"], webhook_url: "https://hook", use_webhook: true, enabled: true, webhook_format: "json", webhook_key: null };
   expect(alertLine(r)).toBe("Critical: 2 emails and the webhook.");
   expect(alertLine({ ...r, severity: "warning", emails: ["a@x.co"], use_webhook: false })).toBe("Warning: 1 email.");
   expect(alertLine({ ...r, emails: [], use_webhook: false })).toBe("Critical: no one is alerted.");

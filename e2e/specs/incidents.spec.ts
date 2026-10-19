@@ -28,6 +28,23 @@ test("@US-15 TL sets who gets critical alerts and sends a test", async ({ page }
   await expect(critical.getByText("Test sent to 1 recipient.")).toBeVisible();
 });
 
+test("a severity posts to PagerDuty with a routing key and no URL", async ({ page }) => {
+  const { slug } = await projectWithHeartbeat(page);
+  await page.goto(`/projects/${slug}/settings/alerts`);
+  const critical = page.locator("#critical");
+  await page.locator("#format-critical").click();
+  await page.getByRole("option", { name: "PagerDuty" }).click();
+  await expect(page.locator("#webhook-critical")).toHaveCount(0);
+  await critical.getByRole("button", { name: "Save changes" }).click();
+  await expect(critical.getByText("Enter the routing key of the PagerDuty integration.")).toBeVisible();
+  await page.locator("#key-critical").fill("R0utingKey1");
+  await critical.getByRole("button", { name: "Save changes" }).click();
+  await expect(page.getByText("Critical alerts saved.")).toBeVisible();
+  await page.reload();
+  await expect(page.locator("#format-critical")).toHaveText("PagerDuty");
+  await expect(page.locator("#key-critical")).toHaveValue("R0utingKey1");
+});
+
 test("@US-14 @US-17 @US-18 @US-19 a failing job opens an incident, the TL updates it, the next ping closes it", async ({ page }) => {
   const { slug, pingUrl } = await projectWithHeartbeat(page);
   expect((await page.request.post(`${pingUrl}/fail`, { data: "settle.sh: bank API timed out" })).status()).toBe(200);

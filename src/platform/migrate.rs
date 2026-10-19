@@ -67,6 +67,10 @@ const MIGRATIONS: &[(i64, &str)] = &[
         include_str!("../../migrations/0023_owner_alert_recipients.sql"),
     ),
     (24, include_str!("../../migrations/0024_check_kinds.sql")),
+    (
+        25,
+        include_str!("../../migrations/0025_webhook_formats.sql"),
+    ),
 ];
 
 pub async fn run(db: &Db) -> anyhow::Result<()> {
