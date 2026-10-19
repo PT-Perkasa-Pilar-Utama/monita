@@ -141,12 +141,14 @@ async fn spend_code(
 
 /// The user turns two-factor off, with a code.
 pub async fn turn_off(db: &Db, user_id: i64, code: &str, now: i64) -> Result<(), TwoFactorError> {
-    db.write(async |c| {
-        if !spend_code(c, user_id, code, now).await? {
-            return Ok(Err(TwoFactorError::WrongCode));
+    db.write(async |c| match spend_code(c, user_id, code, now).await {
+        Ok(true) => {
+            store::clear(c, user_id).await?;
+            Ok(Ok(()))
         }
-        store::clear(c, user_id).await?;
-        Ok(Ok(()))
+        Ok(false) => Ok(Err(TwoFactorError::WrongCode)),
+        // `?` would turn NotOn into a 500.
+        Err(e) => Ok(Err(e)),
     })
     .await?
 }

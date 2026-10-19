@@ -217,6 +217,14 @@ async fn the_user_with_a_code_or_a_super_admin_turns_it_off() {
     assert_eq!(right.status(), 204);
     let status = json_of(app.api_get("/api/ui/me/two-factor", Some(&tl)).await).await;
     assert_eq!(status["data"], json!({ "on": false, "codes_left": 0 }));
+    let again = app
+        .api_post(
+            "/api/ui/me/two-factor/off",
+            json!({ "code": "123456" }),
+            Some(&tl),
+        )
+        .await;
+    assert_eq!(again.status(), 422, "already off");
 }
 
 #[tokio::test]
