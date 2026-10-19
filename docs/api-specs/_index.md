@@ -39,6 +39,7 @@ Legend: `OK` implemented and tested, `WIP` in progress, `TODO` not started, `SCA
 | System page, mail server and its tests, limits, time zone | [04](04-checks.md#44-system-page) | OK |
 | Project incidents, incident items, updates | [05](05-incidents.md#51-frontend-routes) | OK |
 | Incidents across projects (`/api/ui/incidents`) | [05](05-incidents.md#52-incidents-across-projects) | OK |
+| Maintenance windows | [05](05-incidents.md#53-maintenance-windows) | OK |
 | Alert routes, the on/off switch, alerts preview | [06](06-notify.md#61-frontend-routes) | OK |
 | Ticket alerts (`webhook_moves`) and their test | [06](06-notify.md#61-frontend-routes) | OK |
 | Status page: status, history | [07](07-status.md#72-frontend-routes) | OK |
@@ -56,7 +57,7 @@ Legend: `OK` implemented and tested, `WIP` in progress, `TODO` not started, `SCA
 | [02-authentication.md](02-authentication.md) | Sessions, sign-in, invites, user management and roles |
 | [03-projects.md](03-projects.md) | Projects, API keys, allowlist, public pages, secrets |
 | [04-checks.md](04-checks.md) | Ping API, monitor and heartbeat routes, the System page |
-| [05-incidents.md](05-incidents.md) | Incident routes, the cross-project list |
+| [05-incidents.md](05-incidents.md) | Incident routes, the cross-project list, maintenance windows |
 | [06-notify.md](06-notify.md) | Alert and ticket-alert settings, webhook payloads |
 | [07-status.md](07-status.md) | Public status JSON and page routes |
 | [08-tickets.md](08-tickets.md) | Ref IDs, tickets, the board, the cross-project list |

@@ -109,3 +109,33 @@ test("@US-20 TL reports an incident by hand and resolves it", async ({ page }) =
   await dialog.getByRole("button", { name: "Post update" }).click();
   await expect(page.locator("#state")).toContainText("Resolved");
 });
+
+test("a maintenance window holds back the incident until the tech lead ends it", async ({ page }) => {
+  const { slug, pingUrl } = await projectWithHeartbeat(page);
+  await page.goto(`/projects/${slug}/incidents`);
+  await page.getByRole("link", { name: "Maintenance" }).click();
+  await page.getByRole("link", { name: "Plan maintenance" }).click();
+  await page.getByRole("button", { name: "Plan maintenance" }).click();
+  await expect(page.getByText("Enter a title of up to 120 characters.")).toBeVisible();
+  await page.getByLabel("Title").fill("Bank API upgrade");
+  await page.getByLabel("nightly-settlement").check();
+  await page.getByLabel("Message on the status page").fill("Settlement runs late tonight.");
+  await page.getByRole("button", { name: "Plan maintenance" }).click();
+  await expect(page.getByText("Maintenance planned.")).toBeVisible();
+  const row = page.getByRole("row", { name: /Bank API upgrade/ });
+  await expect(row.getByText("Active")).toBeVisible();
+
+  expect((await page.request.post(`${pingUrl}/fail`, { data: "planned" })).status()).toBe(200);
+  await page.goto(`/projects/${slug}/heartbeats`);
+  await expect(page.getByText("Maintenance").first()).toBeVisible();
+  await page.goto(`/projects/${slug}/incidents`);
+  await expect(page.getByText("Every system is up")).toBeVisible();
+
+  await page.goto(`/projects/${slug}/incidents/maintenance`);
+  await row.getByRole("button", { name: "End now" }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "End now" }).click();
+  await expect(row.getByText("Ended")).toBeVisible();
+  expect((await page.request.post(`${pingUrl}/fail`, { data: "real trouble" })).status()).toBe(200);
+  await page.goto(`/projects/${slug}/incidents`);
+  await expect(page.getByRole("link", { name: "nightly-settlement reported a failure" })).toBeVisible();
+});

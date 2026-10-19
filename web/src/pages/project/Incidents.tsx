@@ -5,7 +5,7 @@ import { LinkRow, ROW_LINK } from "@/components/app/LinkRow";
 import { ListFilters, type Option } from "@/components/app/ListFilters";
 import { TableCard } from "@/components/app/TableCard";
 import { LabelBadge, SeverityBadge } from "@/components/app/Tone";
-import { Plus } from "@/components/icons";
+import { Plus, Wrench } from "@/components/icons";
 import { PageHeader } from "@/components/layout/Page";
 import { TableEmpty } from "@/components/list/TableEmpty";
 import { Button } from "@/components/ui/button";
@@ -59,6 +59,12 @@ export function Incidents({ creating = false }: { creating?: boolean }): ReactEl
         actions={
           <>
             <IncidentGuide />
+            <Button asChild variant="outline">
+              <Link to={`/projects/${p.slug}/incidents/maintenance`}>
+                <Wrench data-icon="inline-start" />
+                Maintenance
+              </Link>
+            </Button>
             <Writable>
               <Button asChild>
                 <Link to={`${base}/new`}>

@@ -10,7 +10,7 @@ use crate::platform::{
 };
 use crate::{
     incidents::{self, Signal, Source, SourceKind},
-    notify,
+    maintenance, notify,
 };
 
 pub const PERIODS_S: [(i64, &str); 12] = [
@@ -356,6 +356,15 @@ pub async fn sweep_missed(
             .write(async |c| {
                 let missed = store::take_missed(c, at, caps::MISSED_BATCH).await?;
                 for hb in &missed {
+                    // Q18: in a maintenance window the miss waits. Looking again each minute
+                    // and at the window's end opens the incident at once if the job stays
+                    // silent, and soon after an End now.
+                    if let Some(end) =
+                        maintenance::covers(c, SourceKind::Heartbeat, hb.id, at).await?
+                    {
+                        store::hold(c, hb.id, end.min(at + 60)).await?;
+                        continue;
+                    }
                     if let Some(ev) =
                         incidents::observe(c, &hb.source(), &Signal::HeartbeatMissed, at).await?
                     {

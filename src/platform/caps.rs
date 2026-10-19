@@ -54,6 +54,10 @@ pub const JOB_BATCH: i64 = 500;
 pub const MISSED_BATCH: i64 = 50;
 /// Pings per page on the heartbeat page.
 pub const PINGS_PAGE: i64 = 25;
+/// Maintenance windows scheduled or active at once in one project.
+pub const OPEN_WINDOWS_PER_PROJECT: i64 = 20;
+/// Maintenance windows per page of a project's list.
+pub const WINDOWS_PAGE: i64 = 20;
 
 #[cfg(test)]
 mod tests {

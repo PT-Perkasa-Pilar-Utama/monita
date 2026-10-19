@@ -22,10 +22,11 @@ The header shows the project name, a link to the project's **Homepage** and the 
 
 ## Uptime
 
-- A headline: all systems operational, which system is down, or that some have issues. Beside it: "N of M systems up". While an incident is open and the Incidents tab is on, a link reads "N active incidents".
-- Each system is a card with its name, a state icon, 90 daily bars, and "90 days ago", the uptime and "Today". A line under the bars says **Normal**, **Down**, **Has an issue** or **No data yet**.
+- A headline: all systems operational, which system is down, that some have issues, or that maintenance is in progress. Beside it: "N of M systems up". While an incident is open and the Incidents tab is on, a link reads "N active incidents".
+- Each system is a card with its name, a state icon, 90 daily bars, and "90 days ago", the uptime and "Today". A line under the bars says **Normal**, **Down**, **Has an issue**, **Under maintenance** or **No data yet**.
+- Each active maintenance window shows under the headline with its title, times, the systems it covers and its message. See [Maintenance windows](incidents.md#maintenance-windows).
 - A green bar had no downtime. A yellow bar had under 1% downtime. A red bar had more. A grey bar is a day before the system existed.
-- Systems with a problem come first. A project with many systems shows bars for the problems and the first 12. The rest fold into a list, "N more systems".
+- Systems with a problem come first, then systems in maintenance. A project with many systems shows bars for the problems and the first 12. The rest fold into a list, "N more systems".
 - The tab reads itself every 60 seconds while the browser tab is visible. It has no **Refresh** button.
 
 ### Past uptime

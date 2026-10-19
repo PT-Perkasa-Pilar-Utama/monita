@@ -12,6 +12,7 @@ export function Overall({ summary }: { summary: ListSummary }): ReactElement {
         summary.kind === "up" && "border-up/30 bg-up/8 before:bg-up",
         summary.kind === "down" && "border-down/30 bg-down/8 before:bg-down",
         summary.kind === "issue" && "border-issue/30 bg-issue/8 before:bg-issue",
+        summary.kind === "maintenance" && "border-neutral-strong/30 bg-neutral-strong/8 before:bg-neutral-strong",
         summary.kind === "unknown" && "bg-card before:bg-unknown",
       )}
     >

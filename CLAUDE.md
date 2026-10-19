@@ -50,6 +50,7 @@ site/                 landing page and docs site builder    docs/guide/ user doc
 | notify | alert_routes, outbox | `send(Event)`: inserts outbox rows, never blocks; `create_routes`, `purge_delivered` |
 | status | none | public page and JSON |
 | home | none | cross-project Incidents and Tickets pages, top menu counts |
+| maintenance | maintenance_windows, maintenance_items | `covers` (asked by `incidents::observe` and the missed-heartbeat sweep), `active`, `create`, `delete`, `end_now`, `page` |
 | changelog | changelog_entries | `page`, `index`, `one`, `create`, `update`, `delete`; no other module calls it. Its `api.rs` serves the team tab and the public Changelog tab |
 | tickets | ref_ids, tickets | `issue_ref_id`, `submit` |
 | platform | settings, schema_migrations | `Db`, `ui` (envelope, `Body`, `public_cache`), `now`, config |
@@ -168,6 +169,7 @@ Each line was argued in review and decided. Do not reopen one without a new fact
 - [ ] Status update labels: investigating, identified, monitoring, resolved.
 - [ ] Ticket stages: triage, backlog, in_progress, done. Done needs close_reason fixed, wont_fix or duplicate. Triage is private. A reporter files with a ref ID; the team files from the board (`created_by`, no ref ID, no caps, no webhook). Ticket alerts (`ticket_alerts`) are apart from severities: owner digest on by default, own webhook off by default; the same webhook can also hear column moves (`webhook_moves`, off by default). A board column shows 25; Done links to a paged list.
 - [ ] Severity: critical (email + webhook by default), warning (email only). Each severity's webhook has a format (`json`, `discord`, `telegram`, `ntfy`, `pagerduty`; `notify::format`) and a `webhook_key` that a supervisor never sees.
+- [ ] Maintenance windows (Q18): scheduled, active, ended, from the times. During an active one a covered source's failure opens no incident and sends no alert; a monitor's streak keeps counting; a missed heartbeat waits until the window ends. Delete only scheduled; End now only active.
 - [ ] Monitor kinds: `http`, `tcp` (`host:port`), `dns` (host name, optional expected address); TCP and DNS keep none of the HTTP fields (`MonitorInput::for_kind`). Intervals: 30, 60, 180, 300 s. Default timeout 10 s, expected `2xx`.
 - [ ] Ref IDs: `POST /api/v1/ref-ids`, project from the API key, `single_use` flag. Caps: 5 per ref ID per day, 100 per project per day.
 - [ ] Rate limits: 60/min per IP (public, ticket form, invite links, wrong API keys; login in its own `login:` bucket), 120/min per API key, 1/s per heartbeat (extra pings return 429 and are not stored; the ping accepted in that second keeps the heartbeat alive); `/fail` has its own 1/s bucket `pingfail:{id}`. Request bodies are capped at 128 KiB (413), except the ping routes (see Settled trade-offs).

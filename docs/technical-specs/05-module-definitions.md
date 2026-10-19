@@ -72,10 +72,10 @@ Each module owns its tables (see [06](06-data-model.md)). Other modules use only
 
 | Item | Contract |
 | --- | --- |
-| `observe(c, &Source, &Signal, now) -> Option<Event>` | The only door for check results. Applies the source's `fails_to_open` rule, opens and closes automatic incidents, writes the system status updates, and returns the event for `notify`. With `auto_incident` off it returns `Down` and `Up` events and opens nothing; with `alert` off it returns no event. Idempotent for a repeated signal. See [12](12-incident-engine.md). |
+| `observe(c, &Source, &Signal, now) -> Option<Event>` | The only door for check results. Applies the source's `fails_to_open` rule, opens and closes automatic incidents, writes the system status updates, and returns the event for `notify`. With `auto_incident` off it returns `Down` and `Up` events and opens nothing; with `alert` off it returns no event. While an active maintenance window covers the source, it opens nothing and returns no event (12.3a). Idempotent for a repeated signal. See [12](12-incident-engine.md). |
 | `open_manual(db, &NewIncident, now)` | Creates a manual incident (title, items, severity, first message, author) with the first update, label Investigating. `items` are the form's `kind:id` values; it keeps those that name one of the project's monitors or heartbeats, read through `checks`, once each. Errors: empty title, no items, empty message. |
 | `post_update(db, base_url, project_id, incident_id, label, message, author, now)` | Message is required (1 to 10 000 characters), and an incident takes 50 updates. Resolved on a manual incident closes it. Resolved on an open automatic incident also closes it, by hand: see below. A closed incident takes only Resolved, as a follow-up note (AC-19.03). `allowed_labels(origin, closed)` gives the form the same list. |
-| `states_for(db, project_id) -> HashMap<(SourceKind, id), ItemState>` | `Down` while an automatic incident is open, `Issue` while a manual one names the item. Items with no entry are up, or waiting before their first check. The public status page uses it, so only an incident someone opened reaches visitors. |
+| `states_for(db, project_id) -> HashMap<(SourceKind, id), ItemState>` | `Down` while an automatic incident is open, `Issue` while a manual one names the item, `Maintenance` while an active window covers an item no incident names. Items with no entry are up, or waiting before their first check. The public status page uses it, so only an incident someone opened reaches visitors. |
 | `team_states_for(db, project_id)` | `states_for`, plus `Down` for a source that is down with no incident because its incident switch is off (`incident_sources.down_since` set). Used by the team's pages. |
 | `source_deleted(c, &Source, now)`, `forget_sources(c, sources)` | A deleted source closes its open automatic incident and returns the `Resolved` event. A deleted project forgets its sources' streaks and sends nothing. |
 | `across(db, owner, &AcrossFilter, page)` | One page (`caps::ACROSS_PAGE`, 25) of incidents across projects, with the total. `owner` of `None` reads every project. Search matches the title, `INC-n` or the project's name. `state` is `open` (the default), `resolved` or `all`. The default order is critical first, then newest; `sort` may be `newest` or `oldest`. |
@@ -234,3 +234,17 @@ The project tabs show numbers only for what needs a look: monitors and heartbeat
 | `one(db, project_id, version)` | One release with its newer and older neighbours. `None` for the version means the newest; the route spells that `latest`. |
 
 The public routes answer 404 while `show_changelog` is off.
+
+## 5.11 maintenance
+
+**Responsibility:** planned work on a project (v1.1 decision Q18). Owns `maintenance_windows` and `maintenance_items`. Calls `checks::source_names`; `incidents` and `checks` call it.
+
+| Item | Contract |
+| --- | --- |
+| `state(starts_at, ends_at, now)` | `Scheduled`, `Active` or `Ended`, from the times alone. |
+| `create(db, project_id, &WindowInput, now)` | Checks the form on a read connection, then again inside the write. A past start becomes now. `MaintenanceError::Invalid` names every bad field; `Full` at 20 windows scheduled or active (`caps::OPEN_WINDOWS_PER_PROJECT`). |
+| `delete(db, project_id, id, now)` | Scheduled windows only; otherwise `Started`. |
+| `end_now(db, project_id, id, now)` | Active windows only: `ends_at` becomes now. Otherwise `NotActive`. |
+| `page(db, project_id, page)` | The team's list, 20 a page (`caps::WINDOWS_PAGE`), latest start first. |
+| `covers(c, kind, id, at)` | The end of the latest-ending active window over the source, on the caller's connection. `incidents::observe` and `checks::heartbeat::sweep_missed` ask it. |
+| `active(c, project_id, at)` | The active windows with their items, for the item states and the status page. |

@@ -20,6 +20,19 @@ pub struct Status {
     pub overall: &'static str,
     pub items: Vec<ItemStatus>,
     pub incidents: Vec<IncidentStatus>,
+    /// Active maintenance windows that cover a public item, soonest end first.
+    pub maintenance: Vec<MaintenanceStatus>,
+}
+
+/// The public wire shape of an active maintenance window: what the team typed for visitors and
+/// the public items it covers.
+#[derive(Serialize)]
+pub struct MaintenanceStatus {
+    pub title: String,
+    pub message: String,
+    pub starts_at: i64,
+    pub ends_at: i64,
+    pub items: Vec<String>,
 }
 
 #[derive(Serialize)]
@@ -120,6 +133,7 @@ struct Items {
     items: Vec<ItemStatus>,
     refs: Vec<(ItemRef, String)>,
     overall: &'static str,
+    maintenance: Vec<MaintenanceStatus>,
     /// Minutes east of UTC; days start at midnight there.
     off: i64,
 }
@@ -144,6 +158,7 @@ async fn items(db: &Db, slug: &str, days: usize) -> anyhow::Result<Option<Items>
             let state = match states.get(&key) {
                 Some(ItemState::Down) => "down",
                 Some(ItemState::Issue) => "issue",
+                Some(ItemState::Maintenance) => "maintenance",
                 _ if !item.seen => "unknown",
                 _ => "up",
             };
@@ -164,11 +179,13 @@ async fn items(db: &Db, slug: &str, days: usize) -> anyhow::Result<Option<Items>
         "down"
     } else if items.iter().any(|i| i.state == "issue") {
         "issue"
+    } else if items.iter().any(|i| i.state == "maintenance") {
+        "maintenance"
     } else {
         "up"
     };
 
-    let refs = public
+    let refs: Vec<(ItemRef, String)> = public
         .iter()
         .map(|i| {
             (
@@ -180,13 +197,42 @@ async fn items(db: &Db, slug: &str, days: usize) -> anyhow::Result<Option<Items>
             )
         })
         .collect();
+    let maintenance = maintenance(db, project.id, &refs, t).await?;
     Ok(Some(Items {
         project,
         items,
         refs,
         overall,
+        maintenance,
         off,
     }))
+}
+
+/// Active windows with the public items they cover; a window that covers none stays private.
+async fn maintenance(
+    db: &Db,
+    project_id: i64,
+    refs: &[(ItemRef, String)],
+    t: i64,
+) -> anyhow::Result<Vec<MaintenanceStatus>> {
+    let active = crate::maintenance::active(&db.read().await?, project_id, t).await?;
+    Ok(active
+        .into_iter()
+        .filter_map(|w| {
+            let items: Vec<String> = refs
+                .iter()
+                .filter(|(r, _)| w.items.contains(r))
+                .map(|(_, name)| name.clone())
+                .collect();
+            (!items.is_empty()).then_some(MaintenanceStatus {
+                title: w.title,
+                message: w.message,
+                starts_at: w.starts_at,
+                ends_at: w.ends_at,
+                items,
+            })
+        })
+        .collect())
 }
 
 /// Public incidents of `which`, as wire types: public item names, no author, at most `limit`.
@@ -241,6 +287,7 @@ fn status(it: Items, incidents: Vec<IncidentStatus>) -> Status {
         overall: it.overall,
         items: it.items,
         incidents,
+        maintenance: it.maintenance,
     }
 }
 

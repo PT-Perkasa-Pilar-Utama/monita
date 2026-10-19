@@ -5,10 +5,12 @@ import type { PublicIncident, PublicItem, StateKind, UptimeDay } from "@/lib/typ
 /** Operational systems drawn with bars; the rest fold into a list, so 200 systems stay readable. */
 export const BARS = 12;
 
-/** Down systems, then issues, then the first `BARS` others keep their bars; the rest are listed. */
+const LOUD: StateKind[] = ["down", "issue", "maintenance"];
+
+/** Down systems, then issues, then maintenance, then the first `BARS` others keep their bars; the rest are listed. */
 export function splitSystems(items: PublicItem[]): { barred: PublicItem[]; rest: PublicItem[] } {
-  const calm = items.filter((i) => i.state !== "down" && i.state !== "issue");
-  const problems = [...items.filter((i) => i.state === "down"), ...items.filter((i) => i.state === "issue")];
+  const calm = items.filter((i) => !LOUD.includes(i.state));
+  const problems = LOUD.flatMap((s) => items.filter((i) => i.state === s));
   return { barred: [...problems, ...calm.slice(0, BARS)], rest: calm.slice(BARS) };
 }
 
@@ -17,6 +19,7 @@ export function headline(overall: StateKind, items: PublicItem[]): string {
   const down = items.filter((i) => i.state === "down");
   if (overall === "down") return down.length === 1 ? `${down[0]!.name} is down` : `${down.length} systems are down`;
   if (overall === "issue") return "Some systems have issues";
+  if (overall === "maintenance") return "Maintenance in progress";
   return "All systems operational";
 }
 
@@ -74,10 +77,14 @@ function shortDay(d: string): string {
 
 /** "Oct 15, 18:31 to 18:56 UTC+7", with the end day when it ends on another, or "since" while open. */
 export function span(i: PublicIncident): string {
-  const start = `${shortDay(day(i.started_at))}, ${hhmm(i.started_at)}`;
-  if (i.resolved_at === null) return `Since ${start} ${zone()}`;
-  const sameDay = day(i.started_at) === day(i.resolved_at);
-  const end = sameDay ? hhmm(i.resolved_at) : `${shortDay(day(i.resolved_at))}, ${hhmm(i.resolved_at)}`;
+  if (i.resolved_at === null) return `Since ${shortDay(day(i.started_at))}, ${hhmm(i.started_at)} ${zone()}`;
+  return between(i.started_at, i.resolved_at);
+}
+
+/** "Oct 15, 18:31 to 18:56 UTC+7", with the end day when it ends on another. */
+export function between(from: number, to: number): string {
+  const start = `${shortDay(day(from))}, ${hhmm(from)}`;
+  const end = day(from) === day(to) ? hhmm(to) : `${shortDay(day(to))}, ${hhmm(to)}`;
   return `${start} to ${end} ${zone()}`;
 }
 

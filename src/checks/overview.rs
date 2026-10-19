@@ -114,6 +114,13 @@ pub fn summary(states: &[&str], noun: &str) -> (&'static str, String) {
             "issue",
             format!("{issue} of {n} {} {verb} an open issue.", noun(n)),
         )
+    } else if count("maintenance") > 0 {
+        let m = count("maintenance");
+        let verb = if m == 1 { "is" } else { "are" };
+        (
+            "maintenance",
+            format!("{m} of {n} {} {verb} in maintenance.", noun(n)),
+        )
     } else if count("unknown") == n {
         (
             "unknown",
@@ -230,6 +237,15 @@ mod tests {
         assert_eq!(
             summary(&["up", "issue"], "monitor").1,
             "1 of 2 monitors has an open issue."
+        );
+        assert_eq!(
+            summary(&["up", "maintenance", "issue"], "monitor").0,
+            "issue",
+            "an issue outranks maintenance"
+        );
+        assert_eq!(
+            summary(&["up", "maintenance"], "monitor").1,
+            "1 of 2 monitors is in maintenance."
         );
         assert_eq!(
             summary(&["up", "unknown"], "monitor").1,

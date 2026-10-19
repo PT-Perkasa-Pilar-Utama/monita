@@ -10,6 +10,7 @@ test("the headline names a single down system and counts several", () => {
   expect(headline("down", [item("API", "down"), item("Site", "down")])).toBe("2 systems are down");
   expect(headline("issue", [item("API", "issue")])).toBe("Some systems have issues");
   expect(headline("up", [])).toBe("All systems operational");
+  expect(headline("maintenance", [item("API", "maintenance")])).toBe("Maintenance in progress");
 });
 
 test("a bar is partial under 1% downtime and down above it", () => {
@@ -41,9 +42,9 @@ test("month reads in UTC", () => {
 
 test("problems come first with bars, then 12 others; the rest are a list", () => {
   const calm = Array.from({ length: 14 }, (_, n) => item(`svc ${n}`, "up"));
-  const { barred, rest } = splitSystems([...calm, item("Issue one", "issue"), item("Down one", "down")]);
-  expect(barred.map((i) => i.name).slice(0, 3)).toEqual(["Down one", "Issue one", "svc 0"]);
-  expect(barred).toHaveLength(14);
+  const { barred, rest } = splitSystems([...calm, item("Paused", "maintenance"), item("Issue one", "issue"), item("Down one", "down")]);
+  expect(barred.map((i) => i.name).slice(0, 4)).toEqual(["Down one", "Issue one", "Paused", "svc 0"]);
+  expect(barred).toHaveLength(15);
   expect(rest.map((i) => i.name)).toEqual(["svc 12", "svc 13"]);
 });
 

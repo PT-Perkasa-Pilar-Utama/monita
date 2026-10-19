@@ -21,6 +21,7 @@ const badgeVariants = cva(
         issue: "bg-issue/14 text-issue",
         unknown: "bg-muted text-muted-foreground",
         neutral: "bg-neutral-strong/12 text-neutral-strong",
+        maintenance: "bg-neutral-strong/12 text-neutral-strong",
       },
     },
     defaultVariants: { variant: "secondary" },

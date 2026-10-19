@@ -105,6 +105,7 @@ async fn items(
             state: match states.get(&(r.kind, r.id)) {
                 Some(super::ItemState::Down) => Some("down"),
                 Some(super::ItemState::Issue) => Some("issue"),
+                Some(super::ItemState::Maintenance) => Some("maintenance"),
                 Some(super::ItemState::Up) | None => None,
             },
         })

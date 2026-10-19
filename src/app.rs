@@ -81,6 +81,7 @@ pub fn router(state: AppState) -> Router {
         .merge(crate::checks::api::router())
         .merge(crate::checks::ping_routes::router())
         .merge(crate::incidents::api::router())
+        .merge(crate::maintenance::api::router())
         .merge(crate::notify::api::router())
         .merge(crate::status::routes::router())
         .merge(crate::platform::limits::router())

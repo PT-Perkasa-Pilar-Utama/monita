@@ -29,7 +29,7 @@ function StatusLink({ slug, labelled }: { slug: string; labelled: boolean }): Re
   );
 }
 
-const STATE_WORD: Record<StateKind, string> = { up: "All up", down: "Down", issue: "Issue", unknown: "No data yet" };
+const STATE_WORD: Record<StateKind, string> = { up: "All up", down: "Down", issue: "Issue", maintenance: "Maintenance", unknown: "No data yet" };
 const toneText = (k: StateKind): string | undefined => (k === "down" ? "text-down" : k === "issue" ? "text-issue" : undefined);
 
 /** A number with its name under it; red or yellow while that part has a problem. */

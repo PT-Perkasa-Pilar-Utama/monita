@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 import { Link, useOutletContext } from "react-router-dom";
-import { SystemCard, uptimeText } from "@/components/app/PublicStatus";
+import { MaintenanceNotes, SystemCard, uptimeText } from "@/components/app/PublicStatus";
 import { StateBadge } from "@/components/app/Tone";
 import { ArrowRight } from "@/components/icons";
 import { PageHeader } from "@/components/layout/Page";
@@ -20,7 +20,7 @@ export function Status(): ReactElement {
   const res = useApi<PublicStatus>(`/public/${project.slug}/status`, STATUS_LIVE_MS);
   const d = res.data;
   if (!d) return <Skeleton className="h-96 rounded-xl" />;
-  const { overall, items, incidents } = d.status;
+  const { overall, items, incidents, maintenance } = d.status;
   const { barred, rest } = splitSystems(items);
   const up = items.filter((i) => i.state === "up").length;
 
@@ -32,6 +32,7 @@ export function Status(): ReactElement {
           "mb-8 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-6 py-5 text-xl font-semibold",
           overall === "down" && "border-down/30 bg-down/8",
           overall === "issue" && "border-issue/30 bg-issue/8",
+          overall === "maintenance" && "border-neutral-strong/30 bg-neutral-strong/8",
           overall === "up" && "border-up/30 bg-up/8",
         )}
       >
@@ -46,6 +47,7 @@ export function Status(): ReactElement {
           )}
         </span>
       </p>
+      <MaintenanceNotes windows={maintenance} />
       <section aria-labelledby="systems" className="flex flex-col gap-4">
         <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
           <h2 id="systems" className="text-lg font-semibold">

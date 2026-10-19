@@ -8,6 +8,7 @@ pub mod checks;
 pub mod cli;
 pub mod home;
 pub mod incidents;
+pub mod maintenance;
 pub mod notify;
 pub mod platform;
 pub mod projects;

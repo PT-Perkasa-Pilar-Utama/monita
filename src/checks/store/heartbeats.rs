@@ -194,6 +194,16 @@ pub async fn rearm(c: &Connection, id: i64, at: i64) -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Sets the deadline to `at`: the sweep looks at the heartbeat again then.
+pub async fn hold(c: &Connection, id: i64, at: i64) -> anyhow::Result<()> {
+    c.execute(
+        "UPDATE heartbeats SET deadline_at = ?1 WHERE id = ?2",
+        (at, id),
+    )
+    .await?;
+    Ok(())
+}
+
 pub async fn any_missed(c: &Connection, at: i64) -> anyhow::Result<bool> {
     let n = crate::platform::db::query_i64(
         c,

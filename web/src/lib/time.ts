@@ -30,6 +30,19 @@ export function stamp(ts: number, off: number = offsetMin): string {
   return `${local(ts, off)} ${zone(off)}`;
 }
 
+/** `2026-10-16T15:00`, a `datetime-local` input's value for the time in the offset. */
+export function inputValue(ts: number, off: number = offsetMin): string {
+  return local(ts, off).replace(" ", "T");
+}
+
+/** The Unix seconds a `datetime-local` value names in the offset, or null when it is not a time. */
+export function fromInputValue(v: string, off: number = offsetMin): number | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(v);
+  if (!m) return null;
+  const [y, mo, d, h, mi] = m.slice(1).map(Number) as [number, number, number, number, number];
+  return Date.UTC(y, mo - 1, d, h, mi) / 1000 - off * 60;
+}
+
 /** `2026-10-16`, the day a timestamp falls on in the offset. */
 export function day(ts: number, off: number = offsetMin): string {
   return local(ts, off).slice(0, 10);

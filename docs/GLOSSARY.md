@@ -10,6 +10,7 @@ Monita's docs, pages and code use each of these words with one meaning. Say "tec
 | Heartbeat | A URL that a cron job calls when it runs. Monita expects the call before a deadline. |
 | Ping | One call from a cron job to its heartbeat URL. |
 | Incident | A record that something is down. Monita opens an automatic incident itself. A tech lead or a super admin opens a manual incident by hand. |
+| Maintenance window | A planned time when a project's chosen monitors and heartbeats open no incident and send no alert. The status page shows them as Maintenance. |
 | Alert | An email or a webhook that Monita sends when an incident opens or closes. |
 | Webhook | A message that Monita posts to a URL, for example a Slack or Teams channel. |
 | Status page | The public page of a project. Anyone with the link can read it. |

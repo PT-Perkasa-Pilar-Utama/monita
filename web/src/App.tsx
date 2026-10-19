@@ -13,6 +13,7 @@ import { StatusPageSettings } from "@/pages/project/StatusPageSettings";
 import { Heartbeat } from "@/pages/project/Heartbeat";
 import { Incident } from "@/pages/project/Incident";
 import { Incidents } from "@/pages/project/Incidents";
+import { Maintenance } from "@/pages/project/Maintenance";
 import { Heartbeats } from "@/pages/project/Heartbeats";
 import { Keys } from "@/pages/project/Keys";
 import { Monitor } from "@/pages/project/Monitor";
@@ -72,6 +73,8 @@ export default function App(): ReactElement {
           <Route path="heartbeats/:id/edit" element={<Heartbeat editing />} />
           <Route path="incidents" element={<Incidents />} />
           <Route path="incidents/new" element={<Incidents creating />} />
+          <Route path="incidents/maintenance" element={<Maintenance />} />
+          <Route path="incidents/maintenance/new" element={<Maintenance creating />} />
           <Route path="incidents/:id" element={<Incident />} />
           <Route path="changelog" element={<Changelog />} />
           <Route path="tickets/done" element={<DoneTickets />} />

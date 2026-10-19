@@ -24,12 +24,12 @@ export function statusTemplate(origin: string, slug: string): string {
   h1 { font-size: 28px; margin: 0 0 24px; letter-spacing: -0.02em; }
   h2 { font-size: 18px; margin: 32px 0 12px; }
   .banner { border: 1px solid var(--line); border-radius: 12px; padding: 18px 22px; font-size: 19px; font-weight: 600; background: var(--card); }
-  .banner.up { border-color: var(--up); } .banner.down { border-color: var(--down); } .banner.issue { border-color: var(--issue); }
+  .banner.up { border-color: var(--up); } .banner.down { border-color: var(--down); } .banner.issue { border-color: var(--issue); } .banner.maintenance { border-color: var(--muted); }
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
   .row { padding: 16px 22px; border-top: 1px solid var(--line); }
   .row:first-child { border-top: 0; }
   .head { display: flex; justify-content: space-between; gap: 12px; font-weight: 600; }
-  .state.up { color: var(--up); } .state.down { color: var(--down); } .state.issue { color: var(--issue); } .state.unknown { color: var(--muted); }
+  .state.up { color: var(--up); } .state.down { color: var(--down); } .state.issue { color: var(--issue); } .state.maintenance { color: var(--muted); } .state.unknown { color: var(--muted); }
   .bars { display: flex; gap: 2px; height: 32px; margin: 10px 0 6px; }
   .bars span { flex: 1; min-width: 0; border-radius: 2px; background: var(--none); }
   .bars .up { background: var(--up); } .bars .partial { background: var(--issue); } .bars .down { background: var(--down); }
@@ -57,8 +57,8 @@ export function statusTemplate(origin: string, slug: string): string {
 <script>
 const MONITA = ${lit(origin)};
 const SLUG = ${lit(slug)};
-const WORD = { up: "Up", down: "Down", issue: "Issue", unknown: "No data yet" };
-const HEADLINE = { up: "All systems operational", down: "Some systems are down", issue: "Some systems have issues" };
+const WORD = { up: "Up", down: "Down", issue: "Issue", maintenance: "Maintenance", unknown: "No data yet" };
+const HEADLINE = { up: "All systems operational", down: "Some systems are down", issue: "Some systems have issues", maintenance: "Maintenance in progress" };
 
 function el(tag, className, text) {
   const n = document.createElement(tag);

@@ -32,6 +32,7 @@ pub fn item_state(
     match incident {
         Some(crate::incidents::ItemState::Down) => ("down", "Down"),
         Some(crate::incidents::ItemState::Issue) => ("issue", "Issue"),
+        Some(crate::incidents::ItemState::Maintenance) => ("maintenance", "Maintenance"),
         Some(crate::incidents::ItemState::Up) => ("up", "Up"),
         None if !seen => ("unknown", "No data yet"),
         None => ("up", "Up"),

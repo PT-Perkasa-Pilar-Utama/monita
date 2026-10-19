@@ -230,6 +230,7 @@ export {
   Path as Waypoints,
   WebhooksLogo as Webhook,
   FlowArrow as Workflow,
+  Wrench,
   TextAlignLeft as WrapText,
   X,
   XCircle,

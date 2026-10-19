@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { ago, day, duration, stamp } from "@/lib/time";
+import { ago, day, duration, stamp, inputValue, fromInputValue } from "@/lib/time";
 
 test("formats times in the offset the way the server does", () => {
   expect(stamp(0, 0)).toBe("1970-01-01 00:00 UTC");
@@ -17,4 +17,12 @@ test("formats durations and ages the way the server does", () => {
   expect(ago(100, 100 + 360)).toBe("6m ago");
   expect(ago(100, 110)).toBe("just now");
   expect(ago(0, 3 * 86_400 + 5)).toBe("3d ago");
+});
+
+test("a datetime input reads and writes times in the admin's offset", () => {
+  const ts = Date.UTC(2026, 9, 16, 8, 0) / 1000;
+  expect(inputValue(ts, 420)).toBe("2026-10-16T15:00");
+  expect(fromInputValue("2026-10-16T15:00", 420)).toBe(ts);
+  expect(fromInputValue(inputValue(ts, -180), -180)).toBe(ts);
+  expect(fromInputValue("", 0)).toBeNull();
 });

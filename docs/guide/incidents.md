@@ -63,6 +63,33 @@ Use **Report incident** for a problem no check catches, such as slow sign-in for
 
 A manual incident marks its items as **Issue**, not down. It never counts as downtime. It closes only when a tech lead posts **Resolved**. A project holds at most 20 open manual incidents. A manual incident sends no alert.
 
+## Maintenance windows
+
+Plan a window before planned work, so the work neither alerts the team nor shows as an outage.
+
+1. Open **Incidents** in a project and select **Maintenance**.
+2. Select **Plan maintenance**.
+3. Enter a **Title**, then pick when it **Starts** and **Ends**. Times are in the time zone a super admin set. A start in the past starts now. A window lasts 30 days at most.
+4. Tick the monitors and heartbeats it covers.
+5. Optional: write a **Message on the status page**.
+
+While a window is active:
+
+- Monita still checks the items and stores every result.
+- A failure opens no incident and sends no alert.
+- The items show **Maintenance** on the team's pages and on the status page. The status page shows the title, the times and the message.
+- A window adds no downtime. An incident that was open before the window stays open, closes as usual, and counts as downtime.
+
+When the window ends, a check that still fails opens an incident at once. A heartbeat that stayed silent opens one when the window ends.
+
+| State | What you can do |
+| --- | --- |
+| Scheduled | **Delete** it. |
+| Active | **End now**. Failures open incidents again from that moment. |
+| Ended | Read it. It cannot change. |
+
+A project has at most 20 windows scheduled or active. A window cannot be edited: delete it and plan a new one.
+
 ## The Incidents page
 
 A project's **Incidents** page lists its incidents with severity, latest update, start and duration. Filter by **Open**, **Resolved** or **All**. Search by title and filter by severity.

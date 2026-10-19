@@ -43,7 +43,7 @@ export type ProjectHead = { project: Project; counts: TabCounts };
 /** The worst state among a project's monitors or heartbeats, and a sentence. */
 export type Summary = { total: number; kind: StateKind; text: string };
 
-export type StateKind = "up" | "down" | "issue" | "unknown";
+export type StateKind = "up" | "down" | "issue" | "maintenance" | "unknown";
 
 export type Severity = "critical" | "warning";
 
@@ -250,8 +250,23 @@ export type UpdateRow = { label: UpdateLabel; message: string; author_email: str
 
 export type IncidentDetail = { incident: IncidentRow; items: string[]; updates: UpdateRow[]; labels: UpdateLabel[] };
 
-/** A monitor or heartbeat a manual incident may name. `state` is set only when it is down or has an issue. */
-export type IncidentItem = { value: string; kind: "monitor" | "heartbeat"; name: string; state: "down" | "issue" | null };
+/** A monitor or heartbeat a manual incident may name. `state` is set only when it is down, has an issue or is in maintenance. */
+export type IncidentItem = { value: string; kind: "monitor" | "heartbeat"; name: string; state: "down" | "issue" | "maintenance" | null };
+
+export type WindowState = "scheduled" | "active" | "ended";
+
+/** A planned maintenance window; `items` are the covered sources that still exist. */
+export type MaintenanceWindow = {
+  id: number;
+  title: string;
+  message: string;
+  starts_at: number;
+  ends_at: number;
+  state: WindowState;
+  items: { value: string; kind: "monitor" | "heartbeat"; name: string }[];
+};
+
+export type MaintenancePage = { windows: MaintenanceWindow[]; total: number; page: number; page_size: number };
 
 export type Stage = "triage" | "backlog" | "in_progress" | "done";
 
@@ -328,8 +343,11 @@ export type IncidentMonth = { month: string; incidents: PublicIncident[]; more: 
 
 export type PublicMonths = { project: PublicProject; months: IncidentMonth[]; prev_to: number | null; next_to: number | null };
 
+/** An active maintenance window as visitors see it: what the team wrote and the public items it covers. */
+export type PublicMaintenance = { title: string; message: string; starts_at: number; ends_at: number; items: string[] };
+
 export type PublicStatus = {
-  status: { project: PublicProject; overall: StateKind; items: PublicItem[]; incidents: PublicIncident[] };
+  status: { project: PublicProject; overall: StateKind; items: PublicItem[]; incidents: PublicIncident[]; maintenance: PublicMaintenance[] };
   recent: PublicIncident[];
 };
 

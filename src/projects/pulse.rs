@@ -56,8 +56,9 @@ pub fn hours(intervals: &[(i64, i64)], items: usize, now: i64, off: i64) -> Vec<
 
 fn worse(a: &'static str, b: &'static str) -> &'static str {
     let rank = |k| match k {
-        "down" => 3,
-        "issue" => 2,
+        "down" => 4,
+        "issue" => 3,
+        "maintenance" => 2,
         "up" => 1,
         _ => 0,
     };
@@ -117,6 +118,8 @@ mod tests {
     fn the_worse_state_wins() {
         assert_eq!(worse("up", "down"), "down");
         assert_eq!(worse("issue", "up"), "issue");
+        assert_eq!(worse("maintenance", "issue"), "issue");
+        assert_eq!(worse("up", "maintenance"), "maintenance");
         assert_eq!(worse("unknown", "up"), "up");
     }
 }

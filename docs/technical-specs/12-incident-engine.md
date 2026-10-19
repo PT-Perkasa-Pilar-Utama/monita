@@ -85,6 +85,19 @@ N is the source's `fails_to_open`. With N = 1 the first failed check opens the i
 | open | CheckFailed, HeartbeatMissed, FailPing | unchanged | yes | none |
 | open | CheckOk, Ping | 0 | no | Resolve |
 
+## 12.3a Maintenance windows
+
+`step` stays pure and does not know about windows (v1.1 decision Q18). `observe` applies one rule after it: when `step` returns Open and `maintenance::covers` finds an active window over the source, `observe` keeps the new streak, leaves the source closed, sets no down time, and returns no event. So no incident opens and no Opened or Down alert goes out.
+
+| Case | Result |
+| --- | --- |
+| Monitor fails N or more times in a window | No incident. The streak keeps counting, so the first failed check after the window opens the incident at once. |
+| Incident already open when the window starts | It stays open. A passing check resolves it and the resolved alert goes out, as in 12.3. |
+| Heartbeat misses its deadline in a window | `sweep_missed` does not call `observe`. It sets the deadline to the window's end or one minute later, whichever is first. If the job stays silent, the miss opens the incident when the window ends, or within a minute of End now. |
+| Fail ping in a window | No incident. The next fail ping after the window opens one. |
+
+Availability counts automatic incidents only, so a window adds no downtime. An incident that was open before the window counts through it.
+
 ## 12.4 Performance targets
 
 | Target | Value | Source |

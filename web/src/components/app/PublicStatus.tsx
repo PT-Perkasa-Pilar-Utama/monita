@@ -1,16 +1,16 @@
 import type { ReactElement, ReactNode } from "react";
 import { LabelBadge } from "@/components/app/Tone";
-import { AlertCircle, CheckCircle, ChevronDown, MinusCircle, XCircle } from "@/components/icons";
-import { barTitle, barTone, incidentState, span } from "@/lib/status";
+import { AlertCircle, CheckCircle, ChevronDown, MinusCircle, Wrench, XCircle } from "@/components/icons";
+import { barTitle, barTone, between, incidentState, span } from "@/lib/status";
 import { stamp } from "@/lib/time";
-import type { PublicIncident, PublicItem, StateKind, UptimeDay } from "@/lib/types";
+import type { PublicIncident, PublicItem, PublicMaintenance, StateKind, UptimeDay } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-const STATE_WORD = { up: "Up", down: "Down", issue: "Issue", unknown: "No data yet" } as const;
+const STATE_WORD = { up: "Up", down: "Down", issue: "Issue", maintenance: "Maintenance", unknown: "No data yet" } as const;
 
 export const uptimeText = (i: PublicItem): string => (i.uptime_90d === null ? "no data yet" : `${i.uptime_90d.toFixed(2)}% uptime`);
 
-const STATE_LINE = { up: "Normal", down: "Down", issue: "Has an issue", unknown: "No data yet" } as const;
+const STATE_LINE = { up: "Normal", down: "Down", issue: "Has an issue", maintenance: "Under maintenance", unknown: "No data yet" } as const;
 
 /** A check, a warning or a cross in the state's colour; a dash before the first check. */
 export function StateIcon({ kind, label = STATE_WORD[kind], className }: { kind: StateKind; label?: string; className?: string }): ReactElement {
@@ -18,6 +18,7 @@ export function StateIcon({ kind, label = STATE_WORD[kind], className }: { kind:
   if (kind === "up") return <CheckCircle weight="fill" aria-label={label} className={cls("text-up")} />;
   if (kind === "down") return <XCircle weight="fill" aria-label={label} className={cls("text-down")} />;
   if (kind === "issue") return <AlertCircle weight="fill" aria-label={label} className={cls("text-issue")} />;
+  if (kind === "maintenance") return <Wrench weight="fill" aria-label={label} className={cls("text-neutral-strong")} />;
   return <MinusCircle weight="fill" aria-label={label} className={cls("text-muted-foreground")} />;
 }
 
@@ -64,6 +65,27 @@ export function SystemCard({ item }: { item: PublicItem }): ReactElement {
       </div>
       <p className={cn("text-sm", item.state === "down" ? "text-down" : item.state === "issue" ? "text-issue" : "text-muted-foreground")}>{STATE_LINE[item.state]}</p>
     </div>
+  );
+}
+
+/** Active maintenance windows: what the team wrote for visitors, when, and what it covers. */
+export function MaintenanceNotes({ windows }: { windows: PublicMaintenance[] }): ReactElement | null {
+  if (windows.length === 0) return null;
+  return (
+    <section aria-label="Maintenance" className="mb-8 flex flex-col gap-3">
+      {windows.map((w, n) => (
+        <div key={n} className="flex flex-col gap-1.5 rounded-xl border border-neutral-strong/30 bg-neutral-strong/8 px-6 py-4">
+          <p className="flex flex-wrap items-center gap-x-3 gap-y-1 font-semibold">
+            <Wrench weight="fill" aria-hidden className="size-5 text-neutral-strong" />
+            {w.title}
+          </p>
+          <p className="text-sm text-muted-foreground">
+            {between(w.starts_at, w.ends_at)}. Affects {w.items.join(", ")}.
+          </p>
+          {w.message && <p className="whitespace-pre-line text-sm">{w.message}</p>}
+        </div>
+      ))}
+    </section>
   );
 }
 

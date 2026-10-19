@@ -32,6 +32,8 @@ erDiagram
   projects ||--o| ticket_alerts : has
   projects ||--o{ project_secrets : has
   projects ||--o{ changelog_entries : has
+  projects ||--o{ maintenance_windows : has
+  maintenance_windows ||--o{ maintenance_items : covers
   project_secrets ||--o{ monitors : signs_in
   users ||--o{ tickets : files
   monitors ||--o{ check_results : has
@@ -285,6 +287,22 @@ A project's releases, shown on the public Changelog tab one at a time, newest fi
 | sections | TEXT | no | | | JSON `[{"tag": "Added", "items": [...]}]`. Tags in order: Added, Changed, Fixed, Removed. Up to 30 items of 500 characters in each. |
 | created_at, updated_at | INTEGER | no | | | |
 
+### 6.3.13b maintenance_windows and maintenance_items
+
+Planned work on a project (migration 0026, v1.1 decision Q18). Owned by the `maintenance` module. The state is not stored: `scheduled` while now < `starts_at`, `active` until `ends_at`, then `ended`. End now sets `ends_at` to now.
+
+| column | type | nullable | default | key | notes |
+| --- | --- | --- | --- | --- | --- |
+| maintenance_windows.id | INTEGER | no | | PK | |
+| project_id | INTEGER | no | | FK projects ON DELETE CASCADE | |
+| title | TEXT | no | | | Up to 120 characters; public |
+| message | TEXT | no | `''` | | Up to 1000 characters; public |
+| starts_at, ends_at | INTEGER | no | | | CHECK `ends_at >= starts_at`. A new window is at most 30 days long. |
+| created_at | INTEGER | no | | | |
+| maintenance_items.window_id | INTEGER | no | | PK, FK maintenance_windows ON DELETE CASCADE | |
+| source_kind | TEXT | no | | PK | `monitor` or `heartbeat` |
+| source_id | INTEGER | no | | PK | No FK: sources are another module's. Their ids are AUTOINCREMENT, so a row left by a deleted source covers nothing. |
+
 ### 6.3.14 settings and schema_migrations
 
 | table | columns |
@@ -324,7 +342,7 @@ The code allows a move from any column to any other. The diagram shows the usual
 
 ## 6.5 Indexes
 
-`monitors(next_check_at)`, `heartbeats(deadline_at)`, `check_results(monitor_id, checked_at)`, `check_results(checked_at)`, `pings(heartbeat_id, received_at)`, `pings(received_at)`, `outbox(sent_at, failed_at, next_attempt_at)`, `tickets(project_id, stage)`, `tickets(ref_id, created_at)`, `changelog_entries(project_id, released_on DESC, id DESC)`.
+`monitors(next_check_at)`, `heartbeats(deadline_at)`, `check_results(monitor_id, checked_at)`, `check_results(checked_at)`, `pings(heartbeat_id, received_at)`, `pings(received_at)`, `outbox(sent_at, failed_at, next_attempt_at)`, `tickets(project_id, stage)`, `tickets(ref_id, created_at)`, `changelog_entries(project_id, released_on DESC, id DESC)`, `maintenance_windows(project_id, ends_at)`, `maintenance_items(source_kind, source_id)`.
 
 ## 6.6 Migrations and seeding
 

@@ -51,8 +51,8 @@ function ItemList({ items, total, noun, chosen, onToggle }: { items: IncidentIte
   );
 }
 
-/** Affected items: one search over a Monitors list and a Heartbeats list, with what is already broken marked. */
-function ItemPicker({ choices, chosen, onToggle, error }: { choices: IncidentItem[]; chosen: string[]; onToggle: (value: string, on: boolean) => void; error?: string | undefined }): ReactElement {
+/** Affected items, for an incident or a maintenance window: one search over a Monitors list and a Heartbeats list, with what is already broken marked. */
+export function ItemPicker({ choices, chosen, onToggle, error }: { choices: IncidentItem[]; chosen: string[]; onToggle: (value: string, on: boolean) => void; error?: string | undefined }): ReactElement {
   const [q, setQ] = useState("");
   const { monitors, heartbeats } = pickItems(choices, q);
   const all = pickItems(choices, "");
