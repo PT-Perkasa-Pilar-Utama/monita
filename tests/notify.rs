@@ -217,3 +217,81 @@ async fn an_alert_switched_off_sends_nothing_and_keeps_its_recipients() {
         .await;
     assert_eq!(bad.status(), 404);
 }
+
+/// AC-15.02: with the setup unchanged, both severities email the project's owner, also when a
+/// super admin made the project for a tech lead.
+#[tokio::test]
+async fn a_new_project_emails_its_owner_until_the_recipients_change() {
+    let app = TestApp::spawn("test").await;
+    let admin = app.super_admin("admin@x.co").await;
+    let tl = app.tl("rina@x.co").await;
+    let made = app
+        .api_post(
+            "/api/ui/projects",
+            serde_json::json!({ "name": "Payments", "homepage_url": "https://pay.example.com", "owner_email": "rina@x.co" }),
+            Some(&admin),
+        )
+        .await;
+    assert_eq!(made.status(), 201);
+    let slug = common::json_of(made).await["data"]["slug"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let routes = common::json_of(
+        app.api_get(&format!("/api/ui/projects/{slug}/alerts"), Some(&tl))
+            .await,
+    )
+    .await;
+    for r in routes["data"].as_array().unwrap() {
+        assert_eq!(r["emails"], serde_json::json!(["rina@x.co"]), "{r}");
+    }
+    let test = app
+        .api_post(
+            &format!("/api/ui/projects/{slug}/alerts/warning/test"),
+            serde_json::json!({}),
+            Some(&tl),
+        )
+        .await;
+    assert_eq!(common::json_of(test).await["data"]["sent_to"], 1);
+}
+
+/// Migration 23: a route that sent nothing gets the owner's email; a webhook-only route and a
+/// route with recipients keep theirs.
+#[tokio::test]
+async fn migration_23_gives_silent_routes_the_owners_email() {
+    let app = TestApp::spawn("test").await;
+    let tl = app.tl("rina@x.co").await;
+    for (name, slug) in [("Silent", "silent"), ("Hooked", "hooked"), ("Kept", "kept")] {
+        assert_eq!(app.project(&tl, name, slug).await, 201);
+    }
+    let routes = async |project: &str| -> Vec<String> {
+        monita::platform::db::query_all(
+            &app.state.db.read().await.unwrap(),
+            "SELECT r.emails FROM alert_routes r JOIN projects p ON p.id = r.project_id WHERE p.slug = ?1 ORDER BY r.severity",
+            [project],
+            |r| r.get::<String>(0),
+        )
+        .await
+        .unwrap()
+    };
+    app.state
+        .db
+        .write(async |c| {
+            c.execute_batch(
+                "UPDATE alert_routes SET emails = '';
+                 UPDATE alert_routes SET webhook_url = 'https://hooks.example.com/x', use_webhook = 1
+                   WHERE project_id = (SELECT id FROM projects WHERE slug = 'hooked');
+                 UPDATE alert_routes SET emails = 'oncall@x.co'
+                   WHERE project_id = (SELECT id FROM projects WHERE slug = 'kept');",
+            )
+            .await?;
+            c.execute_batch(include_str!("../migrations/0023_owner_alert_recipients.sql"))
+                .await?;
+            Ok(())
+        })
+        .await
+        .unwrap();
+    assert_eq!(routes("silent").await, ["rina@x.co", "rina@x.co"]);
+    assert_eq!(routes("hooked").await, ["", ""]);
+    assert_eq!(routes("kept").await, ["oncall@x.co", "oncall@x.co"]);
+}

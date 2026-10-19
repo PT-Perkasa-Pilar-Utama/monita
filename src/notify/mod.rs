@@ -27,9 +27,11 @@ pub use tickets::{
     Moved, save_ticket_alerts, send_ticket, send_ticket_moved, send_ticket_test, ticket_alerts,
 };
 
-/// AC-15.02: a new project's two routes. Critical calls its webhook once one is set; warning does not.
-pub async fn create_routes(c: &Connection, project_id: i64) -> anyhow::Result<()> {
-    store::create_routes(c, project_id).await
+/// AC-15.02: a new project's two routes, both emailing the owner. Critical calls its webhook
+/// once one is set; warning does not.
+pub async fn create_routes(c: &Connection, project_id: i64, owner_id: i64) -> anyhow::Result<()> {
+    let owner = crate::accounts::active_email(c, owner_id).await?;
+    store::create_routes(c, project_id, owner.as_deref().unwrap_or_default()).await
 }
 
 /// Retention (US-32): finished rows older than `cutoff`. Runs inside the caller's write.

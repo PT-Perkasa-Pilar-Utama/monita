@@ -127,7 +127,7 @@ The icon's bytes, apart from `projects` so a project list never reads them.
 | id | INTEGER | no | | PK | |
 | project_id | INTEGER | no | | FK projects | UNIQUE with severity |
 | severity | TEXT | no | | | `critical`, `warning` |
-| emails | TEXT | no | `''` | | Newline-separated |
+| emails | TEXT | no | `''` | | Newline-separated. A new project's routes start with the owner's email (AC-15.02). Migration 0023 gave the owner's email to every route that had no email and no webhook in use. |
 | webhook_url | TEXT | yes | | | |
 | use_webhook | INTEGER | no | | | Default 1 for critical, 0 for warning |
 | enabled | INTEGER | no | 1 | | The route's on and off switch (migration 0008). Off keeps the emails and the webhook, and sends nothing. |

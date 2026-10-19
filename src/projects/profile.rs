@@ -135,7 +135,7 @@ pub async fn create(db: &Db, acting: &User, input: &ProjectInput) -> Result<Proj
                     if let Some(i) = &icon {
                         store::set_icon(c, id, i.mime, i.data.clone(), now()).await?;
                     }
-                    crate::notify::create_routes(c, id).await?;
+                    crate::notify::create_routes(c, id, owner).await?;
                     return Ok(Ok(slug));
                 }
             }

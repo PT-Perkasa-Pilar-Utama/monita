@@ -8,7 +8,7 @@ The React page `/projects/{slug}/settings/alerts` calls these (conventions 1.10)
 
 | Method | Path | Access | Input | Behavior | AC |
 | --- | --- | --- | --- | --- | --- |
-| GET | `/api/ui/projects/{slug}/alerts` | owner, super_admin, supervisor | | One route per severity, critical first: `severity`, `emails` (a list), `webhook_url`, `use_webhook`, `enabled`. | AC-15.01, AC-15.02 |
+| GET | `/api/ui/projects/{slug}/alerts` | owner, super_admin, supervisor | | One route per severity, critical first: `severity`, `emails` (a list), `webhook_url`, `use_webhook`, `enabled`. A new project's lists start with the owner's email. | AC-15.01, AC-15.02 |
 | PUT | `/api/ui/projects/{slug}/alerts/{severity}` | owner, super_admin | `emails` (one per line, 20 at most), `webhook_url`, `use_webhook` (boolean) | Validate each email (ASCII, a name domain, one the SMTP client accepts) and the URL (`http://` or `https://` with a host, no spaces; blank turns it off). Save, 204. A bad address or too many is 422 on `emails`; a bad URL on `webhook_url`. An unknown severity is 404. It does not change `enabled`. | AC-15.01 |
 | POST | `/api/ui/projects/{slug}/alerts/{severity}/test` | owner, super_admin | | Queue one test email per recipient and the webhook when it is on. 200 `{sent_to}`, the number queued: recipients, plus one for the webhook. It is 0 when the route has nothing to send to, or when its switch is off. | |
 | PUT | `/api/ui/projects/{slug}/alerts/{route}/enabled` | owner, super_admin | `enabled` (boolean) | Switch `critical`, `warning` or `ticket` alerts on or off. Off sends nothing and keeps the recipients and the webhook for when it comes back on. 204. Another route name is 404. | |

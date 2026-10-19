@@ -283,6 +283,11 @@ pub async fn list_users(db: &Db) -> anyhow::Result<Vec<UserRow>> {
     store::list_users(&db.read().await?).await
 }
 
+/// The email of a user who is not disabled.
+pub async fn active_email(c: &turso::Connection, user_id: i64) -> anyhow::Result<Option<String>> {
+    store::active_email(c, user_id).await
+}
+
 pub async fn is_active_tl(c: &turso::Connection, user_id: i64) -> anyhow::Result<bool> {
     Ok(store::active_tl_email(c, user_id).await?.is_some())
 }

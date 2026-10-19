@@ -27,7 +27,7 @@ Each section has these fields:
 
 | Field | Means |
 | --- | --- |
-| Email addresses | One per line, up to 20 |
+| Email addresses | One per line, up to 20. A new project starts with its owner's email in both sections. |
 | Also send to a webhook | Tick it to add a webhook |
 | Webhook URL | Where Monita posts. Required when the box is ticked. |
 
