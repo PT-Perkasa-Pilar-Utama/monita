@@ -6,6 +6,7 @@ pub mod api;
 mod icon;
 mod overview;
 mod profile;
+mod pulse;
 pub mod routes;
 pub mod secrets;
 mod settings_api;
@@ -96,6 +97,8 @@ pub async fn after_id(
 ) -> anyhow::Result<Vec<Project>> {
     store::after_id(c, last_id, limit).await
 }
+
+pub use pulse::{Pulse, pulse};
 
 /// The numbers beside the project tabs: monitors, heartbeats, open incidents, open tickets.
 #[derive(Default, serde::Serialize)]

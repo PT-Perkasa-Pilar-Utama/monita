@@ -8,8 +8,10 @@ export type Loaded<T> = {
   reload: () => void;
 };
 
-/** Reads `path` once, and again on `reload()` or when `path` changes. `null` reads nothing. */
-export function useApi<T>(path: string | null): Loaded<T> {
+/** Reads `path` once, and again on `reload()` or when `path` changes. `null` reads nothing.
+ * With `pollMs`, it also reads again on that interval without setting `loading`, so a live list
+ * refreshes in place instead of flashing its skeleton. */
+export function useApi<T>(path: string | null, pollMs?: number): Loaded<T> {
   const [data, setData] = useState<T | undefined>(undefined);
   const [error, setError] = useState<ApiError | undefined>(undefined);
   const [loading, setLoading] = useState(path !== null);
@@ -38,6 +40,20 @@ export function useApi<T>(path: string | null): Loaded<T> {
       live = false;
     };
   }, [path, tick]);
+
+  useEffect(() => {
+    if (path === null || !pollMs) return;
+    let live = true;
+    const id = setInterval(() => {
+      api<T>(path, "GET", undefined, "no-cache")
+        .then((d) => live && setData(d))
+        .catch(() => undefined); // A missed refresh keeps the last data; the next one tries again.
+    }, pollMs);
+    return () => {
+      live = false;
+      clearInterval(id);
+    };
+  }, [path, pollMs]);
 
   return { data, error, loading, reload };
 }

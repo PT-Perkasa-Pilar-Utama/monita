@@ -85,3 +85,10 @@ export function span(i: PublicIncident): string {
   const end = sameDay ? hhmm(i.resolved_at) : `${shortDay(day(i.resolved_at))}, ${hhmm(i.resolved_at)}`;
   return `${start} to ${end} ${zone()}`;
 }
+
+/** The mean of the bars that have data, as "99.87%", or null when none has. */
+export function meanUptime(days: UptimeDay[]): string | null {
+  const known = days.map((d) => d.uptime).filter((u): u is number => u !== null);
+  if (known.length === 0) return null;
+  return `${(known.reduce((a, b) => a + b, 0) / known.length).toFixed(2)}%`;
+}

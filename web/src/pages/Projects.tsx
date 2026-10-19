@@ -19,7 +19,7 @@ import { useApi } from "@/lib/useApi";
 import { useRememberedQuery } from "@/lib/useRememberedQuery";
 import { useViewMode } from "@/lib/useViewMode";
 
-const GRID = "grid grid-cols-[repeat(auto-fill,minmax(min(100%,320px),1fr))] gap-4";
+const GRID = "grid grid-cols-[repeat(auto-fill,minmax(min(100%,340px),1fr))] gap-4";
 
 /** The projects a user may open: their own for a tech lead, all of them for a super admin. */
 export function Projects(): ReactElement {
@@ -29,7 +29,8 @@ export function Projects(): ReactElement {
   const owner = params.get("owner") ?? "";
   const sort = params.get("sort") ?? "";
   const page = pageParam(params.get("page"));
-  const list = useApi<ProjectList>(`/projects${listQuery({ q, owner, sort, page })}`);
+  // The cards and rows show live state, so the page reads again every minute.
+  const list = useApi<ProjectList>(`/projects${listQuery({ q, owner, sort, page })}`, 60_000);
   const [view, setView] = useViewMode("monita:projects:view");
   const [draft, setDraft] = useState(q);
   const [creating, setCreating] = useState(false);

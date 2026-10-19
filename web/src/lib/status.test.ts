@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
-import { barTone, blanksBefore, headline, incidentState, month, monthName, span, splitSystems, when, windowLabel } from "@/lib/status";
+import { barTone, blanksBefore, meanUptime, headline, incidentState, month, monthName, span, splitSystems, when, windowLabel } from "@/lib/status";
 import { setOffset } from "@/lib/time";
-import type { PublicIncident, PublicItem } from "@/lib/types";
+import type { PublicIncident, PublicItem, UptimeDay } from "@/lib/types";
 
 const item = (name: string, state: PublicItem["state"]): PublicItem => ({ kind: "monitor", id: 1, name, state, uptime_90d: 100, days: [] });
 
@@ -68,4 +68,10 @@ test("an incident's span names the end day only when it differs", () => {
   expect(span({ ...base, started_at: at(18, 31), resolved_at: at(18, 56) })).toBe("Oct 15, 18:31 to 18:56 UTC");
   expect(span({ ...base, started_at: at(23, 50), resolved_at: at(24, 10) })).toBe("Oct 15, 23:50 to Oct 16, 00:10 UTC");
   expect(span({ ...base, started_at: at(9, 5), resolved_at: null })).toBe("Since Oct 15, 09:05 UTC");
+});
+
+test("a mean uptime skips bars without data", () => {
+  const d = (uptime: number | null): UptimeDay => ({ day: "d", uptime, downtime_s: 0 });
+  expect(meanUptime([d(100), d(null), d(99)])).toBe("99.50%");
+  expect(meanUptime([d(null)])).toBeNull();
 });

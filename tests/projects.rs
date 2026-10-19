@@ -724,3 +724,35 @@ async fn ref_id_body_is_optional_but_must_be_json_when_given() {
     let err: Value = bad.json().await.unwrap();
     assert_eq!(err["error"]["code"], "invalid_request");
 }
+
+#[tokio::test]
+async fn the_project_list_shows_each_projects_state_incidents_tickets_and_last_day() {
+    let app = TestApp::spawn("test").await;
+    let tl = app.tl("rina@x.co").await;
+    project(&app, &tl, "Payments", "payments").await;
+    let now = monita::platform::now();
+    app.state
+        .db
+        .write(async |c| {
+            c.execute_batch(&format!(
+                "INSERT INTO monitors (id, project_id, name, url, next_check_at) VALUES (1, 1, 'API', 'https://x.invalid', 9999999999);
+                 INSERT INTO incidents (id, project_id, origin, title, severity, started_at) VALUES (1, 1, 'auto', 'API is down', 'critical', {start});
+                 INSERT INTO incident_items VALUES (1, 'monitor', 1);
+                 INSERT INTO incident_sources VALUES ('monitor', 1, 2, 1, NULL);",
+                start = now - 7200,
+            ))
+            .await?;
+            Ok(())
+        })
+        .await
+        .unwrap();
+    let list = json_of(app.api_get("/api/ui/projects", Some(&tl)).await).await;
+    let pulse = &list["data"]["projects"][0]["pulse"];
+    assert_eq!(pulse["kind"], "down");
+    assert_eq!(pulse["incidents"], 1);
+    assert_eq!(pulse["monitors"]["total"], 1);
+    let hours = pulse["hours"].as_array().unwrap();
+    assert_eq!(hours.len(), 24);
+    assert_eq!(hours[0]["uptime"], 100.0, "a day ago, before the incident");
+    assert_eq!(hours[22]["uptime"], 0.0, "the one system was down all hour");
+}

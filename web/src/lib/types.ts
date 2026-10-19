@@ -17,8 +17,13 @@ export type PublicPages = { incidents: boolean; known_issues: boolean; report: b
 export type Owner = { email: string; role: string };
 
 /** One page of the project list; `total` counts every project that matches the search. */
+/** How a project is doing right now, for the project list. `hours` holds the last 24, oldest first. */
+export type Pulse = { kind: StateKind; monitors: Summary; heartbeats: Summary; incidents: number; tickets: number; hours: UptimeDay[] };
+
+export type ProjectRow = Project & { pulse: Pulse };
+
 export type ProjectList = {
-  projects: Project[];
+  projects: ProjectRow[];
   total: number;
   page: number;
   page_size: number;

@@ -63,7 +63,7 @@ pub struct OwnerView {
 
 #[derive(Serialize)]
 struct ProjectList {
-    projects: Vec<ProjectView>,
+    projects: Vec<ProjectRow>,
     /// Projects that match the search, on every page.
     total: i64,
     page: i64,
@@ -122,13 +122,34 @@ async fn list(
         Vec::new()
     };
     Ok(data(ProjectList {
-        projects: found.projects.iter().map(ProjectView::from).collect(),
+        projects: rows(&state, &found.projects).await?,
         total: found.total,
         page: found.page,
         page_size: crate::platform::caps::PROJECTS_PAGE,
         owners: owners(&state, &user).await?,
         owner_options,
     }))
+}
+
+/// A project in the list, with how it is doing right now.
+#[derive(Serialize)]
+struct ProjectRow {
+    #[serde(flatten)]
+    project: ProjectView,
+    pulse: super::Pulse,
+}
+
+/// One page of projects, `caps::PROJECTS_PAGE` at most, each with its pulse.
+// ponytail: one pulse read per project, 20 a page; batch them into grouped queries if the list gets slow.
+async fn rows(state: &AppState, projects: &[Project]) -> anyhow::Result<Vec<ProjectRow>> {
+    let mut out = Vec::with_capacity(projects.len());
+    for p in projects {
+        out.push(ProjectRow {
+            project: ProjectView::from(p),
+            pulse: super::pulse(&state.db, p.id).await?,
+        });
+    }
+    Ok(out)
 }
 
 /// A form error, on the field it concerns.
