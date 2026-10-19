@@ -52,6 +52,7 @@ export function PublicLayout(): ReactElement | null {
         </div>
         <PageTabs
           label="Public pages"
+          center
           tabs={[{ to: base, label: "Uptime", icon: Activity, end: true, match: [`${base}/uptime`] }, ...tabs.filter((t) => shown[t.key]).map(({ to, label, icon, match }) => ({ to, label, icon, ...(match ? { match } : {}) }))]}
         />
       </header>

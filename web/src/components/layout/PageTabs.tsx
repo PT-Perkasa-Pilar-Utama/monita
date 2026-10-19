@@ -31,10 +31,13 @@ export function PageTabs({
   label,
   tabs,
   end,
+  center = false,
 }: {
   label: string;
   tabs: PageTab[];
   end?: ReactElement | undefined;
+  /** The tabs sit in the middle of the bar, as on the public pages. */
+  center?: boolean;
 }): ReactElement {
   const pathname = useLocation().pathname;
   const bar = useRef<HTMLUListElement>(null);
@@ -49,7 +52,8 @@ export function PageTabs({
         {/* Pulled out by a tab's own padding, so the first icon lines up with the logo. */}
         <ul ref={bar} className="-mx-3 flex min-w-0 flex-1 overflow-x-auto [scrollbar-width:none]">
           {tabs.map((t) => (
-            <li key={t.to} className="shrink-0">
+            // Auto margins on the end tabs centre the row and still let a narrow screen scroll from its start.
+            <li key={t.to} className={cn("shrink-0", center && "first:ms-auto last:me-auto")}>
               <Link
                 to={t.to}
                 aria-current={open === t.to ? "page" : undefined}
