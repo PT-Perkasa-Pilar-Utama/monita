@@ -109,8 +109,12 @@ pub struct PublicPages {
     /// Missing means on, so a client that never sends it keeps the tab.
     #[serde(default = "on")]
     pub incidents: bool,
+    /// Missing means on, as for a new project.
+    #[serde(default = "on")]
     pub known_issues: bool,
     /// The Report a bug tab: the form and the reporter's own tickets, both behind a ref ID.
+    /// Missing means on, as for a new project.
+    #[serde(default = "on")]
     pub report: bool,
     /// The Changelog tab. Missing means off: it starts off on every project.
     #[serde(default)]

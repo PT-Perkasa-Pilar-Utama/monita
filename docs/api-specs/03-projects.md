@@ -33,7 +33,7 @@ A project as every route shows it (`project`):
 | POST | `/api/ui/projects/{slug}/keys` | owner, super_admin | `name` (1 to 60 chars) | Create, 201 `{key}`: the full key, this once. A bad name is 422 on `name`; a project with 20 live keys is 422 with the cap in the message. | AC-07.01 |
 | POST | `/api/ui/projects/{slug}/keys/{id}/revoke` | owner, super_admin | | Set `revoked_at`, 204. | AC-07.02 |
 | PUT | `/api/ui/projects/{slug}/allowlist` | owner, super_admin | `cidrs` (one per line; empty turns it off) | Validate each CIDR. Save, 204, or 422 on `cidrs`. | AC-08.01, AC-08.02 |
-| PUT | `/api/ui/projects/{slug}/public-pages` | owner, super_admin | `incidents`, `known_issues`, `report`, `changelog` (booleans) | Choose the public tabs besides Uptime, which always shows. `incidents` missing means on and `changelog` missing means off; `known_issues` and `report` are required, or the body is 422. 204. A tab off answers 404 on its public routes (7.2, 8.5, 11.2). `report` switches both the Report a bug form and the reporter's own tickets. | |
+| PUT | `/api/ui/projects/{slug}/public-pages` | owner, super_admin | `incidents`, `known_issues`, `report`, `changelog` (booleans) | Choose the public tabs besides Uptime, which always shows. `incidents`, `known_issues` and `report` missing mean on, and `changelog` missing means off. 204. A tab off answers 404 on its public routes (7.2, 8.5, 11.2). `report` switches both the Report a bug form and the reporter's own tickets. | |
 
 `pulse` on a list row is the project at a glance:
 
