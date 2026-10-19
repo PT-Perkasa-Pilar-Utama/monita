@@ -12,8 +12,8 @@ async function newProject(page: import("@playwright/test").Page): Promise<string
 test("@US-09 TL adds a monitor with defaults and sees it waiting for its first check", async ({ page }) => {
   const slug = await newProject(page);
   await page.getByRole("link", { name: "New monitor" }).click();
-  await expect(page.getByLabel("Check every")).toHaveText("1m");
-  await expect(page.getByLabel("Timeout (seconds)")).toHaveValue("10");
+  await expect(page.getByLabel("Check every")).toHaveText("1 minute");
+  await expect(page.getByLabel("Timeout in seconds")).toHaveValue("10");
   await page.getByLabel("Name").fill("Monita health");
   await page.getByLabel("URL").fill("http://127.0.0.1:18080/healthz");
   await page.getByRole("button", { name: "Save monitor" }).click();

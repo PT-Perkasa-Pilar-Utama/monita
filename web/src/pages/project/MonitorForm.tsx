@@ -8,7 +8,7 @@ import { ConfirmDialog } from "@/components/app/ConfirmDialog";
 import { Trash2 } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Field, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
@@ -138,34 +138,39 @@ function MonitorFormBody({ id, onClose, onSaved }: { id: string | undefined; onC
                     <Input id="m-url" type="url" aria-required aria-invalid={err("url") ? true : undefined} className="font-mono" value={form.url} onChange={(e) => set("url", e.target.value)} placeholder="https://api.example.com/healthz" />
                     {err("url") && <FieldError>{err("url")}</FieldError>}
                   </Field>
-                  <div className="grid gap-5 sm:grid-cols-3">
+                  <div className="grid gap-5 sm:grid-cols-2">
                     <ChoiceField id="m-interval" label="Check every" value={form.interval_s} choices={options.data.intervals} onChange={(v) => set("interval_s", v)} error={err("interval_s")} />
                     <Field data-invalid={err("timeout_s") ? true : undefined}>
                       <FieldLabel htmlFor="m-timeout" required>
-                        Timeout (seconds)
+                        Timeout in seconds
                       </FieldLabel>
                       <Input id="m-timeout" inputMode="numeric" aria-required aria-invalid={err("timeout_s") ? true : undefined} value={form.timeout_s} onChange={(e) => set("timeout_s", e.target.value)} />
                       {err("timeout_s") && <FieldError>{err("timeout_s")}</FieldError>}
                     </Field>
+                  </div>
+                  <FieldSet className="gap-3">
+                    <FieldLegend variant="label">A check passes when</FieldLegend>
                     <Field data-invalid={err("expected_status") ? true : undefined}>
-                      <FieldLabel htmlFor="m-status" required>
-                        Expected status
+                      <FieldLabel htmlFor="m-status" className="font-normal" required>
+                        The status code matches
                       </FieldLabel>
                       <Input id="m-status" aria-required aria-invalid={err("expected_status") ? true : undefined} className="font-mono" value={form.expected_status} onChange={(e) => set("expected_status", e.target.value)} />
                       {err("expected_status") && <FieldError>{err("expected_status")}</FieldError>}
                     </Field>
-                  </div>
-                  <Field data-invalid={err("keyword") ? true : undefined}>
-                    <FieldLabel htmlFor="m-keyword">Keyword the body must contain</FieldLabel>
-                    <Input id="m-keyword" maxLength={200} aria-invalid={err("keyword") ? true : undefined} value={form.keyword} onChange={(e) => set("keyword", e.target.value)} />
-                    {err("keyword") && <FieldError>{err("keyword")}</FieldError>}
-                  </Field>
-                  <Field orientation="horizontal">
-                    <Checkbox id="m-tls" checked={form.skip_tls_verify} onCheckedChange={(v) => set("skip_tls_verify", v === true)} />
-                    <FieldLabel htmlFor="m-tls" className="font-normal">
-                      Accept self-signed certificates
-                    </FieldLabel>
-                  </Field>
+                    <Field data-invalid={err("keyword") ? true : undefined}>
+                      <FieldLabel htmlFor="m-keyword" className="font-normal">
+                        The response contains this text
+                      </FieldLabel>
+                      <Input id="m-keyword" maxLength={200} aria-invalid={err("keyword") ? true : undefined} className="font-mono" value={form.keyword} onChange={(e) => set("keyword", e.target.value)} />
+                      {err("keyword") && <FieldError>{err("keyword")}</FieldError>}
+                    </Field>
+                    <Field orientation="horizontal">
+                      <Checkbox id="m-tls" checked={form.skip_tls_verify} onCheckedChange={(v) => set("skip_tls_verify", v === true)} />
+                      <FieldLabel htmlFor="m-tls" className="font-normal">
+                        The certificate may be self-signed
+                      </FieldLabel>
+                    </Field>
+                  </FieldSet>
                   <SeverityField value={form.severity} onChange={(v) => set("severity", v)} />
                   <WhenItFails id="m" alert={form.alert} autoIncident={form.auto_incident} onChange={set} />
                   <PublicField id="m" noun="monitor" checked={form.is_public} onChange={(v) => set("is_public", v)} />

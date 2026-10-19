@@ -97,7 +97,10 @@ impl MonitorInput {
             e.insert("timeout_ms", "Use 1 to 30 seconds.");
         }
         if !valid_expected_status(&self.expected_status) {
-            e.insert("expected_status", "Use 2xx, or codes such as 200,204.");
+            e.insert(
+                "expected_status",
+                "Use a class such as 2xx, or a list of codes such as 200,204.",
+            );
         }
         if self
             .keyword

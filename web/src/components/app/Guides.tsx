@@ -2,6 +2,7 @@ import type { ReactElement, ReactNode } from "react";
 import { BookOpen } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 /** A secondary button that opens a half-width guide: what the thing does, in numbered sentences. */
 export function GuideSheet({ label, title, steps, note }: { label: string; title: string; steps: ReactNode[]; note: string }): ReactElement {
@@ -35,6 +36,41 @@ export function GuideSheet({ label, title, steps, note }: { label: string; title
   );
 }
 
+const STATUS_EXAMPLES: [string, string][] = [
+  ["2xx", "Any code from 200 to 299. This is the default."],
+  ["200,204", "Exactly 200 or 204."],
+  ["2xx,301", "Any 2xx code, or 301."],
+  ["3xx", "Any redirect. Monita does not follow it, so the redirect itself is the answer."],
+];
+
+/** What the "A check passes when" fields accept, with examples, so the form needs none. */
+function PassRules(): ReactElement {
+  return (
+    <span className="flex flex-col gap-3">
+      <span>A check passes when the answer comes within the timeout and the status code matches. Enter a class such as 2xx, a code, or a list separated by commas.</span>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>You enter</TableHead>
+            <TableHead>A check passes on</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {STATUS_EXAMPLES.map(([v, means]) => (
+            <TableRow key={v}>
+              <TableCell className="font-mono">{v}</TableCell>
+              <TableCell className="whitespace-normal">{means}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+      <span>
+        If you enter text for the response, the body must also contain it exactly, with the same capitals. Monita reads the first megabyte. Example: <code className="font-mono">"status":"ok"</code>.
+      </span>
+    </span>
+  );
+}
+
 export function MonitorGuide(): ReactElement {
   return (
     <GuideSheet
@@ -42,7 +78,7 @@ export function MonitorGuide(): ReactElement {
       title="How Monita checks a URL"
       steps={[
         "Monita sends a GET request to the URL at the interval you choose.",
-        "A check passes when the status matches the expected status within the timeout. If you set a keyword, the body must also contain it.",
+        <PassRules />,
         "Two failed checks in a row open an incident. The first passing check closes it.",
         "A critical monitor alerts by email and webhook. A warning monitor alerts by email only.",
         "With incidents off, a failure only sends a down alert, and recovery sends an up alert. The status page shows nothing.",
