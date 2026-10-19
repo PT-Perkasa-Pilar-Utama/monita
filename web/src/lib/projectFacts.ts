@@ -3,8 +3,8 @@ import type { AlertRoute, PublicPages } from "@/lib/types";
 
 const TAB_NAMES: [keyof PublicPages, string][] = [
   ["incidents", "Incidents"],
-  ["known_issues", "Known issues"],
-  ["report", "Report a bug"],
+  ["known_issues", "Issues"],
+  ["report", "Ticket"],
 ];
 
 /** The public tabs that are on, Uptime first because it always shows. */

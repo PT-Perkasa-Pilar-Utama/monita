@@ -5,9 +5,9 @@ Users of a project report bugs to Monita. The tech lead sorts them on the ticket
 ## How it fits together
 
 1. Your backend asks Monita for a **ref ID** with the project's API key, and gives it to the user, for example on their account page.
-2. The user sends a ticket with that ref ID: from your app through the API, or through the form at `/status/<slug>/report`.
+2. The user sends a ticket with that ref ID: from your app through the API, or through the Ticket page at `/status/<slug>/ticket`, where they also check their tickets.
 3. The ticket lands in **Triage**, which is private. The tech lead moves it to Backlog, In progress or Done.
-4. Tickets out of Triage show on the public board at `/status/<slug>/tickets`, under a public title if the tech lead set one.
+4. Tickets out of Triage show on the public Issues board at `/status/<slug>/issues`, under a public title if the tech lead set one.
 
 The ref ID ties tickets to one user without Monita storing who they are. Monita keeps only its hash.
 

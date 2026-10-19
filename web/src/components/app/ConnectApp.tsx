@@ -86,7 +86,7 @@ export function ConnectApp({ slug }: { slug: string }): ReactElement {
             <p className="text-muted-foreground">The answer lists their newest 100 tickets with the column, never the description.</p>
           </Step>
           <Step n={5} title="Or link to the form Monita hosts">
-            <Code>{`${origin}/status/${slug}/report`}</Code>
+            <Code>{`${origin}/status/${slug}/ticket`}</Code>
           </Step>
           <Step n={6} title="Hear about new tickets">
             <p>

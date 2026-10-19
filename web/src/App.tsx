@@ -22,9 +22,9 @@ import { DoneTickets } from "@/pages/project/DoneTickets";
 import { Tickets } from "@/pages/project/Tickets";
 import { History } from "@/pages/public/History";
 import { Incidents as PublicIncidents } from "@/pages/public/Incidents";
-import { KnownIssues } from "@/pages/public/KnownIssues";
+import { Issues } from "@/pages/public/Issues";
 import { PastUptime } from "@/pages/public/PastUptime";
-import { Report } from "@/pages/public/Report";
+import { Ticket } from "@/pages/public/Ticket";
 import { Status } from "@/pages/public/Status";
 import { Email } from "@/pages/admin/Email";
 import { RateLimits } from "@/pages/admin/RateLimits";
@@ -83,9 +83,11 @@ export default function App(): ReactElement {
         <Route path="uptime" element={<PastUptime />} />
         <Route path="incidents" element={<PublicIncidents />} />
         <Route path="history" element={<History />} />
-        <Route path="tickets" element={<KnownIssues />} />
-        <Route path="report" element={<Report />} />
-        <Route path="mine" element={<Navigate to="../report" replace />} />
+        <Route path="issues" element={<Issues />} />
+        <Route path="ticket" element={<Ticket />} />
+        <Route path="tickets" element={<Navigate to="../issues" replace />} />
+        <Route path="report" element={<Navigate to="../ticket" replace />} />
+        <Route path="mine" element={<Navigate to="../ticket" replace />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>

@@ -22,7 +22,7 @@ test("@US-23 @US-24 @US-25 @US-26 @US-28 @US-29 a reported bug goes public only 
   });
   expect(created.status()).toBe(201);
 
-  await v.goto(`/status/${slug}/tickets`);
+  await v.goto(`/status/${slug}/issues`);
   await expect(v.getByText("Card of Budi declined")).toHaveCount(0);
 
   await page.goto(`/projects/${slug}/tickets`);
@@ -44,17 +44,18 @@ test("@US-23 @US-24 @US-25 @US-26 @US-28 @US-29 a reported bug goes public only 
   await visitor.close();
   const fresh = await browser.newContext({ storageState: { cookies: [], origins: [] } });
   const v2 = await fresh.newPage();
-  await v2.goto(`/status/${slug}/tickets`);
+  await v2.goto(`/status/${slug}/issues`);
   await expect(v2.getByText("A card is declined at checkout")).toBeVisible();
   await expect(v2.getByRole("heading", { name: "Triage" })).toHaveCount(0);
   await expect(v2.getByText(/^Reported \d{4}-\d{2}-\d{2}$/)).toBeVisible();
   await expect(v2.getByText("Budi")).toHaveCount(0);
   await expect(v2.getByText("4111")).toHaveCount(0);
 
-  await v2.goto(`/status/${slug}/report`);
-  await v2.getByLabel("Your ref ID").fill(refId);
-  await v2.getByRole("button", { name: "Continue" }).click();
+  await v2.goto(`/status/${slug}/ticket`);
+  await v2.locator("#m-ref").fill(refId);
+  await v2.getByRole("button", { name: "Show my tickets" }).click();
   await expect(v2.getByText("Card of Budi declined")).toBeVisible();
+  await v2.locator("#r-ref").fill(refId);
   await v2.getByLabel("What went wrong").fill("Receipt shows the wrong currency");
   await v2.getByRole("button", { name: "Send report" }).click();
   await expect(v2.getByRole("alert")).toHaveText("The description needs 1 to 10 000 characters.");

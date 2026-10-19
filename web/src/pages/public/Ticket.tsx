@@ -15,109 +15,73 @@ import { api, ApiError, errorText } from "@/lib/api";
 import type { MyTicket, PublicSite } from "@/lib/types";
 
 const asError = (e: unknown): ApiError => (e instanceof ApiError ? e : new ApiError(0, "error", errorText(e)));
-const EMPTY = { title: "", description: "", page_url: "" };
+const EMPTY = { ref_id: "", title: "", description: "", page_url: "" };
 
-/** Report a bug: a reporter enters their ref ID once, then files a bug and follows their own
- * tickets on the same page. The ref ID stays in memory only, never in the URL or storage. */
-export function Report(): ReactElement {
+/** A ref ID input. The value is a credential, so the browser neither fills nor checks it. */
+function RefIdInput({ id, value, onChange, invalid }: { id: string; value: string; onChange: (v: string) => void; invalid: boolean }): ReactElement {
+  return <Input id={id} autoComplete="off" spellCheck={false} className="font-mono" placeholder="rf_…" aria-required aria-invalid={invalid ? true : undefined} value={value} onChange={(e) => onChange(e.target.value)} />;
+}
+
+/** The public Ticket tab: report a bug on the left, check your tickets on the right. Both take
+ * the reporter's ref ID. A sent report shows the reporter's tickets on the right at once. */
+export function Ticket(): ReactElement {
   const project = useOutletContext<PublicSite>();
-  const [draft, setDraft] = useState("");
-  const [refId, setRefId] = useState<string | null>(null);
-  const [tickets, setTickets] = useState<MyTicket[]>([]);
   const [form, setForm] = useState(EMPTY);
-  const [error, setError] = useState<ApiError | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [sendError, setSendError] = useState<ApiError | null>(null);
+  const [sending, setSending] = useState(false);
   const [made, setMade] = useState<number | null>(null);
+  const [lookup, setLookup] = useState("");
+  const [tickets, setTickets] = useState<MyTicket[] | null>(null);
+  const [lookError, setLookError] = useState<ApiError | null>(null);
+  const [looking, setLooking] = useState(false);
   const set = (k: keyof typeof form, v: string): void => setForm((f) => ({ ...f, [k]: v }));
-  const err = (k: string): string | undefined => error?.fields[k];
-  const load = (id: string): Promise<{ tickets: MyTicket[] }> => api(`/public/${project.slug}/mine`, "POST", { ref_id: id });
+  const err = (k: string): string | undefined => sendError?.fields[k];
 
-  const open = async (e: FormEvent): Promise<void> => {
-    e.preventDefault();
-    setBusy(true);
-    setError(null);
+  const show = async (refId: string): Promise<void> => {
+    setLooking(true);
+    setLookError(null);
     try {
-      const id = draft.trim();
-      setTickets((await load(id)).tickets);
-      setRefId(id);
+      setTickets((await api<{ tickets: MyTicket[] }>(`/public/${project.slug}/mine`, "POST", { ref_id: refId.trim() })).tickets);
     } catch (e) {
-      setError(asError(e));
+      setTickets(null);
+      setLookError(asError(e));
     } finally {
-      setBusy(false);
+      setLooking(false);
     }
   };
 
   const send = async (e: FormEvent): Promise<void> => {
     e.preventDefault();
-    if (!refId) return;
-    setBusy(true);
-    setError(null);
+    setSending(true);
+    setSendError(null);
+    setMade(null);
     try {
-      const res = await api<{ number: number }>(`/public/${project.slug}/report`, "POST", { ref_id: refId, ...form });
+      const res = await api<{ number: number }>(`/public/${project.slug}/report`, "POST", form);
       setMade(res.number);
-      setForm(EMPTY);
-      setTickets((await load(refId)).tickets);
+      setLookup(form.ref_id);
+      setForm({ ...EMPTY, ref_id: form.ref_id });
+      void show(form.ref_id);
     } catch (e) {
-      setError(asError(e));
+      setSendError(asError(e));
     } finally {
-      setBusy(false);
+      setSending(false);
     }
   };
 
-  const leave = (): void => {
-    setRefId(null);
-    setDraft("");
-    setTickets([]);
-    setMade(null);
-    setError(null);
+  const look = (e: FormEvent): void => {
+    e.preventDefault();
+    void show(lookup);
   };
-  const formError = error && Object.keys(error.fields).length === 0 ? error.message : undefined;
-
-  if (refId === null) {
-    const message = error?.fields.ref_id ?? error?.message;
-    return (
-      <div className="mx-auto flex max-w-2xl flex-col">
-        <PageHeader title="Report a bug" meta={<span>Your ref ID is on your account page in {project.name}. It lets you file bugs and follow them here.</span>} />
-        <Card>
-          <CardContent>
-            <form onSubmit={(e) => void open(e)} noValidate className="flex flex-wrap items-end gap-3">
-              <Field data-invalid={message ? true : undefined} className="min-w-0 flex-1 basis-64">
-                <FieldLabel htmlFor="r-ref" required>
-                  Your ref ID
-                </FieldLabel>
-                <Input id="r-ref" autoFocus autoComplete="off" spellCheck={false} className="font-mono" placeholder="rf_…" aria-required aria-invalid={message ? true : undefined} value={draft} onChange={(e) => setDraft(e.target.value)} />
-                {message && <FieldError>{message}</FieldError>}
-              </Field>
-              <Button type="submit" disabled={busy || draft.trim() === ""} className={message ? "mb-7" : undefined}>
-                {busy && <Spinner data-icon="inline-start" />}
-                Continue
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  const formError = sendError && Object.keys(sendError.fields).length === 0 ? sendError.message : undefined;
+  const lookMessage = lookError?.fields.ref_id ?? lookError?.message;
 
   return (
     <>
-      <PageHeader
-        title="Report a bug"
-        meta={
-          <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <span>
-              Ref ID <code className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-[13px]">rf_…{refId.slice(-4)}</code>
-            </span>
-            <button type="button" onClick={leave} className="text-link underline-offset-4 hover:underline">
-              Use another ref ID
-            </button>
-          </span>
-        }
-      />
+      <PageHeader title={`${project.name} tickets`} meta={<span>Your ref ID is on your account page in {project.name}.</span>} />
       <div className="grid items-start gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>New report</CardTitle>
+            <CardTitle>Report a bug</CardTitle>
           </CardHeader>
           <form onSubmit={(e) => void send(e)} noValidate className="flex flex-col gap-6">
             <CardContent>
@@ -133,6 +97,13 @@ export function Report(): ReactElement {
                     {formError}
                   </p>
                 )}
+                <Field data-invalid={err("ref_id") ? true : undefined}>
+                  <FieldLabel htmlFor="r-ref" required>
+                    Your ref ID
+                  </FieldLabel>
+                  <RefIdInput id="r-ref" value={form.ref_id} onChange={(v) => set("ref_id", v)} invalid={!!err("ref_id")} />
+                  {err("ref_id") && <FieldError>{err("ref_id")}</FieldError>}
+                </Field>
                 <Field data-invalid={err("title") ? true : undefined}>
                   <FieldLabel htmlFor="r-title" required>
                     What went wrong
@@ -156,14 +127,36 @@ export function Report(): ReactElement {
             </CardContent>
             <CardFooter className="flex-wrap justify-between gap-3 border-t">
               <span className="text-sm text-muted-foreground">Only the team reads your report. Please leave out passwords.</span>
-              <Button type="submit" disabled={busy}>
-                {busy && <Spinner data-icon="inline-start" />}
+              <Button type="submit" disabled={sending}>
+                {sending && <Spinner data-icon="inline-start" />}
                 Send report
               </Button>
             </CardFooter>
           </form>
         </Card>
-        <MyTickets tickets={tickets} />
+        <div className="flex flex-col gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Check your tickets</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={look} noValidate className="flex flex-wrap items-end gap-3">
+                <Field data-invalid={lookMessage ? true : undefined} className="min-w-0 flex-1 basis-56">
+                  <FieldLabel htmlFor="m-ref" required>
+                    Your ref ID
+                  </FieldLabel>
+                  <RefIdInput id="m-ref" value={lookup} onChange={setLookup} invalid={!!lookMessage} />
+                  {lookMessage && <FieldError>{lookMessage}</FieldError>}
+                </Field>
+                <Button type="submit" variant="secondary" disabled={looking || lookup.trim() === ""} className={lookMessage ? "mb-7" : undefined}>
+                  {looking && <Spinner data-icon="inline-start" />}
+                  Show my tickets
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+          {tickets !== null && <MyTickets tickets={tickets} />}
+        </div>
       </div>
     </>
   );

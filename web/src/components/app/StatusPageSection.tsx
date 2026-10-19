@@ -16,8 +16,8 @@ type TabKey = keyof PublicPages | "uptime";
 const TABS: CheckCard<TabKey>[] = [
   { key: "uptime", title: "Uptime", description: "Each public system with 90 days of bars. Always shown.", locked: true },
   { key: "incidents", title: "Incidents", description: "What is wrong now and every past incident, with your updates." },
-  { key: "known_issues", title: "Known issues", description: "The tickets your team has sorted, by title only." },
-  { key: "report", title: "Report a bug", description: "A reporter enters their ref ID, files bugs and follows their own tickets. Your app can still file through the API." },
+  { key: "known_issues", title: "Issues", description: "The tickets your team has sorted, by title only." },
+  { key: "report", title: "Ticket", description: "A reporter files a bug and checks their own tickets with their ref ID. Your app can still file through the API." },
 ];
 const KEYS: (keyof PublicPages)[] = ["incidents", "known_issues", "report"];
 

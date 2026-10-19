@@ -22,8 +22,8 @@ export function PublicLayout(): ReactElement | null {
   const shown = p.data.pages;
   const tabs: { key: keyof PublicPages; to: string; label: string; icon: typeof Activity; match?: string[] }[] = [
     { key: "incidents", to: `${base}/incidents`, label: "Incidents", icon: AlertTriangle, match: [`${base}/history`] },
-    { key: "known_issues", to: `${base}/tickets`, label: "Known issues", icon: ListChecks },
-    { key: "report", to: `${base}/report`, label: "Report a bug", icon: Bug },
+    { key: "known_issues", to: `${base}/issues`, label: "Issues", icon: ListChecks },
+    { key: "report", to: `${base}/ticket`, label: "Ticket", icon: Bug },
   ];
   // A tab the project turned off is not found by URL either; its JSON answers 404 too.
   const hidden = tabs.some((t) => !shown[t.key] && [t.to, ...(t.match ?? [])].some((to) => pathname.startsWith(to)));

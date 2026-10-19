@@ -30,8 +30,8 @@ export function IssueRefId(): ReactElement {
     }
   };
   const where = p.pages.report
-    ? `They enter it on the Report a bug page at ${window.location.origin}/status/${p.slug}/report to file bugs and follow their tickets.`
-    : "Report a bug is turned off on the status page, so they can use it only through your app.";
+    ? `They enter it on the Ticket page at ${window.location.origin}/status/${p.slug}/ticket to file bugs and check their tickets.`
+    : "The Ticket tab is turned off on the status page, so they can use it only through your app.";
   return (
     <Dialog
       open={open}

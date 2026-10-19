@@ -10,14 +10,14 @@ import { useApi } from "@/lib/useApi";
 import { useMorePages } from "@/lib/useMorePages";
 
 /** The public board: tickets the team has triaged, by title and number only (SEC-14). */
-export function KnownIssues(): ReactElement {
+export function Issues(): ReactElement {
   const project = useOutletContext<PublicProject>();
   const base = `/public/${project.slug}/tickets`;
   const res = useApi<PublicBoard>(base);
   const pages = useMorePages<PublicTicket>(base);
   return (
     <>
-      <PageHeader title={`${project.name} known issues`} />
+      <PageHeader title={`${project.name} issues`} />
       {!res.data ? (
         <Skeleton className="h-[calc(100dvh-15rem)] rounded-xl" />
       ) : (
