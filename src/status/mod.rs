@@ -83,6 +83,8 @@ struct Items {
     items: Vec<ItemStatus>,
     refs: Vec<(ItemRef, String)>,
     overall: &'static str,
+    /// Minutes east of UTC; days start at midnight there.
+    off: i64,
 }
 
 async fn items(db: &Db, slug: &str, days: usize) -> anyhow::Result<Option<Items>> {
@@ -90,7 +92,8 @@ async fn items(db: &Db, slug: &str, days: usize) -> anyhow::Result<Option<Items>
         return Ok(None);
     };
     let t = now();
-    let first_day = crate::platform::time::day_start(t) - (days as i64 - 1) * 86_400;
+    let off = crate::platform::settings::utc_offset(&db.read().await?).await?;
+    let first_day = time::day_start_at(t, off) - (days as i64 - 1) * 86_400;
     let public = checks::public_items(db, project.id).await?;
     let states = incidents::states_for(db, project.id).await?;
     let intervals = history::intervals(db, project.id, first_day, t).await?;
@@ -117,7 +120,7 @@ async fn items(db: &Db, slug: &str, days: usize) -> anyhow::Result<Option<Items>
                         total_down += down;
                     }
                     Day {
-                        day: time::day(start),
+                        day: time::day_at(start, off),
                         uptime: up,
                         downtime_s: if up.is_some() { down } else { 0 },
                     }
@@ -166,6 +169,7 @@ async fn items(db: &Db, slug: &str, days: usize) -> anyhow::Result<Option<Items>
         items,
         refs,
         overall,
+        off,
     }))
 }
 
@@ -220,12 +224,13 @@ fn status(it: Items, incidents: Vec<IncidentStatus>) -> Status {
     }
 }
 
-/// The JSON: items over the last `days` UTC days, and incidents started in them or still open.
+/// The JSON: items over the last `days` days in the admin's offset, and incidents started in
+/// them or still open.
 pub async fn load(db: &Db, slug: &str, days: usize) -> anyhow::Result<Option<Status>> {
     let Some(it) = items(db, slug, days).await? else {
         return Ok(None);
     };
-    let first_day = time::day_start(now()) - (days as i64 - 1) * 86_400;
+    let first_day = time::day_start_at(now(), it.off) - (days as i64 - 1) * 86_400;
     let list = incidents(
         db,
         &it,

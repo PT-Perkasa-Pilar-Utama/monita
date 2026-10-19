@@ -183,7 +183,8 @@ async fn detail(
         .get(&(SourceKind::Monitor, id))
         .copied();
     let s = checks::item_state(m.last.is_some(), incident).0;
-    let insight = Insight::monitor(&state.db, &m, paging.range(), now()).await?;
+    let off = crate::platform::settings::utc_offset(&state.db.read().await?).await?;
+    let insight = Insight::monitor(&state.db, &m, paging.range(), now(), off).await?;
     let last = match &m.last {
         Some(c) => (
             "Last check",

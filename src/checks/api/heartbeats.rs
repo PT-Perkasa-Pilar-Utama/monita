@@ -145,7 +145,8 @@ async fn detail(
         .get(&(SourceKind::Heartbeat, id))
         .copied();
     let s = hb.state(incident).0;
-    let insight = Insight::heartbeat(&state.db, &hb, paging.range(), now()).await?;
+    let off = crate::platform::settings::utc_offset(&state.db.read().await?).await?;
+    let insight = Insight::heartbeat(&state.db, &hb, paging.range(), now(), off).await?;
     let every = heartbeat::label(&PERIODS_S, hb.period_s);
     let seen = hb.last_ping_at.is_some();
     let newest = heartbeat::last_pings(&state.db, p.id).await?.remove(&id);

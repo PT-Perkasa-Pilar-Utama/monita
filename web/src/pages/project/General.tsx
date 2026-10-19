@@ -23,7 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { api, ApiError, errorText } from "@/lib/api";
 import { useProject } from "@/lib/project";
 import { useMe } from "@/lib/session";
-import { utc } from "@/lib/time";
+import { stamp } from "@/lib/time";
 import type { Owner } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 import { toast } from "sonner";
@@ -60,7 +60,7 @@ function ProjectSection(): ReactElement {
       title="Project"
       description="The name and the slug stay as they are."
       onSubmit={() => void save()}
-      footerNote={`Created ${utc(p.created_at)}`}
+      footerNote={`Created ${stamp(p.created_at)}`}
       footer={
         <Button type="submit" disabled={busy || !changed}>
           {busy && <Spinner data-icon="inline-start" />}

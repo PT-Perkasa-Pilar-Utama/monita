@@ -5,7 +5,7 @@ import { Card, CardAction, CardDescription, CardHeader, CardTitle } from "@/comp
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { barWidth, grade, pct } from "@/lib/availability";
-import { duration } from "@/lib/time";
+import { duration, zone } from "@/lib/time";
 import type { Chart, Insight as InsightData, Range, Stat } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -146,7 +146,7 @@ export function ChartCard({ insight }: { insight: InsightData }): ReactElement {
         <Key className="bg-up/15 ring-1 ring-up/40" label="Up" />
         <Key className="bg-down/25" label="Down" />
         <Key className="bg-down" label="Failed" />
-        <span className="ml-auto">UTC</span>
+        <span className="ml-auto">{zone()}</span>
       </div>
     </Card>
   );

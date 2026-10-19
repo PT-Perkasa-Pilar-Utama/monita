@@ -15,7 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useProject } from "@/lib/project";
-import { utc } from "@/lib/time";
+import { stamp } from "@/lib/time";
 import type { HeartbeatDetail } from "@/lib/types";
 import { useDetail } from "@/lib/useDetail";
 import { NotFound } from "@/pages/NotFound";
@@ -66,7 +66,7 @@ export function Heartbeat({ editing = false }: { editing?: boolean }): ReactElem
                 <CardTitle className="text-[15px]">Ping URL</CardTitle>
                 <CardDescription>
                   Call it with GET, HEAD or POST when the job succeeds. Add /fail to report a failure; the first 1 KB of the body becomes the cause.{" "}
-                  {h.due.late || !h.deadline_at ? "The deadline was missed; the next ping resets it." : `Next deadline ${utc(h.deadline_at)}.`}
+                  {h.due.late || !h.deadline_at ? "The deadline was missed; the next ping resets it." : `Next deadline ${stamp(h.deadline_at)}.`}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -86,8 +86,8 @@ export function Heartbeat({ editing = false }: { editing?: boolean }): ReactElem
                     rows={[
                       ["Runs every", h.every],
                       ["Grace time", h.grace],
-                      ["Deadline", h.deadline_at ? utc(h.deadline_at) : "none"],
-                      ["Created", utc(h.created_at)],
+                      ["Deadline", h.deadline_at ? stamp(h.deadline_at) : "none"],
+                      ["Created", stamp(h.created_at)],
                     ]}
                   />
                 </CardContent>
@@ -109,7 +109,7 @@ export function Heartbeat({ editing = false }: { editing?: boolean }): ReactElem
                     <TableBody>
                       {d.pings.map((r) => (
                         <TableRow key={r.id}>
-                          <TableCell className="font-mono text-[13px]">{utc(r.received_at)}</TableCell>
+                          <TableCell className="font-mono text-[13px]">{stamp(r.received_at)}</TableCell>
                           <TableCell>
                             <StateBadge kind={r.kind === "ok" ? "up" : "down"} label={r.kind === "ok" ? "OK" : "Fail"} />
                           </TableCell>

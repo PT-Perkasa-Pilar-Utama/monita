@@ -54,22 +54,26 @@ impl Range {
     }
 }
 
-/// The buckets of `range` that end with the one holding `now`, aligned to the bucket size.
+/// The buckets of `range` that end with the one holding `now`, aligned to the bucket size in
+/// UTC, so a day bucket matches a stored daily summary. `off` only shifts the labels.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Window {
     pub from: i64,
     pub step: i64,
     pub buckets: usize,
+    /// Minutes east of UTC for labels.
+    pub off: i64,
 }
 
 impl Window {
-    pub fn new(range: Range, now: i64) -> Self {
+    pub fn new(range: Range, now: i64, off: i64) -> Self {
         let (step, buckets, _) = range.grid();
         let last = now - now.rem_euclid(step);
         Self {
             from: last - (buckets as i64 - 1) * step,
             step,
             buckets,
+            off,
         }
     }
 
@@ -140,9 +144,9 @@ fn bucket_x(w: &Window, i: usize) -> (f64, f64) {
 fn when(w: &Window, i: usize) -> String {
     let t = w.from + i as i64 * w.step;
     if w.step >= 86_400 {
-        time::day(t)
+        time::day_at(t, w.off)
     } else {
-        time::utc(t)
+        time::stamp(t, w.off)
     }
 }
 
@@ -173,7 +177,7 @@ fn x_ticks(range: Range, w: &Window) -> Vec<Tick> {
         .filter(|i| i % every == 0)
         .map(|i| {
             let t = w.from + i as i64 * w.step;
-            let stamp = time::utc(t);
+            let stamp = time::local(t, w.off);
             let label = if w.step >= 3600 && range != Range::Day {
                 stamp[5..10].to_string()
             } else {

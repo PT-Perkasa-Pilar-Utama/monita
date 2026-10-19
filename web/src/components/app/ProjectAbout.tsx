@@ -11,7 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { api, ApiError, errorText } from "@/lib/api";
 import type { ProjectHead } from "@/lib/types";
-import { utc } from "@/lib/time";
+import { stamp } from "@/lib/time";
 import { toast } from "sonner";
 
 const plural = (n: number, noun: string): string => `${n.toLocaleString()} ${noun}${n === 1 ? "" : "s"}`;
@@ -149,7 +149,7 @@ export function ProjectAbout({
           </span>
         </Fact>
         <Fact icon={Users}>Owned by {p.owner_email}</Fact>
-        <Fact icon={Folder}>Created {utc(p.created_at)}</Fact>
+        <Fact icon={Folder}>Created {stamp(p.created_at)}</Fact>
         <Fact icon={Key}>
           <Link to={`${base}/settings/keys`} className="text-link hover:underline">
             {plural(activeKeys, "active API key")}

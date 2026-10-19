@@ -86,3 +86,28 @@ pub async fn set_raw(conn: &Connection, key: &str, value: &str) -> anyhow::Resul
     .await?;
     Ok(())
 }
+
+const UTC_OFFSET: &str = "utc_offset_min";
+
+/// Minutes east of UTC that every page shows times in; 0 when no admin set one.
+pub async fn utc_offset(conn: &Connection) -> anyhow::Result<i64> {
+    Ok(get_raw(conn, UTC_OFFSET)
+        .await?
+        .and_then(|v| v.parse().ok())
+        .filter(|v| valid_offset(*v))
+        .unwrap_or(0))
+}
+
+/// UTC-12:00 to UTC+14:00 in quarter hours, the range real zones use.
+pub fn valid_offset(min: i64) -> bool {
+    (-720..=840).contains(&min) && min % 15 == 0
+}
+
+/// False, and nothing stored, for an offset outside `valid_offset`.
+pub async fn set_utc_offset(conn: &Connection, min: i64) -> anyhow::Result<bool> {
+    if !valid_offset(min) {
+        return Ok(false);
+    }
+    set_raw(conn, UTC_OFFSET, &min.to_string()).await?;
+    Ok(true)
+}

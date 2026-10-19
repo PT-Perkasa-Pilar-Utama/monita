@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 import { countLabel, keeps } from "@/lib/filter";
 import { useProject } from "@/lib/project";
-import { duration, nowSecs, utc } from "@/lib/time";
+import { duration, nowSecs, stamp } from "@/lib/time";
 import type { IncidentRow } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 import { SortHead } from "@/components/list/SortHead";
@@ -111,7 +111,7 @@ export function Incidents({ creating = false }: { creating?: boolean }): ReactEl
                     <SeverityBadge severity={i.severity} />
                   </TableCell>
                   <TableCell className="max-md:hidden">{i.last_label && <LabelBadge label={i.last_label} />}</TableCell>
-                  <TableCell className="font-mono text-[13px] max-lg:hidden">{utc(i.started_at)}</TableCell>
+                  <TableCell className="font-mono text-[13px] max-lg:hidden">{stamp(i.started_at)}</TableCell>
                   <TableCell className="text-right font-mono">{duration((i.resolved_at ?? now) - i.started_at)}</TableCell>
                 </LinkRow>
               ))}

@@ -9,7 +9,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Skeleton } from "@/components/ui/skeleton";
 import { api, ApiError, errorText } from "@/lib/api";
 import { stageLabel } from "@/lib/tickets";
-import { ago, utc } from "@/lib/time";
+import { ago, stamp } from "@/lib/time";
 import type { TicketRow } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 import { toast } from "sonner";
@@ -49,7 +49,7 @@ function Body({ t, path, onChanged }: { t: TicketRow; path: string; onChanged: (
             <div className="min-w-0 flex-1 overflow-hidden rounded-lg border bg-card">
               <header className="flex flex-wrap items-center justify-between gap-2 border-b bg-paper px-4 py-2.5 text-[13px]">
                 <span>
-                  <strong className="font-semibold">{t.filed_by ?? "Reporter"}</strong> <span className="text-muted-foreground">on {utc(t.created_at)}</span>
+                  <strong className="font-semibold">{t.filed_by ?? "Reporter"}</strong> <span className="text-muted-foreground">on {stamp(t.created_at)}</span>
                 </span>
                 <span className="text-muted-foreground">Only your team sees this.</span>
               </header>
@@ -94,9 +94,9 @@ function Body({ t, path, onChanged }: { t: TicketRow; path: string; onChanged: (
           <Side title="Dates">
             <dl className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-sm">
               <dt className="text-muted-foreground">Reported</dt>
-              <dd>{utc(t.created_at)}</dd>
+              <dd>{stamp(t.created_at)}</dd>
               <dt className="text-muted-foreground">Updated</dt>
-              <dd>{utc(t.updated_at)}</dd>
+              <dd>{stamp(t.updated_at)}</dd>
             </dl>
           </Side>
         </aside>

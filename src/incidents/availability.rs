@@ -28,10 +28,17 @@ pub struct Report {
 }
 
 /// Today, the last 7, 30 and 365 days, and all time. Each period is one aggregate query.
-pub async fn report(db: &Db, item: ItemRef, created_at: i64, now: i64) -> anyhow::Result<Report> {
+/// "Today" starts at midnight in the offset `off` (minutes east of UTC).
+pub async fn report(
+    db: &Db,
+    item: ItemRef,
+    created_at: i64,
+    now: i64,
+    off: i64,
+) -> anyhow::Result<Report> {
     let c = db.read().await?;
     let windows = [
-        ("Today", time::day_start(now)),
+        ("Today", time::day_start_at(now, off)),
         ("Last 7 days", now - 7 * 86_400),
         ("Last 30 days", now - 30 * 86_400),
         ("Last 365 days", now - 365 * 86_400),

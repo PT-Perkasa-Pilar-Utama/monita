@@ -1,8 +1,9 @@
 import type { ReactElement, ReactNode } from "react";
 import { createContext, useContext } from "react";
+import { setOffset } from "@/lib/time";
 import { useApi } from "@/lib/useApi";
 
-export type Me = { email: string; role: "super_admin" | "tl"; is_admin: boolean };
+export type Me = { email: string; role: "super_admin" | "tl"; is_admin: boolean; utc_offset_min: number };
 
 const SessionContext = createContext<Me | null>(null);
 
@@ -10,6 +11,7 @@ const SessionContext = createContext<Me | null>(null);
 export function SessionProvider({ children }: { children: ReactNode }): ReactElement | null {
   const me = useApi<Me>("/me");
   if (!me.data) return null;
+  setOffset(me.data.utc_offset_min);
   return <SessionContext.Provider value={me.data}>{children}</SessionContext.Provider>;
 }
 

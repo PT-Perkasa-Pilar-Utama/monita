@@ -21,6 +21,8 @@ pub struct Insight {
     pub series: Series,
     pub report: Report,
     pub now: i64,
+    /// Minutes east of UTC the page shows times in.
+    pub off: i64,
 }
 
 impl Insight {
@@ -29,6 +31,7 @@ impl Insight {
         m: &super::Monitor,
         range: Range,
         now: i64,
+        off: i64,
     ) -> anyhow::Result<Self> {
         let item = ItemRef {
             kind: crate::incidents::SourceKind::Monitor,
@@ -36,9 +39,10 @@ impl Insight {
         };
         Ok(Self {
             title: "Response time",
-            series: series::monitor(db, m, range, now).await?,
-            report: availability::report(db, item, m.created_at, now).await?,
+            series: series::monitor(db, m, range, now, off).await?,
+            report: availability::report(db, item, m.created_at, now, off).await?,
             now,
+            off,
         })
     }
 
@@ -47,6 +51,7 @@ impl Insight {
         hb: &super::heartbeat::Heartbeat,
         range: Range,
         now: i64,
+        off: i64,
     ) -> anyhow::Result<Self> {
         let item = ItemRef {
             kind: crate::incidents::SourceKind::Heartbeat,
@@ -54,9 +59,10 @@ impl Insight {
         };
         Ok(Self {
             title: "Recorded pings",
-            series: series::heartbeat(db, hb, range, now).await?,
-            report: availability::report(db, item, hb.created_at, now).await?,
+            series: series::heartbeat(db, hb, range, now, off).await?,
+            report: availability::report(db, item, hb.created_at, now, off).await?,
             now,
+            off,
         })
     }
 
@@ -92,7 +98,7 @@ impl Insight {
             return ("Created", age, "nothing recorded yet".into(), "plain");
         }
         let (label, value) = self.streak();
-        let since = format!("since {}", time::utc(self.report.streak.since));
+        let since = format!("since {}", time::stamp(self.report.streak.since, self.off));
         (label, value, since, self.streak_kind())
     }
 

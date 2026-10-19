@@ -23,8 +23,14 @@ pub struct Series {
     pub mean_ms: Option<i64>,
 }
 
-pub async fn monitor(db: &Db, m: &Monitor, range: Range, now: i64) -> anyhow::Result<Series> {
-    let w = Window::new(range, now);
+pub async fn monitor(
+    db: &Db,
+    m: &Monitor,
+    range: Range,
+    now: i64,
+    off: i64,
+) -> anyhow::Result<Series> {
+    let w = Window::new(range, now, off);
     let c = db.read().await?;
     let buckets = match range {
         Range::Month => month(&c, SourceKind::Monitor, m.id, &w, now).await?,
@@ -41,8 +47,14 @@ pub async fn monitor(db: &Db, m: &Monitor, range: Range, now: i64) -> anyhow::Re
     Ok(series(chart, range, &buckets))
 }
 
-pub async fn heartbeat(db: &Db, hb: &Heartbeat, range: Range, now: i64) -> anyhow::Result<Series> {
-    let w = Window::new(range, now);
+pub async fn heartbeat(
+    db: &Db,
+    hb: &Heartbeat,
+    range: Range,
+    now: i64,
+    off: i64,
+) -> anyhow::Result<Series> {
+    let w = Window::new(range, now, off);
     let c = db.read().await?;
     let buckets = match range {
         Range::Month => month(&c, SourceKind::Heartbeat, hb.id, &w, now).await?,

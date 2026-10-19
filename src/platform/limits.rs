@@ -29,6 +29,7 @@ pub fn router() -> Router<AppState> {
         .route("/api/ui/admin/system", get(page))
         .route("/api/ui/admin/limits", put(save))
         .route("/api/ui/admin/test-email", post(test_email))
+        .route("/api/ui/admin/time-zone", put(save_time_zone))
 }
 
 /// Each limit's group, what it does, and its value in `0001_init.sql`.
@@ -114,6 +115,8 @@ struct SystemView {
     email_days: i64,
     server: Vec<(&'static str, String)>,
     caps: Vec<Cap>,
+    /// Minutes east of UTC that every page shows times in.
+    utc_offset_min: i64,
 }
 
 /// A log scale, so 1, 60 and 1 000 000 all land somewhere visible on one bar.
@@ -190,7 +193,10 @@ fn server_rows(c: &Config) -> Vec<(&'static str, String)> {
 }
 
 async fn view(state: &AppState) -> anyhow::Result<SystemView> {
-    let current = settings::all(&state.db.read().await?).await?;
+    let c = state.db.read().await?;
+    let current = settings::all(&c).await?;
+    let utc_offset_min = settings::utc_offset(&c).await?;
+    drop(c);
     let limits = META
         .iter()
         .map(|&(key, group, help, default)| {
@@ -264,11 +270,37 @@ async fn view(state: &AppState) -> anyhow::Result<SystemView> {
         email_days: EMAIL_DAYS,
         server: server_rows(config),
         caps,
+        utc_offset_min,
     })
 }
 
 async fn page(State(state): State<AppState>, _: AdminUser) -> UiResult {
     Ok(data(view(&state).await?))
+}
+
+#[derive(serde::Deserialize)]
+struct TimeZoneInput {
+    utc_offset_min: i64,
+}
+
+/// The offset every page shows times in. 422 outside UTC-12:00 to UTC+14:00 in quarter hours.
+async fn save_time_zone(
+    State(state): State<AppState>,
+    _: AdminUser,
+    Body(f): Body<TimeZoneInput>,
+) -> UiResult {
+    let min = f.utc_offset_min;
+    if !settings::valid_offset(min) {
+        return Err(UiError::field(
+            "utc_offset_min",
+            "Pick a time zone from the list.",
+        ));
+    }
+    state
+        .db
+        .write(async |c| settings::set_utc_offset(c, min).await)
+        .await?;
+    Ok(StatusCode::NO_CONTENT.into_response())
 }
 
 /// Queues a test email to the signed-in admin through the outbox, like any alert.

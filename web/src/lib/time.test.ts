@@ -1,10 +1,13 @@
 import { expect, test } from "bun:test";
-import { ago, day, duration, utc } from "@/lib/time";
+import { ago, day, duration, stamp } from "@/lib/time";
 
-test("formats UTC times the way the server does", () => {
-  expect(utc(0)).toBe("1970-01-01 00:00 UTC");
-  expect(utc(1_792_161_874)).toBe("2026-10-16 14:44 UTC");
-  expect(day(1_792_137_600)).toBe("2026-10-16");
+test("formats times in the offset the way the server does", () => {
+  expect(stamp(0, 0)).toBe("1970-01-01 00:00 UTC");
+  expect(stamp(1_792_161_874, 0)).toBe("2026-10-16 14:44 UTC");
+  expect(stamp(1_792_161_874, 420)).toBe("2026-10-16 21:44 UTC+7");
+  expect(stamp(1_792_161_874, 330)).toBe("2026-10-16 20:14 UTC+5:30");
+  expect(stamp(1_792_108_800 + 3600, -180)).toBe("2026-10-15 22:00 UTC-3");
+  expect(day(1_792_108_800 + 3600, -180)).toBe("2026-10-15");
 });
 
 test("formats durations and ages the way the server does", () => {

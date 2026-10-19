@@ -13,12 +13,12 @@ fn b(index: usize, total: i64, ok: i64, avg_ms: Option<i64>) -> Bucket {
 
 #[test]
 fn a_window_ends_with_the_bucket_that_holds_now() {
-    let w = Window::new(Range::Day, 10 * 86_400 + 1000);
+    let w = Window::new(Range::Day, 10 * 86_400 + 1000, 0);
     assert_eq!(w.step, 900);
     assert_eq!(w.buckets, 96);
     assert_eq!(w.end(), 10 * 86_400 + 1800);
     assert_eq!(
-        Window::new(Range::Month, 10 * 86_400 + 5).from,
+        Window::new(Range::Month, 10 * 86_400 + 5, 0).from,
         (10 - 29) * 86_400
     );
 }
@@ -37,6 +37,7 @@ fn the_y_axis_rounds_up_to_a_readable_top() {
 #[test]
 fn a_gap_longer_than_the_interval_breaks_the_line_and_failures_are_marked() {
     let w = Window {
+        off: 0,
         from: 0,
         step: 60,
         buckets: 60,
@@ -62,6 +63,7 @@ fn a_gap_longer_than_the_interval_breaks_the_line_and_failures_are_marked() {
 #[test]
 fn bands_split_the_covered_time_at_each_down_span() {
     let w = Window {
+        off: 0,
         from: 0,
         step: 60,
         buckets: 60,
@@ -76,6 +78,7 @@ fn bands_split_the_covered_time_at_each_down_span() {
 #[test]
 fn a_bucket_with_a_fail_ping_is_red() {
     let w = Window {
+        off: 0,
         from: 0,
         step: 900,
         buckets: 96,

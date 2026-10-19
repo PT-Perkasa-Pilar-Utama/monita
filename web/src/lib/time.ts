@@ -1,21 +1,43 @@
-// Time display, matching src/platform/time.rs. Storage and the API use Unix seconds, UTC.
+// Time display, matching src/platform/time.rs. Storage and the API use Unix seconds, UTC. Pages
+// show times in the fixed UTC offset a super admin sets; the app and the public pages load it
+// once and call `setOffset`.
 
 const pad = (n: number, w = 2): string => String(n).padStart(w, "0");
 
-/** `2026-10-16 08:00 UTC` */
-export function utc(ts: number): string {
-  const d = new Date(ts * 1000);
-  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} UTC`;
+let offsetMin = 0;
+
+/** Minutes east of UTC that every time on the page uses. */
+export function setOffset(min: number): void {
+  offsetMin = min;
 }
 
-/** `2026-10-16`, the UTC day a timestamp falls on. */
-export function day(ts: number): string {
-  return utc(ts).slice(0, 10);
+/** `UTC`, `UTC+7`, `UTC+5:30`, `UTC-3`. */
+export function zone(off: number = offsetMin): string {
+  if (off === 0) return "UTC";
+  const a = Math.abs(off);
+  const hm = a % 60 === 0 ? `${a / 60}` : `${Math.floor(a / 60)}:${pad(a % 60)}`;
+  return `UTC${off > 0 ? "+" : "-"}${hm}`;
 }
 
-/** `14:02`, the UTC time of day. */
-export function hhmm(ts: number): string {
-  return utc(ts).slice(11, 16);
+/** `2026-10-16 15:00`, the time in the offset without its name. */
+function local(ts: number, off: number): string {
+  const d = new Date((ts + off * 60) * 1000);
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
+}
+
+/** `2026-10-16 15:00 UTC+7`: the time in the offset, with the offset named. */
+export function stamp(ts: number, off: number = offsetMin): string {
+  return `${local(ts, off)} ${zone(off)}`;
+}
+
+/** `2026-10-16`, the day a timestamp falls on in the offset. */
+export function day(ts: number, off: number = offsetMin): string {
+  return local(ts, off).slice(0, 10);
+}
+
+/** `14:02`, the time of day in the offset. */
+export function hhmm(ts: number, off: number = offsetMin): string {
+  return local(ts, off).slice(11, 16);
 }
 
 /** `45s`, `6m 18s`, `2h 4m`, `3d 2h`. */

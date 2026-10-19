@@ -45,10 +45,14 @@ pub struct Me {
     pub email: String,
     pub role: &'static str,
     pub is_admin: bool,
+    /// Minutes east of UTC that pages show times in.
+    pub utc_offset_min: i64,
 }
 
-async fn me(CurrentUser(user): CurrentUser) -> UiResult {
+async fn me(State(state): State<AppState>, CurrentUser(user): CurrentUser) -> UiResult {
+    let utc_offset_min = crate::platform::settings::utc_offset(&state.db.read().await?).await?;
     Ok(data(Me {
+        utc_offset_min,
         is_admin: user.is_admin(),
         role: if user.is_admin() { "super_admin" } else { "tl" },
         email: user.email,

@@ -15,7 +15,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { api, ApiError, dropField, errorText } from "@/lib/api";
 import { useProject } from "@/lib/project";
-import { ago, duration, nowSecs, utc } from "@/lib/time";
+import { ago, duration, nowSecs, stamp } from "@/lib/time";
 import type { IncidentDetail, UpdateLabel } from "@/lib/types";
 import { nextMessage, TEMPLATES } from "@/lib/updates";
 import { useApi } from "@/lib/useApi";
@@ -190,7 +190,7 @@ export function Incident(): ReactElement {
                         <header className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b bg-paper px-4 py-2.5 text-[13px]">
                           <LabelBadge label={u.label} />
                           <strong className="font-semibold">{u.author_email ?? "Monita"}</strong>
-                          <span className="text-muted-foreground" title={utc(u.created_at)}>
+                          <span className="text-muted-foreground" title={stamp(u.created_at)}>
                             {ago(u.created_at)}
                           </span>
                         </header>
@@ -219,9 +219,9 @@ export function Incident(): ReactElement {
               <Side title="Dates">
                 <dl className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-sm">
                   <dt className="text-muted-foreground">Started</dt>
-                  <dd>{utc(i.started_at)}</dd>
+                  <dd>{stamp(i.started_at)}</dd>
                   <dt className="text-muted-foreground">Ended</dt>
-                  <dd>{i.resolved_at ? utc(i.resolved_at) : "Still open"}</dd>
+                  <dd>{i.resolved_at ? stamp(i.resolved_at) : "Still open"}</dd>
                   <dt className="text-muted-foreground">Lasted</dt>
                   <dd>{duration((i.resolved_at ?? now) - i.started_at)}</dd>
                 </dl>

@@ -13,7 +13,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { api, ApiError, errorText } from "@/lib/api";
 import { reasonLabel, stageLabel } from "@/lib/tickets";
-import { utc } from "@/lib/time";
+import { stamp } from "@/lib/time";
 import type { MyTicket, PublicProject } from "@/lib/types";
 
 /** A reporter's own tickets, found by the ref ID they reported with. */
@@ -86,7 +86,7 @@ export function Mine(): ReactElement {
                         {t.close_reason && <Badge variant="outline">{reasonLabel(t.close_reason)}</Badge>}
                       </span>
                     </TableCell>
-                    <TableCell className="text-right font-mono text-[13px] text-muted-foreground max-sm:hidden">{utc(t.updated_at)}</TableCell>
+                    <TableCell className="text-right font-mono text-[13px] text-muted-foreground max-sm:hidden">{stamp(t.updated_at)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

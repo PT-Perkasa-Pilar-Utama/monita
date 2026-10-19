@@ -2,7 +2,7 @@ import type { ReactElement } from "react";
 import { LabelBadge, StateBadge } from "@/components/app/Tone";
 import { ChevronDown } from "@/components/icons";
 import { barTitle, barTone, incidentState, when } from "@/lib/status";
-import { utc } from "@/lib/time";
+import { stamp } from "@/lib/time";
 import type { PublicIncident, PublicItem } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -69,7 +69,7 @@ export function IncidentCard({ incident: i }: { incident: PublicIncident }): Rea
             <li key={n} className="flex flex-col gap-1.5">
               <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
                 <LabelBadge label={u.label} />
-                {utc(u.at)}
+                {stamp(u.at)}
               </span>
               <p className="whitespace-pre-wrap break-words">{u.message}</p>
             </li>

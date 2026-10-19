@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { ReactElement } from "react";
 import { Facts } from "@/components/app/Facts";
 import { SettingsSection } from "@/components/app/SettingsSection";
+import { TimeZoneSection } from "@/components/app/TimeZoneSection";
 import { StateBadge } from "@/components/app/Tone";
 import { PageHeader } from "@/components/layout/Page";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -100,6 +101,7 @@ export function System(): ReactElement {
         <Skeleton className="h-96 rounded-xl" />
       ) : (
         <div className="flex flex-col gap-6">
+          <TimeZoneSection initial={d.utc_offset_min} />
           <EmailSection d={d} />
           <SettingsSection
             title="Server"

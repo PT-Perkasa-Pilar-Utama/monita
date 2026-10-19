@@ -251,7 +251,7 @@ export type MyTicket = { number: number; title: string; stage: Stage; close_reas
 export type PublicProject = { name: string; slug: string };
 
 /** The public layout's project: its name and the tabs it shows. */
-export type PublicSite = PublicProject & { pages: PublicPages };
+export type PublicSite = PublicProject & { pages: PublicPages; utc_offset_min: number };
 
 /** SEC-21: an update on a public page has no author. */
 export type PublicUpdate = { label: UpdateLabel; message: string; at: number };
@@ -291,4 +291,5 @@ export type SystemView = {
   email_days: number;
   server: [string, string][];
   caps: { label: string; max: number; used: number | null }[];
+  utc_offset_min: number;
 };

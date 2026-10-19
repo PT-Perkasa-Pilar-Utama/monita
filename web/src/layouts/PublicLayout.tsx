@@ -5,6 +5,7 @@ import { Bug, Globe, ListChecks, Ticket } from "@/components/icons";
 import { PageFrame } from "@/components/layout/Page";
 import { PageTabs } from "@/components/layout/PageTabs";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
+import { setOffset } from "@/lib/time";
 import type { PublicPages, PublicSite } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 import { NotFound } from "@/pages/NotFound";
@@ -16,6 +17,7 @@ export function PublicLayout(): ReactElement | null {
   const p = useApi<PublicSite>(`/public/${encodeURIComponent(slug)}`);
   if (p.error?.status === 404) return <NotFound />;
   if (!p.data) return null;
+  setOffset(p.data.utc_offset_min);
   const base = `/status/${p.data.slug}`;
   const shown = p.data.pages;
   const tabs: { key: keyof PublicPages; to: string; label: string; icon: typeof Globe }[] = [

@@ -14,7 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useProject } from "@/lib/project";
-import { utc } from "@/lib/time";
+import { stamp } from "@/lib/time";
 import type { MonitorDetail } from "@/lib/types";
 import { useDetail } from "@/lib/useDetail";
 import { NotFound } from "@/pages/NotFound";
@@ -75,7 +75,7 @@ export function Monitor({ editing = false }: { editing?: boolean }): ReactElemen
                       ["Timeout", `${m.timeout_s} seconds`],
                       ["Expects", m.keyword ? `${m.expected_status} with "${m.keyword}"` : m.expected_status],
                       ["TLS", m.skip_tls_verify ? "Not verified" : "Verified"],
-                      ["Next check", utc(m.next_check_at)],
+                      ["Next check", stamp(m.next_check_at)],
                     ]}
                   />
                 </CardContent>
@@ -99,7 +99,7 @@ export function Monitor({ editing = false }: { editing?: boolean }): ReactElemen
                     <TableBody>
                       {d.checks.map((c) => (
                         <TableRow key={c.id}>
-                          <TableCell className="font-mono text-[13px]">{utc(c.checked_at)}</TableCell>
+                          <TableCell className="font-mono text-[13px]">{stamp(c.checked_at)}</TableCell>
                           <TableCell>
                             <StateBadge kind={c.ok ? "up" : "down"} label={c.ok ? "OK" : "Failed"} />
                           </TableCell>

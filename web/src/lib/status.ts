@@ -1,5 +1,5 @@
 // Wording and grading for the public status page. Kept pure so lib/status.test.ts checks it.
-import { duration, utc } from "@/lib/time";
+import { day, duration, stamp } from "@/lib/time";
 import type { PublicIncident, PublicItem, StateKind, UptimeDay } from "@/lib/types";
 
 /** Operational systems drawn with bars; the rest fold into a list, so 200 systems stay readable. */
@@ -35,7 +35,7 @@ export function barTitle(d: UptimeDay): string {
 
 /** "Since 2026-10-17 10:38 UTC", or the start and how long it took. */
 export function when(i: PublicIncident): string {
-  return i.resolved_at === null ? `Since ${utc(i.started_at)}` : `${utc(i.started_at)}, resolved after ${duration(i.resolved_at - i.started_at)}`;
+  return i.resolved_at === null ? `Since ${stamp(i.started_at)}` : `${stamp(i.started_at)}, resolved after ${duration(i.resolved_at - i.started_at)}`;
 }
 
 /** Resolved, Issue for a reported incident (never downtime), or Down. */
@@ -46,8 +46,8 @@ export function incidentState(i: PublicIncident): [StateKind, string] {
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
-/** "October 2026" for the UTC month a time falls in. */
+/** "October 2026" for the month a time falls in, in the admin's offset. */
 export function month(ts: number): string {
-  const d = new Date(ts * 1000);
-  return `${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+  const [y, m] = day(ts).split("-");
+  return `${MONTHS[Number(m) - 1]} ${y}`;
 }
