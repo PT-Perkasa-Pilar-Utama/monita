@@ -1,15 +1,16 @@
 import type { AdminUserRow } from "@/lib/types";
 
 /** What a super admin can do to an account from the Users page. */
-export type UserAction = "make_admin" | "make_tl" | "make_supervisor" | "reset" | "disable" | "enable";
+export type UserAction = "make_admin" | "make_tl" | "make_supervisor" | "reset" | "two_factor_off" | "disable" | "enable";
 
-export const ACTIONS: UserAction[] = ["make_admin", "make_tl", "make_supervisor", "reset", "disable", "enable"];
+export const ACTIONS: UserAction[] = ["make_admin", "make_tl", "make_supervisor", "reset", "two_factor_off", "disable", "enable"];
 
 export const ACTION_LABEL: Record<UserAction, string> = {
   make_admin: "Make super admin",
   make_tl: "Make tech lead",
   make_supervisor: "Make supervisor",
   reset: "Send a new invite",
+  two_factor_off: "Turn off two-factor",
   disable: "Disable",
   enable: "Enable",
 };
@@ -30,6 +31,8 @@ export function appliesTo(action: UserAction, u: AdminUserRow, me: string): bool
     case "reset":
     case "disable":
       return live;
+    case "two_factor_off":
+      return live && u.two_factor;
     case "enable":
       return !live;
   }

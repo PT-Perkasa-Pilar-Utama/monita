@@ -22,6 +22,7 @@ pub fn router() -> Router<AppState> {
         .route("/api/ui/logout", post(logout))
         .route("/api/ui/me", get(me))
         .route("/api/ui/invites/{token}", get(invite).post(accept))
+        .merge(super::two_factor::api::router())
 }
 
 fn secure(state: &AppState) -> bool {
@@ -29,7 +30,7 @@ fn secure(state: &AppState) -> bool {
 }
 
 /// 204 with the session cookie.
-fn signed_in(state: &AppState, raw: &str) -> Response {
+pub(super) fn signed_in(state: &AppState, raw: &str) -> Response {
     (
         StatusCode::NO_CONTENT,
         [(
@@ -78,7 +79,11 @@ struct LoginInput {
 
 async fn login(State(state): State<AppState>, Body(f): Body<LoginInput>) -> UiResult {
     match super::login(&state.db, &f.email, &f.password).await {
-        Ok(raw) => Ok(signed_in(&state, &raw)),
+        Ok(super::SignIn::Session(raw)) => Ok(signed_in(&state, &raw)),
+        // The page asks for the code and sends it with this token to `/api/ui/login/code`.
+        Ok(super::SignIn::Code(challenge)) => Ok(data(
+            serde_json::json!({ "two_factor": true, "challenge": challenge }),
+        )),
         Err(AccountError::Other(e)) => Err(e.into()),
         Err(e) => Err(UiError::invalid(e.to_string())),
     }

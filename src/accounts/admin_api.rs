@@ -24,6 +24,10 @@ pub fn router() -> Router<AppState> {
         .route("/api/ui/admin/users/{id}/disable", post(disable))
         .route("/api/ui/admin/users/{id}/enable", post(enable))
         .route("/api/ui/admin/users/{id}/role", put(set_role))
+        .route(
+            "/api/ui/admin/users/{id}/two-factor/off",
+            post(two_factor_off),
+        )
 }
 
 /// A user as the page shows them. Never the password hash.
@@ -35,6 +39,7 @@ struct UserView {
     /// `active`, `invited` (no password yet) or `disabled`.
     status: &'static str,
     created_at: i64,
+    two_factor: bool,
 }
 
 impl From<UserRow> for UserView {
@@ -50,6 +55,7 @@ impl From<UserRow> for UserView {
             role: u.role,
             status,
             created_at: u.created_at,
+            two_factor: u.two_factor,
         }
     }
 }
@@ -132,6 +138,16 @@ async fn disable(
     Path(id): Path<i64>,
 ) -> UiResult {
     super::disable(&state.db, me.id, id).await?;
+    Ok(StatusCode::NO_CONTENT.into_response())
+}
+
+/// For someone who lost their phone and recovery codes. 204.
+async fn two_factor_off(
+    State(state): State<AppState>,
+    AdminUser(me): AdminUser,
+    Path(id): Path<i64>,
+) -> UiResult {
+    super::turn_off_two_factor(&state.db, me.id, id).await?;
     Ok(StatusCode::NO_CONTENT.into_response())
 }
 

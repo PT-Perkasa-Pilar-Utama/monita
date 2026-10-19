@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { appliesTo, availableActions, planAction } from "@/lib/users";
 import type { AdminUserRow } from "@/lib/types";
 
-const u = (email: string, role: AdminUserRow["role"], status: AdminUserRow["status"]): AdminUserRow => ({ id: email.length, email, role, status, created_at: 0 });
+const u = (email: string, role: AdminUserRow["role"], status: AdminUserRow["status"], two_factor = false): AdminUserRow => ({ id: email.length, email, role, status, created_at: 0, two_factor });
 const me = "admin@x.co";
 const self = u(me, "super_admin", "active");
 const tl = u("rina@x.co", "tl", "active");
@@ -27,6 +27,12 @@ test("a role changes only to one of the other two, and only on a live account", 
 test("a disabled account can only be enabled", () => {
   expect(availableActions([gone], me)).toEqual(["enable"]);
   expect(availableActions([tl], me)).toEqual(["make_admin", "make_supervisor", "reset", "disable"]);
+});
+
+test("two-factor turns off only where it is on, and never on your own account", () => {
+  expect(appliesTo("two_factor_off", tl, me)).toBe(false);
+  expect(appliesTo("two_factor_off", u("rina@x.co", "tl", "active", true), me)).toBe(true);
+  expect(appliesTo("two_factor_off", u(me, "super_admin", "active", true), me)).toBe(false);
 });
 
 test("a batch runs on the accounts it fits and counts the rest", () => {

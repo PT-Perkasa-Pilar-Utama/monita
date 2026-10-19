@@ -2,7 +2,7 @@ import type { ReactElement, ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Mark } from "@/components/brand/Mark";
 import { ProjectBadge } from "@/components/app/ProjectBadge";
-import { AlertTriangle, BookOpen, Folder, LogOut, Moon, Settings, Sun, Ticket, Undo2 } from "@/components/icons";
+import { AlertTriangle, BookOpen, Folder, LogOut, Moon, Settings, ShieldCheck, Sun, Ticket, Undo2 } from "@/components/icons";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -109,6 +109,12 @@ function AccountMenu(): ReactElement {
               <BookOpen />
               Documentation
             </a>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link to="/account">
+              <ShieldCheck />
+              Two-factor sign-in
+            </Link>
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => setTheme(resolved === "dark" ? "light" : "dark")}>
             {resolved === "dark" ? <Sun /> : <Moon />}

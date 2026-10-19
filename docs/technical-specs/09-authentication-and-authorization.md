@@ -17,13 +17,15 @@ first install:  monita admin create --email a@x  -> prompt password -> users(rol
 invite:         super admin -> invite(email, role) -> email link /invite/<token>
 accept:         page /invite/<token> -> GET /api/ui/invites/<token> -> POST password -> hash, mark used, create session
 sign-in:        POST /api/ui/login -> argon2 verify -> create session -> 204 with the cookie; the page goes to ?next= on this site, or /
+two-factor:     POST /api/ui/login -> argon2 verify -> challenge (hash stored, 5 min, 5 tries) -> 200 {challenge}
+                POST /api/ui/login/code -> time code (later step than the last) or recovery code -> session -> 204
 sign-out:       POST /api/ui/logout -> delete session row
-reset:          super admin -> new invite -> old invites and sessions deleted
+reset:          super admin -> new invite -> old invites and sessions deleted, two-factor off
 ```
 
 ## 9.3 Role matrix
 
-Roles: `super_admin`, `tl` and `supervisor`. A supervisor sees every project and the admin pages, and changes nothing. `CurrentUser` answers 403 to a supervisor on any method but `GET` and `HEAD` (SEC-22).
+Roles: `super_admin`, `tl` and `supervisor`. A supervisor sees every project and the admin pages, and changes nothing. `CurrentUser` answers 403 to a supervisor on any method but `GET` and `HEAD` (SEC-22). The one exception is the user's own two-factor sign-in: those routes take `AccountUser`, which lets a supervisor write.
 
 | Action | Super admin | Supervisor | TL (owner) | TL (not owner) | API key | Public |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -31,6 +33,8 @@ Roles: `super_admin`, `tl` and `supervisor`. A supervisor sees every project and
 | Reassign project, delete project | yes | no | no | no | no | no |
 | Change settings (limits, time zone, mail server) | yes | no | no | no | no | no |
 | View users and the admin pages | yes | yes | no | no | no | no |
+| Turn another user's two-factor off | yes (never your own account) | no | no | no | no | no |
+| Turn your own two-factor on or off | yes | yes | yes | yes | no | no |
 | Create project | yes | no | yes | yes | no | no |
 | View a project and its pages | yes (all) | yes (all) | yes | no (404) | no | no |
 | Manage monitors, heartbeats, alert routes, ticket alerts, keys, allowlist, secrets, status page tabs | yes | no | yes | no | no | no |

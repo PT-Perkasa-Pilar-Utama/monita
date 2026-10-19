@@ -2023,6 +2023,7 @@ dependencies = [
  "rust-embed",
  "serde",
  "serde_json",
+ "sha1_smol",
  "sha2",
  "tempfile",
  "thiserror",

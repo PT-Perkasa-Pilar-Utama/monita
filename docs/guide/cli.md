@@ -11,7 +11,7 @@ The `monita` binary serves the app and manages a host.
 | `monita service status` / `logs [-f]` / `uninstall` | Inspect or remove the service |
 | `monita whereis [env\|data\|backups\|bin\|service\|logs]` | Prints where things are |
 | `monita admin create --email` | Creates a super admin |
-| `monita admin reset-password --email` | Sets a new password for a super admin and signs them out |
+| `monita admin reset-password --email` | Sets a new password for a super admin, turns their two-factor sign-in off, and signs them out |
 | `monita --version` | Prints the version |
 
 ## The env file

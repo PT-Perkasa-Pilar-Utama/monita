@@ -80,13 +80,18 @@ pub fn ip_limited(method: &axum::http::Method, path: &str) -> bool {
         || path.starts_with("/api/v1/public/")
         || path.starts_with("/api/v1/tickets")
         || path.starts_with("/api/ui/invites/")
-        || (method == axum::http::Method::POST && path == "/api/ui/login")
+        || (method == axum::http::Method::POST && is_sign_in(path))
+}
+
+/// The password step and the two-factor code step share one bucket.
+fn is_sign_in(path: &str) -> bool {
+    path == "/api/ui/login" || path == "/api/ui/login/code"
 }
 
 /// Sign-in counts in its own bucket, so status-page traffic from an office behind one address
 /// cannot use up the attempts its people need to sign in.
 fn bucket(path: &str, ip: &str) -> String {
-    if path == "/api/ui/login" {
+    if is_sign_in(path) {
         format!("login:{ip}")
     } else {
         format!("ip:{ip}")
@@ -226,5 +231,15 @@ mod tests {
         }
         assert!(!ip_limited(&Method::GET, "/api/ui/projects/shop/tickets"));
         assert!(!ip_limited(&Method::GET, "/api/ui/login"));
+    }
+
+    #[test]
+    fn the_password_and_the_code_step_share_the_sign_in_bucket() {
+        use axum::http::Method;
+        for path in ["/api/ui/login", "/api/ui/login/code"] {
+            assert!(ip_limited(&Method::POST, path), "{path}");
+            assert_eq!(bucket(path, "1.2.3.4"), "login:1.2.3.4");
+        }
+        assert_eq!(bucket("/api/ui/public/x/status", "1.2.3.4"), "ip:1.2.3.4");
     }
 }

@@ -26,7 +26,8 @@ pub fn random_below(n: u64) -> u64 {
     u64::from_le_bytes(bytes) % n.max(1)
 }
 
-fn base32(bytes: &[u8]) -> String {
+/// RFC 4648 base32 in lowercase, without padding.
+pub fn base32(bytes: &[u8]) -> String {
     let mut out = String::with_capacity(bytes.len() * 8 / 5 + 1);
     let mut buf: u32 = 0;
     let mut bits = 0;

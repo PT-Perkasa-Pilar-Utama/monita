@@ -40,7 +40,7 @@ pub fn session_token(headers: &HeaderMap) -> Option<String> {
 /// The signed-in user. Without a valid session a page request goes to `/login`, and an `/api/`
 /// request gets 401 in the JSON envelope. A supervisor gets 403 on any method but GET and HEAD:
 /// every signed-in route that changes something takes this extractor, so this one check keeps
-/// the role read-only.
+/// the role read-only. The one exception is a user's own two-factor (`AccountUser`).
 pub struct CurrentUser(pub User);
 
 impl FromRequestParts<AppState> for CurrentUser {
@@ -50,35 +50,59 @@ impl FromRequestParts<AppState> for CurrentUser {
         parts: &mut Parts,
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
-        let api = parts.uri.path().starts_with("/api/");
-        let to_login = || {
-            if api {
-                crate::platform::ui::UiError::Unauthorized.into_response()
-            } else {
-                Redirect::to("/login").into_response()
-            }
-        };
-        let Some(raw) = session_token(&parts.headers) else {
-            return Err(to_login());
-        };
-        let conn = state
-            .db
-            .read()
-            .await
-            .map_err(|e| PageError::from(e).into_response())?;
-        match store::find_session_user(&conn, &token::hash(&raw), now()).await {
-            Ok(Some(u)) => match Role::parse(&u.role) {
-                Some(Role::Supervisor) if !parts.method.is_safe() => Err(forbidden(api)),
-                Some(role) => Ok(CurrentUser(User {
-                    id: u.id,
-                    email: u.email,
-                    role,
-                })),
-                None => Err(to_login()),
-            },
-            Ok(None) => Err(to_login()),
-            Err(e) => Err(PageError::from(e).into_response()),
+        let user = signed_in(parts, state).await?;
+        if user.role == Role::Supervisor && !parts.method.is_safe() {
+            return Err(forbidden(parts.uri.path().starts_with("/api/")));
         }
+        Ok(CurrentUser(user))
+    }
+}
+
+/// The signed-in user acting on their own sign-in, such as two-factor. Unlike `CurrentUser` it
+/// lets a supervisor write: securing one's own account changes nothing anyone else sees.
+pub struct AccountUser(pub User);
+
+impl FromRequestParts<AppState> for AccountUser {
+    type Rejection = Response;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
+        Ok(AccountUser(signed_in(parts, state).await?))
+    }
+}
+
+/// The user of the session cookie. Without a valid session a page request goes to `/login`, and
+/// an `/api/` request gets 401 in the JSON envelope.
+async fn signed_in(parts: &Parts, state: &AppState) -> Result<User, Response> {
+    let api = parts.uri.path().starts_with("/api/");
+    let to_login = || {
+        if api {
+            crate::platform::ui::UiError::Unauthorized.into_response()
+        } else {
+            Redirect::to("/login").into_response()
+        }
+    };
+    let Some(raw) = session_token(&parts.headers) else {
+        return Err(to_login());
+    };
+    let conn = state
+        .db
+        .read()
+        .await
+        .map_err(|e| PageError::from(e).into_response())?;
+    match store::find_session_user(&conn, &token::hash(&raw), now()).await {
+        Ok(Some(u)) => match Role::parse(&u.role) {
+            Some(role) => Ok(User {
+                id: u.id,
+                email: u.email,
+                role,
+            }),
+            None => Err(to_login()),
+        },
+        Ok(None) => Err(to_login()),
+        Err(e) => Err(PageError::from(e).into_response()),
     }
 }
 

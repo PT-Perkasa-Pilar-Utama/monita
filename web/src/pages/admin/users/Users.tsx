@@ -31,6 +31,7 @@ const CALL: Record<UserAction, (id: number) => Promise<unknown>> = {
   make_tl: (id) => api(`/admin/users/${id}/role`, "PUT", { role: "tl" }),
   make_supervisor: (id) => api(`/admin/users/${id}/role`, "PUT", { role: "supervisor" }),
   reset: (id) => api<Invited>(`/admin/users/${id}/invite`, "POST"),
+  two_factor_off: (id) => api(`/admin/users/${id}/two-factor/off`, "POST"),
   disable: (id) => api(`/admin/users/${id}/disable`, "POST"),
   enable: (id) => api(`/admin/users/${id}/enable`, "POST"),
 };

@@ -34,7 +34,7 @@ function RoleBadge({ role }: { role: AdminUserRow["role"] }): ReactElement {
 function RowMenu({ u, me, onAction }: { u: AdminUserRow; me: string; onAction: (a: UserAction, u: AdminUserRow) => void }): ReactElement | null {
   const canEdit = useCanEdit();
   const fits = (a: UserAction): boolean => appliesTo(a, u, me);
-  if (!canEdit || !(["make_admin", "make_tl", "make_supervisor", "reset", "disable", "enable"] as const).some(fits)) return null;
+  if (!canEdit || !(["make_admin", "make_tl", "make_supervisor", "reset", "two_factor_off", "disable", "enable"] as const).some(fits)) return null;
   const item = (a: UserAction): ReactElement | null =>
     fits(a) ? (
       <DropdownMenuItem key={a} variant={a === "disable" ? "destructive" : "default"} onSelect={() => onAction(a, u)}>
@@ -54,6 +54,7 @@ function RowMenu({ u, me, onAction }: { u: AdminUserRow; me: string; onAction: (
           {item("make_tl")}
           {item("make_supervisor")}
           {item("reset")}
+          {item("two_factor_off")}
         </DropdownMenuGroup>
         {(fits("disable") || fits("enable")) && <DropdownMenuSeparator />}
         <DropdownMenuGroup>
@@ -119,6 +120,7 @@ export function UsersTable({
                   </span>
                   <span className="truncate font-medium">{u.email}</span>
                   {self && <Badge variant="outline">You</Badge>}
+                  {u.two_factor && <Badge variant="outline">Two-factor</Badge>}
                 </div>
               </TableCell>
               <TableCell>

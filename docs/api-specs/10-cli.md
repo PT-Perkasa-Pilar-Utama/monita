@@ -10,7 +10,7 @@ The `monita` binary. `admin create` is in [02-authentication.md section 2.1](02-
 | `monita service install\|uninstall\|status\|logs [-f]` | Manages the systemd unit (10.3). |
 | `monita whereis [env\|data\|backups\|bin\|service\|logs]` | Prints where things are (10.4). |
 | `monita admin create --email` | Creates a super admin (2.1). |
-| `monita admin reset-password --email` | Sets a new password for a super admin and signs them out everywhere. |
+| `monita admin reset-password --email` | Sets a new password for a super admin, turns their two-factor sign-in off, and signs them out everywhere. |
 | `monita --version` | Prints the version. |
 
 Every error prints `Error: <message>` to stderr and exits 1. A usage error exits 2.

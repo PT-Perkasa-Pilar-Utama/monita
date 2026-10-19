@@ -7,13 +7,16 @@ pub mod api;
 mod auth;
 mod password;
 mod store;
+pub mod totp;
+mod two_factor;
 
 use crate::platform::{db::Db, now, page::PageError, token};
 use password::{hash_password, verify_password};
 
-pub use admin::{AdminError, disable, enable, reset_sign_in, set_role};
-pub use auth::{AdminUser, CurrentUser, clear_cookie, session_cookie, session_token};
+pub use admin::{AdminError, disable, enable, reset_sign_in, set_role, turn_off_two_factor};
+pub use auth::{AccountUser, AdminUser, CurrentUser, clear_cookie, session_cookie, session_token};
 pub use store::UserRow;
+pub use two_factor::TwoFactorError;
 
 pub const SESSION_COOKIE: &str = "monita_session";
 const SESSION_TTL_S: i64 = 14 * 86_400;
@@ -147,6 +150,8 @@ pub async fn reset_super_admin_password(
         async |c| match store::find_user_by_email(c, &email).await? {
             Some(u) if u.role == "super_admin" => {
                 store::set_password(c, u.id, &hash, now()).await?;
+                // Q19: the CLI is also the way back in for a super admin who lost the phone.
+                two_factor::clear(c, u.id).await?;
                 Ok(Ok(()))
             }
             _ => Ok(Err(AccountError::NoSuchAdmin)),
@@ -155,8 +160,16 @@ pub async fn reset_super_admin_password(
     .await?
 }
 
-/// Signs in. Returns the raw session token for the cookie.
-pub async fn login(db: &Db, email: &str, password: &str) -> Result<String, AccountError> {
+/// What a right password leads to.
+pub enum SignIn {
+    /// The raw session token for the cookie.
+    Session(String),
+    /// Two-factor is on: the raw challenge token for the code step.
+    Code(String),
+}
+
+/// Signs in, or asks for the code when two-factor is on.
+pub async fn login(db: &Db, email: &str, password: &str) -> Result<SignIn, AccountError> {
     let email = email_key(email).ok_or(AccountError::BadCredentials)?;
     let user = store::find_user_by_email(&db.read().await?, &email).await?;
     // An unknown, disabled or not yet activated account costs one argon2 run, as a real one does.
@@ -168,9 +181,23 @@ pub async fn login(db: &Db, email: &str, password: &str) -> Result<String, Accou
         None => password::refuse_like_a_check(password).await,
     };
     match user {
-        Some(u) if signed_in => new_session(db, u.id).await,
+        Some(u) if signed_in => {
+            if two_factor::is_on(&db.read().await?, u.id).await? {
+                Ok(SignIn::Code(two_factor::challenge(db, u.id, now()).await?))
+            } else {
+                Ok(SignIn::Session(new_session(db, u.id).await?))
+            }
+        }
         _ => Err(AccountError::BadCredentials),
     }
+}
+
+/// The code step of a two-factor sign-in. Returns the raw session token.
+pub async fn login_code(db: &Db, challenge: &str, code: &str) -> Result<String, TwoFactorError> {
+    let user_id = two_factor::finish(db, challenge, code, now()).await?;
+    new_session(db, user_id)
+        .await
+        .map_err(|e| TwoFactorError::Other(e.into()))
 }
 
 async fn new_session(db: &Db, user_id: i64) -> Result<String, AccountError> {
@@ -232,6 +259,8 @@ pub async fn reinvite(
                 return Ok(None);
             };
             store::replace_invite(c, user_id, &hash, now() + INVITE_TTL_S).await?;
+            // A reset sign-in starts over: the user sets a password and may turn two-factor on.
+            two_factor::clear(c, user_id).await?;
             queue_invite_email(c, &email, &link).await?;
             Ok(Some(email))
         })
@@ -294,9 +323,11 @@ pub async fn is_active_tl(c: &turso::Connection, user_id: i64) -> anyhow::Result
 }
 
 /// Retention (US-32): runs inside the caller's write.
-/// Deletes up to `limit` sessions and `limit` invites; returns how many. The caller loops.
+/// Deletes up to `limit` each of sessions, invites and sign-in challenges; returns how many. The
+/// caller loops.
 pub async fn purge_expired(c: &turso::Connection, now: i64, limit: i64) -> anyhow::Result<u64> {
-    store::purge_expired(c, now, limit).await
+    Ok(store::purge_expired(c, now, limit).await?
+        + two_factor::purge_challenges(c, now, limit).await?)
 }
 
 #[cfg(test)]

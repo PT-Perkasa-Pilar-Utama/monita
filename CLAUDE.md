@@ -43,7 +43,7 @@ site/                 landing page and docs site builder    docs/guide/ user doc
 
 | Module | Owns tables | Interface others call |
 | --- | --- | --- |
-| accounts | users, invites, sessions | `CurrentUser` (refuses a supervisor's writes) and `AdminUser` (super admin, or a supervisor reading) extractors, `purge_expired` |
+| accounts | users, invites, sessions, recovery_codes, sign_in_challenges | `CurrentUser` (refuses a supervisor's writes) and `AdminUser` (super admin, or a supervisor reading) extractors, `purge_expired` |
 | projects | projects, project_icons, api_keys, project_secrets | `ApiProject` extractor, `find_for`, `can_view`, `owns_any` |
 | checks | monitors, heartbeats, check_results, pings, daily_summaries | `probe`, `heartbeat::admit` and `record`, `scheduler::spawn` |
 | incidents | incidents, incident_items, incident_sources, status_updates | `observe` (the only door for check results), `open_manual`, `post_update`, `states_for`, `source_deleted` |
@@ -136,7 +136,7 @@ A new e2e spec file must match a project in `e2e/lib/shards.ts`; `bun test lib` 
 | Violation | Why |
 | --- | --- |
 | `/admin/reset-state` reachable when `MONITA_ENV=prod` | SEC-17: the route must not be registered |
-| Raw API keys, session tokens, invite tokens or ref IDs stored or logged | Only SHA-256 hashes are stored (SEC-07, SEC-20). One exception: an outbox body holds an invite link until delivery or final failure, then it is cleared (spec 05 section 5.5). |
+| Raw API keys, session tokens, invite tokens, ref IDs, recovery codes or sign-in challenges stored or logged | Only SHA-256 hashes are stored (SEC-07, SEC-20). One exception: an outbox body holds an invite link until delivery or final failure, then it is cleared (spec 05 section 5.5). |
 | Ticket description or reporter shown on a public page | SEC-14 |
 | An update's author, or Monita's cause text, on a status page | SEC-21 |
 | A Triage ticket on the public board | Decision Q11 |
@@ -169,6 +169,7 @@ Each line was argued in review and decided. Do not reopen one without a new fact
 - [ ] Status update labels: investigating, identified, monitoring, resolved.
 - [ ] Ticket stages: triage, backlog, in_progress, done. Done needs close_reason fixed, wont_fix or duplicate. Triage is private. A reporter files with a ref ID; the team files from the board (`created_by`, no ref ID, no caps, no webhook). Ticket alerts (`ticket_alerts`) are apart from severities: owner digest on by default, own webhook off by default; the same webhook can also hear column moves (`webhook_moves`, off by default). A board column shows 25; Done links to a paged list.
 - [ ] Severity: critical (email + webhook by default), warning (email only). Each severity's webhook has a format (`json`, `discord`, `telegram`, `ntfy`, `pagerduty`; `notify::format`) and a `webhook_key` that a supervisor never sees.
+- [ ] Two-factor sign-in (Q19): optional per user; RFC 6238 SHA-1, 6 digits, 30 s, ±1 step, no code twice (`totp_step`). Login answers 200 `{challenge}` instead of 204; `/api/ui/login/code` finishes, 5 tries, 5 minutes, `login:` bucket. Own two-factor routes take `AccountUser` (a supervisor may write there). A super admin, Reset sign-in and `monita admin reset-password` turn it off.
 - [ ] Maintenance windows (Q18): scheduled, active, ended, from the times. During an active one a covered source's failure opens no incident and sends no alert; a monitor's streak keeps counting; a missed heartbeat waits until the window ends. Delete only scheduled; End now only active.
 - [ ] Monitor kinds: `http`, `tcp` (`host:port`), `dns` (host name, optional expected address); TCP and DNS keep none of the HTTP fields (`MonitorInput::for_kind`). Intervals: 30, 60, 180, 300 s. Default timeout 10 s, expected `2xx`.
 - [ ] Ref IDs: `POST /api/v1/ref-ids`, project from the API key, `single_use` flag. Caps: 5 per ref ID per day, 100 per project per day.

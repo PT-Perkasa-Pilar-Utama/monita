@@ -75,6 +75,7 @@ const MIGRATIONS: &[(i64, &str)] = &[
         26,
         include_str!("../../migrations/0026_maintenance_windows.sql"),
     ),
+    (27, include_str!("../../migrations/0027_two_factor.sql")),
 ];
 
 pub async fn run(db: &Db) -> anyhow::Result<()> {

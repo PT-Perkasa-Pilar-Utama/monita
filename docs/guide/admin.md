@@ -56,11 +56,25 @@ Open the menu on a row for one user. Or tick the boxes on several rows. The titl
 | Make super admin | The user manages every project, the users and the system settings. |
 | Make tech lead | The user keeps the projects they own and loses the admin pages from their next click. |
 | Make supervisor | The user sees everything and changes nothing. A user who owns a project cannot become one. |
-| Send a new invite | Monita emails a new sign-up link. The password and sessions stop working until the user follows it. |
+| Send a new invite | Monita emails a new sign-up link. The password, sessions and two-factor sign-in stop working until the user follows it. |
+| Turn off two-factor | For a user who lost the phone and the recovery codes. The user signs in with the password alone and can turn two-factor on again. The row shows **Two-factor** while it is on. |
 | Disable | Monita signs the user out now and blocks sign-in. Their projects stay. |
 | Enable | The user signs in with the old password. A user who never set one needs a new invite. |
 
 You cannot act on your own account. A disabled user can only be enabled. A batch skips the users it does not fit and says how many. Each action asks you to confirm.
+
+## Two-factor sign-in
+
+Each user can ask for a code after the password. Open the avatar menu and select **Two-factor sign-in**.
+
+1. Select **Turn on**.
+2. Select **Open in authenticator app** on your phone, or type the key into the app. Any app that reads time-based codes works, such as 1Password, Google Authenticator or Authy.
+3. Enter the 6-digit code the app shows and select **Turn on**.
+4. Save the 10 recovery codes. Monita shows them only once. Each code signs you in once without the phone.
+
+Sign-in then asks for the code after the password. Five wrong codes or five minutes send you back to the password. A code works once.
+
+To turn it off, enter a code or a recovery code on the same page. A super admin can turn it off for another user (see [Act on users](#act-on-users)). A super admin who lost the phone and the codes runs `monita admin reset-password` on the server. A supervisor can turn it on for their own account.
 
 ## Rate limits
 

@@ -353,7 +353,10 @@ export type PublicStatus = {
 
 export type PublicHistory = { project: PublicProject; incidents: PublicIncident[]; older: string | null };
 
-export type AdminUserRow = { id: number; email: string; role: "super_admin" | "tl" | "supervisor"; status: "active" | "invited" | "disabled"; created_at: number };
+export type AdminUserRow = { id: number; email: string; role: "super_admin" | "tl" | "supervisor"; status: "active" | "invited" | "disabled"; created_at: number; two_factor: boolean };
+
+/** The signed-in user's two-factor sign-in. */
+export type TwoFactorStatus = { on: boolean; codes_left: number };
 
 export type Invited = { email: string; link: string };
 

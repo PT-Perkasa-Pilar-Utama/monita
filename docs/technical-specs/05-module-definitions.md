@@ -4,20 +4,23 @@ Each module owns its tables (see [06](06-data-model.md)). Other modules use only
 
 ## 5.1 accounts
 
-**Responsibility:** users, invites, sessions, roles. Serves US-01 to US-04. Roles are `super_admin`, `tl` and `supervisor` ([09](09-authentication-and-authorization.md)).
+**Responsibility:** users, invites, sessions, roles, two-factor sign-in (`recovery_codes`, `sign_in_challenges`; v1.1 Q19). Serves US-01 to US-04. Roles are `super_admin`, `tl` and `supervisor` ([09](09-authentication-and-authorization.md)).
 
 **Interface:**
 
 | Item | Contract |
 | --- | --- |
 | `CurrentUser` extractor | Reads the `monita_session` cookie, looks up the hash in `sessions`, rejects expired or disabled users. Returns 401 under `/api/`; any other path redirects to `/login`. A supervisor gets 403 on any method but `GET` and `HEAD`. Every signed-in route that changes data takes this extractor, so this one check keeps the role read-only. |
+| `AccountUser` extractor | Like `CurrentUser` but lets a supervisor write. Only the user's own two-factor routes take it. |
+| `login(db, email, password) -> SignIn` | `Session(raw)` for the cookie, or `Code(raw challenge)` when two-factor is on. `login_code(db, challenge, code)` is the second step. `totp` holds the pure RFC 6238 code and `two_factor` the state machine (off, pending, on). |
+| `turn_off_two_factor(db, actor, user_id)` | A super admin turns another user's two-factor off. Never your own account. |
 | `AdminUser` extractor | `CurrentUser` that sees every project: a super admin, or a supervisor reading. Others get 403. A supervisor's writes never get this far. |
 | `User::is_admin`, `sees_all`, `is_read_only` | Super admin only; super admin or supervisor; supervisor only. Handlers branch on these, never on the role string. |
 | `is_active_tl(c, user_id) -> bool` | Used by `projects::reassign`. |
-| `purge_expired(c, now, limit)` | Retention: expired sessions and invites, and invites used more than 7 days ago. The caller loops. |
+| `purge_expired(c, now, limit)` | Retention: expired sessions, invites and sign-in challenges, and invites used more than 7 days ago. The caller loops. |
 | `create_super_admin(email, password)` | CLI only. Errors: `EmailTaken`. |
 | `invite(db, base_url, email, role) -> link` | Creates the user with no password and the given role, creates an invite and queues the email through `notify::queue_email`. `invite_tl` is the `Tl` case. Errors: `EmailTaken`, `InvalidEmail`, `Full` (500 accounts). |
-| `reinvite(db, base_url, user_id)` | A new invite for an active user. Deletes the user's older invites and all their sessions. |
+| `reinvite(db, base_url, user_id)` | A new invite for an active user. Deletes the user's older invites and all their sessions, and turns two-factor off. |
 | `set_role(db, actor, user_id, role)` | Promotes or demotes an active user. Never your own account. Refuses `Supervisor` for a project owner (`AdminError::OwnsProjects`, checked with `projects::owns_any` inside the write), because an owner must be able to change the project. |
 | `disable(db, actor, user_id)`, `enable(db, user_id)`, `reset_sign_in(db, base_url, actor, user_id)` | Disable signs the user out and drops their invites. Enable undoes it. `disable` and `reset_sign_in` refuse your own account (`AdminError::Yourself`). |
 

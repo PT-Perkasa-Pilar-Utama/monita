@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { BareLayout } from "@/layouts/BareLayout";
 import { PeekingMoni, Playground } from "@/components/brand/Playground";
-import { api, errorText } from "@/lib/api";
+import { api, ApiError, errorText } from "@/lib/api";
 
 /** Where to go after signing in: a path on this site only. */
 /** Where to go after sign-in: `?next=` only when it stays on this site. */
@@ -22,9 +22,14 @@ export function nextPath(next: string | null, origin: string): string {
   }
 }
 
+const goOn = (): void => window.location.assign(nextPath(new URLSearchParams(window.location.search).get("next"), window.location.origin));
+
 export function Login(): ReactElement {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  // Set after a right password while two-factor is on: the page then asks for the code.
+  const [challenge, setChallenge] = useState("");
+  const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -33,9 +38,24 @@ export function Login(): ReactElement {
     setBusy(true);
     setError("");
     try {
-      await api("/login", "POST", { email, password });
-      window.location.assign(nextPath(new URLSearchParams(window.location.search).get("next"), window.location.origin));
+      if (challenge) {
+        await api("/login/code", "POST", { challenge, code });
+        goOn();
+        return;
+      }
+      const step = await api<{ two_factor: true; challenge: string } | undefined>("/login", "POST", { email, password });
+      if (!step) {
+        goOn();
+        return;
+      }
+      setChallenge(step.challenge);
+      setBusy(false);
     } catch (err) {
+      // 410: five wrong codes or five minutes. Start again from the password.
+      if (err instanceof ApiError && err.status === 410) {
+        setChallenge("");
+        setCode("");
+      }
       setError(errorText(err));
       setBusy(false);
     }
@@ -47,7 +67,7 @@ export function Login(): ReactElement {
         <PeekingMoni className="absolute -top-[44px] right-8 h-[46px] w-[100px]" />
         <CardHeader>
           <CardTitle>
-            <h1 className="text-xl">Sign in</h1>
+            <h1 className="text-xl">{challenge ? "Enter your code" : "Sign in"}</h1>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -57,6 +77,23 @@ export function Login(): ReactElement {
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
+            {challenge ? (
+              <Field>
+                <FieldLabel htmlFor="code" required>
+                  Code
+                </FieldLabel>
+                <Input
+                  id="code"
+                  autoFocus
+                  autoComplete="one-time-code"
+                  aria-required
+                  className="font-mono"
+                  placeholder="The 6 digits in your authenticator app, or a recovery code"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                />
+              </Field>
+            ) : (
             <FieldGroup className="gap-5">
               <Field>
                 <FieldLabel htmlFor="email" required>
@@ -78,9 +115,10 @@ export function Login(): ReactElement {
                 />
               </Field>
             </FieldGroup>
+            )}
             <Button type="submit" disabled={busy} className="w-full">
               {busy && <Spinner data-icon="inline-start" />}
-              Sign in
+              {challenge ? "Verify" : "Sign in"}
             </Button>
           </form>
         </CardContent>

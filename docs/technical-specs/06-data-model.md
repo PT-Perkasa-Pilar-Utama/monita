@@ -33,6 +33,8 @@ erDiagram
   projects ||--o{ project_secrets : has
   projects ||--o{ changelog_entries : has
   projects ||--o{ maintenance_windows : has
+  users ||--o{ recovery_codes : has
+  users ||--o{ sign_in_challenges : has
   maintenance_windows ||--o{ maintenance_items : covers
   project_secrets ||--o{ monitors : signs_in
   users ||--o{ tickets : files
@@ -57,6 +59,13 @@ erDiagram
 | role | TEXT | no | | | `super_admin`, `tl`, `supervisor`. A supervisor sees what a super admin sees and changes nothing ([09](09-authentication-and-authorization.md)). Migration 0022 rebuilt the table to add the value. |
 | disabled_at | INTEGER | yes | | | |
 | created_at, updated_at | INTEGER | no | | | |
+| totp_secret | TEXT | yes | | | Base32. Set while two-factor sign-in is on; stored as entered (SEC-27). Migration 0027. |
+| totp_pending | TEXT | yes | | | A secret shown but not yet confirmed with a code |
+| totp_step | INTEGER | yes | | | The last 30-second step a code was used for; only later steps pass |
+
+`recovery_codes` (migration 0027): `id` PK, `user_id` FK users ON DELETE CASCADE, `code_hash` TEXT UNIQUE (SHA-256), `used_at` INTEGER NULL. Ten per user while two-factor is on.
+
+`sign_in_challenges` (migration 0027): `token_hash` TEXT PK (SHA-256), `user_id` FK users ON DELETE CASCADE, `expires_at` (5 minutes after a right password), `attempts` (wrong codes; the fifth deletes the row). Retention deletes expired rows.
 
 ### 6.3.2 invites
 

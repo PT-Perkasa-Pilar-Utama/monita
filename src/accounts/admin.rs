@@ -1,4 +1,5 @@
-//! What a super admin does to other accounts: change a role, disable, enable, reset sign-in.
+//! What a super admin does to other accounts: change a role, disable, enable, reset sign-in,
+//! turn two-factor off.
 //! Nobody acts on their own account here, and the actor must still be an active super admin when
 //! the change is written, so two admins acting on each other at once cannot leave none.
 
@@ -65,6 +66,25 @@ pub async fn disable(db: &Db, actor: i64, user_id: i64) -> Result<(), AdminError
                 return Ok(Err(AdminError::NotSuperAdmin));
             }
             Ok(Ok(store::disable_user(c, user_id, at).await?))
+        })
+        .await??;
+    found(changed)
+}
+
+/// Turns another user's two-factor sign-in off, for someone who lost their phone and their
+/// recovery codes. They sign in with the password alone and may turn it on again.
+pub async fn turn_off_two_factor(db: &Db, actor: i64, user_id: i64) -> Result<(), AdminError> {
+    not_self(actor, user_id)?;
+    let changed = db
+        .write(async |c| {
+            if !store::is_active_super_admin(c, actor).await? {
+                return Ok(Err(AdminError::NotSuperAdmin));
+            }
+            if store::active_email(c, user_id).await?.is_none() {
+                return Ok(Ok(false));
+            }
+            super::two_factor::clear(c, user_id).await?;
+            Ok(Ok(true))
         })
         .await??;
     found(changed)
