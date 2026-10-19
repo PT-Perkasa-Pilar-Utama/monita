@@ -2,6 +2,8 @@ import { useState } from "react";
 import type { ReactElement } from "react";
 import { Check, Copy } from "@/components/icons";
 import { Button } from "@/components/ui/button";
+import { highlight } from "@/lib/highlight";
+import type { Kind, Lang } from "@/lib/highlight";
 
 /** Copies `value`; if the clipboard is blocked, selects the element `targetId` so the user can. */
 export function CopyButton({ value, targetId, label = "Copy" }: { value: string; targetId: string; label?: string }): ReactElement {
@@ -35,8 +37,18 @@ export function CopyField({ id, value }: { id: string; value: string }): ReactEl
   );
 }
 
-/** A command or script to copy, under its title. It scrolls sideways rather than wrap. */
-export function CodeCopy({ id, title, code }: { id: string; title: string; code: string }): ReactElement {
+const TONE: Record<Kind, string | undefined> = {
+  plain: undefined,
+  comment: "text-code-comment italic",
+  string: "text-code-string",
+  keyword: "text-code-keyword",
+  flag: "text-code-flag",
+  number: "text-code-flag",
+};
+
+/** A command or script to copy, under its title, with its syntax colored. It scrolls sideways
+ * rather than wrap. */
+export function CodeCopy({ id, title, code, lang = "sh" }: { id: string; title: string; code: string; lang?: Lang }): ReactElement {
   return (
     <div className="overflow-hidden rounded-lg border bg-paper">
       <div className="flex items-center justify-between gap-3 border-b bg-card py-1.5 pr-1.5 pl-3">
@@ -44,7 +56,13 @@ export function CodeCopy({ id, title, code }: { id: string; title: string; code:
         <CopyButton value={code} targetId={id} />
       </div>
       <pre className="overflow-x-auto p-3 font-mono text-[13px] leading-relaxed">
-        <code id={id}>{code}</code>
+        <code id={id}>
+          {highlight(code, lang).map((t, n) => (
+            <span key={n} className={TONE[t.kind]}>
+              {t.text}
+            </span>
+          ))}
+        </code>
       </pre>
     </div>
   );

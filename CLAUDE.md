@@ -162,7 +162,7 @@ Each line was argued in review and decided. Do not reopen one without a new fact
 
 ## Context recovery checklist
 
-- [ ] An incident opens after 2 failed checks in a row; a missed heartbeat or `/ping/{token}/fail` opens it at once; the first pass closes an auto incident; manual incidents close only on a TL "Resolved" update. A TL may also resolve an auto incident by hand: it closes, the resolved alert goes out ("marked resolved by a tech lead"), and its source starts over.
+- [ ] An incident opens after a monitor's failed-check count in a row (1, 2, 3 or 5; default 2); a missed heartbeat or `/ping/{token}/fail` opens it at once; the first pass closes an auto incident; manual incidents close only on a TL "Resolved" update. A TL may also resolve an auto incident by hand: it closes, the resolved alert goes out ("marked resolved by a tech lead"), and its source starts over.
 - [ ] Status update labels: investigating, identified, monitoring, resolved.
 - [ ] Ticket stages: triage, backlog, in_progress, done. Done needs close_reason fixed, wont_fix or duplicate. Triage is private. A reporter files with a ref ID; the team files from the board (`created_by`, no ref ID, no caps, no webhook). Ticket alerts (`ticket_alerts`) are apart from severities: owner digest on by default, own webhook off by default. A board column shows 25; Done links to a paged list.
 - [ ] Severity: critical (email + webhook by default), warning (email only).

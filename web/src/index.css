@@ -34,6 +34,10 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-paper: var(--paper);
+  --color-code-comment: var(--code-comment);
+  --color-code-string: var(--code-string);
+  --color-code-keyword: var(--code-keyword);
+  --color-code-flag: var(--code-flag);
   --color-link: var(--link);
   /* State colours carry data: up, down, issue, waiting. Never the brand accent. */
   --color-up: var(--up);
@@ -74,6 +78,11 @@
   --input: color-mix(in srgb, #16171a 16%, transparent);
   --ring: color-mix(in srgb, #c4258f 45%, transparent);
   --paper: color-mix(in srgb, #16171a 3%, #ffffff);
+  /* Syntax colors for code snippets, GitHub light. Not states: never reuse up, down or issue. */
+  --code-comment: #6e7781;
+  --code-string: #0a3069;
+  --code-keyword: #cf222e;
+  --code-flag: #0550ae;
   --up: #23784e;
   --down: #d24545;
   --issue: #8a6300;
@@ -104,6 +113,10 @@
   --input: color-mix(in srgb, #f7f8f8 14%, transparent);
   --ring: color-mix(in srgb, #f25cbf 45%, transparent);
   --paper: color-mix(in srgb, #f7f8f8 3%, #0f1011);
+  --code-comment: #8b949e;
+  --code-string: #a5d6ff;
+  --code-keyword: #ff7b72;
+  --code-flag: #79c0ff;
   --up: #4cb782;
   --down: #eb5757;
   --issue: #f2c94c;
