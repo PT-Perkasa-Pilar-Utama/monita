@@ -352,7 +352,7 @@ async fn past_incidents_older_than_a_week_leave_the_page_for_the_history() {
 async fn incidents_turned_off_leave_uptime_and_hide_every_incident() {
     let app = TestApp::spawn("test").await;
     let tl = setup(&app).await;
-    let off = serde_json::json!({ "incidents": false, "known_issues": true, "report": true, "mine": true });
+    let off = serde_json::json!({ "incidents": false, "known_issues": true, "report": true });
     let res = app
         .api_send(
             reqwest::Method::PUT,

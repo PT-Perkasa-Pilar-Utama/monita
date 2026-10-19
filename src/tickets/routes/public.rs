@@ -96,7 +96,7 @@ pub(super) async fn mine(
     Body(f): Body<MineForm>,
 ) -> UiResult {
     let p = public_project(&state, &slug).await?;
-    if !p.pages.mine {
+    if !p.pages.report {
         return Err(UiError::NotFound);
     }
     let tickets = crate::tickets::mine(&state.db, &f.ref_id, Some(p.id)).await?;

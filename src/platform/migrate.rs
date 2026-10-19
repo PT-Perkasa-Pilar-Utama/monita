@@ -49,6 +49,10 @@ const MIGRATIONS: &[(i64, &str)] = &[
         18,
         include_str!("../../migrations/0018_fails_to_open_range.sql"),
     ),
+    (
+        19,
+        include_str!("../../migrations/0019_merge_report_and_mine.sql"),
+    ),
 ];
 
 pub async fn run(db: &Db) -> anyhow::Result<()> {

@@ -3,7 +3,7 @@ import { alertLine, allowlistSize, publicTabs } from "@/lib/projectFacts";
 import type { AlertRoute } from "@/lib/types";
 
 test("Uptime always leads the public tabs that are on", () => {
-  expect(publicTabs({ incidents: false, known_issues: true, report: false, mine: true })).toEqual(["Uptime", "Known issues", "My tickets"]);
+  expect(publicTabs({ incidents: false, known_issues: true, report: true })).toEqual(["Uptime", "Known issues", "Report a bug"]);
 });
 
 test("an alert line names who gets the alert, or says it is off", () => {

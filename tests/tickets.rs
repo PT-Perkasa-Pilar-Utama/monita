@@ -703,7 +703,7 @@ async fn a_public_tab_turned_off_answers_404_and_the_app_api_still_files() {
         .api_send(
             reqwest::Method::PUT,
             "/api/ui/projects/payments/public-pages",
-            json!({ "known_issues": true, "report": false, "mine": true }),
+            json!({ "known_issues": true, "report": false }),
             Some(&s.tl),
         )
         .await;
@@ -711,7 +711,7 @@ async fn a_public_tab_turned_off_answers_404_and_the_app_api_still_files() {
     let project = read(&app, "/api/ui/public/payments", None).await;
     assert_eq!(
         project["pages"],
-        json!({ "incidents": true, "known_issues": true, "report": false, "mine": true }),
+        json!({ "incidents": true, "known_issues": true, "report": false }),
         "a client that leaves out incidents keeps the tab"
     );
 
@@ -739,7 +739,11 @@ async fn a_public_tab_turned_off_answers_404_and_the_app_api_still_files() {
             None,
         )
         .await;
-    assert_eq!(mine.status(), 200);
+    assert_eq!(
+        mine.status(),
+        404,
+        "a reporter's own tickets live in the Report a bug tab, so they go with it"
+    );
 }
 
 #[tokio::test]

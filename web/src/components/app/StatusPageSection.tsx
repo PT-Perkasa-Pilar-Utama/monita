@@ -17,10 +17,9 @@ const TABS: CheckCard<TabKey>[] = [
   { key: "uptime", title: "Uptime", description: "Each public system with 90 days of bars. Always shown.", locked: true },
   { key: "incidents", title: "Incidents", description: "What is wrong now and every past incident, with your updates." },
   { key: "known_issues", title: "Known issues", description: "The tickets your team has sorted, by title only." },
-  { key: "report", title: "Report a bug", description: "A form for visitors. Your app can still file tickets through the API." },
-  { key: "mine", title: "My tickets", description: "A reporter looks up their own tickets by ref ID." },
+  { key: "report", title: "Report a bug", description: "A reporter enters their ref ID, files bugs and follows their own tickets. Your app can still file through the API." },
 ];
-const KEYS: (keyof PublicPages)[] = ["incidents", "known_issues", "report", "mine"];
+const KEYS: (keyof PublicPages)[] = ["incidents", "known_issues", "report"];
 
 /** The status page's address and which tabs visitors see. Uptime always shows. */
 export function StatusPageSection(): ReactElement {

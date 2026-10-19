@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 import { Link, Outlet, useLocation, useParams } from "react-router-dom";
 import { Mark } from "@/components/brand/Mark";
-import { Activity, AlertTriangle, Bug, ListChecks, Ticket } from "@/components/icons";
+import { Activity, AlertTriangle, Bug, ListChecks } from "@/components/icons";
 import { PageFrame } from "@/components/layout/Page";
 import { PageTabs } from "@/components/layout/PageTabs";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
@@ -24,7 +24,6 @@ export function PublicLayout(): ReactElement | null {
     { key: "incidents", to: `${base}/incidents`, label: "Incidents", icon: AlertTriangle, match: [`${base}/history`] },
     { key: "known_issues", to: `${base}/tickets`, label: "Known issues", icon: ListChecks },
     { key: "report", to: `${base}/report`, label: "Report a bug", icon: Bug },
-    { key: "mine", to: `${base}/mine`, label: "My tickets", icon: Ticket },
   ];
   // A tab the project turned off is not found by URL either; its JSON answers 404 too.
   const hidden = tabs.some((t) => !shown[t.key] && [t.to, ...(t.match ?? [])].some((to) => pathname.startsWith(to)));

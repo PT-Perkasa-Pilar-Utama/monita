@@ -12,7 +12,7 @@ export type Project = {
 };
 
 /** The public tabs besides Status, which always shows. */
-export type PublicPages = { incidents: boolean; known_issues: boolean; report: boolean; mine: boolean };
+export type PublicPages = { incidents: boolean; known_issues: boolean; report: boolean };
 
 export type Owner = { email: string; role: string };
 

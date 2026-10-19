@@ -23,7 +23,6 @@ import { Tickets } from "@/pages/project/Tickets";
 import { History } from "@/pages/public/History";
 import { Incidents as PublicIncidents } from "@/pages/public/Incidents";
 import { KnownIssues } from "@/pages/public/KnownIssues";
-import { Mine } from "@/pages/public/Mine";
 import { PastUptime } from "@/pages/public/PastUptime";
 import { Report } from "@/pages/public/Report";
 import { Status } from "@/pages/public/Status";
@@ -86,7 +85,7 @@ export default function App(): ReactElement {
         <Route path="history" element={<History />} />
         <Route path="tickets" element={<KnownIssues />} />
         <Route path="report" element={<Report />} />
-        <Route path="mine" element={<Mine />} />
+        <Route path="mine" element={<Navigate to="../report" replace />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>
