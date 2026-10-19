@@ -161,6 +161,16 @@ pub async fn insert_ping(
     Ok(())
 }
 
+/// A fresh deadline from `at`, as if the job had pinged then, without counting a ping.
+pub async fn rearm(c: &Connection, id: i64, at: i64) -> anyhow::Result<()> {
+    c.execute(
+        "UPDATE heartbeats SET deadline_at = ?1 + period_s + grace_s WHERE id = ?2",
+        (at, id),
+    )
+    .await?;
+    Ok(())
+}
+
 pub async fn any_missed(c: &Connection, at: i64) -> anyhow::Result<bool> {
     let n = crate::platform::db::query_i64(
         c,

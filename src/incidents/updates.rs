@@ -13,7 +13,7 @@ pub fn allowed_labels(_origin: &str, closed: bool) -> &'static [&'static str] {
 }
 
 /// A tech lead's Resolved on an open automatic incident. The source starts over: a monitor needs
-/// two new failed checks to open the next incident, and a heartbeat needs a ping and then a miss.
+/// two new failed checks to open the next incident, and a heartbeat gets a new deadline from now.
 /// Returns the event, so whoever heard "opened" also hears the end; `None` when the source's
 /// alerts are off, as they were when it opened.
 async fn resolve_by_hand(
@@ -24,6 +24,11 @@ async fn resolve_by_hand(
 ) -> anyhow::Result<Option<Event>> {
     let (started, severity) = store::release_auto(c, incident_id, now).await?;
     let item = store::items(c, incident_id).await?.into_iter().next();
+    if let Some(it) = &item
+        && it.kind == super::SourceKind::Heartbeat
+    {
+        crate::checks::rearm_heartbeat(c, it.id, now).await?;
+    }
     if let Some(it) = &item
         && !crate::checks::alert_on(c, it.kind, it.id).await?
     {

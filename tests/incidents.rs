@@ -831,3 +831,41 @@ async fn a_tech_lead_resolves_an_automatic_incident_and_its_monitor_starts_over(
         "two failures open a new one"
     );
 }
+
+#[tokio::test]
+async fn a_heartbeat_resolved_by_hand_gets_a_new_deadline() {
+    let app = TestApp::spawn("test").await;
+    let tl = setup(&app).await;
+    let input = HeartbeatInput {
+        name: "nightly".into(),
+        ..HeartbeatInput::default()
+    };
+    heartbeat::create(&app.state.db, 1, &input).await.unwrap();
+    app.state
+        .db
+        .write(async |c| {
+            c.execute("UPDATE heartbeats SET deadline_at = 0", ())
+                .await?;
+            Ok(())
+        })
+        .await
+        .unwrap();
+    let open = "SELECT count(*) FROM incidents WHERE resolved_at IS NULL";
+    assert_eq!(wait_for(&app, open, 1).await, 1);
+
+    let body = json!({ "label": "resolved", "message": "Moved to the new scheduler." });
+    let path = "/api/ui/projects/payments/incidents/1/updates";
+    assert_eq!(app.api_post(path, body, Some(&tl)).await.status(), 204);
+
+    let list = json_of(
+        app.api_get("/api/ui/projects/payments/heartbeats", Some(&tl))
+            .await,
+    )
+    .await;
+    let hb = &list["data"]["heartbeats"][0];
+    assert!(
+        hb["deadline_at"].as_i64().unwrap() > monita::platform::now(),
+        "watched again: {hb}"
+    );
+    assert_eq!(hb["due"]["late"], false);
+}

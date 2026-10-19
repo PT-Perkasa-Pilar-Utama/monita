@@ -281,6 +281,12 @@ pub async fn source_names(
     store::source_names(c, project_id).await
 }
 
+/// After a tech lead resolves a heartbeat's incident by hand: a new deadline from `now`, so a job
+/// that stays silent opens the next incident one period plus grace later.
+pub async fn rearm_heartbeat(c: &turso::Connection, id: i64, now: i64) -> anyhow::Result<()> {
+    store::heartbeats::rearm(c, id, now).await
+}
+
 /// Whether a source's failures alert, on the caller's connection. A deleted source counts as on.
 pub async fn alert_on(
     c: &turso::Connection,
