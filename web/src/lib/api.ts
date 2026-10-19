@@ -15,6 +15,14 @@ export class ApiError extends Error {
   }
 }
 
+/** The error once the user changes `field`: that field's message goes, and with no field left
+ * the whole error goes, since a form shows the top message under a field when none is named. */
+export function dropField(error: ApiError, field: string): ApiError | null {
+  if (!(field in error.fields)) return error;
+  const { [field]: _, ...rest } = error.fields;
+  return Object.keys(rest).length === 0 ? null : new ApiError(error.status, error.code, error.message, rest);
+}
+
 type Method = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 /** Calls `/api/ui${path}` and returns `data`. A 401 sends the reader to sign in. */

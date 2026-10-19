@@ -13,7 +13,7 @@ import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
-import { api, ApiError, errorText } from "@/lib/api";
+import { api, ApiError, dropField, errorText } from "@/lib/api";
 import { useProject } from "@/lib/project";
 import { ago, duration, nowSecs, utc } from "@/lib/time";
 import type { IncidentDetail, UpdateLabel } from "@/lib/types";
@@ -96,7 +96,10 @@ function PostUpdate({ path, labels, auto, onPosted }: { path: string; labels: Up
                 placeholder="What changed, and what happens next."
                 className="min-h-40"
                 value={message}
-                onChange={(e) => setMessage(e.target.value)}
+                onChange={(e) => {
+                  setMessage(e.target.value);
+                  setError((er) => er && dropField(er, "message"));
+                }}
               />
               {messageError && <FieldError>{messageError}</FieldError>}
             </Field>

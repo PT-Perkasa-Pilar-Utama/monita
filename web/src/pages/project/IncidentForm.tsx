@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
-import { api, ApiError, errorText } from "@/lib/api";
+import { api, ApiError, dropField, errorText } from "@/lib/api";
 import { countLabel } from "@/lib/filter";
 import { pickItems } from "@/lib/incidentItems";
 import { useProject } from "@/lib/project";
@@ -111,7 +111,11 @@ function IncidentFormBody({ onClose }: { onClose: () => void }): ReactElement {
       setBusy(false);
     }
   };
-  const toggle = (value: string, on: boolean): void => setItems((xs) => (on ? [...xs, value] : xs.filter((x) => x !== value)));
+  const clear = (field: string): void => setError((e) => e && dropField(e, field));
+  const toggle = (value: string, on: boolean): void => {
+    setItems((xs) => (on ? [...xs, value] : xs.filter((x) => x !== value)));
+    clear("items");
+  };
   const formError = error && Object.keys(error.fields).length === 0 ? error.message : undefined;
 
   return (
@@ -139,7 +143,10 @@ function IncidentFormBody({ onClose }: { onClose: () => void }): ReactElement {
                     <FieldLabel htmlFor="i-title" required>
                       Title
                     </FieldLabel>
-                    <Input id="i-title" autoFocus maxLength={120} aria-required aria-invalid={err("title") ? true : undefined} value={title} onChange={(e) => setTitle(e.target.value)} />
+                    <Input id="i-title" autoFocus maxLength={120} aria-required aria-invalid={err("title") ? true : undefined} value={title} onChange={(e) => {
+                      setTitle(e.target.value);
+                      clear("title");
+                    }} />
                     {err("title") && <FieldError>{err("title")}</FieldError>}
                   </Field>
                   <ItemPicker choices={choices.data} chosen={items} onToggle={toggle} error={err("items")} />
@@ -155,7 +162,10 @@ function IncidentFormBody({ onClose }: { onClose: () => void }): ReactElement {
                       aria-invalid={err("message") ? true : undefined}
                       placeholder="What users see, and what you know so far."
                       value={message}
-                      onChange={(e) => setMessage(e.target.value)}
+                      onChange={(e) => {
+                        setMessage(e.target.value);
+                        clear("message");
+                      }}
                     />
                     {err("message") && <FieldError>{err("message")}</FieldError>}
                   </Field>
