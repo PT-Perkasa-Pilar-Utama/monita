@@ -14,6 +14,9 @@ export type Me = {
   sees_all: boolean;
   /** Reads only: a supervisor. The server refuses their writes; pages hide the controls. */
   read_only: boolean;
+  /** Monita's public address (`MONITA_BASE_URL`). Links and examples for people outside use it,
+   * not the address this browser happened to use. */
+  base_url: string;
   utc_offset_min: number;
 };
 

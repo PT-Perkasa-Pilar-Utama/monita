@@ -6,6 +6,7 @@ import { Download } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useProject } from "@/lib/project";
+import { useMe } from "@/lib/session";
 import { statusTemplate } from "@/lib/statusTemplate";
 
 function download(origin: string, slug: string): void {
@@ -21,7 +22,7 @@ function download(origin: string, slug: string): void {
  * it, a request and a response, plus a template to start from. */
 export function CustomStatusSection(): ReactElement {
   const { project: p } = useProject();
-  const origin = window.location.origin;
+  const { base_url: origin } = useMe();
   const docs = endpointDocs(origin, p.slug, p.name);
   return (
     <SettingsSection

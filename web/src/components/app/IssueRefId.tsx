@@ -10,11 +10,13 @@ import { Field, FieldLabel } from "@/components/ui/field";
 import { Spinner } from "@/components/ui/spinner";
 import { api, errorText } from "@/lib/api";
 import { useProject } from "@/lib/project";
+import { useMe } from "@/lib/session";
 import { toast } from "sonner";
 
 /** Issues a ref ID from the board, for someone who reports a bug outside the app. Shown once. */
 export function IssueRefId(): ReactElement {
   const { project: p } = useProject();
+  const { base_url: origin } = useMe();
   const [open, setOpen] = useState(false);
   const [singleUse, setSingleUse] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -30,7 +32,7 @@ export function IssueRefId(): ReactElement {
     }
   };
   const where = p.pages.report
-    ? `They enter it on the Ticket page at ${window.location.origin}/status/${p.slug}/ticket to file bugs and check their tickets.`
+    ? `They enter it on the Ticket page at ${origin}/status/${p.slug}/ticket to file bugs and check their tickets.`
     : "The Ticket tab is turned off on the status page, so they can use it only through your app.";
   return (
     <Dialog

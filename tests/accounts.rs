@@ -16,6 +16,7 @@ async fn super_admin_from_the_cli_can_sign_in() {
     let me = json_of(me).await;
     assert_eq!(me["data"]["email"], "admin@company.co.id");
     assert_eq!(me["data"]["role"], "super_admin");
+    assert_eq!(me["data"]["base_url"], BASE_URL);
 }
 
 #[tokio::test]

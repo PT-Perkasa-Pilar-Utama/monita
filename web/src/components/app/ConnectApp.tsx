@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useMe } from "@/lib/session";
 import type { ReactElement, ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Check, Copy, Plug } from "@/components/icons";
@@ -40,7 +41,7 @@ function Step({ n, title, children }: { n: number; title: string; children: Reac
 
 /** How a project's own app files tickets: the three calls, written for this project. */
 export function ConnectApp({ slug }: { slug: string }): ReactElement {
-  const origin = window.location.origin;
+  const { base_url: origin } = useMe();
   const settings = `/projects/${slug}/settings`;
   return (
     <Sheet>

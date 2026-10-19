@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { api, errorText } from "@/lib/api";
 import { useProject } from "@/lib/project";
+import { useMe } from "@/lib/session";
 import type { PublicPages } from "@/lib/types";
 import { toast } from "sonner";
 
@@ -25,6 +26,7 @@ const KEYS: (keyof PublicPages)[] = ["incidents", "known_issues", "report", "cha
 /** The status page's address and which tabs visitors see. Uptime always shows. */
 export function StatusPageSection(): ReactElement {
   const { project: p, reload } = useProject();
+  const { base_url: origin } = useMe();
   const [pages, setPages] = useState<PublicPages>(p.pages);
   const [busy, setBusy] = useState(false);
   const changed = KEYS.some((k) => pages[k] !== p.pages[k]);
@@ -47,7 +49,7 @@ export function StatusPageSection(): ReactElement {
       description="Choose what people see on your status page. Only the monitors and heartbeats you mark as public appear there."
       footerNote={
         <a href={`/status/${p.slug}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-mono break-all text-link underline-offset-4 hover:underline">
-          {window.location.origin}/status/{p.slug}
+          {origin}/status/{p.slug}
           <ExternalLink className="size-3.5 shrink-0" />
         </a>
       }

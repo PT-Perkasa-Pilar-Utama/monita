@@ -50,6 +50,9 @@ pub struct Me {
     pub sees_all: bool,
     /// Reads only: a supervisor.
     pub read_only: bool,
+    /// `MONITA_BASE_URL`: the address people outside use, for links and examples a page shows.
+    /// It can differ from the address the browser used, as behind a proxy.
+    pub base_url: String,
     /// Minutes east of UTC that pages show times in.
     pub utc_offset_min: i64,
 }
@@ -61,6 +64,7 @@ async fn me(State(state): State<AppState>, CurrentUser(user): CurrentUser) -> Ui
         is_admin: user.is_admin(),
         sees_all: user.sees_all(),
         read_only: user.is_read_only(),
+        base_url: state.config.base_url.clone(),
         role: user.role.as_str(),
         email: user.email,
     }))
