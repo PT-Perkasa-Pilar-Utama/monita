@@ -17,7 +17,9 @@
   };
   document.addEventListener("click", (e) => {
     if (!(e.target instanceof Element)) return;
-    const theme = e.target.closest('button[aria-label^="Switch to the"]');
+    // The public pages have their own theme button; signed-in pages keep it in the account menu,
+    // which needs the app's script, so the banner carries one too.
+    const theme = e.target.closest('button[aria-label^="Switch to the"], [data-demo-theme]');
     if (theme) {
       const dark = document.documentElement.classList.toggle("dark");
       document.documentElement.classList.toggle("light", !dark);

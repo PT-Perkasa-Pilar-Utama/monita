@@ -126,3 +126,30 @@ UNION ALL
 SELECT 'heartbeat', h.id, date(unixepoch() - n.i * 86400, 'unixepoch'), 86400 / h.period_s,
   86400 / h.period_s - (CASE WHEN h.id = 2 AND n.i % 9 = 0 THEN 1 ELSE 0 END), 0, NULL
 FROM heartbeats h, n;
+
+-- What each project is, where people use it, and the public tabs it shows.
+UPDATE projects SET description = 'The site and app our customers sign in to.', homepage_url = 'https://portal.example.com', show_changelog = 1 WHERE id = 1;
+UPDATE projects SET description = 'Checkout, card payments and the bank callbacks behind them.', homepage_url = 'https://pay.example.com', show_changelog = 1 WHERE id = 2;
+UPDATE projects SET description = 'Nightly loads and the query gateway for reports.', homepage_url = 'https://dwh.example.com' WHERE id = 3;
+
+-- A supervisor reads every project and the admin pages, and changes nothing.
+INSERT INTO users (id, email, role, password_hash, created_at) VALUES
+  (4, 'supervisor@monita.test', 'supervisor', '$argon2id$v=19$m=19456,t=2,p=1$H5MnCFM1Yf3jchQQBWqLsQ$IJOegx6p9PvqbCdN8pb0xnxn0XeWAa73WOozfHbzl9U', unixepoch() - 30 * 86400);
+
+-- The bank callback signs in with a sealed secret and sends a POST with a header.
+INSERT INTO project_secrets (id, project_id, name, value, created_at, updated_at) VALUES
+  (1, 2, 'BANK_CALLBACK_TOKEN', 'demo-not-a-real-token', unixepoch() - 80 * 86400, unixepoch() - 80 * 86400);
+UPDATE monitors SET method = 'POST', headers = 'X-Env: production', body = '{"ping": true}', auth_kind = 'bearer', auth_secret_id = 1 WHERE id = 6;
+
+-- Releases for the Changelog tabs, newest first on the public page.
+INSERT INTO changelog_entries (project_id, version, released_on, title, sections, created_at, updated_at) VALUES
+  (1, '2.4.0', date(unixepoch() - 3 * 86400, 'unixepoch'), 'Sign in with your company account',
+    '[{"tag":"Added","items":["Sign in with your company Google or Microsoft account.","A remember-me box on the sign-in page."]},{"tag":"Fixed","items":["The login page no longer times out under load."]}]', unixepoch() - 3 * 86400, unixepoch() - 3 * 86400),
+  (1, '2.3.1', date(unixepoch() - 18 * 86400, 'unixepoch'), 'Faster invoices page',
+    '[{"tag":"Changed","items":["The invoices page loads in under a second, even with years of invoices."]},{"tag":"Fixed","items":["Downloaded invoices show the right tax number."]}]', unixepoch() - 18 * 86400, unixepoch() - 18 * 86400),
+  (1, '2.3.0', date(unixepoch() - 41 * 86400, 'unixepoch'), 'A dark theme',
+    '[{"tag":"Added","items":["A dark theme that follows your system setting.","Keyboard shortcuts for search and new tickets."]},{"tag":"Removed","items":["The old print view. Use Download PDF instead."]}]', unixepoch() - 41 * 86400, unixepoch() - 41 * 86400),
+  (2, '5.1.0', date(unixepoch() - 6 * 86400, 'unixepoch'), 'QRIS payments',
+    '[{"tag":"Added","items":["Customers can pay by QRIS at checkout."]},{"tag":"Changed","items":["Card payments retry once when the bank does not answer in time."]}]', unixepoch() - 6 * 86400, unixepoch() - 6 * 86400),
+  (2, '5.0.2', date(unixepoch() - 27 * 86400, 'unixepoch'), 'Bank callback fixes',
+    '[{"tag":"Fixed","items":["A late bank callback no longer marks a paid order as failed.","Refunds show in the order history at once."]}]', unixepoch() - 27 * 86400, unixepoch() - 27 * 86400);

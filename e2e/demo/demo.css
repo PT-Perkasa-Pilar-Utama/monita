@@ -15,13 +15,25 @@
   font-size: 13px;
   line-height: 1.4;
   text-align: center;
+  white-space: nowrap;
 }
+@media (max-width: 640px) { .demo-banner { width: calc(100vw - 32px); white-space: normal; } }
 .demo-banner strong {
   margin-right: 8px;
   color: var(--primary);
 }
 .demo-banner a {
   color: var(--foreground);
+}
+.demo-banner__theme {
+  margin-left: 10px;
+  padding: 2px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--background);
+  color: var(--foreground);
+  font: inherit;
+  cursor: pointer;
 }
 .demo-banner.is-flash {
   border-color: var(--primary);

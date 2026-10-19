@@ -136,8 +136,9 @@ async function crawl(context: BrowserContext): Promise<Map<string, string>> {
   return pages;
 }
 
-const BANNER = `<aside class="demo-banner" role="note"><strong>Demo</strong> A read-only snapshot of Monita on sample data.
-<a href="https://github.com/PT-Perkasa-Pilar-Utama/monita#install">Install it</a> to add monitors and post updates.</aside>`;
+const BANNER = `<aside class="demo-banner" role="note"><strong>Demo</strong> A read-only snapshot on sample data.
+<a href="https://github.com/PT-Perkasa-Pilar-Utama/monita#install">Install Monita</a> to use your own.
+<button type="button" class="demo-banner__theme" data-demo-theme>Switch theme</button></aside>`;
 
 async function write(pages: Map<string, string>, cookie: string): Promise<void> {
   // site/build.ts owns the rest of OUT; the demo replaces only its own folder.
