@@ -21,7 +21,7 @@ A supervisor reads and never writes.
 - Every request that changes something answers 403. Only `GET` and `HEAD` work.
 - The pages hide the **New**, **Edit**, **Delete** and **Save** controls.
 - A heartbeat page shows no ping URL. With it, a supervisor could keep a dead job alive.
-- A monitor shows header names but `(hidden)` for the values. It shows `(hidden)` for the request body and the sign-in user name.
+- A monitor shows header names but `(hidden)` for the values. It shows `(hidden)` for the request body, the sign-in user name and anything after `?` in the URL, where tokens such as `?apikey=` live. The monitor page says so.
 - An alert setting shows `(hidden)` for a webhook URL, because the URL works as a credential.
 - Secret values never show to anyone.
 
@@ -136,7 +136,7 @@ A badge reads **Sending** or **Log only**. The section shows the mail server, th
 - The offset is fixed. Monita does not follow daylight saving. Change it by hand when your clock changes.
 - Charts, "since" times, the Today figure and the 90 days on the status page start at midnight in this offset.
 - Monita stores times in UTC. The daily summaries and the month chart still count UTC days. At UTC+7 a month-chart day runs 07:00 to 07:00.
-- Ticket daily caps, data retention and the daily digest hour follow UTC.
+- Ticket daily caps, data retention and the daily digest hour follow UTC. The page says when the digest goes out, in UTC and in the offset you pick. Change the hour with `MONITA_DIGEST_UTC_HOUR`.
 
 ## System information
 

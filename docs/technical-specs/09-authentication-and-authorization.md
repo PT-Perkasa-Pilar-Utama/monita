@@ -49,7 +49,7 @@ Roles: `super_admin`, `tl` and `supervisor`. A supervisor sees every project and
 
 A TL who is not the owner gets 404 on another project's admin pages, so project names do not leak.
 
-What a supervisor does not see: a heartbeat's ping URL, monitor header values, the request body, the sign-in user name, and the alert and ticket webhook URLs (SEC-22). A sealed secret's value is never shown to anyone (SEC-23).
+What a supervisor does not see: a heartbeat's ping URL, monitor header values, the request body, the sign-in user name, a monitor URL's query (Q23), and the alert and ticket webhook URLs (SEC-22). A sealed secret's value is never shown to anyone (SEC-23).
 
 Rules for roles:
 
