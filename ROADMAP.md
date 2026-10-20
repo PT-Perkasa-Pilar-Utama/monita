@@ -19,7 +19,7 @@ For released work, see [CHANGELOG.md](CHANGELOG.md).
 - Maintenance windows ([#11](https://github.com/PT-Perkasa-Pilar-Utama/monita/issues/11)).
 - Two-factor sign-in ([#12](https://github.com/PT-Perkasa-Pilar-Utama/monita/issues/12)).
 
-[docs/followups.md](docs/followups.md) holds the smaller known gaps.
+Smaller known gaps are [GitHub issues](https://github.com/PT-Perkasa-Pilar-Utama/monita/issues).
 
 ## Later, with a decision first
 

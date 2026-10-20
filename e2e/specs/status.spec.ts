@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { apiHeartbeat, apiMonitor, apiProject } from "../lib/api";
+import { apiHeartbeat, apiMonitor, apiProject, apiSend } from "../lib/api";
 import { createProject } from "../lib/project";
 import { authFile } from "../lib/roles";
 
@@ -70,6 +70,37 @@ test.describe("the public pages", () => {
     await v.getByRole("combobox", { name: "System" }).click();
     await v.getByRole("option", { name: "nightly-settlement" }).click();
     await expect(v).toHaveURL(/[?&]kind=heartbeat/);
+    await visitor.close();
+  });
+  test("Past uptime moves three months back for a system that is old enough, and forward again", async ({ browser }) => {
+    // seeds/qa.sql: project qa-archive has a public monitor made 200 days ago.
+    const visitor = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+    const v = await visitor.newPage();
+    await v.goto("/status/qa-archive/uptime");
+    const earlier = v.getByRole("button", { name: "Earlier months" });
+    const later = v.getByRole("button", { name: "Later months" });
+    await expect(later).toBeDisabled();
+    await earlier.click();
+    await expect(v).toHaveURL(/[?&]to=\d+/);
+    await expect(later).toBeEnabled();
+    await later.click();
+    await expect(later).toBeDisabled();
+    await visitor.close();
+  });
+
+  test("a month with more than three resolved incidents shows three, then all of them", async ({ page, browser }) => {
+    const slug = await apiProject(page, "Busy month");
+    const monitor = await apiMonitor(page, slug, { name: "Checkout API" });
+    for (let n = 1; n <= 4; n++) {
+      const { id } = await apiSend<{ id: number }>(page, "POST", `/api/ui/projects/${slug}/incidents`, { title: `Slow checkout ${n}`, items: [`monitor:${monitor}`], severity: "warning", message: "Looking into it." }, 201);
+      await apiSend(page, "POST", `/api/ui/projects/${slug}/incidents/${id}/updates`, { label: "resolved", message: "Fixed." }, 204);
+    }
+    const visitor = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+    const v = await visitor.newPage();
+    await v.goto(`/status/${slug}/incidents`);
+    await expect(v.getByText(/^Slow checkout \d$/)).toHaveCount(3);
+    await v.getByRole("button", { name: "Show all 4 incidents" }).click();
+    await expect(v.getByText(/^Slow checkout \d$/)).toHaveCount(4);
     await visitor.close();
   });
 });

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { apiProject } from "../lib/api";
+import { apiProject, apiSend } from "../lib/api";
 import { createProject } from "../lib/project";
 import { authFile } from "../lib/roles";
 
@@ -100,4 +100,32 @@ test("the team files a ticket, issues a ref ID, drags it across to Done, and Don
   await page.goto(`/projects/${slug}/tickets/done`);
   await expect(page.getByRole("heading", { name: "Done tickets" })).toBeVisible();
   await expect(page.getByText("Export button stays grey")).toBeVisible();
+});
+
+test("a board column shows 25 tickets and loads the rest with Show more", async ({ page }) => {
+  const slug = await apiProject(page, "Backlog heavy");
+  for (let n = 1; n <= 26; n++) {
+    await apiSend(page, "POST", `/api/ui/projects/${slug}/tickets`, { title: `Bulk ${String(n).padStart(2, "0")}`, description: "Filed by the team.", stage: "backlog" }, 201);
+  }
+  await page.goto(`/projects/${slug}/tickets`);
+  await expect(page.getByRole("link", { name: /Bulk 26/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Bulk 01/ })).toHaveCount(0);
+  await page.getByRole("button", { name: "Show more" }).click();
+  await expect(page.getByRole("link", { name: /Bulk 01/ })).toBeVisible();
+});
+
+test("a reported ticket names the end of its ref ID, which the tech lead can revoke", async ({ page }) => {
+  const slug = await apiProject(page, "Ref line");
+  const { key } = await apiSend<{ key: string }>(page, "POST", `/api/ui/projects/${slug}/keys`, { name: "backend" }, 201);
+  const issued = await page.request.post("/api/v1/ref-ids", { headers: { authorization: `Bearer ${key}` }, data: {} });
+  const refId = (await issued.json()).data.ref_id as string;
+  const filed = await page.request.post("/api/v1/tickets", { data: { ref_id: refId, title: "Export hangs", description: "The CSV export never finishes." } });
+  expect(filed.status()).toBe(201);
+  await page.goto(`/projects/${slug}/tickets`);
+  await page.getByRole("link", { name: /Export hangs/ }).click();
+  await expect(page.getByText(`rf_…${refId.slice(-4)}`)).toBeVisible();
+  await expect(page.getByText("Active", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: /Revoke/ }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: /Revoke/ }).click();
+  await expect(page.getByText("Revoked", { exact: true })).toBeVisible();
 });

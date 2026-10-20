@@ -139,3 +139,19 @@ test("a maintenance window holds back the incident until the tech lead ends it",
   await page.goto(`/projects/${slug}/incidents`);
   await expect(page.getByRole("link", { name: "nightly-settlement reported a failure" })).toBeVisible();
 });
+
+test("a tech lead resolves an incident Monita opened, and it closes at once", async ({ page }) => {
+  const { slug, pingUrl } = await projectWithHeartbeat(page);
+  expect((await page.request.post(`${pingUrl}/fail`, { data: "disk full" })).status()).toBe(200);
+  await page.goto(`/projects/${slug}/incidents`);
+  await page.getByRole("link", { name: "nightly-settlement reported a failure" }).click();
+  await expect(page.locator("#state")).toContainText("Open");
+  await page.getByRole("button", { name: "Post update" }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("radio", { name: "Resolved" }).click();
+  await expect(dialog.getByText("Closes it now and tells the alert recipients.", { exact: false })).toBeVisible();
+  await dialog.getByLabel("Message").fill("The disk was cleaned up by hand.");
+  await dialog.getByRole("button", { name: "Post update" }).click();
+  await expect(page.locator("#state")).toContainText("Resolved");
+  await expect(page.locator('[data-update="tech-lead"]')).toHaveText("The disk was cleaned up by hand.");
+});

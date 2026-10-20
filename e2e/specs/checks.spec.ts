@@ -131,3 +131,15 @@ test("a list sorts by a heading click, keeps the order in the URL, and a row cli
   await page.locator("tbody tr").filter({ hasText: "Alpha" }).locator("td").nth(1).click();
   await expect(page.getByRole("heading", { name: "Alpha" })).toBeVisible();
 });
+
+test("a heartbeat page shows its four numbers: the streak, the next ping, the last ping and incidents", async ({ page }) => {
+  const slug = await apiProject(page, "Stats");
+  const { id, pingUrl } = await apiHeartbeat(page, slug);
+  await page.goto(`/projects/${slug}/heartbeats/${id}`);
+  for (const label of ["Created", "Next ping due", "Last ping", "Incidents, 30 days"]) await expect(page.getByText(label, { exact: true })).toBeVisible();
+  await expect(page.getByText("the job has not called yet", { exact: true })).toBeVisible();
+  expect((await page.request.get(pingUrl)).status()).toBe(200);
+  await page.reload();
+  for (const label of ["Up for", "Next ping due", "Last ping", "Incidents, 30 days"]) await expect(page.getByText(label, { exact: true })).toBeVisible();
+  await expect(page.getByText("the job reported success", { exact: true })).toBeVisible();
+});
