@@ -66,10 +66,14 @@ With Docker, on Windows and macOS too, try it on a laptop with:
 ```sh
 docker volume create monita-data
 docker run --rm -it -v monita-data:/data -e MONITA_ENV=dev ghcr.io/pt-perkasa-pilar-utama/monita:1 admin create --email you@company.co.id
-docker run -d --name monita -p 127.0.0.1:7466:7466 -v monita-data:/data -e MONITA_ENV=dev ghcr.io/pt-perkasa-pilar-utama/monita:1
 ```
 
-Then open `http://localhost:7466`. The [install guide](https://pt-perkasa-pilar-utama.github.io/monita/docs/install/#with-docker) has a Compose file for a server.
+The last command asks for a password of at least 12 characters. Then start Monita and open
+`http://localhost:7466`:
+
+```sh
+docker run -d --name monita -p 127.0.0.1:7466:7466 -v monita-data:/data -e MONITA_ENV=dev ghcr.io/pt-perkasa-pilar-utama/monita:1
+``` The [install guide](https://pt-perkasa-pilar-utama.github.io/monita/docs/install/#with-docker) has a Compose file for a server.
 
 `monita setup` asks for the public URL, the mail server and the first super admin.
 `monita service install` makes Monita start now and after every reboot.

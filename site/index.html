@@ -96,9 +96,10 @@ sudo monita service install</code></pre>
 <pre class="code"><code class="language-sh">curl -fsSLO https://github.com/PT-Perkasa-Pilar-Utama/monita/releases/latest/download/monita_darwin_arm64.tar.gz
 tar -xzf monita_darwin_arm64.tar.gz
 export MONITA_ENV=dev
-./monita admin create --email you@company.co.id
-./monita serve</code></pre>
-        <p>Then open <code>http://localhost:7466</code> and sign in. The first command asks for a password.</p>
+./monita admin create --email you@company.co.id</code></pre>
+        <p>The last command asks for a password of at least 12 characters. Then start Monita:</p>
+<pre class="code"><code class="language-sh">./monita serve</code></pre>
+        <p>Open <code>http://localhost:7466</code> and sign in.</p>
       </div>
       <div class="lp-tabs__panel" role="tabpanel" id="install-panel-2" aria-labelledby="install-tab-2" hidden>
         <p>Try Monita on Windows, in PowerShell. On an Arm PC, use <code>monita_windows_arm64.zip</code>. The binary is not signed, so SmartScreen may ask before the first start.</p>
@@ -106,16 +107,18 @@ export MONITA_ENV=dev
 Expand-Archive monita_windows_amd64.zip -DestinationPath monita
 cd monita
 $env:MONITA_ENV = "dev"
-.\monita.exe admin create --email you@company.co.id
-.\monita.exe serve</code></pre>
-        <p>Then open <code>http://localhost:7466</code> and sign in. The first command asks for a password.</p>
+.\monita.exe admin create --email you@company.co.id</code></pre>
+        <p>The last command asks for a password of at least 12 characters. Then start Monita:</p>
+<pre class="code"><code class="language-sh">.\monita.exe serve</code></pre>
+        <p>Open <code>http://localhost:7466</code> and sign in.</p>
       </div>
       <div class="lp-tabs__panel" role="tabpanel" id="install-panel-3" aria-labelledby="install-tab-3" hidden>
         <p>The image runs on Linux, and on Windows and macOS through Docker Desktop. It holds the same binary, for amd64 and arm64.</p>
 <pre class="code"><code class="language-sh">docker volume create monita-data
-docker run --rm -it -v monita-data:/data -e MONITA_ENV=dev ghcr.io/pt-perkasa-pilar-utama/monita:1 admin create --email you@company.co.id
-docker run -d --name monita -p 127.0.0.1:7466:7466 -v monita-data:/data -e MONITA_ENV=dev ghcr.io/pt-perkasa-pilar-utama/monita:1</code></pre>
-        <p>Then open <code>http://localhost:7466</code> and sign in. For a server, see the <a href="docs/install/#with-docker">Compose file in the install guide</a>.</p>
+docker run --rm -it -v monita-data:/data -e MONITA_ENV=dev ghcr.io/pt-perkasa-pilar-utama/monita:1 admin create --email you@company.co.id</code></pre>
+        <p>The last command asks for a password of at least 12 characters. Then start Monita:</p>
+<pre class="code"><code class="language-sh">docker run -d --name monita -p 127.0.0.1:7466:7466 -v monita-data:/data -e MONITA_ENV=dev ghcr.io/pt-perkasa-pilar-utama/monita:1</code></pre>
+        <p>Open <code>http://localhost:7466</code> and sign in. For a server, see the <a href="docs/install/#with-docker">Compose file in the install guide</a>.</p>
       </div>
       <p>To build it yourself, see <a href="docs/install/#from-source">building from source</a>. You can also <a href="demo/">try the demo in your browser</a> first. It needs no account.</p>
     </div>
