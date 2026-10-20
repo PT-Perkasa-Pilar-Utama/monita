@@ -33,6 +33,9 @@ pub enum ProjectError {
     InvalidName,
     #[error("Pick the owner from the list: yourself or an active tech lead.")]
     UnknownOwner,
+    /// The acting user's role changed after the request began, say to supervisor.
+    #[error("Your account can no longer own projects.")]
+    CannotOwn,
     #[error("The description needs at most 280 characters.")]
     LongDescription,
     /// Bad values in several fields of one form, in the form's order.

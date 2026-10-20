@@ -115,8 +115,9 @@ pub async fn set_utc_offset(conn: &Connection, min: i64) -> anyhow::Result<bool>
 const MAIL: &str = "mail";
 
 /// The mail server an admin saved on the System page. The password is stored as entered:
-/// Monita must send it to the server, so it cannot be hashed. It never leaves the server.
-#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+/// Monita must send it to the server, so it cannot be hashed. It never leaves the server, and
+/// `Debug` prints `(set)` in its place.
+#[derive(Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct MailSettings {
     pub host: String,
     pub port: u16,
@@ -128,6 +129,20 @@ pub struct MailSettings {
     pub from: String,
     /// Accept a self-signed certificate, for an internal relay.
     pub skip_verify: bool,
+}
+
+impl std::fmt::Debug for MailSettings {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("MailSettings")
+            .field("host", &self.host)
+            .field("port", &self.port)
+            .field("security", &self.security)
+            .field("user", &self.user)
+            .field("password", &self.password.as_ref().map(|_| "(set)"))
+            .field("from", &self.from)
+            .field("skip_verify", &self.skip_verify)
+            .finish()
+    }
 }
 
 /// The saved mail server; `None` when no admin saved one, so the env setting or the log applies.

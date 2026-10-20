@@ -247,3 +247,39 @@ async fn a_project_owner_cannot_become_a_supervisor_and_a_supervisor_is_never_an
         "a supervisor cannot be given a project"
     );
 }
+
+#[tokio::test]
+async fn a_tech_lead_made_a_supervisor_while_their_request_runs_does_not_get_a_project() {
+    let app = TestApp::spawn("test").await;
+    let admin = app.super_admin("admin@x.co").await;
+    app.tl("rina@x.co").await;
+    let id = user_id(&app, "rina@x.co").await;
+    // The request read the role before the admin's change landed.
+    let stale = monita::accounts::User {
+        id,
+        email: "rina@x.co".into(),
+        role: monita::accounts::Role::Tl,
+    };
+    let role = app
+        .api_send(
+            Method::PUT,
+            &format!("/api/ui/admin/users/{id}/role"),
+            json!({ "role": "supervisor" }),
+            Some(&admin),
+        )
+        .await;
+    assert_eq!(role.status(), 204);
+    let input = monita::projects::ProjectInput {
+        name: "Payments".into(),
+        homepage_url: "https://app.example.com".into(),
+        ..Default::default()
+    };
+    let made = monita::projects::create(&app.state.db, &stale, &input)
+        .await
+        .err()
+        .map(|e| e.to_string());
+    assert_eq!(
+        made.as_deref(),
+        Some("Your account can no longer own projects.")
+    );
+}

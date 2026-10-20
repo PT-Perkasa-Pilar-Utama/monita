@@ -163,10 +163,14 @@ pub fn form_error(e: ProjectError) -> UiError {
         ProjectError::BadIcon(_) => "icon",
         ProjectError::InvalidCidr(_) => "cidrs",
         ProjectError::ConfirmMismatch => "confirm",
-        ProjectError::Full(_) | ProjectError::Other(_) | ProjectError::Invalid(_) => "",
+        ProjectError::Full(_)
+        | ProjectError::Other(_)
+        | ProjectError::Invalid(_)
+        | ProjectError::CannotOwn => "",
     };
     match e {
         ProjectError::Other(e) => UiError::Internal(e),
+        ProjectError::CannotOwn => UiError::Forbidden,
         ProjectError::Invalid(bad) => UiError::fields(
             bad.into_iter()
                 .map(|(f, m)| (f.to_string(), m.to_string()))

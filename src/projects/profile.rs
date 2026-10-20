@@ -127,6 +127,9 @@ pub async fn create(db: &Db, acting: &User, input: &ProjectInput) -> Result<Proj
             if owner != acting.id && !crate::accounts::is_active_tl(c, owner).await? {
                 return Ok(Err(ProjectError::UnknownOwner));
             }
+            if owner == acting.id && !crate::accounts::can_own_projects(c, owner).await? {
+                return Ok(Err(ProjectError::CannotOwn));
+            }
             // A taken slug needs the same name and the same suffix; three draws in a row is not
             // a real case, so it is an error rather than a loop.
             for _ in 0..3 {

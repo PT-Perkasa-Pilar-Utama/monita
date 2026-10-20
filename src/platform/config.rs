@@ -14,7 +14,9 @@ pub enum Env {
     Prod,
 }
 
-#[derive(Clone, Debug)]
+/// `Debug` is written by hand below: it prints `(set)` for the SMTP URL (it holds the mail
+/// password) and the reset token, so a `{:?}` in a log never leaks either.
+#[derive(Clone)]
 pub struct Config {
     pub env: Env,
     pub bind: SocketAddr,
@@ -30,6 +32,28 @@ pub struct Config {
     pub reset_token: Option<String>,
     pub log_filter: String,
     pub log_json: bool,
+}
+
+impl std::fmt::Debug for Config {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let set = |v: &Option<String>| v.as_ref().map(|_| "(set)");
+        f.debug_struct("Config")
+            .field("env", &self.env)
+            .field("bind", &self.bind)
+            .field("base_url", &self.base_url)
+            .field("db_path", &self.db_path)
+            .field("backup_dir", &self.backup_dir)
+            .field("backup_keep", &self.backup_keep)
+            .field("smtp_url", &set(&self.smtp_url))
+            .field("mail_from", &self.mail_from)
+            .field("ping_url", &self.ping_url)
+            .field("trust_proxy", &self.trust_proxy)
+            .field("digest_utc_hour", &self.digest_utc_hour)
+            .field("reset_token", &set(&self.reset_token))
+            .field("log_filter", &self.log_filter)
+            .field("log_json", &self.log_json)
+            .finish()
+    }
 }
 
 /// A two-valued variable: unset means `no`; anything but `yes` or `no` stops the start, so a
@@ -172,6 +196,35 @@ mod tests {
             .map(|(k, v)| (k.to_string(), v.to_string()))
             .collect();
         Config::from_lookup(|k| m.get(k).cloned())
+    }
+
+    #[test]
+    fn debug_never_prints_the_mail_password_or_the_reset_token() {
+        let c = cfg(&[
+            ("MONITA_ENV", "dev"),
+            (
+                "MONITA_SMTP_URL",
+                "smtps://user:hunter2@mail.example.com:465",
+            ),
+            ("MONITA_RESET_TOKEN", "reset-secret"),
+        ])
+        .unwrap();
+        let text = format!("{c:?}");
+        assert!(
+            !text.contains("hunter2") && !text.contains("reset-secret"),
+            "{text}"
+        );
+        assert!(text.contains(r#"smtp_url: Some("(set)")"#), "{text}");
+        let mail = crate::platform::settings::MailSettings {
+            host: "mail.example.com".into(),
+            port: 465,
+            security: "tls".into(),
+            user: Some("user".into()),
+            password: Some("hunter2".into()),
+            from: "Monita <m@example.com>".into(),
+            skip_verify: false,
+        };
+        assert!(!format!("{mail:?}").contains("hunter2"));
     }
 
     #[test]

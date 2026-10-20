@@ -322,6 +322,13 @@ pub async fn is_active_tl(c: &turso::Connection, user_id: i64) -> anyhow::Result
     Ok(store::active_tl_email(c, user_id).await?.is_some())
 }
 
+/// May own a project now: an active tech lead or an active super admin, never a supervisor.
+/// Read on the caller's write, so a role changed since the request began counts.
+pub async fn can_own_projects(c: &turso::Connection, user_id: i64) -> anyhow::Result<bool> {
+    Ok(store::active_tl_email(c, user_id).await?.is_some()
+        || store::is_active_super_admin(c, user_id).await?)
+}
+
 /// Retention (US-32): runs inside the caller's write.
 /// Deletes up to `limit` each of sessions, invites and sign-in challenges; returns how many. The
 /// caller loops.
