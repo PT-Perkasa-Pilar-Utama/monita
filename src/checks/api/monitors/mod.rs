@@ -107,6 +107,14 @@ fn hide_values(headers: &str) -> String {
         .join("\n")
 }
 
+/// A URL's query and fragment, where tokens such as `?apikey=` live, read `(hidden)`.
+fn hide_query(url: &str) -> String {
+    match url.find(['?', '#']) {
+        Some(i) => format!("{}{}{HIDDEN}", &url[..i], &url[i..=i]),
+        None => url.to_string(),
+    }
+}
+
 fn view(m: Monitor, state: &'static str, read_only: bool) -> MonitorView {
     let headers = m.headers.unwrap_or_default();
     MonitorView {
@@ -148,7 +156,7 @@ fn view(m: Monitor, state: &'static str, read_only: bool) -> MonitorView {
         }),
         name: m.name,
         kind: m.kind,
-        url: m.url,
+        url: if read_only { hide_query(&m.url) } else { m.url },
         expected_address: m.expected_address,
     }
 }
@@ -343,4 +351,26 @@ async fn delete(
     let p = projects::find_for(&state.db, &user, &slug).await?;
     checks::delete_monitor(&state.db, &state.config.base_url, p.id, id).await?;
     Ok(StatusCode::NO_CONTENT.into_response())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::hide_query;
+
+    #[test]
+    fn a_supervisor_sees_the_url_without_its_query() {
+        assert_eq!(
+            hide_query("https://api.x.co/health?token=abc&x=1"),
+            "https://api.x.co/health?(hidden)"
+        );
+        assert_eq!(
+            hide_query("https://api.x.co/#k=1"),
+            "https://api.x.co/#(hidden)"
+        );
+        assert_eq!(
+            hide_query("https://api.x.co/health"),
+            "https://api.x.co/health"
+        );
+        assert_eq!(hide_query("db.internal:5432"), "db.internal:5432");
+    }
 }

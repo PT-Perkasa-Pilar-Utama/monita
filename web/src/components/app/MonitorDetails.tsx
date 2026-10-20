@@ -4,6 +4,7 @@ import { DetailPart, DetailsSheet } from "@/components/app/DetailsSheet";
 import { Facts } from "@/components/app/Facts";
 import { parseHeaderLines, signInWords, whenItFails } from "@/lib/checks";
 import { monitorCommand } from "@/lib/monitorCurl";
+import { useCanEdit } from "@/lib/session";
 import { stamp } from "@/lib/time";
 import type { MonitorView } from "@/lib/types";
 
@@ -67,6 +68,7 @@ function PlainParts({ m }: { m: MonitorView }): ReactElement {
 /** An HTTP check: the request, a curl command, and what a pass means. */
 function HttpParts({ m }: { m: MonitorView }): ReactElement {
   const headers = parseHeaderLines(m.headers);
+  const canEdit = useCanEdit();
   return (
     <>
       <DetailPart title="Request">
@@ -76,11 +78,16 @@ function HttpParts({ m }: { m: MonitorView }): ReactElement {
             ["Method", m.method],
             ["Sign-in", signInWords(m)],
             ["Headers", headers.length === 0 ? "None" : headers.map(([n]) => n).join(", ")],
-            ["Request body", m.body ? `${m.body.length.toLocaleString()} characters` : "None"],
+            ["Request body", !m.body ? "None" : canEdit ? `${m.body.length.toLocaleString()} characters` : "Sent, hidden"],
             ["Timeout", `${m.timeout_s} seconds`],
             ["Every", m.every],
           ]}
         />
+        {!canEdit && (
+          <p className="text-muted-foreground">
+            As a supervisor you see header names but not their values. The request body, the sign-in name and anything after <code>?</code> in the URL read (hidden), because they can hold credentials.
+          </p>
+        )}
       </DetailPart>
       <DetailPart title="Try it yourself">
         <p className="text-muted-foreground">
