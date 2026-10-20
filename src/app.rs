@@ -124,7 +124,7 @@ pub async fn serve(config: Config) -> anyhow::Result<()> {
             std::process::exit(1);
         }
     });
-    tracing::info!(%bind, "monita listening");
+    tracing::info!(%bind, open = %state.config.base_url, "monita listening");
     axum::serve(
         listener,
         router.into_make_service_with_connect_info::<std::net::SocketAddr>(),
