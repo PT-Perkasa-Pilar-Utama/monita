@@ -8,7 +8,7 @@ import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { BareLayout } from "@/layouts/BareLayout";
-import { api, ApiError, errorText } from "@/lib/api";
+import { api, ApiError, dropField, errorText } from "@/lib/api";
 import { useApi } from "@/lib/useApi";
 
 /** An invite link: set a password, then land on the projects. */
@@ -19,6 +19,7 @@ export function Invite(): ReactElement {
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<ApiError | null>(null);
   const [busy, setBusy] = useState(false);
+  const clear = (field: string): void => setError((e) => e && dropField(e, field));
   const dead = link.error?.status === 410 || error?.status === 410;
 
   const submit = async (e: FormEvent): Promise<void> => {
@@ -76,7 +77,10 @@ export function Invite(): ReactElement {
                   aria-required
                   aria-invalid={error?.fields.password ? true : undefined}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    clear("password");
+                  }}
                 />
                 {error?.fields.password && <FieldError>{error.fields.password}</FieldError>}
               </Field>
@@ -91,7 +95,10 @@ export function Invite(): ReactElement {
                   aria-required
                   aria-invalid={error?.fields.password_confirm ? true : undefined}
                   value={confirm}
-                  onChange={(e) => setConfirm(e.target.value)}
+                  onChange={(e) => {
+                    setConfirm(e.target.value);
+                    clear("password_confirm");
+                  }}
                 />
                 {error?.fields.password_confirm && <FieldError>{error.fields.password_confirm}</FieldError>}
               </Field>

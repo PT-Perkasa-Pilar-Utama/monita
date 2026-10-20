@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { api, ApiError, errorText } from "@/lib/api";
+import { api, ApiError, dropField, errorText } from "@/lib/api";
 import { STAGES } from "@/lib/tickets";
 import type { Stage } from "@/lib/types";
 import { toast } from "sonner";
@@ -46,6 +46,7 @@ export function NewTicketSheet({ slug, onFiled }: { slug: string; onFiled: (n: n
       setBusy(false);
     }
   };
+  const clear = (field: string): void => setError((e) => e && dropField(e, field));
   const err = (k: string): string | undefined => error?.fields[k];
   return (
     <>
@@ -81,7 +82,10 @@ export function NewTicketSheet({ slug, onFiled }: { slug: string; onFiled: (n: n
                 aria-required
                 aria-invalid={err("title") ? true : undefined}
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  clear("title");
+                }}
               />
               {err("title") && <FieldError>{err("title")}</FieldError>}
             </Field>
@@ -97,13 +101,20 @@ export function NewTicketSheet({ slug, onFiled }: { slug: string; onFiled: (n: n
                 aria-required
                 aria-invalid={err("description") ? true : undefined}
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={(e) => {
+                  setDescription(e.target.value);
+                  clear("description");
+                }}
               />
               {err("description") && <FieldError>{err("description")}</FieldError>}
             </Field>
             <FieldSet data-invalid={err("stage") ? true : undefined}>
               <FieldLegend variant="label">Column</FieldLegend>
-              <ToggleGroup type="single" variant="outline" value={stage} onValueChange={(v) => v && setStage(v as Stage)} className="flex-wrap">
+              <ToggleGroup type="single" variant="outline" value={stage} onValueChange={(v) => {
+                  if (!v) return;
+                  setStage(v as Stage);
+                  clear("stage");
+                }} className="flex-wrap">
                 {OPEN_STAGES.map(([k, l]) => (
                   <ToggleGroupItem key={k} value={k} className="px-3">
                     <StageRing stage={k} />

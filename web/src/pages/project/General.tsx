@@ -19,7 +19,7 @@ import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
-import { api, ApiError, errorText } from "@/lib/api";
+import { api, ApiError, dropField, errorText } from "@/lib/api";
 import { useProject } from "@/lib/project";
 import { useMe } from "@/lib/session";
 import { stamp } from "@/lib/time";
@@ -38,6 +38,7 @@ function ProjectSection(): ReactElement {
   const [removeIcon, setRemoveIcon] = useState(false);
   const [error, setError] = useState<ApiError | null>(null);
   const [busy, setBusy] = useState(false);
+  const clear = (field: string): void => setError((e) => e && dropField(e, field));
   const changed = description !== (p.description ?? "") || homepage !== (p.homepage_url ?? "") || icon !== "" || removeIcon;
   const save = async (): Promise<void> => {
     setBusy(true);
@@ -91,7 +92,10 @@ function ProjectSection(): ReactElement {
             aria-required
             aria-invalid={error?.fields.homepage_url ? true : undefined}
             value={homepage}
-            onChange={(e) => setHomepage(e.target.value)}
+            onChange={(e) => {
+              setHomepage(e.target.value);
+              clear("homepage_url");
+            }}
           />
           {error?.fields.homepage_url && <FieldError>{error.fields.homepage_url}</FieldError>}
         </Field>
@@ -104,11 +108,17 @@ function ProjectSection(): ReactElement {
             placeholder="What this system does and who uses it."
             aria-invalid={error?.fields.description ? true : undefined}
             value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            onChange={(e) => {
+              setDescription(e.target.value);
+              clear("description");
+            }}
           />
           {error?.fields.description && <FieldError>{error.fields.description}</FieldError>}
         </Field>
-        <IconPicker value={icon} onChange={setIcon} current={removeIcon ? null : p.icon_url} error={error?.fields.icon} />
+        <IconPicker value={icon} onChange={(v) => {
+          setIcon(v);
+          clear("icon");
+        }} current={removeIcon ? null : p.icon_url} error={error?.fields.icon} />
         {p.icon_url && !icon && (
           <Field orientation="horizontal">
             <Checkbox id="general-remove-icon" checked={removeIcon} onCheckedChange={(v) => setRemoveIcon(v === true)} />
@@ -152,7 +162,10 @@ function Reassign({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boo
             <DialogTitle>Reassign this project</DialogTitle>
             <DialogDescription>The new owner gets the project with its monitors, keys and tickets. The old owner loses access to it.</DialogDescription>
           </DialogHeader>
-          <UserPicker label="New owner" required users={owners.data ?? []} value={owner} onChange={setOwner} error={error?.fields.owner_email} />
+          <UserPicker label="New owner" required users={owners.data ?? []} value={owner} onChange={(v) => {
+            setOwner(v);
+            setError((e) => e && dropField(e, "owner_email"));
+          }} error={error?.fields.owner_email} />
           <DialogFooter>
             <DialogClose asChild>
               <Button type="button" variant="ghost">
@@ -202,7 +215,10 @@ function DeleteProject({ open, onOpenChange }: { open: boolean; onOpenChange: (o
           </DialogHeader>
           <Field data-invalid={error ? true : undefined}>
             <FieldLabel htmlFor="delete-confirm">Type {p.name} to confirm</FieldLabel>
-            <Input id="delete-confirm" autoComplete="off" value={confirm} onChange={(e) => setConfirm(e.target.value)} aria-invalid={error ? true : undefined} />
+            <Input id="delete-confirm" autoComplete="off" value={confirm} onChange={(e) => {
+              setConfirm(e.target.value);
+              setError("");
+            }} aria-invalid={error ? true : undefined} />
             {error && <FieldError>{error}</FieldError>}
           </Field>
           <DialogFooter>

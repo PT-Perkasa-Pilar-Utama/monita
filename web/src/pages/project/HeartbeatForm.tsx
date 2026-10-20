@@ -11,7 +11,7 @@ import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
-import { api, ApiError, errorText } from "@/lib/api";
+import { api, ApiError, dropField, errorText } from "@/lib/api";
 import { useProject } from "@/lib/project";
 import type { CheckOptions, HeartbeatDetail, Severity } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
@@ -40,7 +40,10 @@ function HeartbeatFormBody({ id, onClose, onSaved }: { id: string | undefined; o
     setForm(h ? { name: h.name, period_s: h.period_s, grace_s: h.grace_s, severity: h.severity, is_public: h.is_public, alert: h.alert, auto_incident: h.auto_incident } : { name: "", ...o.heartbeat, is_public: false, alert: true, auto_incident: true });
   }, [form, id, options.data, current.data]);
 
-  const set = <K extends keyof Form>(k: K, v: Form[K]): void => setForm((f) => (f ? { ...f, [k]: v } : f));
+  const set = <K extends keyof Form>(k: K, v: Form[K]): void => {
+    setForm((f) => (f ? { ...f, [k]: v } : f));
+    setError((e) => e && dropField(e, k));
+  };
   const err = (k: string): string | undefined => error?.fields[k];
 
   const submit = async (_e: FormEvent): Promise<void> => {

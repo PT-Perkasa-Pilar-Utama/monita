@@ -11,7 +11,7 @@ import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
-import { api, ApiError, errorText } from "@/lib/api";
+import { api, ApiError, dropField, errorText } from "@/lib/api";
 import type { MyTicket, PublicSite } from "@/lib/types";
 
 const asError = (e: unknown): ApiError => (e instanceof ApiError ? e : new ApiError(0, "error", errorText(e)));
@@ -34,7 +34,10 @@ export function Ticket(): ReactElement {
   const [tickets, setTickets] = useState<MyTicket[] | null>(null);
   const [lookError, setLookError] = useState<ApiError | null>(null);
   const [looking, setLooking] = useState(false);
-  const set = (k: keyof typeof form, v: string): void => setForm((f) => ({ ...f, [k]: v }));
+  const set = (k: keyof typeof form, v: string): void => {
+    setForm((f) => ({ ...f, [k]: v }));
+    setSendError((e) => e && dropField(e, k));
+  };
   const err = (k: string): string | undefined => sendError?.fields[k];
 
   const show = async (refId: string): Promise<void> => {
@@ -145,7 +148,10 @@ export function Ticket(): ReactElement {
                   <FieldLabel htmlFor="m-ref" required>
                     Your ref ID
                   </FieldLabel>
-                  <RefIdInput id="m-ref" value={lookup} onChange={setLookup} invalid={!!lookMessage} />
+                  <RefIdInput id="m-ref" value={lookup} onChange={(v) => {
+                    setLookup(v);
+                    setLookError((e) => e && dropField(e, "ref_id"));
+                  }} invalid={!!lookMessage} />
                   {lookMessage && <FieldError>{lookMessage}</FieldError>}
                 </Field>
                 <Button type="submit" variant="secondary" disabled={looking || lookup.trim() === ""} className={lookMessage ? "mb-7" : undefined}>

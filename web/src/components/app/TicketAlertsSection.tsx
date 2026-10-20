@@ -8,7 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import { api, ApiError, errorText } from "@/lib/api";
+import { api, ApiError, dropField, errorText } from "@/lib/api";
 import type { TicketAlerts } from "@/lib/types";
 import { toast } from "sonner";
 
@@ -26,6 +26,7 @@ export function TicketAlertsSection({ slug, owner, initial, onSaved }: { slug: s
   const [enabled, setEnabled] = useState(initial.enabled);
   const changed = digest !== saved.digest || useWebhook !== saved.use_webhook || moves !== saved.webhook_moves || webhook.trim() !== (saved.webhook_url ?? "");
   const hooked = useWebhook || moves;
+  const clear = (field: string): void => setError((e) => e && dropField(e, field));
 
   const save = async (): Promise<void> => {
     setBusy(true);
@@ -121,7 +122,10 @@ export function TicketAlertsSection({ slug, owner, initial, onSaved }: { slug: s
               aria-required
               aria-invalid={error?.fields.webhook_url ? true : undefined}
               value={webhook}
-              onChange={(e) => setWebhook(e.target.value)}
+              onChange={(e) => {
+                setWebhook(e.target.value);
+                clear("webhook_url");
+              }}
             />
             {error?.fields.webhook_url && <FieldError>{error.fields.webhook_url}</FieldError>}
           </Field>

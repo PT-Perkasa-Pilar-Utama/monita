@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import { api, ApiError, errorText } from "@/lib/api";
+import { api, ApiError, dropField, errorText } from "@/lib/api";
 import type { Invited } from "@/lib/types";
 
 type Role = "tl" | "super_admin" | "supervisor";
@@ -38,6 +38,7 @@ export function InviteSheet({ onInvited }: { onInvited: (i: Invited) => void }):
       setBusy(false);
     }
   };
+  const clear = (field: string): void => setError((e) => e && dropField(e, field));
   const emailError = error?.fields.email ?? (error && !error.fields.role ? error.message : undefined);
   return (
     <>
@@ -67,14 +68,20 @@ export function InviteSheet({ onInvited }: { onInvited: (i: Invited) => void }):
               <FieldLabel htmlFor="invite-email" required>
                 Email
               </FieldLabel>
-              <Input id="invite-email" type="email" placeholder="lead@company.co.id" aria-required aria-invalid={emailError ? true : undefined} value={email} onChange={(e) => setEmail(e.target.value)} />
+              <Input id="invite-email" type="email" placeholder="lead@company.co.id" aria-required aria-invalid={emailError ? true : undefined} value={email} onChange={(e) => {
+                  setEmail(e.target.value);
+                  clear("email");
+                }} />
               {emailError && <FieldError>{emailError}</FieldError>}
             </Field>
             <ChoiceCards
               id="role"
               legend="Role"
               value={role}
-              onChange={setRole}
+              onChange={(v) => {
+                setRole(v);
+                clear("role");
+              }}
               choices={[
                 { value: "tl", title: "Tech lead", description: "Manages the projects they own." },
                 { value: "supervisor", title: "Supervisor", description: "Sees every project, the users and the system settings, and changes nothing." },

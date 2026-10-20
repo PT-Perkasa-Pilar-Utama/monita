@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { api, ApiError, errorText } from "@/lib/api";
+import { api, ApiError, dropField, errorText } from "@/lib/api";
 import { useProject } from "@/lib/project";
 import { ago } from "@/lib/time";
 import type { ApiKey } from "@/lib/types";
@@ -34,6 +34,8 @@ export function Keys(): ReactElement {
   const [error, setError] = useState<ApiError | null>(null);
   const [busy, setBusy] = useState(false);
   const [newKey, setNewKey] = useState("");
+
+  const clear = (field: string): void => setError((e) => e && dropField(e, field));
 
   const create = async (e: FormEvent): Promise<void> => {
     e.preventDefault();
@@ -152,7 +154,10 @@ export function Keys(): ReactElement {
               <FieldLabel htmlFor="key-name" required>
                 Key name
               </FieldLabel>
-              <Input id="key-name" placeholder="billing-backend" aria-required aria-invalid={error ? true : undefined} maxLength={60} value={name} onChange={(e) => setName(e.target.value)} />
+              <Input id="key-name" placeholder="billing-backend" aria-required aria-invalid={error ? true : undefined} maxLength={60} value={name} onChange={(e) => {
+                setName(e.target.value);
+                clear("name");
+              }} />
               {error && <FieldError>{error.fields.name ?? error.message}</FieldError>}
             </Field>
         </FormSheetBody>

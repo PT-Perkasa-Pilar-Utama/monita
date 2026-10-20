@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { api, ApiError, errorText } from "@/lib/api";
+import { api, ApiError, dropField, errorText } from "@/lib/api";
 import type { LimitRow, SystemView } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 import { cn } from "@/lib/utils";
@@ -49,6 +49,7 @@ function LimitsForm({ d, onSaved }: { d: SystemView; onSaved: () => void }): Rea
   const [values, setValues] = useState<Record<string, string>>(initial);
   const [error, setError] = useState<ApiError | null>(null);
   const [busy, setBusy] = useState(false);
+  const clear = (field: string): void => setError((e) => e && dropField(e, field));
   const changed = d.limits.some((l) => values[l.key] !== initial[l.key]);
   const save = async (e: FormEvent): Promise<void> => {
     e.preventDefault();
@@ -72,7 +73,10 @@ function LimitsForm({ d, onSaved }: { d: SystemView; onSaved: () => void }): Rea
             {d.limits
               .filter((l) => l.group === g)
               .map((l) => (
-                <LimitField key={l.key} l={l} value={values[l.key] ?? ""} error={error?.fields[l.key]} onChange={(v) => setValues((s) => ({ ...s, [l.key]: v }))} />
+                <LimitField key={l.key} l={l} value={values[l.key] ?? ""} error={error?.fields[l.key]} onChange={(v) => {
+                    setValues((s) => ({ ...s, [l.key]: v }));
+                    clear(l.key);
+                  }} />
               ))}
           </div>
         </SettingsSection>

@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectVa
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
-import { api, ApiError, errorText } from "@/lib/api";
+import { api, ApiError, dropField, errorText } from "@/lib/api";
 import { useProject } from "@/lib/project";
 import type { AlertRoute, TicketAlerts } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
@@ -52,6 +52,7 @@ function RouteSection({ slug, route }: { slug: string; route: AlertRoute }): Rea
   const [testing, setTesting] = useState(false);
   const [notice, setNotice] = useState("");
   const [enabled, setEnabled] = useState(route.enabled);
+  const clear = (field: string): void => setError((e) => e && dropField(e, field));
   const changed =
     emails.trim() !== saved.emails.join("\n") ||
     webhook.trim() !== (saved.webhook_url ?? "") ||
@@ -124,7 +125,10 @@ function RouteSection({ slug, route }: { slug: string; route: AlertRoute }): Rea
             placeholder={"oncall@company.co.id\nlead@company.co.id"}
             aria-invalid={error?.fields.emails ? true : undefined}
             value={emails}
-            onChange={(e) => setEmails(e.target.value)}
+            onChange={(e) => {
+              setEmails(e.target.value);
+              clear("emails");
+            }}
           />
           {error?.fields.emails && <FieldError>{error.fields.emails}</FieldError>}
         </Field>
@@ -137,7 +141,11 @@ function RouteSection({ slug, route }: { slug: string; route: AlertRoute }): Rea
         {useWebhook && (
           <Field data-invalid={error?.fields.webhook_format ? true : undefined}>
             <FieldLabel htmlFor={`format-${s}`}>Format</FieldLabel>
-            <Select value={format} onValueChange={(v) => setFormat(v as WebhookFormat)}>
+            <Select value={format} onValueChange={(v) => {
+              setFormat(v as WebhookFormat);
+              // The format decides which of the URL and the key are needed.
+              for (const f of ["webhook_format", "webhook_url", "webhook_key"]) clear(f);
+            }}>
               <SelectTrigger id={`format-${s}`} aria-invalid={error?.fields.webhook_format ? true : undefined}>
                 <SelectValue />
               </SelectTrigger>
@@ -165,7 +173,10 @@ function RouteSection({ slug, route }: { slug: string; route: AlertRoute }): Rea
               placeholder={fields.url.placeholder}
               aria-invalid={error?.fields.webhook_url ? true : undefined}
               value={webhook}
-              onChange={(e) => setWebhook(e.target.value)}
+              onChange={(e) => {
+                setWebhook(e.target.value);
+                clear("webhook_url");
+              }}
             />
             {error?.fields.webhook_url && <FieldError>{error.fields.webhook_url}</FieldError>}
           </Field>
@@ -175,7 +186,10 @@ function RouteSection({ slug, route }: { slug: string; route: AlertRoute }): Rea
             <FieldLabel htmlFor={`key-${s}`} required>
               {fields.key.label}
             </FieldLabel>
-            <Input id={`key-${s}`} className="font-mono" placeholder={fields.key.placeholder} aria-invalid={error?.fields.webhook_key ? true : undefined} value={key} onChange={(e) => setKey(e.target.value)} />
+            <Input id={`key-${s}`} className="font-mono" placeholder={fields.key.placeholder} aria-invalid={error?.fields.webhook_key ? true : undefined} value={key} onChange={(e) => {
+              setKey(e.target.value);
+              clear("webhook_key");
+            }} />
             {error?.fields.webhook_key && <FieldError>{error.fields.webhook_key}</FieldError>}
           </Field>
         )}

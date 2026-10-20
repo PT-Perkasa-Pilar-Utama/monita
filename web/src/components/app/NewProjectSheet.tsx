@@ -10,7 +10,7 @@ import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
-import { api, ApiError, errorText } from "@/lib/api";
+import { api, ApiError, dropField, errorText } from "@/lib/api";
 import { useMe } from "@/lib/session";
 import type { Owner, Project } from "@/lib/types";
 
@@ -49,6 +49,7 @@ export function NewProjectSheet({
       setBusy(false);
     }
   };
+  const clear = (field: string): void => setError((e) => e && dropField(e, field));
   const fieldError = (f: string): string | undefined => error?.fields[f];
   const general = error && Object.keys(error.fields).length === 0 ? error.message : "";
 
@@ -88,7 +89,10 @@ export function NewProjectSheet({
                 maxLength={80}
                 placeholder="Payments Gateway"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  clear("name");
+                }}
               />
               {fieldError("name") && <FieldError>{fieldError("name")}</FieldError>}
             </Field>
@@ -104,12 +108,18 @@ export function NewProjectSheet({
                 className="font-mono"
                 placeholder="https://payments.example.com"
                 value={homepage}
-                onChange={(e) => setHomepage(e.target.value)}
+                onChange={(e) => {
+                  setHomepage(e.target.value);
+                  clear("homepage_url");
+                }}
               />
               {fieldError("homepage_url") && <FieldError>{fieldError("homepage_url")}</FieldError>}
             </Field>
             {me.is_admin && (
-              <UserPicker label="Owner" users={owners} value={owner} onChange={setOwner} error={fieldError("owner_email")} />
+              <UserPicker label="Owner" users={owners} value={owner} onChange={(v) => {
+                  setOwner(v);
+                  clear("owner_email");
+                }} error={fieldError("owner_email")} />
             )}
             <Field data-invalid={fieldError("description") ? true : undefined}>
               <FieldLabel htmlFor="project-description">Description</FieldLabel>
@@ -120,11 +130,17 @@ export function NewProjectSheet({
                 placeholder="What this system does and who uses it."
                 aria-invalid={fieldError("description") ? true : undefined}
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={(e) => {
+                  setDescription(e.target.value);
+                  clear("description");
+                }}
               />
               {fieldError("description") && <FieldError>{fieldError("description")}</FieldError>}
             </Field>
-            <IconPicker value={icon} onChange={setIcon} error={fieldError("icon")} />
+            <IconPicker value={icon} onChange={(v) => {
+                setIcon(v);
+                clear("icon");
+              }} error={fieldError("icon")} />
           </FieldGroup>
         </div>
       </FormSheetBody>

@@ -9,7 +9,7 @@ import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-import { api, ApiError, errorText } from "@/lib/api";
+import { api, ApiError, dropField, errorText } from "@/lib/api";
 import { alertLine, allowlistSize, publicTabs } from "@/lib/projectFacts";
 import type { AlertRoute, ProjectHead } from "@/lib/types";
 import { stamp } from "@/lib/time";
@@ -53,15 +53,25 @@ export function useProjectEdit(head: ProjectHead, reload: () => void): ProjectEd
   const [icon, setIcon] = useState("");
   const [removeIcon, setRemoveIcon] = useState(false);
   const [error, setError] = useState<ApiError | null>(null);
+  const clear = (field: string): void => setError((e) => e && dropField(e, field));
   return {
     editing,
     saving,
     description,
-    setDescription,
+    setDescription: (v) => {
+      setDescription(v);
+      clear("description");
+    },
     homepage,
-    setHomepage,
+    setHomepage: (v) => {
+      setHomepage(v);
+      clear("homepage_url");
+    },
     icon,
-    setIcon,
+    setIcon: (v) => {
+      setIcon(v);
+      clear("icon");
+    },
     removeIcon,
     setRemoveIcon,
     error,
