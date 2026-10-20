@@ -180,9 +180,8 @@
     tilt();
   }
 
-  // ---------- Connections: tabs that light the matching line on the map ----------
-  const tabs = document.querySelector("[data-tabs]");
-  if (tabs) {
+  // ---------- Tabs: Install, and Connections, which also lights the matching line on the map ----------
+  document.querySelectorAll("[data-tabs]").forEach((tabs) => {
     const buttons = [...tabs.querySelectorAll('[role="tab"]')];
     const select = (i, focus) => {
       buttons.forEach((b, n) => {
@@ -206,7 +205,7 @@
       });
     });
     select(0, false);
-  }
+  });
 
   // ---------- Screenshots open at full size in a dialog ----------
   const dialog = document.querySelector("[data-zoom-dialog]");

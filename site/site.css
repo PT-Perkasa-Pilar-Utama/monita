@@ -187,6 +187,8 @@
 .lp-install h3 { color: var(--fg); font-size: var(--t-20); font-weight: 650; }
 .lp-install p { margin: var(--s3) 0; color: var(--fg-muted); line-height: 1.6; }
 .lp-install .code { background: var(--bg); }
+.lp-install .lp-tabs__list { margin-top: var(--s4); }
+.lp-install .lp-tabs__panel { margin-top: var(--s4); gap: 0; }
 .landing .code { white-space: pre-wrap; overflow-wrap: anywhere; }
 
 .lp-connect { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: var(--s6); margin-top: var(--s6); align-items: start; }
