@@ -291,7 +291,12 @@ async fn a_reporter_lists_their_tickets_even_after_revocation() {
     let s = setup(&app).await;
     let rid = ref_id(&app, &s.key, false).await;
     submit(&app, &rid, "Checkout broken").await;
-    revoke(&app, &s.tl).await;
+    assert_eq!(revoke(&app, &s.tl).await.status(), 204);
+    assert_eq!(
+        revoke(&app, &s.tl).await.status(),
+        204,
+        "revoking twice is a no-op"
+    );
     assert_eq!(submit(&app, &rid, "After revoke").await.status(), 422);
     let res = app
         .http
@@ -626,8 +631,8 @@ async fn the_public_column_pages_never_show_triage() {
     let s = setup(&app).await;
     let r = ref_id(&app, &s.key, false).await;
     assert_eq!(submit(&app, &r, "Private report").await.status(), 201);
-    let page = read(&app, &format!("{PUBLIC_BOARD}?stage=triage"), None).await;
-    assert_eq!(page["tickets"], json!([]));
+    let page = app.get(&format!("{PUBLIC_BOARD}?stage=triage"), None).await;
+    assert_eq!(page.status(), 404, "Triage is not a public column");
 }
 
 #[tokio::test]

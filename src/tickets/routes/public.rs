@@ -29,13 +29,13 @@ pub(super) async fn public_board(
         return Err(UiError::NotFound);
     }
     if let Some(stage) = q.stage()? {
+        // Triage is not a public column: 404, as for a stage that does not exist.
+        if stage == "triage" {
+            return Err(UiError::NotFound);
+        }
         let page = q.page.unwrap_or(1);
         let tickets = crate::tickets::public_column(&state.db, p.id, stage, page).await?;
-        let total = if stage == "triage" {
-            0
-        } else {
-            stage_total(&state, p.id, stage).await?
-        };
+        let total = stage_total(&state, p.id, stage).await?;
         let body = serde_json::json!({ "tickets": tickets, "page": page, "total": total, "page_size": crate::platform::caps::TICKETS_PER_COLUMN });
         return Ok(crate::platform::ui::public_cache(data(body)));
     }
