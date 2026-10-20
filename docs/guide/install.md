@@ -16,7 +16,7 @@ Monita runs as one systemd service on a Linux VM. These steps assume Ubuntu or D
 - The database keeps 7 days of check results. At 500 monitors on a 60 s interval, that is about 5 million rows. The design target is under 2 GB ([NFR-09](../technical-specs/08-non-functional-requirements.md)).
 - Monita needs outbound access to the sites it checks, to the mail server, and to each webhook address. Users reach it through a reverse proxy that handles HTTPS.
 
-Measured load: 500 monitors on a 60 s interval used 49 MB of memory and 1 to 8 % of one core. The scheduler kept every check within 1 s of its time. This was a debug build on an Apple M1, and each check called Monita's own `/healthz`. Checks of real sites over HTTPS cost more CPU. The design target for memory is under 100 MB at this load ([NFR-06](../technical-specs/08-non-functional-requirements.md)).
+Measured load (2026-10-20): the 1.0.1 release image ran in Docker Desktop on an Apple M1 (arm64, a VM with 2 vCPU) and checked 500 URLs on a 60 s interval against a local nginx. It used 17.6 MiB of memory idle, and 21.2 MiB (median) to 24.2 MiB (peak) under load, with 0.8 % of one core on average. The nginx received 498 requests a minute, so every check ran. After 10 minutes the data folder held 2.7 MB. Checks of real sites over HTTPS cost more CPU and memory. The design target for memory is under 100 MB at this load ([NFR-06](../technical-specs/08-non-functional-requirements.md)).
 
 ## Get the binary
 
