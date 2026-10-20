@@ -94,6 +94,28 @@ If the job does not call the URL before its deadline, Monita opens an incident. 
 opens an incident at once. Monita stores the first 1 KB of that request as the cause of the
 incident, so the command above sends the job's error output.
 
+## Benchmark
+
+Monita, Uptime Kuma and Gatus each checked 500 URLs every 60 seconds against one local nginx.
+Each ran alone in Docker Desktop on an Apple M1 (arm64, a VM with 2 vCPU), with SQLite storage.
+
+| 500 checks a minute | Monita 1.0.1 | Uptime Kuma 2.5.6 | Gatus (latest on 2026-10-20) |
+| --- | --- | --- | --- |
+| Memory under load (median) | 21 MiB | 160 MiB | 44 MiB |
+| Memory idle | 18 MiB | 124 MiB | 5 MiB |
+| CPU, share of one core | 0.8% | 6.6% | 1.8% |
+| Checks done per minute, of 500 | 498 | 393 | 493 |
+| Image size (arm64, as Docker reports it) | 10.9 MB | 603 MB | 24.5 MB |
+
+How it was measured, on 2026-10-20:
+
+- Memory and CPU come from `docker stats`, sampled every 15 seconds after a warm-up. Monita had a
+  5-minute warm-up and 5 minutes of samples. Uptime Kuma and Gatus had 2.5 minutes of each.
+- The checks per minute count the requests nginx received while the samples ran.
+- Uptime Kuma got its 500 monitors as copies of one monitor made through its API, then a restart.
+  It did 393 checks a minute in that window, so it had not caught up with all 500.
+- Real sites over HTTPS cost more CPU and memory than a local nginx, for every tool.
+
 ## Docs
 
 The [documentation](https://pt-perkasa-pilar-utama.github.io/monita/docs/) explains how to start,
