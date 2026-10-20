@@ -120,6 +120,81 @@ jobs:
           path: dist/${{ env.ARCHIVE }}
           if-no-files-found: error
 
+  # The Linux binaries the build job booted, as one image for linux/amd64 and linux/arm64 on
+  # GHCR. The Dockerfile comes from the commit this run is on, so a manual run can also give an
+  # older tag its image. X.Y.Z always moves; X.Y, X and latest move only for the newest tag.
+  image:
+    name: container image
+    needs: build
+    if: ${{ !inputs.build_only }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: monita_linux_*
+          merge-multiple: true
+          path: dist
+      - name: context and tags
+        id: meta
+        run: |
+          mkdir -p ctx/linux_amd64 ctx/linux_arm64 ctx/data
+          tar -xzf dist/monita_linux_amd64.tar.gz -C ctx/linux_amd64 monita
+          tar -xzf dist/monita_linux_arm64.tar.gz -C ctx/linux_arm64 monita
+          cp -R LICENSE licenses ctx/
+          image="ghcr.io/${GITHUB_REPOSITORY,,}"
+          version="${TAG#v}"
+          tags="--tag $image:$version"
+          newest=$(git ls-remote --tags --refs origin 'v*' | sed 's|.*refs/tags/||' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1)
+          if [ "$TAG" = "$newest" ]; then
+            tags="$tags --tag $image:${version%.*} --tag $image:${version%%.*} --tag $image:latest"
+          fi
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tags=$tags" >> "$GITHUB_OUTPUT"
+          echo "$tags"
+      - name: boot the amd64 image
+        env:
+          IMAGE: ${{ steps.meta.outputs.image }}
+        run: |
+          docker build --platform linux/amd64 -f deploy/Dockerfile -t monita-smoke ctx
+          docker run --rm monita-smoke --version
+          docker run -d --name smoke -p 127.0.0.1:18080:7466 -e MONITA_ENV=test monita-smoke
+          for i in $(seq 1 30); do
+            if curl -fs http://127.0.0.1:18080/healthz; then docker rm -f smoke >/dev/null; exit 0; fi
+            sleep 1
+          done
+          docker logs smoke
+          docker rm -f smoke >/dev/null
+          echo "::error::the image did not answer /healthz"
+          exit 1
+      - name: push both platforms
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          echo "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker buildx create --use --name monita
+          # shellcheck disable=SC2086 # TAGS is a list of --tag flags.
+          docker buildx build --platform linux/amd64,linux/arm64 -f deploy/Dockerfile \
+            $TAGS --metadata-file meta.json --push ctx
+          echo "DIGEST=$(jq -r '."containerimage.digest"' meta.json)" >> "$GITHUB_ENV"
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: ${{ steps.meta.outputs.image }}
+          subject-digest: ${{ env.DIGEST }}
+          push-to-registry: true
+
   publish:
     name: draft the release, or add to it
     needs: build

@@ -32,6 +32,7 @@ Download the archive for your system from [Releases](https://github.com/PT-Perka
 | macOS, Intel | `monita_darwin_amd64.tar.gz` |
 | Windows, x86 | `monita_windows_amd64.zip` |
 | Windows, Arm | `monita_windows_arm64.zip` |
+| Docker, any system | `ghcr.io/pt-perkasa-pilar-utama/monita:1`, see [With Docker](#with-docker) |
 
 The Linux binaries are static. `monita service` needs systemd, so it runs on Linux only. On macOS and Windows, run `monita serve` yourself. On Windows, keep the settings in a file and name it: `monita.exe serve --env-file monita.env`. Start from `monita.env.example` in the archive, and set `MONITA_DB_PATH` to a folder of your own, such as `C:\monita\monita.db`. Windows does not use Unix file modes, so protect that folder with its own permissions. The Windows binaries are not signed either, so SmartScreen may ask before the first start. The macOS binaries are not signed: a copy downloaded in a browser needs `xattr -d com.apple.quarantine monita` before it starts. `curl` downloads do not.
 
@@ -43,6 +44,53 @@ tar -xzf monita_linux_amd64.tar.gz
 sudo install -m 0755 monita /usr/local/bin/monita
 monita --version
 ```
+
+### With Docker
+
+The image `ghcr.io/pt-perkasa-pilar-utama/monita` runs on Linux, and on Windows and macOS through Docker Desktop. It holds the same static binary as the Linux archives, for `linux/amd64` and `linux/arm64`. It has no shell and runs as a user without root rights. Tags: `1.0.1` for one release, `1.0` and `1` for the newest in that line, and `latest`.
+
+Data lives in the volume at `/data`. The commands below are one line each, so they work in PowerShell, Command Prompt and a Unix shell.
+
+To try it on a laptop:
+
+1. Create the volume:
+
+   ```sh
+   docker volume create monita-data
+   ```
+
+2. Create the first super admin. The command asks for a password. Run it before the server starts: the database opens for one program at a time.
+
+   ```sh
+   docker run --rm -it -v monita-data:/data -e MONITA_ENV=dev ghcr.io/pt-perkasa-pilar-utama/monita:1 admin create --email you@company.co.id
+   ```
+
+3. Start Monita:
+
+   ```sh
+   docker run -d --name monita --restart unless-stopped -p 127.0.0.1:7466:7466 -v monita-data:/data -e MONITA_ENV=dev ghcr.io/pt-perkasa-pilar-utama/monita:1
+   ```
+
+4. Open `http://localhost:7466` and sign in. Use `localhost`, not `127.0.0.1`: sign-in checks that the page and `MONITA_BASE_URL` (default `http://localhost:7466`) have the same address.
+
+`MONITA_ENV=dev` allows an `http://` address and logs more. On a server, keep the image's `MONITA_ENV=prod` and put Monita behind a web server that handles HTTPS. A Compose file for a server:
+
+```yaml
+services:
+  monita:
+    image: ghcr.io/pt-perkasa-pilar-utama/monita:1
+    restart: unless-stopped
+    ports: ["127.0.0.1:7466:7466"]
+    volumes: ["monita-data:/data"]
+    environment:
+      MONITA_BASE_URL: https://monita.company.co.id
+      MONITA_SMTP_URL: smtps://user:password@mail.company.co.id:465
+      MONITA_TRUST_PROXY: "true"
+volumes:
+  monita-data:
+```
+
+Create the first super admin with `docker compose run --rm monita admin create --email you@company.co.id` before the first `docker compose up -d`. Each variable is in [Configuration](configuration.md). To upgrade, pull the new tag and recreate the container; Monita migrates the database when it starts. `monita service` does not apply in a container: Docker restarts it.
 
 ### From source
 
