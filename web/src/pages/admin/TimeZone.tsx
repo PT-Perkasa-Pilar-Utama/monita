@@ -11,7 +11,7 @@ export function TimeZone(): ReactElement {
   return (
     <>
       <PageHeader title="Time zone" />
-      {res.data ? <TimeZoneSection initial={res.data.utc_offset_min} /> : <Skeleton className="h-64 rounded-xl" />}
+      {res.data ? <TimeZoneSection initial={res.data.utc_offset_min} digestHour={res.data.digest_utc_hour} /> : <Skeleton className="h-64 rounded-xl" />}
     </>
   );
 }

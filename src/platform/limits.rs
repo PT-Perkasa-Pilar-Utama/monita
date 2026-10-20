@@ -116,6 +116,8 @@ struct SystemView {
     caps: Vec<Cap>,
     /// Minutes east of UTC that every page shows times in.
     utc_offset_min: i64,
+    /// `MONITA_DIGEST_UTC_HOUR`: the digest keeps it whatever the offset.
+    digest_utc_hour: u32,
 }
 
 /// A log scale, so 1, 60 and 1 000 000 all land somewhere visible on one bar.
@@ -275,6 +277,7 @@ async fn view(state: &AppState) -> anyhow::Result<SystemView> {
         server: server_rows(config),
         caps,
         utc_offset_min,
+        digest_utc_hour: config.digest_utc_hour,
     })
 }
 

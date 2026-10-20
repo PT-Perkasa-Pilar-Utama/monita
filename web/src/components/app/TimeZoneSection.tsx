@@ -6,7 +6,7 @@ import { Field, FieldLabel } from "@/components/ui/field";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { api, errorText } from "@/lib/api";
-import { stamp, zone } from "@/lib/time";
+import { digestNote, stamp, zone } from "@/lib/time";
 import { toast } from "sonner";
 
 /** Offsets real places use, in minutes east of UTC, with a few places for each. */
@@ -50,7 +50,7 @@ const ZONES: [number, string][] = [
 ];
 
 /** The UTC offset every page shows times in. A fixed offset: no daylight saving. */
-export function TimeZoneSection({ initial }: { initial: number }): ReactElement {
+export function TimeZoneSection({ initial, digestHour }: { initial: number; digestHour: number }): ReactElement {
   const [saved, setSaved] = useState(initial);
   const [value, setValue] = useState(initial);
   const [busy, setBusy] = useState(false);
@@ -72,7 +72,7 @@ export function TimeZoneSection({ initial }: { initial: number }): ReactElement 
       id="time-zone"
       title="Times on every page"
       description="Every page, chart and status page shows times in this offset. Today and the status page days start at its midnight. Monita stores times in UTC and does not follow daylight saving."
-      footerNote={`Now it is ${stamp(Math.floor(Date.now() / 1000), value)}.`}
+      footerNote={`Now it is ${stamp(Math.floor(Date.now() / 1000), value)}. ${digestNote(digestHour, value)}`}
       footer={
         <Button onClick={() => void save()} disabled={busy || value === saved}>
           {busy && <Spinner data-icon="inline-start" />}

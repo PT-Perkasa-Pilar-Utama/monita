@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { ago, day, duration, stamp, inputValue, fromInputValue } from "@/lib/time";
+import { ago, day, digestNote, duration, stamp, inputValue, fromInputValue } from "@/lib/time";
 
 test("formats times in the offset the way the server does", () => {
   expect(stamp(0, 0)).toBe("1970-01-01 00:00 UTC");
@@ -25,4 +25,10 @@ test("a datetime input reads and writes times in the admin's offset", () => {
   expect(fromInputValue("2026-10-16T15:00", 420)).toBe(ts);
   expect(fromInputValue(inputValue(ts, -180), -180)).toBe(ts);
   expect(fromInputValue("", 0)).toBeNull();
+});
+
+test("the digest note keeps the UTC hour and shows it in the chosen offset", () => {
+  expect(digestNote(1, 0)).toBe("The daily ticket digest goes out at 01:00 UTC.");
+  expect(digestNote(1, 420)).toBe("The daily ticket digest stays at 01:00 UTC, 08:00 in UTC+7.");
+  expect(digestNote(1, -300)).toBe("The daily ticket digest stays at 01:00 UTC, 20:00 in UTC-5.");
 });

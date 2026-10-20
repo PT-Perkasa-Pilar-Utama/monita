@@ -371,6 +371,8 @@ export type SystemView = {
   server: [string, string][];
   caps: { label: string; max: number; used: number | null }[];
   utc_offset_min: number;
+  /** The hour (UTC) the daily ticket digest goes out; the offset does not move it. */
+  digest_utc_hour: number;
 };
 
 /** The mail server on the System page. The password never comes back; `has_password` says one is saved. */

@@ -74,3 +74,9 @@ export function ago(ts: number, now: number = nowSecs()): string {
 export function nowSecs(): number {
   return Math.floor(Date.now() / 1000);
 }
+
+/** The digest keeps its UTC hour (MONITA_DIGEST_UTC_HOUR) whatever offset is chosen. */
+export function digestNote(hourUtc: number, off: number): string {
+  const utc = `${pad(hourUtc)}:00 UTC`;
+  return off === 0 ? `The daily ticket digest goes out at ${utc}.` : `The daily ticket digest stays at ${utc}, ${hhmm(hourUtc * 3600, off)} in ${zone(off)}.`;
+}
