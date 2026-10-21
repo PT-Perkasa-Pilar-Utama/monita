@@ -27,30 +27,19 @@ export const DOCS = "https://pt-perkasa-pilar-utama.github.io/monita/docs/";
 
 /** An area link in the header. The open area is a raised pill.
  * Below 1024 px only the icon shows. */
-function AreaLink({ to, label, icon, active, external, className }: { to: string; label: string; icon: ReactNode; active: boolean; external?: boolean; className?: string }): ReactElement {
-  const body = (
-    <>
-      {icon}
-      <span className="hidden lg:inline">{label}</span>
-    </>
-  );
+function AreaLink({ to, label, icon, active, className }: { to: string; label: string; icon: ReactNode; active: boolean; className?: string }): ReactElement {
   return (
     <Button asChild variant="ghost" size="sm" title={label} className={cn(active && "bg-background font-semibold text-foreground ring-1 ring-border hover:bg-background", className)}>
-      {external ? (
-        <a href={to} target="_blank" rel="noreferrer" aria-label={`${label}, opens in a new tab`}>
-          {body}
-        </a>
-      ) : (
-        <Link to={to} aria-current={active ? "page" : undefined} aria-label={label}>
-          {body}
-        </Link>
-      )}
+      <Link to={to} aria-current={active ? "page" : undefined} aria-label={label}>
+        {icon}
+        <span className="hidden lg:inline">{label}</span>
+      </Link>
     </Button>
   );
 }
 
-/** The header's areas: Projects, Incidents and Tickets across your projects, Admin for a super
- * admin (it opens the admin page opened last), and the documentation. */
+/** The header's areas: Projects, Incidents and Tickets across your projects, and Admin for a super
+ * admin (it opens the admin page opened last). The documentation is in the account menu. */
 function AreaLinks(): ReactElement {
   const me = useMe();
   const { pathname } = useLocation();
@@ -60,9 +49,8 @@ function AreaLinks(): ReactElement {
       <AreaLink to="/" label="Projects" icon={<Folder />} active={pathname === "/" || at("/projects")} />
       <AreaLink to="/incidents" label="Incidents" icon={<AlertTriangle />} active={at("/incidents")} />
       <AreaLink to="/tickets" label="Tickets" icon={<Ticket />} active={at("/tickets")} />
-      {/* On a phone these two move into the account menu, so the project name keeps its room. */}
+      {/* On a phone Admin moves into the account menu, so the project name keeps its room. */}
       {me.sees_all && <AreaLink to={at("/admin") ? pathname : lastAdminPage()} label="Admin" icon={<Settings />} active={at("/admin")} className="max-sm:hidden" />}
-      <AreaLink to={DOCS} label="Documentation" icon={<BookOpen />} active={false} external className="max-sm:hidden" />
     </>
   );
 }
@@ -107,7 +95,8 @@ function AccountMenu(): ReactElement {
               </Link>
             </DropdownMenuItem>
           )}
-          <DropdownMenuItem asChild className="sm:hidden">
+          {/* In the menu, not the header row: an outside link there took clicks meant for Admin or the avatar. */}
+          <DropdownMenuItem asChild>
             <a href={DOCS} target="_blank" rel="noreferrer">
               <BookOpen />
               Documentation
