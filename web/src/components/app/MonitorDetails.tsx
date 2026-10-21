@@ -2,10 +2,10 @@ import type { ReactElement } from "react";
 import { CodeCopy, CopyField } from "@/components/app/CopyField";
 import { DetailPart, DetailsSheet } from "@/components/app/DetailsSheet";
 import { Facts } from "@/components/app/Facts";
-import { parseHeaderLines, signInWords, whenItFails } from "@/lib/checks";
+import { certWords, parseHeaderLines, signInWords, watchesCert, whenItFails } from "@/lib/checks";
 import { monitorCommand } from "@/lib/monitorCurl";
 import { useCanEdit } from "@/lib/session";
-import { stamp } from "@/lib/time";
+import { nowSecs, stamp } from "@/lib/time";
 import type { MonitorView } from "@/lib/types";
 
 /** A monitor's request, what a pass means, what a failure does, and a command to try it. */
@@ -104,6 +104,16 @@ function HttpParts({ m }: { m: MonitorView }): ReactElement {
           ]}
         />
       </DetailPart>
+      {watchesCert(m.kind, m.url) && (
+        <DetailPart title="Certificate">
+          <Facts
+            rows={[
+              ["Expires", m.cert_expires_at ? certWords(m.cert_expires_at, nowSecs()) : "Not seen yet"],
+              ["Warning", m.cert_warn_days ? `${m.cert_warn_days} days before, once per certificate` : "Off"],
+            ]}
+          />
+        </DetailPart>
+      )}
     </>
   );
 }

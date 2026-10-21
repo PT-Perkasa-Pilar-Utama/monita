@@ -74,6 +74,7 @@ Select **How alerts work**, then **What recipients get**. Pick an alert to see t
 | `incident.resolved` | It closes. Adds `duration_s`. | Critical or warning |
 | `source.down` | A source with incidents off fails. Adds `source_url`. | Critical or warning |
 | `source.up` | That source recovers. Adds `duration_s` and `source_url`. | Critical or warning |
+| `certificate.expiring` | An HTTPS monitor's certificate expires within its warning window. Once per certificate. Adds `expires_at` and `source_url`. | Warning |
 | `ticket.created` | A user files a ticket. Adds `ticket_number`, `title` and `ticket_url`. | Ticket |
 | `ticket.moved` | A ticket changes column. Adds `ticket_number`, `title`, `ticket_url`, `from`, `to` and `close_reason`. | Ticket |
 | `test` | The test button | The section tested |

@@ -1,6 +1,8 @@
 //! One check: HTTP, a TCP connection or a DNS lookup (v1.1 Q16). Never fails: every problem
 //! becomes a `CheckResult` with `ok = false`.
 
+pub mod cert;
+
 use std::time::{Duration, Instant};
 
 use super::CheckResult;
@@ -38,6 +40,8 @@ impl Clients {
                 } else {
                     reqwest::redirect::Policy::none()
                 })
+                // The leaf certificate, for its expiry (v1.1 Q25).
+                .tls_info(true)
         };
         Ok(Self {
             strict: base(true).build()?,
@@ -134,6 +138,7 @@ pub async fn probe(t: &Target<'_>, clients: &Clients) -> CheckResult {
         status_code: code,
         latency_ms: start.elapsed().as_millis() as i64,
         error: Some(error),
+        cert_expires_at: None,
     };
     let method = reqwest::Method::from_bytes(t.method.as_bytes()).unwrap_or(reqwest::Method::GET);
     let mut request = client
@@ -155,7 +160,7 @@ pub async fn probe(t: &Target<'_>, clients: &Clients) -> CheckResult {
         request = request.body(body.to_string());
     }
     let request = request.send();
-    let mut resp = match request.await {
+    let resp = match request.await {
         Ok(r) => r,
         Err(e) if e.is_timeout() => {
             return fail(None, start, format!("Timeout after {} ms", t.timeout_ms));
@@ -168,6 +173,29 @@ pub async fn probe(t: &Target<'_>, clients: &Clients) -> CheckResult {
             );
         }
         Err(e) => return fail(None, start, root_cause(&e)),
+    };
+    let cert = resp
+        .extensions()
+        .get::<reqwest::tls::TlsInfo>()
+        .and_then(reqwest::tls::TlsInfo::peer_certificate)
+        .and_then(cert::not_after);
+    CheckResult {
+        cert_expires_at: cert,
+        ..judge(t, resp, checked_at, start).await
+    }
+}
+
+/// Status and keyword of a response that arrived.
+async fn judge(
+    t: &Target<'_>,
+    mut resp: reqwest::Response,
+    checked_at: i64,
+    start: Instant,
+) -> CheckResult {
+    let fail = |code: Option<u16>, start: Instant, error: String| CheckResult {
+        error: Some(error),
+        status_code: code,
+        ..failed(checked_at, start, String::new())
     };
     let code = resp.status().as_u16();
     if !status_matches(t.expected_status, code) {
@@ -208,11 +236,10 @@ pub async fn probe(t: &Target<'_>, clients: &Clients) -> CheckResult {
         }
     }
     CheckResult {
-        checked_at,
         ok: true,
         status_code: Some(code),
-        latency_ms: start.elapsed().as_millis() as i64,
         error: None,
+        ..failed(checked_at, start, String::new())
     }
 }
 
@@ -224,6 +251,16 @@ fn failed(checked_at: i64, start: Instant, error: String) -> CheckResult {
         status_code: None,
         latency_ms: start.elapsed().as_millis() as i64,
         error: Some(error),
+        cert_expires_at: None,
+    }
+}
+
+/// A passed result started at `checked_at`, `start` ago.
+fn passed(checked_at: i64, start: Instant) -> CheckResult {
+    CheckResult {
+        ok: true,
+        error: None,
+        ..failed(checked_at, start, String::new())
     }
 }
 
@@ -234,13 +271,7 @@ pub async fn probe_tcp(target: &str, timeout_ms: i64) -> CheckResult {
     let start = Instant::now();
     let limit = Duration::from_millis(timeout_ms as u64);
     match tokio::time::timeout(limit, tokio::net::TcpStream::connect(target)).await {
-        Ok(Ok(_)) => CheckResult {
-            checked_at,
-            ok: true,
-            status_code: None,
-            latency_ms: start.elapsed().as_millis() as i64,
-            error: None,
-        },
+        Ok(Ok(_)) => passed(checked_at, start),
         Ok(Err(e)) => failed(checked_at, start, format!("Connection failed: {e}")),
         Err(_) => failed(checked_at, start, format!("Timeout after {timeout_ms} ms")),
     }
@@ -269,13 +300,7 @@ pub async fn probe_dns(host: &str, expected: Option<&str>, timeout_ms: i64) -> C
                 format!("Resolved to {}, expected {ip}", got.join(", ")),
             )
         }
-        _ => CheckResult {
-            checked_at,
-            ok: true,
-            status_code: None,
-            latency_ms: start.elapsed().as_millis() as i64,
-            error: None,
-        },
+        _ => passed(checked_at, start),
     }
 }
 

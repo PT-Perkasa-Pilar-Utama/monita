@@ -1,5 +1,6 @@
 // Words for a monitor's or heartbeat's settings, shared by both detail pages.
 
+import { day } from "@/lib/time";
 import type { CheckKind } from "@/lib/types";
 
 /** What a monitor can check, as its form offers it. */
@@ -78,4 +79,17 @@ export function signInWords(m: { auth_kind: string; auth_secret_name: string | n
     default:
       return "None";
   }
+}
+
+/** v1.1 Q25: only an HTTP check of an https:// URL has a certificate to watch. */
+export function watchesCert(kind: CheckKind, url: string): boolean {
+  return kind === "http" && /^https:\/\//i.test(url.trim());
+}
+
+/** When the certificate the last check saw expires: `2026-11-29, in 39 days`, or `Expired on 2026-11-29`. */
+export function certWords(expiresAt: number, now: number, off?: number): string {
+  const date = day(expiresAt, off);
+  if (expiresAt <= now) return `Expired on ${date}`;
+  const days = Math.floor((expiresAt - now) / 86_400);
+  return `${date}, ${days === 0 ? "today" : days === 1 ? "in 1 day" : `in ${days} days`}`;
 }

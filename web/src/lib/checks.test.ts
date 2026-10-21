@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { envName, headerText, parseHeaderLines, signInWords, targetField, whenItFails } from "@/lib/checks";
+import { certWords, envName, headerText, parseHeaderLines, signInWords, targetField, watchesCert, whenItFails } from "@/lib/checks";
 
 test("each pair of failure boxes has its own sentence", () => {
   expect(whenItFails(true, true)).toBe("Sends alerts and opens an incident");
@@ -38,4 +38,18 @@ test("the target field names what each kind of check needs", () => {
   expect(targetField("http").label).toBe("URL");
   expect(targetField("tcp")).toEqual({ label: "Host and port", placeholder: "db.internal:5432" });
   expect(targetField("dns").label).toBe("Host name");
+});
+
+test("only an HTTP check of an https URL watches a certificate", () => {
+  expect(watchesCert("http", " HTTPS://pay.example.com")).toBe(true);
+  expect(watchesCert("http", "http://pay.example.com")).toBe(false);
+  expect(watchesCert("tcp", "https://pay.example.com")).toBe(false);
+});
+
+test("a certificate's expiry reads as a date and the days left", () => {
+  const exp = Date.UTC(2026, 10, 29, 23, 59, 59) / 1000;
+  expect(certWords(exp, exp - 39 * 86_400 - 5, 0)).toBe("2026-11-29, in 39 days");
+  expect(certWords(exp, exp - 86_400, 0)).toBe("2026-11-29, in 1 day");
+  expect(certWords(exp, exp - 60, 0)).toBe("2026-11-29, today");
+  expect(certWords(exp, exp + 1, 0)).toBe("Expired on 2026-11-29");
 });

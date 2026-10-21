@@ -143,6 +143,45 @@ pub(super) fn compose(
     }
 }
 
+/// A certificate that expires soon or has expired (v1.1 Q25). Always the warning route.
+pub(super) fn cert_warning(
+    w: &super::CertWarning<'_>,
+    project: &(String, String),
+    base_url: &str,
+    at: i64,
+) -> Composed {
+    let (name, slug) = project;
+    let url = source_url(
+        base_url,
+        slug,
+        crate::incidents::SourceKind::Monitor,
+        w.monitor_id,
+    );
+    let day = time::day(w.expires_at);
+    let when = if w.expires_at <= at {
+        format!("expired on {day}")
+    } else {
+        let days = (w.expires_at - at) / 86_400;
+        match days {
+            0 => format!("expires today, on {day}"),
+            1 => format!("expires in 1 day, on {day}"),
+            n => format!("expires in {n} days, on {day}"),
+        }
+    };
+    let text = format!("[CERT] {name} / {}: the certificate {when}", w.monitor_name);
+    Composed {
+        link: url.clone(),
+        dedup: format!("cert:{}:{}", w.monitor_id, w.expires_at),
+        resolves: false,
+        subject: text.clone(),
+        json: serde_json::json!({
+            "text": text, "event": "certificate.expiring", "project": slug, "source": w.monitor_name,
+            "severity": "warning", "expires_at": w.expires_at, "source_url": url, "at": at,
+        }),
+        text: format!("{text}\n\nRenew it before then. No incident was opened.\n{url}\n"),
+    }
+}
+
 /// The page of a monitor or a heartbeat, for an alert with no incident to link.
 fn source_url(base_url: &str, slug: &str, kind: crate::incidents::SourceKind, id: i64) -> String {
     format!("{base_url}/projects/{slug}/{}s/{id}", kind_word(kind))

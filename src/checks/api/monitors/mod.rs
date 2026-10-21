@@ -54,6 +54,10 @@ struct MonitorView {
     url: String,
     /// DNS only: the address one answer must equal.
     expected_address: Option<String>,
+    /// HTTPS only: days of warning before the certificate expires; null is off.
+    cert_warn_days: Option<i64>,
+    /// The `notAfter` of the certificate the last HTTPS check saw.
+    cert_expires_at: Option<i64>,
     interval_s: i64,
     /// `30 seconds`, `1 minute`, `3 minutes` or `5 minutes`.
     every: &'static str,
@@ -158,6 +162,8 @@ fn view(m: Monitor, state: &'static str, read_only: bool) -> MonitorView {
         kind: m.kind,
         url: if read_only { hide_query(&m.url) } else { m.url },
         expected_address: m.expected_address,
+        cert_warn_days: m.cert_warn_days,
+        cert_expires_at: m.cert_expires_at,
     }
 }
 

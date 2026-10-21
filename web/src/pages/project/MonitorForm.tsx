@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectVa
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { api, ApiError, dropField, errorText } from "@/lib/api";
-import { headerText, parseHeaderLines } from "@/lib/checks";
+import { headerText, parseHeaderLines, watchesCert } from "@/lib/checks";
 import { useProject } from "@/lib/project";
 import type { CheckOptions, MonitorDetail, Secret, Severity } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
@@ -33,6 +33,8 @@ type Form = RequestPart & {
   alert: boolean;
   auto_incident: boolean;
   fails_to_open: string;
+  /** `7`, `14` or `30`; empty is off. */
+  cert_warn_days: string;
 };
 
 /** New monitor, or edit one when the URL names it. Edit also deletes. */
@@ -56,12 +58,12 @@ function MonitorFormBody({ id, onClose, onSaved }: { id: string | undefined; onC
     setForm(
       m
         ? {
-            name: m.name, kind: m.kind, url: m.url, expected_address: m.expected_address ?? "", interval_s: m.interval_s, timeout_s: String(m.timeout_s), expected_status: m.expected_status, keyword: m.keyword ?? "", skip_tls_verify: m.skip_tls_verify, severity: m.severity, is_public: m.is_public, alert: m.alert, auto_incident: m.auto_incident, method: m.method, body: m.body ?? "", fails_to_open: String(m.fails_to_open),
+            name: m.name, kind: m.kind, url: m.url, expected_address: m.expected_address ?? "", interval_s: m.interval_s, timeout_s: String(m.timeout_s), expected_status: m.expected_status, keyword: m.keyword ?? "", skip_tls_verify: m.skip_tls_verify, severity: m.severity, is_public: m.is_public, alert: m.alert, auto_incident: m.auto_incident, method: m.method, body: m.body ?? "", fails_to_open: String(m.fails_to_open), cert_warn_days: m.cert_warn_days ? String(m.cert_warn_days) : "",
             header_rows: parseHeaderLines(m.headers).map(([name, value]) => ({ name, value })),
             auth_kind: m.auth_kind, auth_secret_id: m.auth_secret_id, auth_user: m.auth_user ?? "", auth_header: m.auth_header ?? "",
           }
         : {
-            name: "", kind: "http", url: "", expected_address: "", interval_s: o.monitor.interval_s, timeout_s: String(o.monitor.timeout_s), expected_status: o.monitor.expected_status, keyword: "", skip_tls_verify: false, severity: o.monitor.severity, is_public: false, alert: true, auto_incident: true, method: "GET", body: "", fails_to_open: "2",
+            name: "", kind: "http", url: "", expected_address: "", interval_s: o.monitor.interval_s, timeout_s: String(o.monitor.timeout_s), expected_status: o.monitor.expected_status, keyword: "", skip_tls_verify: false, severity: o.monitor.severity, is_public: false, alert: true, auto_incident: true, method: "GET", body: "", fails_to_open: "2", cert_warn_days: "",
             header_rows: [], auth_kind: "none", auth_secret_id: null, auth_user: "", auth_header: "",
           },
     );
@@ -79,7 +81,7 @@ function MonitorFormBody({ id, onClose, onSaved }: { id: string | undefined; onC
     setError(null);
     // A body typed for POST stays in the box after a switch to GET, but only POST and PUT send it.
     const { header_rows, ...rest } = form;
-    const body = { ...rest, headers: headerText(header_rows), interval_s: String(form.interval_s), fails_to_open: form.fails_to_open, body: sendsBody(form.method) ? form.body : "" };
+    const body = { ...rest, headers: headerText(header_rows), interval_s: String(form.interval_s), fails_to_open: form.fails_to_open, body: sendsBody(form.method) ? form.body : "", cert_warn_days: watchesCert(form.kind, form.url) ? form.cert_warn_days : "" };
     try {
       if (id) {
         await api(`${base}/${id}`, "PUT", body);
@@ -226,6 +228,27 @@ function MonitorFormBody({ id, onClose, onSaved }: { id: string | undefined; onC
                       {err("fails_to_open") && <FieldError>{err("fails_to_open")}</FieldError>}
                     </Field>
                   </WhenItFails>
+                  {watchesCert(form.kind, form.url) && (
+                    <Field data-invalid={err("cert_warn_days") ? true : undefined}>
+                      <FieldLabel htmlFor="m-cert" className="font-normal">
+                        Warn before the certificate expires
+                      </FieldLabel>
+                      <Select value={form.cert_warn_days || "off"} onValueChange={(v) => set("cert_warn_days", v === "off" ? "" : v)}>
+                        <SelectTrigger id="m-cert" className="w-56" aria-invalid={err("cert_warn_days") ? true : undefined}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectGroup>
+                            <SelectItem value="off">Off</SelectItem>
+                            {["7", "14", "30"].map((d) => (
+                              <SelectItem key={d} value={d}>{`${d} days before`}</SelectItem>
+                            ))}
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                      {err("cert_warn_days") && <FieldError>{err("cert_warn_days")}</FieldError>}
+                    </Field>
+                  )}
                   <PublicField id="m" noun="monitor" checked={form.is_public} onChange={(v) => set("is_public", v)} />
                   </FieldSet>
                 </FieldGroup>

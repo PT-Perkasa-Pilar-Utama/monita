@@ -90,6 +90,23 @@ test("a TCP monitor needs a port, hides the HTTP fields, and Details tries it wi
   await expect(page.locator("#monitor-curl")).toContainText("nc -vz -w 10 '127.0.0.1' 18080");
 });
 
+test("an https monitor offers a certificate warning, and Details shows it", async ({ page }) => {
+  const slug = await apiProject(page, "Certs");
+  await page.goto(`/projects/${slug}/monitors/new`);
+  await page.locator("#m-name").fill("Storefront");
+  await page.locator("#m-url").fill("http://127.0.0.1:9/");
+  await expect(page.getByLabel("Warn before the certificate expires")).toHaveCount(0);
+  await page.locator("#m-url").fill("https://127.0.0.1:9/");
+  await page.getByLabel("Warn before the certificate expires").click();
+  await page.getByRole("option", { name: "14 days before" }).click();
+  await page.getByRole("button", { name: "Save monitor" }).click();
+  await expect(page.getByRole("heading", { name: "Storefront" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Details" }).click();
+  await expect(page.getByText("14 days before, once per certificate")).toBeVisible();
+  await expect(page.getByText("Not seen yet")).toBeVisible();
+});
+
 test("heartbeat Details gives the call in Shell, Node.js and Python, and remembers the pick", async ({ page }) => {
   const slug = await apiProject(page, "Snippets");
   const { id, pingUrl } = await apiHeartbeat(page, slug);

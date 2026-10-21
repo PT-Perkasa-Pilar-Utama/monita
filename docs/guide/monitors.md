@@ -23,6 +23,17 @@ Select **How monitors work** at the top of the page for a short guide with examp
 
 The interval, the timeout, the failure count, severity and the status page work as for HTTP. A DNS check asks the resolver of the server that runs Monita, so it sees `/etc/hosts` and the server's DNS settings. **Details** shows the same check as a command: `nc -vz` for a port and `getent ahosts` for a name. ICMP ping and DNS record types other than A and AAAA are not checked.
 
+## Certificate warning
+
+An HTTP monitor of an `https://` URL can warn before its certificate expires. Under **Alerts and status page**, set **Warn before the certificate expires** to 7, 14 or 30 days.
+
+- Each check reads the expiry date of the server's certificate. **Details** shows it under **Certificate**.
+- When the date falls inside the window, Monita sends one alert through the warning route: email, and the webhook if it is on. No incident opens.
+- Each certificate warns once. A renewed certificate has a new date, so it warns again when its own time comes.
+- The monitor's alert switch off sends no warning.
+
+A strict check of an expired certificate fails anyway. The warning gives you time before that happens.
+
 ## Request
 
 These fields are for HTTP checks.

@@ -32,6 +32,12 @@ pub struct Monitor {
     pub auth_secret_id: Option<i64>,
     pub auth_user: Option<String>,
     pub auth_header: Option<String>,
+    /// HTTPS only: warn this many days before the certificate expires (v1.1 Q25).
+    pub cert_warn_days: Option<i64>,
+    /// The `notAfter` the last HTTPS check saw.
+    pub cert_expires_at: Option<i64>,
+    /// The `notAfter` the last certificate warning was about.
+    pub cert_warned_for: Option<i64>,
     pub next_check_at: i64,
     pub last: Option<CheckRow>,
     pub created_at: i64,
@@ -61,6 +67,7 @@ impl Monitor {
             auth_secret_id: self.auth_secret_id,
             auth_user: self.auth_user.clone(),
             auth_header: self.auth_header.clone(),
+            cert_warn_days: self.cert_warn_days,
         }
     }
 
@@ -111,7 +118,7 @@ impl Monitor {
     }
 }
 
-const COLS: &str = "m.id, m.project_id, m.name, m.url, m.interval_s, m.timeout_ms, m.expected_status, m.keyword, m.skip_tls_verify, m.severity, m.is_public, m.next_check_at, c.checked_at, c.ok, c.status_code, c.latency_ms, c.error, m.created_at, c.id, m.alert, m.auto_incident, m.method, m.headers, m.body, m.fails_to_open, m.auth_kind, m.auth_secret_id, m.auth_user, m.auth_header, m.kind, m.expected_address";
+const COLS: &str = "m.id, m.project_id, m.name, m.url, m.interval_s, m.timeout_ms, m.expected_status, m.keyword, m.skip_tls_verify, m.severity, m.is_public, m.next_check_at, c.checked_at, c.ok, c.status_code, c.latency_ms, c.error, m.created_at, c.id, m.alert, m.auto_incident, m.method, m.headers, m.body, m.fails_to_open, m.auth_kind, m.auth_secret_id, m.auth_user, m.auth_header, m.kind, m.expected_address, m.cert_warn_days, m.cert_expires_at, m.cert_warned_for";
 const FROM: &str = "FROM monitors m LEFT JOIN check_results c ON c.id = (SELECT id FROM check_results WHERE monitor_id = m.id ORDER BY checked_at DESC, id DESC LIMIT 1)";
 
 fn monitor(r: &turso::Row) -> turso::Result<Monitor> {
@@ -150,6 +157,9 @@ fn monitor(r: &turso::Row) -> turso::Result<Monitor> {
         auth_header: r.get(28)?,
         kind: r.get(29)?,
         expected_address: r.get(30)?,
+        cert_warn_days: r.get(31)?,
+        cert_expires_at: r.get(32)?,
+        cert_warned_for: r.get(33)?,
         next_check_at: r.get(11)?,
         last,
         created_at: r.get(17)?,
@@ -197,7 +207,8 @@ async fn set_switches(c: &Connection, id: i64, m: &MonitorInput) -> anyhow::Resu
     };
     c.execute(
         "UPDATE monitors SET alert = ?1, auto_incident = ?2, method = ?3, headers = ?4, body = ?5, fails_to_open = ?7,
-           auth_kind = ?8, auth_secret_id = ?9, auth_user = ?10, auth_header = ?11, kind = ?12, expected_address = ?13
+           auth_kind = ?8, auth_secret_id = ?9, auth_user = ?10, auth_header = ?11, kind = ?12, expected_address = ?13,
+           cert_warn_days = ?14
          WHERE id = ?6",
         (
             m.alert,
@@ -213,6 +224,7 @@ async fn set_switches(c: &Connection, id: i64, m: &MonitorInput) -> anyhow::Resu
             trimmed(&m.auth_header).filter(|_| kind == "header"),
             m.kind(),
             m.expected_address.as_deref(),
+            m.cert_warn_days,
         ),
     )
     .await?;
@@ -253,6 +265,23 @@ pub async fn update_monitor(
         set_switches(c, id, m).await?;
     }
     Ok(changed > 0)
+}
+
+/// The certificate expiry an HTTPS check saw, and the expiry a warning went out for when it did.
+pub async fn set_cert(
+    c: &Connection,
+    id: i64,
+    expires_at: i64,
+    warned: bool,
+) -> anyhow::Result<()> {
+    c.execute(
+        "UPDATE monitors SET cert_expires_at = ?1,
+           cert_warned_for = CASE WHEN ?2 THEN ?1 ELSE cert_warned_for END
+         WHERE id = ?3",
+        (expires_at, warned, id),
+    )
+    .await?;
+    Ok(())
 }
 
 pub async fn delete_monitor(c: &Connection, project_id: i64, id: i64) -> anyhow::Result<()> {

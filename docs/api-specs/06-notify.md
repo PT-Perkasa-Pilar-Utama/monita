@@ -42,11 +42,12 @@ Ticket alerts are apart from the severities. The Warning webhook no longer recei
 | `incident.resolved` | Incident closes. Adds `duration_s`. `text` reads "is up", "was deleted" or "was marked resolved by a tech lead". | the severity route | AC-16.02 |
 | `source.down` | A monitor or heartbeat fails while its incident switch is off. Adds `source_url` in place of `incident_url`; `text` reads `[DOWN] Payments / <title>: <cause>`. | the severity route | |
 | `source.up` | The same source recovers. Adds `duration_s` and `source_url`; `text` reads `[UP] Payments / <source> is up after 4m 12s`. | the severity route | |
+| `certificate.expiring` | An HTTPS check sees a certificate that expires within the monitor's `cert_warn_days`, once per certificate (v1.1 Q25). Adds `expires_at` and `source_url`; `severity` is `warning`; `text` reads `[CERT] Payments / <monitor>: the certificate expires in 12 days, on 2026-11-02`, or `expired on` a past day. No incident opens. PagerDuty: a trigger with the dedup key `cert:<monitor id>:<expires_at>`, never resolved. | the warning route | |
 | `ticket.created` | A reporter submits a ticket, when the ticket webhook is on. Adds `ticket_number`, `title` and `ticket_url`; `text` reads `[TICKET] Payments #17: <title>`. A ticket the team files sends nothing. | the ticket webhook | AC-30.03 |
 | `ticket.moved` | A ticket moves to another column, when "ticket moves" is on. Adds `ticket_number`, `title`, `from`, `to`, `close_reason` (null unless `to` is `done`) and `ticket_url`; `text` reads `[TICKET] Payments #17 moved from In progress to Done (Fixed): <title>`. A move to the same column sends nothing. | the ticket webhook | |
 | `test` | Test button. Adds `severity` on the alerts test and `link` on the ticket test. | the tested route | |
 
-A monitor or heartbeat with its alert switch off sends none of the first four (4.3).
+A monitor or heartbeat with its alert switch off sends none of the first five (4.3).
 
 ## 6.3 Outgoing email
 

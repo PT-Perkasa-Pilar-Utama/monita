@@ -15,7 +15,7 @@ mod tickets;
 
 use turso::Connection;
 
-use compose::{chat_safe, compose, test_message, ticket_json};
+use compose::{cert_warning, chat_safe, compose, test_message, ticket_json};
 
 use crate::{
     incidents::Event,
@@ -157,18 +157,53 @@ pub async fn send(c: &Connection, ev: &Event, base_url: &str) -> anyhow::Result<
         return Ok(());
     };
     let (severity, msg) = compose(ev, &project, base_url);
-    let Some(route) = store::route(c, project_id, &severity)
+    queue_alert(c, project_id, &project.1, &severity, &msg).await?;
+    Ok(())
+}
+
+/// A monitor whose HTTPS certificate expires soon (v1.1 Q25).
+pub struct CertWarning<'a> {
+    pub project_id: i64,
+    pub monitor_id: i64,
+    pub monitor_name: &'a str,
+    pub expires_at: i64,
+}
+
+/// Queues the warning route's email and webhook for a certificate that expires soon. Opens no
+/// incident. False when nothing was queued: no project, or warning alerts are off.
+pub async fn send_cert_warning(
+    c: &Connection,
+    w: &CertWarning<'_>,
+    base_url: &str,
+) -> anyhow::Result<bool> {
+    let Some(project) = crate::projects::name_slug(c, w.project_id).await? else {
+        return Ok(false);
+    };
+    let msg = cert_warning(w, &project, base_url, now());
+    queue_alert(c, w.project_id, &project.1, "warning", &msg).await
+}
+
+/// One email per address of the severity's route, and its webhook call. False when the route is
+/// off.
+async fn queue_alert(
+    c: &Connection,
+    project_id: i64,
+    slug: &str,
+    severity: &str,
+    msg: &compose::Composed,
+) -> anyhow::Result<bool> {
+    let Some(route) = store::route(c, project_id, severity)
         .await?
         .filter(|r| r.enabled)
     else {
-        return Ok(());
+        return Ok(false);
     };
     let at = now();
     for email in &route.emails {
         store::queue(c, "email", email, Some(&msg.subject), &msg.text, at).await?;
     }
-    queue_webhook(c, &route, &project.1, &msg, at).await?;
-    Ok(())
+    queue_webhook(c, &route, slug, msg, at).await?;
+    Ok(true)
 }
 
 /// The route's webhook call for one alert, in the route's format, when the webhook is on.

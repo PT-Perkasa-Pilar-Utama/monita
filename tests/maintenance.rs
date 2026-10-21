@@ -60,6 +60,7 @@ async fn record(app: &TestApp, ok: bool, at: i64) {
         status_code: Some(if ok { 200 } else { 503 }),
         latency_ms: 10,
         error: (!ok).then(|| "HTTP 503".into()),
+        cert_expires_at: None,
     };
     checks::record_check(&app.state.db, common::BASE_URL, &m, &result)
         .await

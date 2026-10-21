@@ -17,7 +17,7 @@ mod store;
 
 use crate::platform::{caps, db::Db, now, token};
 
-pub use input::{FieldErrors, MonitorInput, valid_expected_status};
+pub use input::{CERT_WARN_DAYS, FieldErrors, MonitorInput, valid_expected_status};
 pub use probe::{Auth, Clients, Target, probe, status_matches};
 pub use store::{CheckRow, Monitor};
 
@@ -46,6 +46,8 @@ pub struct CheckResult {
     pub status_code: Option<u16>,
     pub latency_ms: i64,
     pub error: Option<String>,
+    /// The `notAfter` of the HTTPS server's leaf certificate, when the check reached it.
+    pub cert_expires_at: Option<i64>,
 }
 
 /// A monitor or heartbeat marked public, for the status page (US-21).
@@ -212,6 +214,7 @@ pub async fn run_check(db: &Db, clients: &Clients, m: &Monitor) -> anyhow::Resul
             status_code: None,
             latency_ms: 0,
             error: Some(SECRET_GONE.into()),
+            cert_expires_at: None,
         },
     })
 }
@@ -259,9 +262,42 @@ pub async fn record_check(
         {
             crate::notify::send(c, &ev, base_url).await?;
         }
+        if let Some(expires_at) = result.cert_expires_at {
+            record_cert(c, base_url, monitor, expires_at).await?;
+        }
         Ok(())
     })
     .await
+}
+
+/// Keeps the certificate expiry an HTTPS check saw, and warns once per certificate when the
+/// monitor asks for it and its alerts are on (v1.1 Q25).
+async fn record_cert(
+    c: &turso::Connection,
+    base_url: &str,
+    monitor: &Monitor,
+    expires_at: i64,
+) -> anyhow::Result<()> {
+    let due = monitor.alert
+        && probe::cert::warning_due(
+            expires_at,
+            now(),
+            monitor.cert_warn_days,
+            monitor.cert_warned_for,
+        );
+    let warned = due
+        && crate::notify::send_cert_warning(
+            c,
+            &crate::notify::CertWarning {
+                project_id: monitor.project_id,
+                monitor_id: monitor.id,
+                monitor_name: &monitor.name,
+                expires_at,
+            },
+            base_url,
+        )
+        .await?;
+    store::set_cert(c, monitor.id, expires_at, warned).await
 }
 
 /// The names of a project's monitors and heartbeats, on the caller's connection, so a writer can

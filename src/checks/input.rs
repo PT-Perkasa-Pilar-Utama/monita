@@ -41,7 +41,12 @@ pub struct MonitorInput {
     pub auth_user: Option<String>,
     /// The header name for `header`, such as `X-Api-Key`.
     pub auth_header: Option<String>,
+    /// HTTPS only: warn this many days before the certificate expires; None is off.
+    pub cert_warn_days: Option<i64>,
 }
+
+/// The certificate warnings a monitor may choose, in days (v1.1 Q25).
+pub const CERT_WARN_DAYS: [i64; 3] = [7, 14, 30];
 
 /// How a check signs in.
 pub const AUTH_KINDS: [&str; 4] = ["none", "bearer", "basic", "header"];
@@ -155,6 +160,16 @@ impl MonitorInput {
             _ => {}
         }
         self.auth_errors(e);
+        if let Some(days) = self.cert_warn_days {
+            if !CERT_WARN_DAYS.contains(&days) {
+                e.insert("cert_warn_days", "Pick 7, 14 or 30 days, or off.");
+            } else if !url.to_ascii_lowercase().starts_with("https://") {
+                e.insert(
+                    "cert_warn_days",
+                    "Only an https:// URL has a certificate to watch. Turn the warning off.",
+                );
+            }
+        }
     }
 
     /// The form as it is stored: a TCP or DNS check keeps none of the HTTP fields, and only a DNS
@@ -182,6 +197,7 @@ impl MonitorInput {
             m.auth_secret_id = None;
             m.auth_user = None;
             m.auth_header = None;
+            m.cert_warn_days = None;
         }
         m
     }

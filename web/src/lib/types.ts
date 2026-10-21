@@ -102,6 +102,10 @@ export type MonitorView = {
   url: string;
   /** DNS only: the address one answer must equal. */
   expected_address: string | null;
+  /** HTTPS only: days of warning before the certificate expires; null is off. */
+  cert_warn_days: number | null;
+  /** The notAfter of the certificate the last HTTPS check saw. */
+  cert_expires_at: number | null;
   interval_s: number;
   every: string;
   timeout_s: number;

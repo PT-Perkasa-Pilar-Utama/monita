@@ -94,6 +94,18 @@ pub fn ago(ts: i64, now: i64) -> String {
     }
 }
 
+/// Days since 1970-01-01 for a calendar date: Howard Hinnant's civil-to-days algorithm, the
+/// inverse of `civil_from_days`.
+pub fn days_from_civil(y: i64, m: u32, d: u32) -> i64 {
+    let y = y - i64::from(m <= 2);
+    let era = y.div_euclid(400);
+    let yoe = y.rem_euclid(400);
+    let m = i64::from(m);
+    let doy = (153 * (if m > 2 { m - 3 } else { m + 9 }) + 2) / 5 + i64::from(d) - 1;
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    era * 146_097 + doe - 719_468
+}
+
 /// Howard Hinnant's days-to-civil algorithm.
 fn civil_from_days(z: i64) -> (i64, u32, u32) {
     let z = z + 719_468;
@@ -111,6 +123,16 @@ fn civil_from_days(z: i64) -> (i64, u32, u32) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn civil_dates_and_day_numbers_round_trip() {
+        assert_eq!(days_from_civil(1970, 1, 1), 0);
+        assert_eq!(days_from_civil(2000, 3, 1), 11_017);
+        for z in [-1, 0, 59, 60, 11_016, 20_746, 30_000, 100_000] {
+            let (y, m, d) = civil_from_days(z);
+            assert_eq!(days_from_civil(y, m, d), z, "{y}-{m}-{d}");
+        }
+    }
 
     #[test]
     fn formats_times_in_the_offset() {

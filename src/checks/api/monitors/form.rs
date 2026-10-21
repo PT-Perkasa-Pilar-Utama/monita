@@ -34,6 +34,8 @@ pub(super) struct MonitorForm {
     auth_secret_id: Option<i64>,
     auth_user: String,
     auth_header: String,
+    /// `7`, `14` or `30`; empty or missing is off.
+    cert_warn_days: String,
 }
 
 impl From<MonitorForm> for MonitorInput {
@@ -67,6 +69,10 @@ impl From<MonitorForm> for MonitorInput {
             auth_secret_id: f.auth_secret_id,
             auth_user: Some(f.auth_user.trim().to_string()).filter(|u| !u.is_empty()),
             auth_header: Some(f.auth_header.trim().to_string()).filter(|h| !h.is_empty()),
+            // A bad number is 0, which fails validation with the field's own message.
+            cert_warn_days: Some(f.cert_warn_days.trim())
+                .filter(|d| !d.is_empty())
+                .map(|d| d.parse().unwrap_or(0)),
         }
     }
 }

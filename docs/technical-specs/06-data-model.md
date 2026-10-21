@@ -186,6 +186,9 @@ One row per project. Ticket alerts are apart from the severities (migration 0007
 | auth_header | TEXT | yes | | | The header name for `header`. A header row may not repeat it. |
 | kind | TEXT | no | `'http'` | | `http`, `tcp` or `dns` (migration 0024, v1.1 Q16). A TCP check keeps `host:port` in `url`, a DNS check the host name. |
 | expected_address | TEXT | yes | | | `dns` only: the check passes only when one A or AAAA answer equals it (migration 0024). |
+| cert_warn_days | INTEGER | yes | | `IN (7, 14, 30)` | HTTPS only: warn this many days before the certificate expires (migration 0028, v1.1 Q25). |
+| cert_expires_at | INTEGER | yes | | | The `notAfter` of the leaf certificate the last HTTPS check saw. |
+| cert_warned_for | INTEGER | yes | | | The `notAfter` the last warning was about, so each certificate warns once. |
 | created_at, updated_at | INTEGER | no | | | |
 
 ### 6.3.7a project_secrets
