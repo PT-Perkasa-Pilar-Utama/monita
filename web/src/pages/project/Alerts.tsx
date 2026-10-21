@@ -1,259 +1,152 @@
 import { useState } from "react";
 import type { ReactElement } from "react";
+import { AlertCardSheet } from "@/components/app/AlertCardSheet";
 import { AlertsGuide } from "@/components/app/AlertsGuide";
 import { AlertSwitch } from "@/components/app/AlertSwitch";
 import { SettingsPage, SettingsSection } from "@/components/app/SettingsSection";
-import { TelegramConnect } from "@/components/app/TelegramConnect";
 import { TicketAlertsSection } from "@/components/app/TicketAlertsSection";
-import { Send } from "@/components/icons";
+import { SeverityBadge } from "@/components/app/Tone";
+import { Plus, Send } from "@/components/icons";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
-import { Textarea } from "@/components/ui/textarea";
-import { api, ApiError, dropField, errorText } from "@/lib/api";
+import { api, errorText } from "@/lib/api";
+import { cardTarget, kindLabel, unheard } from "@/lib/alertCards";
 import { useProject } from "@/lib/project";
 import { Writable } from "@/lib/session";
-import type { AlertRoute, TicketAlerts } from "@/lib/types";
+import type { AlertCard, TicketAlerts } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
-import { formatsFor, webhookFields } from "@/lib/webhookFormats";
-import type { WebhookFormat } from "@/lib/webhookFormats";
 import { toast } from "sonner";
 
-const COPY = {
-  critical: {
-    title: "Critical alerts",
-    description: "Monitors and heartbeats set to critical alert these recipients when an incident opens and when it resolves.",
-  },
-  warning: {
-    title: "Warning alerts",
-    description: "Monitors and heartbeats set to warning alert these recipients when an incident opens and when it resolves.",
-  },
-} as const;
-
 function testNotice(n: number): string {
-  if (n === 0) return "No saved recipients get this test.";
+  if (n === 0) return "This card has no one to send to.";
   return n === 1 ? "Test sent to 1 recipient." : `Test sent to ${n} recipients.`;
 }
 
-function RouteSection({ slug, route, bot }: { slug: string; route: AlertRoute; bot: string | null }): ReactElement {
-  const s = route.severity;
-  const [saved, setSaved] = useState(route);
-  const [emails, setEmails] = useState(route.emails.join("\n"));
-  const [webhook, setWebhook] = useState(route.webhook_url ?? "");
-  const [useWebhook, setUseWebhook] = useState(route.use_webhook);
-  const [format, setFormat] = useState<WebhookFormat>(route.webhook_format);
-  const [key, setKey] = useState(route.webhook_key ?? "");
-  const [connected, setConnected] = useState("");
-  const fields = webhookFields(format);
-  const [error, setError] = useState<ApiError | null>(null);
-  const [busy, setBusy] = useState(false);
+/** One card: its name and kind, the levels it hears, where it sends, its switch and its actions. */
+function CardTile({ slug, card, owner, onEdit, onToggle }: { slug: string; card: AlertCard; owner: string; onEdit: () => void; onToggle: (on: boolean) => void }): ReactElement {
   const [testing, setTesting] = useState(false);
-  const [notice, setNotice] = useState("");
-  const [enabled, setEnabled] = useState(route.enabled);
-  const clear = (field: string): void => setError((e) => e && dropField(e, field));
-  const changed =
-    emails.trim() !== saved.emails.join("\n") ||
-    webhook.trim() !== (saved.webhook_url ?? "") ||
-    useWebhook !== saved.use_webhook ||
-    format !== saved.webhook_format ||
-    key.trim() !== (saved.webhook_key ?? "");
-
-  const save = async (): Promise<void> => {
-    setBusy(true);
-    setError(null);
-    setNotice("");
-    try {
-      await api(`/projects/${slug}/alerts/${s}`, "PUT", { emails, webhook_url: webhook, use_webhook: useWebhook, webhook_format: format, webhook_key: key });
-      // The server is the source of what it stored: PagerDuty's fixed URL, a key it keeps or drops.
-      const stored = (await api<AlertRoute[]>(`/projects/${slug}/alerts`)).find((r) => r.severity === s);
-      if (stored) {
-        setSaved({ ...stored, enabled });
-        setEmails(stored.emails.join("\n"));
-        setWebhook(stored.webhook_url ?? "");
-        setKey(stored.webhook_key ?? "");
-      }
-      toast.success(`${COPY[s].title} saved.`);
-    } catch (err) {
-      setError(err instanceof ApiError ? err : new ApiError(0, "error", errorText(err)));
-    } finally {
-      setBusy(false);
-    }
-  };
   const test = async (): Promise<void> => {
     setTesting(true);
-    setNotice("");
     try {
-      const { sent_to: n } = await api<{ sent_to: number }>(`/projects/${slug}/alerts/${s}/test`, "POST");
-      setNotice(testNotice(n));
+      const { sent_to: n } = await api<{ sent_to: number }>(`/projects/${slug}/alert-cards/${card.id}/test`, "POST");
+      toast.success(testNotice(n));
     } catch (err) {
       toast.error(errorText(err));
     } finally {
       setTesting(false);
     }
   };
-
   return (
-    <SettingsSection
-      id={s}
-      title={COPY[s].title}
-      description={COPY[s].description}
-      action={<AlertSwitch slug={slug} route={s} name={COPY[s].title} on={enabled} onChange={setEnabled} />}
-      onSubmit={() => void save()}
-      footerNote={!enabled ? "Off. Nothing is sent. The recipients stay for when you turn it back on." : changed ? "Save to test the new recipients." : notice}
-      footer={
-        <>
-          <Button type="button" variant="outline" disabled={!enabled || changed || testing} onClick={() => void test()}>
+    <li id={`card-${card.id}`} aria-label={card.name} className="flex flex-col gap-3 rounded-lg border bg-paper p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate font-medium">{card.name}</p>
+          {/* The kind, unless the name already says it. */}
+          {!card.fixed && card.name !== kindLabel(card.kind) && <p className="text-sm text-muted-foreground">{kindLabel(card.kind)}</p>}
+        </div>
+        <AlertSwitch path={`/projects/${slug}/alert-cards/${card.id}/enabled`} id={`switch-${card.id}`} name={card.name} on={card.enabled} onChange={onToggle} />
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {card.critical && <SeverityBadge severity="critical" />}
+        {card.warning && <SeverityBadge severity="warning" />}
+      </div>
+      <p className="truncate text-sm text-muted-foreground" title={cardTarget(card, owner)}>
+        {card.fixed ? `${owner}, the project owner` : cardTarget(card, owner)}
+      </p>
+      <Writable>
+        <div className="flex gap-2">
+          <Button type="button" variant="outline" size="sm" disabled={testing} onClick={() => void test()}>
             {testing ? <Spinner data-icon="inline-start" /> : <Send data-icon="inline-start" />}
             Send a test
           </Button>
-          <Button type="submit" disabled={busy || !changed}>
-            {busy && <Spinner data-icon="inline-start" />}
-            Save changes
-          </Button>
-        </>
-      }
-    >
-      <fieldset disabled={!enabled} className="contents">
-      <FieldGroup className="gap-5">
-        <Field data-invalid={error?.fields.emails ? true : undefined}>
-          <FieldLabel htmlFor={`emails-${s}`}>Email addresses</FieldLabel>
-          <Textarea
-            id={`emails-${s}`}
-            rows={3}
-            placeholder={"oncall@company.co.id\nlead@company.co.id"}
-            aria-invalid={error?.fields.emails ? true : undefined}
-            value={emails}
-            onChange={(e) => {
-              setEmails(e.target.value);
-              clear("emails");
-            }}
-          />
-          {error?.fields.emails && <FieldError>{error.fields.emails}</FieldError>}
-        </Field>
-        <Field orientation="horizontal">
-          <Checkbox id={`use-${s}`} checked={useWebhook} onCheckedChange={(v) => setUseWebhook(v === true)} />
-          <FieldLabel htmlFor={`use-${s}`} className="font-normal">
-            Also send to a webhook
-          </FieldLabel>
-        </Field>
-        {useWebhook && (
-          <Field data-invalid={error?.fields.webhook_format ? true : undefined}>
-            <FieldLabel htmlFor={`format-${s}`}>Format</FieldLabel>
-            <Select value={format} onValueChange={(v) => {
-              setFormat(v as WebhookFormat);
-              // The format decides which of the URL and the key are needed.
-              for (const f of ["webhook_format", "webhook_url", "webhook_key"]) clear(f);
-            }}>
-              <SelectTrigger id={`format-${s}`} aria-invalid={error?.fields.webhook_format ? true : undefined}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {formatsFor(bot, saved.webhook_format).map((f) => (
-                    <SelectItem key={f.value} value={f.value}>
-                      {f.label}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-            {error?.fields.webhook_format && <FieldError>{error.fields.webhook_format}</FieldError>}
-          </Field>
-        )}
-        {useWebhook && fields.url && (
-          <Field data-invalid={error?.fields.webhook_url ? true : undefined}>
-            <FieldLabel htmlFor={`webhook-${s}`} required>
-              {fields.url.label}
-            </FieldLabel>
-            <Input
-              id={`webhook-${s}`}
-              type="url"
-              placeholder={fields.url.placeholder}
-              aria-invalid={error?.fields.webhook_url ? true : undefined}
-              value={webhook}
-              onChange={(e) => {
-                setWebhook(e.target.value);
-                clear("webhook_url");
-              }}
-            />
-            {error?.fields.webhook_url && <FieldError>{error.fields.webhook_url}</FieldError>}
-          </Field>
-        )}
-        {useWebhook && fields.key && (
-          <Field data-invalid={error?.fields.webhook_key ? true : undefined}>
-            <FieldLabel htmlFor={`key-${s}`} required>
-              {fields.key.label}
-            </FieldLabel>
-            <Input id={`key-${s}`} className="font-mono" placeholder={fields.key.placeholder} aria-invalid={error?.fields.webhook_key ? true : undefined} value={key} onChange={(e) => {
-              setKey(e.target.value);
-              setConnected("");
-              clear("webhook_key");
-            }} />
-            {format === "telegram_bot" && bot && (
-              <Writable>
-                <TelegramConnect slug={slug} severity={s} bot={bot} onChat={(chat) => {
-                  setKey(chat.chat_id);
-                  setConnected(`Connected to ${chat.title}. Select Save changes.`);
-                  clear("webhook_key");
-                }} />
-              </Writable>
-            )}
-            {connected && <p role="status" className="text-sm text-muted-foreground">{connected}</p>}
-            {error?.fields.webhook_key && <FieldError>{error.fields.webhook_key}</FieldError>}
-          </Field>
-        )}
-        {error && !error.fields.emails && !error.fields.webhook_url && !error.fields.webhook_key && !error.fields.webhook_format && <p className="text-sm text-destructive">{error.message}</p>}
-      </FieldGroup>
-      </fieldset>
-    </SettingsSection>
+          {!card.fixed && (
+            <Button type="button" variant="ghost" size="sm" onClick={onEdit}>
+              Edit
+            </Button>
+          )}
+        </div>
+      </Writable>
+    </li>
   );
 }
 
-/** Settings, Alerts: who gets critical, warning and ticket alerts. The guide opens beside it. */
+/** Settings, Alerts: the project's alert cards, then ticket alerts. The guide opens beside it. */
 export function Alerts(): ReactElement {
   const { project: p } = useProject();
-  const routes = useApi<AlertRoute[]>(`/projects/${p.slug}/alerts`);
+  const cards = useApi<AlertCard[]>(`/projects/${p.slug}/alert-cards`);
   const tickets = useApi<TicketAlerts>(`/projects/${p.slug}/ticket-alerts`);
   const telegram = useApi<{ bot: string | null }>("/telegram");
-  const [ticketHook, setTicketHook] = useState<TicketAlerts | null>(null);
-  const t = ticketHook ?? tickets.data;
-  const webhooks: Record<string, string | null> = {
-    ...Object.fromEntries((routes.data ?? []).map((r) => [r.severity, r.use_webhook ? r.webhook_url : null])),
-    ticket: t?.use_webhook || t?.webhook_moves ? t.webhook_url : null,
-  };
+  // undefined: the sheet is closed; null: a new card.
+  const [editing, setEditing] = useState<AlertCard | null | undefined>(undefined);
+  // A switch flipped on this page, until the next read of the cards.
+  const [flipped, setFlipped] = useState<Record<number, boolean>>({});
+  const list = (cards.data ?? []).map((c) => (c.id in flipped ? { ...c, enabled: flipped[c.id]! } : c));
+  const deaf = unheard(list);
+
   return (
     <SettingsPage
       title="Alerts"
-      actions={<AlertsGuide slug={p.slug} webhooks={webhooks} />}
+      actions={<AlertsGuide slug={p.slug} />}
       toc={[
-        { id: "critical", label: "Critical alerts" },
-        { id: "warning", label: "Warning alerts" },
+        { id: "cards", label: "Alert cards" },
         { id: "tickets", label: "Ticket alerts" },
       ]}
     >
-      {routes.error && (
+      {cards.error && (
         <Alert variant="destructive">
-          <AlertDescription>{routes.error.message}</AlertDescription>
+          <AlertDescription>{cards.error.message}</AlertDescription>
         </Alert>
       )}
-      {!routes.data || !telegram.data ? (
-        <>
-          <Skeleton className="h-72 rounded-xl" />
-          <Skeleton className="h-72 rounded-xl" />
-        </>
-      ) : (
-        routes.data.map((r) => <RouteSection key={r.severity} slug={p.slug} route={r} bot={telegram.data?.bot ?? null} />)
+      <SettingsSection
+        id="cards"
+        title="Alert cards"
+        description="Each card sends the alerts of the levels it listens to. Monitors and heartbeats pick their alert level. The owner's two email cards stay; turn them off if someone else should hear."
+        action={
+          <Writable>
+            <Button type="button" onClick={() => setEditing(null)}>
+              <Plus data-icon="inline-start" />
+              Add alert card
+            </Button>
+          </Writable>
+        }
+      >
+        {!cards.data || !telegram.data ? (
+          <Skeleton className="h-48 rounded-lg" />
+        ) : (
+          <div className="flex flex-col gap-4">
+            {deaf.map((l) => (
+              <Alert key={l}>
+                <AlertDescription>
+                  No card listens to {l} alerts. Monitors and heartbeats set to {l} alert no one; their incidents still open and show.
+                </AlertDescription>
+              </Alert>
+            ))}
+            <ul aria-label="Alert cards" className="grid gap-4 md:grid-cols-2">
+              {list.map((c) => (
+                <CardTile key={c.id} slug={p.slug} card={c} owner={p.owner_email} onEdit={() => setEditing(c)} onToggle={(on) => setFlipped((f) => ({ ...f, [c.id]: on }))} />
+              ))}
+            </ul>
+          </div>
+        )}
+      </SettingsSection>
+      {editing !== undefined && (
+        <AlertCardSheet
+          key={editing?.id ?? "new"}
+          slug={p.slug}
+          bot={telegram.data?.bot ?? null}
+          card={editing}
+          open
+          onClose={() => setEditing(undefined)}
+          onSaved={() => {
+            setEditing(undefined);
+            setFlipped({});
+            cards.reload();
+          }}
+        />
       )}
-      {tickets.data ? (
-        <TicketAlertsSection slug={p.slug} owner={p.owner_email} initial={tickets.data} onSaved={setTicketHook} />
-      ) : (
-        <Skeleton className="h-56 rounded-xl" />
-      )}
+      {tickets.data ? <TicketAlertsSection slug={p.slug} owner={p.owner_email} initial={tickets.data} onSaved={() => undefined} /> : <Skeleton className="h-56 rounded-xl" />}
     </SettingsPage>
   );
 }

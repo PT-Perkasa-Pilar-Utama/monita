@@ -1,4 +1,4 @@
-//! v1.1 Q17 (#10): each severity's webhook in its format, through the alerts form and the outbox.
+//! v1.1 Q17 (#10): an alert card's webhook in its format, through the card form and the outbox.
 
 mod common;
 
@@ -12,14 +12,9 @@ async fn setup(app: &TestApp) -> String {
     tl
 }
 
-async fn save(app: &TestApp, tl: &str, severity: &str, form: Value) -> reqwest::Response {
-    app.api_send(
-        reqwest::Method::PUT,
-        &format!("/api/ui/projects/payments/alerts/{severity}"),
-        form,
-        Some(tl),
-    )
-    .await
+async fn add(app: &TestApp, tl: &str, form: Value) -> reqwest::Response {
+    app.api_post("/api/ui/projects/payments/alert-cards", form, Some(tl))
+        .await
 }
 
 /// Every webhook row in the outbox, oldest first: where it goes and what it says.
@@ -41,9 +36,9 @@ async fn webhooks(app: &TestApp) -> Vec<(String, Value)> {
 async fn a_failing_job_alerts_discord_as_an_embed() {
     let app = TestApp::spawn("test").await;
     let tl = setup(&app).await;
-    let route = json!({ "emails": "", "webhook_url": "https://discord.com/api/webhooks/1/abc",
-                        "use_webhook": true, "webhook_format": "discord" });
-    assert_eq!(save(&app, &tl, "warning", route).await.status(), 204);
+    let card = json!({ "kind": "discord", "name": "Team chat", "warning": true,
+                       "url": "https://discord.com/api/webhooks/1/abc" });
+    assert_eq!(add(&app, &tl, card).await.status(), 201);
     let input = HeartbeatInput {
         name: "nightly".into(),
         ..HeartbeatInput::default()
@@ -92,12 +87,12 @@ async fn a_failing_job_alerts_discord_as_an_embed() {
 async fn a_pagerduty_test_triggers_and_resolves_with_one_key() {
     let app = TestApp::spawn("test").await;
     let tl = setup(&app).await;
-    let route = json!({ "emails": "", "webhook_url": "", "use_webhook": true,
-                        "webhook_format": "pagerduty", "webhook_key": "R0utingKey1" });
-    assert_eq!(save(&app, &tl, "critical", route).await.status(), 204);
+    let card = json!({ "kind": "pagerduty", "name": "Pager", "critical": true,
+                       "key": "R0utingKey1" });
+    let id = json_of(add(&app, &tl, card).await).await["data"]["id"].clone();
     let test = app
         .api_post(
-            "/api/ui/projects/payments/alerts/critical/test",
+            &format!("/api/ui/projects/payments/alert-cards/{id}/test"),
             json!({}),
             Some(&tl),
         )
@@ -105,7 +100,7 @@ async fn a_pagerduty_test_triggers_and_resolves_with_one_key() {
     assert_eq!(
         json_of(test).await["data"]["sent_to"],
         1,
-        "PagerDuty only: the form emptied the emails"
+        "the test goes to this card alone, not the owner's email"
     );
 
     let sent = webhooks(&app).await;
@@ -126,8 +121,10 @@ async fn a_pagerduty_test_triggers_and_resolves_with_one_key() {
 async fn the_form_names_what_a_format_needs_and_a_supervisor_never_sees_the_key() {
     let app = TestApp::spawn("test").await;
     let tl = setup(&app).await;
-    let field = async |form: Value| {
-        let res = save(&app, &tl, "critical", form).await;
+    let field = async |mut form: Value| {
+        form["name"] = json!("Card");
+        form["critical"] = json!(true);
+        let res = add(&app, &tl, form).await;
         assert_eq!(res.status(), 422);
         let err = json_of(res).await;
         err["error"]["fields"]
@@ -139,27 +136,42 @@ async fn the_form_names_what_a_format_needs_and_a_supervisor_never_sees_the_key(
     };
     let telegram = "https://api.telegram.org/bot1:x/sendMessage";
     assert_eq!(
-        field(json!({ "webhook_url": telegram, "webhook_format": "telegram" })).await,
-        ["webhook_key"]
+        field(json!({ "url": telegram, "kind": "telegram" })).await,
+        ["key"]
     );
     assert_eq!(
-        field(json!({ "webhook_url": "https://ntfy.sh/", "webhook_format": "ntfy" })).await,
-        ["webhook_url"]
+        field(json!({ "url": "https://ntfy.sh/", "kind": "ntfy" })).await,
+        ["url"]
     );
+    assert_eq!(field(json!({ "kind": "sms" })).await, ["kind"]);
     assert_eq!(
-        field(json!({ "webhook_format": "sms" })).await,
-        ["webhook_format"]
+        field(json!({ "kind": "email", "emails": "" })).await,
+        ["emails"]
     );
-
-    let ok = json!({ "webhook_url": telegram, "use_webhook": true, "webhook_format": "telegram", "webhook_key": "-1001234" });
-    assert_eq!(save(&app, &tl, "critical", ok).await.status(), 204);
-    let mine = json_of(
-        app.api_get("/api/ui/projects/payments/alerts", Some(&tl))
-            .await,
+    let no_level = add(
+        &app,
+        &tl,
+        json!({ "kind": "email", "name": "X", "emails": "a@x.co" }),
     )
     .await;
-    assert_eq!(mine["data"][0]["webhook_format"], "telegram");
-    assert_eq!(mine["data"][0]["webhook_key"], "-1001234");
+    assert_eq!(
+        json_of(no_level).await["error"]["fields"]["levels"],
+        "Pick critical, warning or both."
+    );
+
+    let ok = json!({ "kind": "telegram", "name": "Ops", "critical": true, "url": telegram, "key": "-1001234" });
+    assert_eq!(add(&app, &tl, ok).await.status(), 201);
+    let mine = app.alert_cards(&tl, "payments").await;
+    let card = |cards: &Value| {
+        cards
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|c| c["kind"] == "telegram")
+            .unwrap()
+            .clone()
+    };
+    assert_eq!(card(&mine)["key"], "-1001234");
 
     let admin = app.super_admin("admin@x.co").await;
     let id = monita::accounts::invite_tl(&app.state.db, common::BASE_URL, "sup@x.co")
@@ -185,11 +197,7 @@ async fn the_form_names_what_a_format_needs_and_a_supervisor_never_sees_the_key(
         )
         .await;
     assert_eq!(role.status(), 204);
-    let seen = json_of(
-        app.api_get("/api/ui/projects/payments/alerts", Some(&sup))
-            .await,
-    )
-    .await;
-    assert_eq!(seen["data"][0]["webhook_key"], "(hidden)");
-    assert_eq!(seen["data"][0]["webhook_url"], "(hidden)");
+    let seen = card(&app.alert_cards(&sup, "payments").await);
+    assert_eq!(seen["key"], "(hidden)");
+    assert_eq!(seen["url"], "(hidden)");
 }

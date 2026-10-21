@@ -65,8 +65,8 @@ export function TicketAlertsSection({ slug, owner, initial, onSaved }: { slug: s
       description="New bug reports from your users, and each move on the ticket board. A ticket your team files sends no new-ticket alert."
       action={
         <AlertSwitch
-          slug={slug}
-          route="ticket"
+          path={`/projects/${slug}/ticket-alerts/enabled`}
+          id="switch-ticket"
           name="Ticket alerts"
           on={enabled}
           onChange={(on) => {

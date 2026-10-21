@@ -1,0 +1,168 @@
+//! Migration runner. Spec: docs/technical-specs/06-data-model.md section 6.6.
+//! Files are embedded at compile time, paths relative to this file. Append only.
+
+use super::db::{Db, query_i64};
+
+const MIGRATIONS: &[(i64, &str)] = &[
+    (1, include_str!("../../../migrations/0001_init.sql")),
+    (2, include_str!("../../../migrations/0002_ping_cause.sql")),
+    (
+        3,
+        include_str!("../../../migrations/0003_stable_source_ids.sql"),
+    ),
+    (
+        4,
+        include_str!("../../../migrations/0004_retention_indexes.sql"),
+    ),
+    (
+        5,
+        include_str!("../../../migrations/0005_project_profile.sql"),
+    ),
+    (6, include_str!("../../../migrations/0006_team_tickets.sql")),
+    (
+        7,
+        include_str!("../../../migrations/0007_ticket_alerts.sql"),
+    ),
+    (
+        8,
+        include_str!("../../../migrations/0008_alert_switches.sql"),
+    ),
+    (
+        9,
+        include_str!("../../../migrations/0009_alert_and_auto_incident.sql"),
+    ),
+    (
+        10,
+        include_str!("../../../migrations/0010_public_pages.sql"),
+    ),
+    (
+        11,
+        include_str!("../../../migrations/0011_ticket_move_webhook.sql"),
+    ),
+    (
+        12,
+        include_str!("../../../migrations/0012_rearm_resolved_heartbeats.sql"),
+    ),
+    (
+        13,
+        include_str!("../../../migrations/0013_monitor_request.sql"),
+    ),
+    (
+        14,
+        include_str!("../../../migrations/0014_monitor_fails_to_open.sql"),
+    ),
+    (
+        15,
+        include_str!("../../../migrations/0015_project_secrets.sql"),
+    ),
+    (
+        16,
+        include_str!("../../../migrations/0016_show_incidents.sql"),
+    ),
+    (17, include_str!("../../../migrations/0017_ref_id_tail.sql")),
+    (
+        18,
+        include_str!("../../../migrations/0018_fails_to_open_range.sql"),
+    ),
+    (
+        19,
+        include_str!("../../../migrations/0019_merge_report_and_mine.sql"),
+    ),
+    (
+        20,
+        include_str!("../../../migrations/0020_project_homepage.sql"),
+    ),
+    (21, include_str!("../../../migrations/0021_changelog.sql")),
+    (
+        22,
+        include_str!("../../../migrations/0022_supervisor_role.sql"),
+    ),
+    (
+        23,
+        include_str!("../../../migrations/0023_owner_alert_recipients.sql"),
+    ),
+    (24, include_str!("../../../migrations/0024_check_kinds.sql")),
+    (
+        25,
+        include_str!("../../../migrations/0025_webhook_formats.sql"),
+    ),
+    (
+        26,
+        include_str!("../../../migrations/0026_maintenance_windows.sql"),
+    ),
+    (27, include_str!("../../../migrations/0027_two_factor.sql")),
+    (
+        28,
+        include_str!("../../../migrations/0028_certificate_expiry.sql"),
+    ),
+    (29, include_str!("../../../migrations/0029_ping_checks.sql")),
+    (30, include_str!("../../../migrations/0030_locations.sql")),
+    (
+        31,
+        include_str!("../../../migrations/0031_location_claims.sql"),
+    ),
+    (
+        32,
+        include_str!("../../../migrations/0032_held_failure.sql"),
+    ),
+    (
+        33,
+        include_str!("../../../migrations/0033_webhook_off_without_url.sql"),
+    ),
+    (
+        34,
+        include_str!("../../../migrations/0034_user_avatars.sql"),
+    ),
+    (
+        35,
+        include_str!("../../../migrations/0035_totp_pending_expiry.sql"),
+    ),
+    (
+        36,
+        include_str!("../../../migrations/0036_telegram_bot.sql"),
+    ),
+    (37, include_str!("../../../migrations/0037_alert_cards.sql")),
+];
+
+pub async fn run(db: &Db) -> anyhow::Result<()> {
+    db.write(async |c| {
+        c.execute(
+            "CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY, applied_at INTEGER NOT NULL)",
+            (),
+        )
+        .await?;
+        Ok(())
+    })
+    .await?;
+
+    for &(version, sql) in MIGRATIONS {
+        let conn = db.read().await?;
+        let applied = query_i64(
+            &conn,
+            "SELECT count(*) FROM schema_migrations WHERE version = ?1",
+            [version],
+        )
+        .await?
+        .unwrap_or(0);
+        drop(conn);
+        if applied > 0 {
+            continue;
+        }
+        // Foreign keys off: a table rebuild drops a parent table, which would cascade otherwise.
+        db.write_without_fk(async |c| {
+            c.execute_batch(sql).await?;
+            c.execute(
+                "INSERT INTO schema_migrations (version, applied_at) VALUES (?1, unixepoch())",
+                [version],
+            )
+            .await?;
+            Ok(())
+        })
+        .await?;
+        tracing::info!(version, "migration applied");
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests;

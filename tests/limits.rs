@@ -217,28 +217,34 @@ async fn an_incident_takes_50_updates_and_a_project_20_open_manual_incidents() {
 }
 
 #[tokio::test]
-async fn an_alert_route_takes_20_addresses() {
+async fn an_email_card_takes_20_addresses_and_a_project_10_cards() {
     let app = TestApp::spawn("test").await;
     tl_with_project(&app).await;
-    let emails: Vec<String> = (0..=caps::EMAILS_PER_ROUTE)
+    let emails: Vec<String> = (0..=caps::EMAILS_PER_CARD)
         .map(|i| format!("a{i}@x.co"))
         .collect();
-    let form = async |emails: &str| {
-        let f = monita::notify::RouteForm {
+    let card = async |emails: &str| {
+        let f = monita::notify::CardForm {
+            kind: "email",
+            name: "On call",
+            critical: true,
+            warning: false,
             emails,
-            webhook_url: "",
-            use_webhook: false,
-            webhook_format: "",
-            webhook_key: "",
+            url: "",
+            key: "",
         };
-        monita::notify::save_route(&app.state.db, 1, "critical", &f).await
+        monita::notify::cards::create(&app.state.db, 1, &f).await
     };
-    let err = form(&emails.join("\n")).await.unwrap_err();
+    let err = card(&emails.join("\n")).await.unwrap_err();
     assert!(
-        matches!(err, monita::notify::RouteError::TooManyEmails),
+        matches!(err, monita::notify::AlertError::TooManyEmails),
         "{err}"
     );
-    form(&emails[1..].join("\n")).await.unwrap();
+    for _ in 0..caps::ALERT_CARDS {
+        card(&emails[1..].join("\n")).await.unwrap();
+    }
+    let full = card("b@x.co").await.unwrap_err();
+    assert!(matches!(full, monita::notify::AlertError::Full), "{full}");
 }
 
 #[tokio::test]

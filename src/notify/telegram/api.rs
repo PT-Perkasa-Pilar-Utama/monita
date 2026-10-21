@@ -24,14 +24,8 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/api/ui/telegram", get(bot))
         .route("/api/ui/admin/telegram", put(save))
-        .route(
-            "/api/ui/projects/{slug}/alerts/{severity}/telegram-link",
-            post(link),
-        )
-        .route(
-            "/api/ui/projects/{slug}/alerts/{severity}/telegram-link/check",
-            post(check),
-        )
+        .route("/api/ui/projects/{slug}/telegram-link", post(link))
+        .route("/api/ui/projects/{slug}/telegram-link/check", post(check))
 }
 
 impl From<TelegramError> for UiError {
@@ -77,40 +71,35 @@ async fn save(
     Ok(data(json!({ "bot": name })))
 }
 
-fn severity_ok(s: &str) -> Result<(), UiError> {
-    if matches!(s, "critical" | "warning") {
-        Ok(())
-    } else {
-        Err(UiError::NotFound)
-    }
-}
-
 async fn link(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
-    Path((slug, severity)): Path<(String, String)>,
+    Path(slug): Path<String>,
 ) -> UiResult {
-    severity_ok(&severity)?;
     let p = projects::find_for(&state.db, &user, &slug).await?;
-    Ok(data(
-        super::new_link(&state.db, p.id, &severity, now()).await?,
-    ))
+    Ok(data(super::new_link(&state.db, p.id, now()).await?))
 }
 
-/// `{chat}`: the chat the link was opened in, or null while nobody has opened it.
+#[derive(Deserialize, Default)]
+#[serde(default)]
+struct CodeForm {
+    code: String,
+}
+
+/// `{chat}`: the chat the link with `code` was opened in, or null while nobody has opened it.
 async fn check(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
-    Path((slug, severity)): Path<(String, String)>,
+    Path(slug): Path<String>,
+    Body(f): Body<CodeForm>,
 ) -> UiResult {
-    severity_ok(&severity)?;
     let p = projects::find_for(&state.db, &user, &slug).await?;
     let chat = super::check_link(
         &state.db,
         state.http.webhook(),
         &state.config.telegram_api,
         p.id,
-        &severity,
+        &f.code,
         now(),
     )
     .await?;

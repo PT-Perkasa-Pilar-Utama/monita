@@ -1,10 +1,11 @@
-//! notify module: alert routes, the outbox, delivery.
+//! notify module: alert cards, ticket alerts, the outbox, delivery.
 //! Spec: docs/technical-specs/05-module-definitions.md section 5.5, api-specs 06.
 //! Callers queue messages inside their own write transaction; the outbox loop delivers them,
 //! so a slow SMTP server or webhook never blocks a check or a request.
 
 pub mod api;
 mod card;
+pub mod cards;
 mod compose;
 mod delivery;
 mod digest;
@@ -17,27 +18,28 @@ mod tickets;
 
 use turso::Connection;
 
-use compose::{cert_warning, chat_safe, compose, test_message, ticket_json};
+use compose::{cert_warning, chat_safe, compose, ticket_json};
 
 use crate::{
     incidents::Event,
     platform::{db::Db, now},
 };
 
+pub use cards::{AlertCard, CardForm};
 pub use delivery::{deliver_due, spawn_delivery};
 pub use digest::digest;
 pub use mailer::{Mailer, SentEmail, test_connection};
 pub use preview::{Preview, previews};
-pub use store::{Route, TicketAlerts};
+pub use store::TicketAlerts;
 pub use tickets::{
     Moved, save_ticket_alerts, send_ticket, send_ticket_moved, send_ticket_test, ticket_alerts,
 };
 
-/// AC-15.02: a new project's two routes, both emailing the owner, with the webhook unticked until
-/// the owner adds one (v1.1 Q27).
-pub async fn create_routes(c: &Connection, project_id: i64, owner_id: i64) -> anyhow::Result<()> {
-    let owner = crate::accounts::active_email(c, owner_id).await?;
-    store::create_routes(c, project_id, owner.as_deref().unwrap_or_default()).await
+/// AC-15.02: a new project's alerts: the owner's two email cards, on (v1.1 Q34), and ticket
+/// alerts with their defaults. Runs inside the caller's write.
+pub async fn create_alerts(c: &Connection, project_id: i64) -> anyhow::Result<()> {
+    cards::create_owner_cards(c, project_id).await?;
+    store::create_ticket_alerts(c, project_id).await
 }
 
 /// Retention (US-32): finished rows older than `cutoff`. Runs inside the caller's write.
@@ -57,18 +59,21 @@ pub async fn queue_email(
     store::queue(c, "email", to, Some(subject), body, at).await
 }
 
+/// Why an alert card or the ticket webhook was refused.
 #[derive(Debug, thiserror::Error)]
-pub enum RouteError {
+pub enum AlertError {
     #[error("Not a valid email address: {0}")]
     BadEmail(String),
-    #[error("The webhook URL must start with http:// or https://.")]
-    BadWebhook,
+    #[error("Enter at least one email address.")]
+    NoEmails,
     #[error(
-        "A route takes {} addresses at most.",
-        crate::platform::caps::EMAILS_PER_ROUTE
+        "A card takes {} addresses at most.",
+        crate::platform::caps::EMAILS_PER_CARD
     )]
     TooManyEmails,
-    #[error("Pick JSON, Discord, Telegram, Telegram with Monita's bot, ntfy or PagerDuty.")]
+    #[error("The webhook URL must start with http:// or https://.")]
+    BadWebhook,
+    #[error("Pick Email, JSON, Discord, Telegram, ntfy or PagerDuty.")]
     BadFormat,
     #[error("Enter the topic URL, such as https://ntfy.sh/team-alerts.")]
     NtfyTopic,
@@ -77,84 +82,30 @@ pub enum RouteError {
     BadKey(&'static str),
     #[error("Ask a super admin to set Monita's Telegram bot first, or use your own bot.")]
     NoBot,
+    #[error("Enter a name of up to 60 characters.")]
+    NoName,
+    #[error("Pick critical, warning or both.")]
+    NoLevel,
+    #[error("The owner's email cards stay as they are. Turn them on or off.")]
+    Fixed,
+    #[error(
+        "This project has {} alert cards, its limit. Delete one first.",
+        crate::platform::caps::ALERT_CARDS
+    )]
+    Full,
+    #[error("No such alert card.")]
+    NotFound,
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 }
 
-/// What a severity's form sends: who gets email, and the webhook in its format.
-pub struct RouteForm<'a> {
-    pub emails: &'a str,
-    pub webhook_url: &'a str,
-    pub use_webhook: bool,
-    /// One of `format::FORMATS`; empty reads as `json`.
-    pub webhook_format: &'a str,
-    /// Telegram's chat ID or PagerDuty's routing key.
-    pub webhook_key: &'a str,
-}
-
-pub async fn routes(db: &Db, project_id: i64) -> anyhow::Result<Vec<Route>> {
-    store::routes(&db.read().await?, project_id).await
-}
-
-/// US-15. One email per line; an empty webhook URL turns the webhook off, except for PagerDuty,
-/// whose URL is fixed (v1.1 Q17).
-pub async fn save_route(
-    db: &Db,
-    project_id: i64,
-    severity: &str,
-    form: &RouteForm<'_>,
-) -> Result<(), RouteError> {
-    let emails_raw = form.emails;
-    if !matches!(severity, "critical" | "warning") {
-        return Err(RouteError::Other(anyhow::anyhow!(
-            "unknown severity {severity}"
-        )));
-    }
-    let mut emails = Vec::new();
-    for line in emails_raw.lines().map(str::trim).filter(|l| !l.is_empty()) {
-        let email = crate::accounts::normalize_email(line)
-            .map_err(|_| RouteError::BadEmail(line.to_string()))?;
-        if !emails.contains(&email) {
-            emails.push(email);
-        }
-    }
-    if emails.len() > crate::platform::caps::EMAILS_PER_ROUTE {
-        return Err(RouteError::TooManyEmails);
-    }
-    let webhook_format = Some(form.webhook_format.trim())
-        .filter(|f| !f.is_empty())
-        .unwrap_or("json");
-    let (url, key) = format::check(webhook_format, form.webhook_url, form.webhook_key)?;
-    if webhook_format == "telegram_bot"
-        && form.use_webhook
-        && telegram::bot_name(db).await?.is_none()
-    {
-        return Err(RouteError::NoBot);
-    }
-    let saved = store::Route {
-        severity: severity.to_string(),
-        emails,
-        webhook_url: url,
-        use_webhook: form.use_webhook,
-        enabled: true,
-        webhook_format: webhook_format.to_string(),
-        webhook_key: key,
-    };
-    db.write(async |c| store::save_route(c, project_id, &saved).await)
-        .await?;
-    Ok(())
-}
-
-/// Turns `critical`, `warning` or `ticket` alerts on or off. False for an unknown name.
-pub async fn set_enabled(db: &Db, project_id: i64, route: &str, on: bool) -> anyhow::Result<bool> {
-    if !matches!(route, "critical" | "warning" | "ticket") {
-        return Ok(false);
-    }
-    db.write(async |c| store::set_enabled(c, project_id, route, on).await)
+/// Turns ticket alerts on or off; their settings stay.
+pub async fn set_ticket_enabled(db: &Db, project_id: i64, on: bool) -> anyhow::Result<()> {
+    db.write(async |c| store::set_ticket_enabled(c, project_id, on).await)
         .await
 }
 
-/// US-16. Queues one email per address and one webhook call for the event's severity.
+/// US-16. Queues the alert to every card that is on and listens to the event's severity.
 /// Call it inside the same write transaction as `incidents::observe`.
 pub async fn send(c: &Connection, ev: &Event, base_url: &str) -> anyhow::Result<()> {
     let project_id = match ev {
@@ -167,7 +118,7 @@ pub async fn send(c: &Connection, ev: &Event, base_url: &str) -> anyhow::Result<
         return Ok(());
     };
     let (severity, msg) = compose(ev, &project, base_url);
-    queue_alert(c, project_id, &project.1, &severity, &msg).await?;
+    cards::queue_alert(c, project_id, &project.1, &severity, &msg).await?;
     Ok(())
 }
 
@@ -179,8 +130,8 @@ pub struct CertWarning<'a> {
     pub expires_at: i64,
 }
 
-/// Queues the warning route's email and webhook for a certificate that expires soon. Opens no
-/// incident. False when nothing was queued: no project, or warning alerts are off.
+/// Queues a certificate that expires soon to the cards that listen to warning. Opens no
+/// incident. False when nothing was queued: no project, or no card listens.
 pub async fn send_cert_warning(
     c: &Connection,
     w: &CertWarning<'_>,
@@ -190,109 +141,7 @@ pub async fn send_cert_warning(
         return Ok(false);
     };
     let msg = cert_warning(w, &project, base_url, now());
-    queue_alert(c, w.project_id, &project.1, "warning", &msg).await
-}
-
-/// One email per address of the severity's route, and its webhook call. False when the route is
-/// off.
-async fn queue_alert(
-    c: &Connection,
-    project_id: i64,
-    slug: &str,
-    severity: &str,
-    msg: &compose::Composed,
-) -> anyhow::Result<bool> {
-    let Some(route) = store::route(c, project_id, severity)
-        .await?
-        .filter(|r| r.enabled)
-    else {
-        return Ok(false);
-    };
-    let at = now();
-    for email in &route.emails {
-        store::queue(c, "email", email, Some(&msg.subject), &msg.text, at).await?;
-    }
-    queue_webhook(c, &route, slug, msg, at).await?;
-    Ok(true)
-}
-
-/// The route's webhook call for one alert, in the route's format, when the webhook is on.
-async fn queue_webhook(
-    c: &Connection,
-    route: &Route,
-    slug: &str,
-    msg: &compose::Composed,
-    at: i64,
-) -> anyhow::Result<bool> {
-    let Some(url) = route.webhook_url.as_deref().filter(|_| route.use_webhook) else {
-        return Ok(false);
-    };
-    let key = route.webhook_key.as_deref();
-    let (target, body) = format::webhook(&route.webhook_format, url, key, slug, msg);
-    // Monita's bot: the row names the chat; delivery adds the token.
-    let channel = if route.webhook_format == "telegram_bot" {
-        "telegram"
-    } else {
-        "webhook"
-    };
-    store::queue(c, channel, &target, None, &body.to_string(), at).await?;
-    Ok(true)
-}
-
-/// The test button on the alerts page: one message per recipient of that severity.
-pub async fn send_test(
-    db: &Db,
-    project_id: i64,
-    severity: &str,
-    base_url: &str,
-) -> anyhow::Result<usize> {
-    db.write(async |c| {
-        let Some((name, slug)) = crate::projects::name_slug(c, project_id).await? else {
-            return Ok(0);
-        };
-        let Some(route) = store::route(c, project_id, severity)
-            .await?
-            .filter(|r| r.enabled)
-        else {
-            return Ok(0);
-        };
-        let at = now();
-        let (text, body, json) = test_message(&name, &slug, severity, base_url, at);
-        let mut n = 0;
-        for email in &route.emails {
-            store::queue(c, "email", email, Some(&text), &body, at).await?;
-            n += 1;
-        }
-        let mut msg = compose::Composed {
-            card: card::Card {
-                tone: card::Tone::Info,
-                label: "Test",
-                title: format!(
-                    "{} alerts reach this chat",
-                    compose::severity_word(severity)
-                ),
-                project: name.clone(),
-                facts: Vec::new(),
-                link_label: "Open the alert settings",
-            },
-            subject: text,
-            text: body,
-            json,
-            link: format!("{base_url}/projects/{slug}/settings/alerts"),
-            dedup: "test".into(),
-            resolves: false,
-        };
-        if queue_webhook(c, &route, &slug, &msg, at).await? {
-            n += 1;
-            // A PagerDuty test opens an incident there; resolve it at once.
-            if route.webhook_format == "pagerduty" {
-                msg.resolves = true;
-                queue_webhook(c, &route, &slug, &msg, at).await?;
-            }
-        }
-        Ok(n)
-    })
-    .await
+    cards::queue_alert(c, w.project_id, &project.1, "warning", &msg).await
 }
 
 /// How email delivery went since `since`, for the system page.

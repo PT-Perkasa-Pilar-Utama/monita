@@ -165,6 +165,18 @@ pub async fn name_slug(
     .pop())
 }
 
+pub async fn owner_email(c: &Connection, project_id: i64) -> anyhow::Result<Option<String>> {
+    Ok(crate::platform::db::query_all(
+        c,
+        "SELECT u.email FROM projects p JOIN users u ON u.id = p.owner_id
+         WHERE p.id = ?1 AND u.disabled_at IS NULL",
+        [project_id],
+        |r| r.get::<String>(0),
+    )
+    .await?
+    .pop())
+}
+
 pub async fn find_by_slug(c: &Connection, slug: &str) -> anyhow::Result<Option<Project>> {
     Ok(many(
         c,

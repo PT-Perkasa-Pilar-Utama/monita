@@ -22,7 +22,7 @@ pub(super) struct Composed {
 }
 
 /// "Critical" or "Warning".
-pub(super) fn severity_word(severity: &str) -> &'static str {
+fn severity_word(severity: &str) -> &'static str {
     if severity == "critical" {
         "Critical"
     } else {
@@ -282,16 +282,30 @@ pub(super) fn ticket_json(
     })
 }
 
-/// The test alert: its text, email body and webhook body.
-pub(super) fn test_message(
+/// One card's test alert. It names the card, so a team with several cards sees which one spoke.
+pub(super) fn test_alert(
     name: &str,
     slug: &str,
-    severity: &str,
+    card_name: &str,
     base_url: &str,
     at: i64,
-) -> (String, String, serde_json::Value) {
-    let text = format!("[TEST] {name}: alerts for {severity} reach this channel.");
-    let body = format!("{text}\n\n{base_url}/projects/{slug}/settings/alerts\n");
-    let json = serde_json::json!({ "text": text, "event": "test", "project": slug, "severity": severity, "at": at });
-    (text, body, json)
+) -> Composed {
+    let link = format!("{base_url}/projects/{slug}/settings/alerts");
+    let text = format!("[TEST] {name}: the alert card \"{card_name}\" reaches this channel.");
+    Composed {
+        card: Card {
+            tone: Tone::Info,
+            label: "Test",
+            title: format!("{card_name} reaches this chat"),
+            project: name.to_string(),
+            facts: Vec::new(),
+            link_label: "Open the alert settings",
+        },
+        subject: text.clone(),
+        text: format!("{text}\n\n{link}\n"),
+        json: serde_json::json!({ "text": text, "event": "test", "project": slug, "card": card_name, "at": at }),
+        link,
+        dedup: "test".into(),
+        resolves: false,
+    }
 }

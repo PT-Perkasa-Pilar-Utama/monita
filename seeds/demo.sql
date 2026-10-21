@@ -15,13 +15,22 @@ INSERT INTO api_keys (project_id, name, key_hash, key_prefix, last_used_at, crea
   (1, 'portal backend', 'demo-key-hash-1', 'mk_7QX2', unixepoch() - 300, unixepoch() - 90 * 86400),
   (2, 'payments worker', 'demo-key-hash-2', 'mk_K4MP', unixepoch() - 3600, unixepoch() - 80 * 86400);
 
-INSERT INTO alert_routes (project_id, severity, emails, webhook_url, use_webhook) VALUES
-  (1, 'critical', 'oncall-portal@example.com', 'https://chat.example.com/hooks/portal', 1),
-  (1, 'warning', 'portal-team@example.com', 'https://chat.example.com/hooks/portal', 0),
-  (2, 'critical', 'oncall-payments@example.com, finance-it@example.com', 'https://chat.example.com/hooks/payments', 1),
-  (2, 'warning', 'payments-team@example.com', NULL, 0),
-  (3, 'critical', 'data@example.com', NULL, 0),
-  (3, 'warning', 'data@example.com', NULL, 0);
+-- Alert cards (v1.1 Q34): every project has the owner's two email cards; the portal and
+-- payments teams add their own lists, Discord and PagerDuty (Q17).
+INSERT INTO alert_cards (project_id, kind, name, critical, warning, enabled, emails, url, key) VALUES
+  (1, 'owner_email', 'Owner email', 1, 0, 1, '', NULL, NULL),
+  (1, 'owner_email', 'Owner email', 0, 1, 1, '', NULL, NULL),
+  (1, 'email', 'On call', 1, 0, 1, 'oncall-portal@example.com', NULL, NULL),
+  (1, 'email', 'Portal team', 0, 1, 1, 'portal-team@example.com', NULL, NULL),
+  (1, 'discord', 'Team Discord', 1, 1, 1, '', 'https://discord.com/api/webhooks/1234567890/demo', NULL),
+  (2, 'owner_email', 'Owner email', 1, 0, 1, '', NULL, NULL),
+  (2, 'owner_email', 'Owner email', 0, 1, 0, '', NULL, NULL),
+  (2, 'email', 'On call', 1, 0, 1, 'oncall-payments@example.com' || char(10) || 'finance-it@example.com', NULL, NULL),
+  (2, 'email', 'Payments team', 0, 1, 1, 'payments-team@example.com', NULL, NULL),
+  (2, 'pagerduty', 'PagerDuty', 1, 0, 1, '', 'https://events.pagerduty.com/v2/enqueue', 'demo-routing-key'),
+  (3, 'owner_email', 'Owner email', 1, 0, 1, '', NULL, NULL),
+  (3, 'owner_email', 'Owner email', 0, 1, 1, '', NULL, NULL),
+  (3, 'email', 'Data team', 1, 1, 1, 'data@example.com', NULL, NULL);
 
 INSERT INTO monitors (id, project_id, name, url, interval_s, expected_status, keyword, severity, is_public, next_check_at, created_at) VALUES
   (1, 1, 'Website', 'https://portal.example.com/', 60, '2xx', NULL, 'critical', 1, unixepoch() + 600, unixepoch() - 100 * 86400),
@@ -160,13 +169,6 @@ INSERT INTO changelog_entries (project_id, version, released_on, title, sections
     '[{"tag":"Added","items":["Customers can pay by QRIS at checkout."]},{"tag":"Changed","items":["Card payments retry once when the bank does not answer in time."]}]', unixepoch() - 6 * 86400, unixepoch() - 6 * 86400),
   (2, '5.0.2', date(unixepoch() - 27 * 86400, 'unixepoch'), 'Bank callback fixes',
     '[{"tag":"Fixed","items":["A late bank callback no longer marks a paid order as failed.","Refunds show in the order history at once."]}]', unixepoch() - 27 * 86400, unixepoch() - 27 * 86400);
-
--- v1.1 alert formats (Q17): the portal's critical alerts go to Discord, the payments team's to
--- PagerDuty with a routing key.
-UPDATE alert_routes SET webhook_format = 'discord', webhook_url = 'https://discord.com/api/webhooks/1234567890/demo'
-  WHERE project_id = 1 AND severity = 'critical';
-UPDATE alert_routes SET webhook_format = 'pagerduty', webhook_url = 'https://events.pagerduty.com/v2/enqueue', webhook_key = 'demo-routing-key'
-  WHERE project_id = 2 AND severity = 'critical';
 
 -- v1.1 certificate warnings (Q25): the portal's website renews in six weeks; the checkout's
 -- certificate is inside its window and has warned once.

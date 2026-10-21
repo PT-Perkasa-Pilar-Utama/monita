@@ -3,9 +3,9 @@
 
 use serde_json::{Value, json};
 
-use super::{RouteError, card, compose::Composed};
+use super::{AlertError, card, compose::Composed};
 
-pub(super) const FORMATS: [&str; 6] = [
+pub const FORMATS: [&str; 6] = [
     "json",
     "discord",
     "telegram",
@@ -27,22 +27,22 @@ pub(super) fn check(
     format: &str,
     url: &str,
     key: &str,
-) -> Result<(Option<String>, Option<String>), RouteError> {
+) -> Result<(Option<String>, Option<String>), AlertError> {
     let (url, key) = (url.trim(), key.trim());
     if !FORMATS.contains(&format) {
-        return Err(RouteError::BadFormat);
+        return Err(AlertError::BadFormat);
     }
     let url = match format {
         "pagerduty" => Some(PAGERDUTY_URL.to_string()),
         "telegram_bot" => Some(TELEGRAM_BOT_URL.to_string()),
         _ if url.is_empty() => None,
-        _ if !crate::platform::valid_http_url(url) => return Err(RouteError::BadWebhook),
-        "ntfy" if ntfy_topic(url).is_none() => return Err(RouteError::NtfyTopic),
+        _ if !crate::platform::valid_http_url(url) => return Err(AlertError::BadWebhook),
+        "ntfy" if ntfy_topic(url).is_none() => return Err(AlertError::NtfyTopic),
         _ => Some(url.to_string()),
     };
     let key = match format {
         "telegram" | "telegram_bot" if !telegram_chat(key) => {
-            return Err(RouteError::BadKey(
+            return Err(AlertError::BadKey(
                 "Enter the chat ID, such as -1001234567890 or @team_alerts.",
             ));
         }
@@ -51,7 +51,7 @@ pub(super) fn check(
                 || key.len() > 64
                 || !key.chars().all(|c| c.is_ascii_alphanumeric()) =>
         {
-            return Err(RouteError::BadKey(
+            return Err(AlertError::BadKey(
                 "Enter the routing key of the PagerDuty integration.",
             ));
         }

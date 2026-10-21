@@ -140,7 +140,7 @@ async fn another_tl_cannot_see_the_project() {
         "/api/ui/projects/payments",
         "/api/ui/projects/payments/overview",
         "/api/ui/projects/payments/keys",
-        "/api/ui/projects/payments/alerts",
+        "/api/ui/projects/payments/alert-cards",
         "/projects/payments/icon",
     ] {
         assert_eq!(app.get(path, Some(&budi)).await.status(), 404, "{path}");
@@ -647,13 +647,13 @@ async fn a_super_admin_deletes_a_project_and_everything_in_it() {
         "tickets",
         "ref_ids",
         "api_keys",
-        "alert_routes",
+        "alert_cards",
     ] {
         let left = rows(
             &app,
             &format!(
                 "SELECT count(*) FROM {table} WHERE {}",
-                if table == "alert_routes" {
+                if table == "alert_cards" {
                     "project_id = 1"
                 } else {
                     "1"

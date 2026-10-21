@@ -156,15 +156,7 @@ async fn the_resolved_alert_goes_where_the_opened_one_went() {
     let app = TestApp::spawn("test").await;
     let tl = setup(&app).await;
     for (severity, email) in [("warning", "warn@x.co"), ("critical", "crit@x.co")] {
-        let res = app
-            .api_send(
-                reqwest::Method::PUT,
-                &format!("/api/ui/projects/payments/alerts/{severity}"),
-                serde_json::json!({ "emails": email, "webhook_url": "" }),
-                Some(&tl),
-            )
-            .await;
-        assert_eq!(res.status(), 204);
+        app.email_only(&tl, "payments", severity, email).await;
     }
     let (url, up) = switchable().await;
     monitor(&app, &url, "warning").await;
@@ -188,33 +180,55 @@ async fn the_resolved_alert_goes_where_the_opened_one_went() {
 }
 
 #[tokio::test]
-async fn a_project_has_both_severities_with_the_default_routing() {
-    // AC-15.01, AC-15.02
+async fn a_new_project_has_the_owners_two_email_cards_on() {
+    // AC-15.01, AC-15.02, v1.1 Q34
     let app = TestApp::spawn("test").await;
     let tl = setup(&app).await;
-    let routes = app.get("/api/ui/projects/payments/alerts", Some(&tl)).await;
-    let routes: serde_json::Value = routes.json().await.unwrap();
-    let use_webhook: Vec<(&str, bool)> = routes["data"]
+    let cards = app.alert_cards(&tl, "payments").await;
+    let seen: Vec<(String, bool, bool, bool, bool)> = cards
         .as_array()
         .unwrap()
         .iter()
-        .map(|r| {
+        .map(|c| {
             (
-                r["severity"].as_str().unwrap(),
-                r["use_webhook"].as_bool().unwrap(),
+                c["kind"].as_str().unwrap().to_string(),
+                c["critical"].as_bool().unwrap(),
+                c["warning"].as_bool().unwrap(),
+                c["enabled"].as_bool().unwrap(),
+                c["fixed"].as_bool().unwrap(),
             )
         })
         .collect();
     assert_eq!(
-        use_webhook,
-        [("critical", false), ("warning", false)],
-        "the webhook starts unticked (Q27)"
+        seen,
+        [
+            ("owner_email".to_string(), true, false, true, true),
+            ("owner_email".to_string(), false, true, true, true),
+        ]
     );
-    let bad = app
+    let owner_id = cards[0]["id"].clone();
+    let edit = app
         .api_send(
             reqwest::Method::PUT,
-            "/api/ui/projects/payments/alerts/critical",
-            serde_json::json!({ "emails": "ok@x.co\nnot-an-email", "webhook_url": "" }),
+            &format!("/api/ui/projects/payments/alert-cards/{owner_id}"),
+            serde_json::json!({ "kind": "email", "name": "Mine", "critical": true, "emails": "x@x.co" }),
+            Some(&tl),
+        )
+        .await;
+    assert_eq!(edit.status(), 422, "the owner's cards are fixed");
+    let gone = app
+        .api_send(
+            reqwest::Method::DELETE,
+            &format!("/api/ui/projects/payments/alert-cards/{owner_id}"),
+            serde_json::json!({}),
+            Some(&tl),
+        )
+        .await;
+    assert_eq!(gone.status(), 422);
+    let bad = app
+        .api_post(
+            "/api/ui/projects/payments/alert-cards",
+            serde_json::json!({ "kind": "email", "name": "On call", "critical": true, "emails": "ok@x.co\nnot-an-email" }),
             Some(&tl),
         )
         .await;
@@ -232,15 +246,14 @@ async fn two_failed_checks_open_one_incident_and_alert_then_a_pass_closes_it() {
     let app = TestApp::spawn("test").await;
     let tl = setup(&app).await;
     let (hook, got, _) = webhook_sink().await;
-    let res = app
-        .api_send(
-            reqwest::Method::PUT,
-            "/api/ui/projects/payments/alerts/critical",
-            serde_json::json!({ "emails": "oncall@x.co", "webhook_url": &hook, "use_webhook": true }),
-            Some(&tl),
-        )
+    app.email_only(&tl, "payments", "critical", "oncall@x.co")
         .await;
-    assert_eq!(res.status(), 204);
+    app.alert_card(
+        &tl,
+        "payments",
+        serde_json::json!({ "kind": "json", "name": "Hook", "critical": true, "url": &hook }),
+    )
+    .await;
     let (url, up) = switchable().await;
     monitor(&app, &url, "critical").await;
 
@@ -346,18 +359,28 @@ async fn a_failure_between_passes_opens_nothing() {
 }
 
 #[tokio::test]
-async fn warning_alerts_skip_the_webhook_unless_turned_on() {
+async fn a_webhook_card_that_is_off_sends_nothing() {
     // AC-15.02
     let app = TestApp::spawn("test").await;
     let tl = setup(&app).await;
     let (hook, got, _) = webhook_sink().await;
-    app.api_send(
-        reqwest::Method::PUT,
-        "/api/ui/projects/payments/alerts/warning",
-        serde_json::json!({ "emails": "dev@x.co", "webhook_url": &hook }),
-        Some(&tl),
-    )
-    .await;
+    app.email_only(&tl, "payments", "warning", "dev@x.co").await;
+    let id = app
+        .alert_card(
+            &tl,
+            "payments",
+            serde_json::json!({ "kind": "json", "name": "Hook", "warning": true, "url": &hook }),
+        )
+        .await;
+    let off = app
+        .api_send(
+            reqwest::Method::PUT,
+            &format!("/api/ui/projects/payments/alert-cards/{id}/enabled"),
+            serde_json::json!({ "enabled": false }),
+            Some(&tl),
+        )
+        .await;
+    assert_eq!(off.status(), 204);
     let (url, up) = switchable().await;
     monitor(&app, &url, "warning").await;
     up.store(false, Ordering::SeqCst);
@@ -638,16 +661,16 @@ async fn a_failing_webhook_is_retried_later_with_the_error_kept() {
     let tl = setup(&app).await;
     let (hook, _, status) = webhook_sink().await;
     status.store(500, Ordering::SeqCst);
-    app.api_send(
-        reqwest::Method::PUT,
-        "/api/ui/projects/payments/alerts/critical",
-        serde_json::json!({ "webhook_url": &hook, "use_webhook": true }),
-        Some(&tl),
-    )
-    .await;
+    let id = app
+        .alert_card(
+            &tl,
+            "payments",
+            serde_json::json!({ "kind": "json", "name": "Hook", "critical": true, "url": &hook }),
+        )
+        .await;
     let res = app
         .api_post(
-            "/api/ui/projects/payments/alerts/critical/test",
+            &format!("/api/ui/projects/payments/alert-cards/{id}/test"),
             serde_json::json!({}),
             Some(&tl),
         )
@@ -676,13 +699,8 @@ async fn a_failing_webhook_is_retried_later_with_the_error_kept() {
 async fn deleting_a_monitor_closes_its_open_incident() {
     let app = TestApp::spawn("test").await;
     let tl = setup(&app).await;
-    app.api_send(
-        reqwest::Method::PUT,
-        "/api/ui/projects/payments/alerts/warning",
-        serde_json::json!({ "emails": "oncall@x.co", "webhook_url": "" }),
-        Some(&tl),
-    )
-    .await;
+    app.email_only(&tl, "payments", "warning", "oncall@x.co")
+        .await;
     let (url, up) = switchable().await;
     monitor(&app, &url, "warning").await;
     up.store(false, Ordering::SeqCst);
@@ -774,9 +792,7 @@ async fn incident(app: &TestApp, tl: &str, id: i64) -> Value {
 async fn a_tech_lead_resolves_an_automatic_incident_and_its_monitor_starts_over() {
     let app = TestApp::spawn("test").await;
     let tl = setup(&app).await;
-    let route = "/api/ui/projects/payments/alerts/warning";
-    let body = json!({ "emails": "warn@x.co", "webhook_url": "" });
-    app.api_send(reqwest::Method::PUT, route, body, Some(&tl))
+    app.email_only(&tl, "payments", "warning", "warn@x.co")
         .await;
     let (url, up) = switchable().await;
     monitor(&app, &url, "warning").await;

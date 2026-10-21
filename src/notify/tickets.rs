@@ -3,7 +3,7 @@
 
 use turso::Connection;
 
-use super::{RouteError, store, store::TicketAlerts, ticket_json};
+use super::{AlertError, store, store::TicketAlerts, ticket_json};
 use crate::platform::{db::Db, now};
 
 pub async fn ticket_alerts(db: &Db, project_id: i64) -> anyhow::Result<TicketAlerts> {
@@ -19,11 +19,11 @@ pub async fn save_ticket_alerts(
     webhook_raw: &str,
     use_webhook: bool,
     webhook_moves: bool,
-) -> Result<(), RouteError> {
+) -> Result<(), AlertError> {
     let webhook = webhook_raw.trim();
     let needs_url = use_webhook || webhook_moves;
     if (needs_url || !webhook.is_empty()) && !crate::platform::valid_http_url(webhook) {
-        return Err(RouteError::BadWebhook);
+        return Err(AlertError::BadWebhook);
     }
     let a = TicketAlerts {
         // Not written: saving keeps the on and off switch as it is (`set_enabled` owns it).

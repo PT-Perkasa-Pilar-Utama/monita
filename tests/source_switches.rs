@@ -81,15 +81,8 @@ async fn subjects(app: &TestApp) -> Vec<String> {
 async fn setup(app: &TestApp, alert: bool, auto_incident: bool) -> (String, Arc<AtomicBool>) {
     let tl = app.tl("rina@x.co").await;
     app.project(&tl, "Payments", "payments").await;
-    let res = app
-        .api_send(
-            reqwest::Method::PUT,
-            "/api/ui/projects/payments/alerts/critical",
-            serde_json::json!({ "emails": "oncall@x.co", "webhook_url": "", "use_webhook": false }),
-            Some(&tl),
-        )
+    app.email_only(&tl, "payments", "critical", "oncall@x.co")
         .await;
-    assert_eq!(res.status(), 204);
     let (url, up) = switchable().await;
     let m = MonitorInput {
         name: "API health".into(),

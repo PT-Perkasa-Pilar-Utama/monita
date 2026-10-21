@@ -70,7 +70,7 @@ async function secretList(page: Page, slug: string): Promise<{ id: number; name:
   return ((await res.json()) as { data: { id: number; name: string }[] }).data;
 }
 
-test("the allowlist saves, and an alert route switched off says nothing is sent", async ({ page }) => {
+test("the allowlist saves, and with both owner cards off the page says no one hears", async ({ page }) => {
   const slug = await apiProject(page, "Allowlist");
   await page.goto(`/projects/${slug}/settings/allowlist`);
   await page.locator("#cidrs").fill("10.0.0.0/8");
@@ -78,11 +78,14 @@ test("the allowlist saves, and an alert route switched off says nothing is sent"
   await expect(page.getByText("Allowlist saved.")).toBeVisible();
 
   await page.goto(`/projects/${slug}/settings/alerts`);
-  const critical = page.locator("#critical");
-  await critical.getByRole("switch").click();
-  await expect(critical.getByText("Off. Nothing is sent.")).toBeVisible();
+  const owner = page.getByRole("list", { name: "Alert cards" }).getByRole("listitem");
+  await owner.nth(0).getByRole("switch").click();
+  await expect(page.getByText("No card listens to critical alerts.", { exact: false })).toBeVisible();
+  await owner.nth(1).getByRole("switch").click();
+  await expect(page.getByText("No card listens to warning alerts.", { exact: false })).toBeVisible();
   await page.reload();
-  await expect(critical.getByRole("switch")).not.toBeChecked();
+  await expect(owner.nth(0).getByRole("switch")).not.toBeChecked();
+  await expect(page.getByText("No card listens to critical alerts.", { exact: false })).toBeVisible();
 });
 
 test("ticket alerts keep the column-move box once saved", async ({ page }) => {

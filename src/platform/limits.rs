@@ -248,8 +248,13 @@ async fn view(state: &AppState) -> anyhow::Result<SystemView> {
             used: None,
         },
         Cap {
-            label: "Email addresses in one alert setting",
-            max: caps::EMAILS_PER_ROUTE as i64,
+            label: "Alert cards in one project, besides the owner's two",
+            max: caps::ALERT_CARDS,
+            used: None,
+        },
+        Cap {
+            label: "Email addresses in one alert card",
+            max: caps::EMAILS_PER_CARD as i64,
             used: None,
         },
         Cap {

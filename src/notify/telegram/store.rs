@@ -39,23 +39,22 @@ pub async fn advance_offset(c: &Connection, next: i64) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// A new link for one severity. Its older links and every expired link go.
+/// A new link for a project. Its older link and every expired link go, so a project holds one.
 pub async fn new_link(
     c: &Connection,
     code_hash: &str,
     project_id: i64,
-    severity: &str,
     expires_at: i64,
     now: i64,
 ) -> anyhow::Result<()> {
     c.execute(
-        "DELETE FROM telegram_links WHERE (project_id = ?1 AND severity = ?2) OR expires_at <= ?3",
-        (project_id, severity, now),
+        "DELETE FROM telegram_links WHERE project_id = ?1 OR expires_at <= ?2",
+        (project_id, now),
     )
     .await?;
     c.execute(
-        "INSERT INTO telegram_links (code_hash, project_id, severity, expires_at) VALUES (?1, ?2, ?3, ?4)",
-        (code_hash, project_id, severity, expires_at),
+        "INSERT INTO telegram_links (code_hash, project_id, expires_at) VALUES (?1, ?2, ?3)",
+        (code_hash, project_id, expires_at),
     )
     .await?;
     Ok(())
@@ -78,26 +77,26 @@ pub async fn heard(
     Ok(n > 0)
 }
 
-/// The chat a severity's live link was heard in, which uses the link up.
+/// The chat this project's live link was heard in, which uses the link up.
 pub async fn take_heard(
     c: &Connection,
     project_id: i64,
-    severity: &str,
+    code_hash: &str,
     now: i64,
 ) -> anyhow::Result<Option<(String, String)>> {
     let found = crate::platform::db::query_all(
         c,
         "SELECT chat_id, chat_title FROM telegram_links
-         WHERE project_id = ?1 AND severity = ?2 AND expires_at > ?3 AND chat_id IS NOT NULL LIMIT 1",
-        (project_id, severity, now),
+         WHERE code_hash = ?1 AND project_id = ?2 AND expires_at > ?3 AND chat_id IS NOT NULL",
+        (code_hash, project_id, now),
         |r| Ok((r.get::<String>(0)?, r.get::<String>(1)?)),
     )
     .await?
     .pop();
     if found.is_some() {
         c.execute(
-            "DELETE FROM telegram_links WHERE project_id = ?1 AND severity = ?2",
-            (project_id, severity),
+            "DELETE FROM telegram_links WHERE code_hash = ?1",
+            [code_hash],
         )
         .await?;
     }

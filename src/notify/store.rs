@@ -1,20 +1,6 @@
-//! SQL for alert_routes and outbox.
+//! SQL for the outbox and ticket alerts. Alert cards keep theirs in `cards/store.rs`.
 
 use turso::Connection;
-
-#[derive(serde::Serialize)]
-pub struct Route {
-    pub severity: String,
-    pub emails: Vec<String>,
-    pub webhook_url: Option<String>,
-    pub use_webhook: bool,
-    /// Off sends nothing and keeps the recipients for when it comes back on.
-    pub enabled: bool,
-    /// One of `format::FORMATS` (migration 0025).
-    pub webhook_format: String,
-    /// Telegram's chat ID or PagerDuty's routing key. Like the URL, a supervisor never sees it.
-    pub webhook_key: Option<String>,
-}
 
 pub struct OutboxRow {
     pub id: i64,
@@ -29,65 +15,6 @@ pub enum Outcome {
     Sent,
     Retry(i64, String),
     Failed(String),
-}
-
-fn route_row(r: &turso::Row) -> turso::Result<Route> {
-    let emails: String = r.get(1)?;
-    Ok(Route {
-        severity: r.get(0)?,
-        emails: emails
-            .lines()
-            .filter(|l| !l.is_empty())
-            .map(str::to_owned)
-            .collect(),
-        webhook_url: r.get(2)?,
-        use_webhook: r.get::<i64>(3)? == 1,
-        enabled: r.get::<i64>(4)? == 1,
-        webhook_format: r.get(5)?,
-        webhook_key: r.get(6)?,
-    })
-}
-
-pub async fn routes(c: &Connection, project_id: i64) -> anyhow::Result<Vec<Route>> {
-    crate::platform::db::query_all(c, "SELECT severity, emails, webhook_url, use_webhook, enabled, webhook_format, webhook_key FROM alert_routes WHERE project_id = ?1 ORDER BY severity LIMIT 2", [project_id], route_row).await
-}
-
-pub async fn route(
-    c: &Connection,
-    project_id: i64,
-    severity: &str,
-) -> anyhow::Result<Option<Route>> {
-    let mut rows = c
-        .query(
-            "SELECT severity, emails, webhook_url, use_webhook, enabled, webhook_format, webhook_key FROM alert_routes WHERE project_id = ?1 AND severity = ?2",
-            (project_id, severity),
-        )
-        .await?;
-    Ok(match rows.next().await? {
-        Some(r) => Some(route_row(&r)?),
-        None => None,
-    })
-}
-
-/// Saves the recipients and the webhook; `enabled` stays as it is (`set_enabled` owns it).
-pub async fn save_route(c: &Connection, project_id: i64, r: &Route) -> anyhow::Result<()> {
-    c.execute(
-        "INSERT INTO alert_routes (project_id, severity, emails, webhook_url, use_webhook, webhook_format, webhook_key)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
-         ON CONFLICT (project_id, severity) DO UPDATE SET emails = excluded.emails, webhook_url = excluded.webhook_url,
-           use_webhook = excluded.use_webhook, webhook_format = excluded.webhook_format, webhook_key = excluded.webhook_key",
-        (
-            project_id,
-            r.severity.as_str(),
-            r.emails.join("\n"),
-            r.webhook_url.as_deref(),
-            r.use_webhook,
-            r.webhook_format.as_str(),
-            r.webhook_key.as_deref(),
-        ),
-    )
-    .await?;
-    Ok(())
 }
 
 pub async fn queue(
@@ -164,12 +91,8 @@ pub async fn claim_due(
     Ok(out)
 }
 
-pub async fn create_routes(c: &Connection, project_id: i64, emails: &str) -> anyhow::Result<()> {
-    c.execute(
-        "INSERT INTO alert_routes (project_id, severity, use_webhook, emails) VALUES (?1, 'critical', 0, ?2), (?1, 'warning', 0, ?2)",
-        (project_id, emails),
-    )
-    .await?;
+/// A new project's ticket alerts, with their defaults.
+pub async fn create_ticket_alerts(c: &Connection, project_id: i64) -> anyhow::Result<()> {
     c.execute(
         "INSERT INTO ticket_alerts (project_id) VALUES (?1)",
         [project_id],
@@ -285,25 +208,12 @@ pub async fn email_latest(c: &Connection) -> anyhow::Result<(Option<i64>, Option
     Ok((sent, error.into_iter().next()))
 }
 
-/// Turns one alert setting on or off: `critical`, `warning` or `ticket`. False for an unknown one.
-pub async fn set_enabled(
-    c: &Connection,
-    project_id: i64,
-    route: &str,
-    on: bool,
-) -> anyhow::Result<bool> {
-    let n = if route == "ticket" {
-        c.execute(
-            "INSERT INTO ticket_alerts (project_id, enabled) VALUES (?1, ?2) ON CONFLICT (project_id) DO UPDATE SET enabled = excluded.enabled",
-            (project_id, on),
-        )
-        .await?
-    } else {
-        c.execute(
-            "UPDATE alert_routes SET enabled = ?1 WHERE project_id = ?2 AND severity = ?3",
-            (on, project_id, route),
-        )
-        .await?
-    };
-    Ok(n > 0)
+/// Ticket alerts on or off; a project with no row gets one.
+pub async fn set_ticket_enabled(c: &Connection, project_id: i64, on: bool) -> anyhow::Result<()> {
+    c.execute(
+        "INSERT INTO ticket_alerts (project_id, enabled) VALUES (?1, ?2) ON CONFLICT (project_id) DO UPDATE SET enabled = excluded.enabled",
+        (project_id, on),
+    )
+    .await?;
+    Ok(())
 }

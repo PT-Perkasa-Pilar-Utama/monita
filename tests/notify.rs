@@ -140,88 +140,188 @@ async fn two_delivery_passes_never_send_one_message_twice() {
     assert_eq!(hits.load(Ordering::SeqCst), 1);
 }
 
-#[tokio::test]
-async fn an_alert_switched_off_sends_nothing_and_keeps_its_recipients() {
-    let app = TestApp::spawn("test").await;
-    let tl = app.tl("rina@x.co").await;
-    app.project(&tl, "Payments", "payments").await;
-    let route = "/api/ui/projects/payments/alerts/critical";
-    let body =
-        serde_json::json!({"emails": "oncall@x.co", "webhook_url": "", "use_webhook": false});
-    app.api_send(reqwest::Method::PUT, route, body, Some(&tl))
-        .await;
-    let switch_path = format!("{route}/enabled");
-    let switch = |on: bool| {
-        app.api_send(
-            reqwest::Method::PUT,
-            &switch_path,
-            serde_json::json!({ "enabled": on }),
-            Some(&tl),
-        )
-    };
-    assert_eq!(switch(false).await.status(), 204);
-
-    let opened = monita::incidents::Event::Opened {
+/// An alert as `incidents::observe` hands it to notify, for project 1.
+fn opened(severity: &str) -> monita::incidents::Event {
+    monita::incidents::Event::Opened {
         incident_id: 1,
         project_id: 1,
         source_name: "API".into(),
         title: "API is down".into(),
-        severity: "critical".into(),
+        severity: severity.into(),
         cause: "HTTP 503".into(),
-    };
-    let send = async || {
-        app.state
-            .db
-            .write(async |c| {
-                monita::notify::send(c, &opened, common::BASE_URL).await?;
-                Ok(())
-            })
-            .await
-            .unwrap();
-    };
-    send().await;
-    let outbox = async || {
-        query_i64(
-            &app.state.db.read().await.unwrap(),
-            "SELECT count(*) FROM outbox WHERE recipient = 'oncall@x.co'",
-            (),
+    }
+}
+
+async fn send(app: &TestApp, ev: &monita::incidents::Event) {
+    app.state
+        .db
+        .write(async |c| {
+            monita::notify::send(c, ev, common::BASE_URL).await?;
+            Ok(())
+        })
+        .await
+        .unwrap();
+}
+
+/// Empties the outbox: setup queued invite emails.
+async fn clear_outbox(app: &TestApp) {
+    app.state
+        .db
+        .write(async |c| {
+            c.execute("DELETE FROM outbox", ()).await?;
+            Ok(())
+        })
+        .await
+        .unwrap();
+}
+
+/// Email recipients in the outbox, sorted.
+async fn mailed(app: &TestApp) -> Vec<String> {
+    monita::platform::db::query_all(
+        &app.state.db.read().await.unwrap(),
+        "SELECT recipient FROM outbox WHERE channel = 'email' ORDER BY recipient",
+        (),
+        |r| r.get::<String>(0),
+    )
+    .await
+    .unwrap()
+}
+
+#[tokio::test]
+async fn a_card_switched_off_sends_nothing_and_keeps_its_recipients() {
+    let app = TestApp::spawn("test").await;
+    let tl = app.tl("rina@x.co").await;
+    app.project(&tl, "Payments", "payments").await;
+    let id = app
+        .email_only(&tl, "payments", "critical", "oncall@x.co")
+        .await;
+    clear_outbox(&app).await;
+    let switch = async |id: i64, on: bool| {
+        app.api_send(
+            reqwest::Method::PUT,
+            &format!("/api/ui/projects/payments/alert-cards/{id}/enabled"),
+            serde_json::json!({ "enabled": on }),
+            Some(&tl),
         )
         .await
-        .unwrap()
-        .unwrap_or(0)
+        .status()
     };
-    assert_eq!(outbox().await, 0, "off: no alert");
-    let routes = common::json_of(
-        app.api_get("/api/ui/projects/payments/alerts", Some(&tl))
-            .await,
-    )
-    .await;
+    assert_eq!(switch(id, false).await, 204);
+    send(&app, &opened("critical")).await;
+    assert!(mailed(&app).await.is_empty(), "off: no alert");
+    let cards = app.alert_cards(&tl, "payments").await;
+    let card = cards
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["id"] == id)
+        .unwrap();
     assert_eq!(
-        routes["data"][0]["emails"],
+        card["emails"],
         serde_json::json!(["oncall@x.co"]),
         "recipients stay"
     );
-    assert_eq!(routes["data"][0]["enabled"], false);
+    assert_eq!(card["enabled"], false);
 
-    assert_eq!(switch(true).await.status(), 204);
-    send().await;
-    assert_eq!(outbox().await, 1, "back on: the alert goes out");
-
-    let bad = app
-        .api_send(
-            reqwest::Method::PUT,
-            "/api/ui/projects/payments/alerts/info/enabled",
-            serde_json::json!({ "enabled": false }),
-            Some(&tl),
-        )
-        .await;
-    assert_eq!(bad.status(), 404);
+    assert_eq!(switch(id, true).await, 204);
+    send(&app, &opened("critical")).await;
+    assert_eq!(
+        mailed(&app).await,
+        ["oncall@x.co"],
+        "back on: the alert goes out"
+    );
+    assert_eq!(switch(9999, false).await, 404);
 }
 
-/// AC-15.02: with the setup unchanged, both severities email the project's owner, also when a
-/// super admin made the project for a tech lead.
+/// v1.1 Q34: with no card listening, an alert goes nowhere and nothing fails: the incident that
+/// caused it, the check and the ping go on as usual.
 #[tokio::test]
-async fn a_new_project_emails_its_owner_until_the_recipients_change() {
+async fn with_no_card_listening_an_alert_goes_nowhere_without_an_error() {
+    let app = TestApp::spawn("test").await;
+    let tl = app.tl("rina@x.co").await;
+    app.project(&tl, "Payments", "payments").await;
+    app.owner_cards_off(&tl, "payments").await;
+    clear_outbox(&app).await;
+    send(&app, &opened("critical")).await;
+    send(&app, &opened("warning")).await;
+    let cert = monita::notify::CertWarning {
+        project_id: 1,
+        monitor_id: 1,
+        monitor_name: "API",
+        expires_at: monita::platform::now() + 86_400,
+    };
+    let queued = app
+        .state
+        .db
+        .write(async |c| monita::notify::send_cert_warning(c, &cert, common::BASE_URL).await)
+        .await
+        .unwrap();
+    assert!(!queued, "no warning card: nothing queued");
+    let rows = query_i64(
+        &app.state.db.read().await.unwrap(),
+        "SELECT count(*) FROM outbox",
+        (),
+    )
+    .await
+    .unwrap();
+    assert_eq!(rows, Some(0));
+
+    let hb = monita::checks::heartbeat::create(
+        &app.state.db,
+        1,
+        &monita::checks::heartbeat::HeartbeatInput {
+            name: "nightly".into(),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap()
+    .unwrap();
+    let token = monita::checks::heartbeat::find(&app.state.db, 1, hb)
+        .await
+        .unwrap()
+        .unwrap()
+        .token;
+    let fail = app
+        .http
+        .post(app.url(&format!("/ping/{token}/fail")))
+        .body("disk full")
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(fail.status(), 200, "the ping is heard");
+    let open = query_i64(
+        &app.state.db.read().await.unwrap(),
+        "SELECT count(*) FROM incidents WHERE resolved_at IS NULL",
+        (),
+    )
+    .await
+    .unwrap();
+    assert_eq!(open, Some(1), "the incident opens though no one is alerted");
+}
+
+/// An address in several cards that hear one alert gets one email.
+#[tokio::test]
+async fn an_address_in_two_cards_gets_one_email() {
+    let app = TestApp::spawn("test").await;
+    let tl = app.tl("rina@x.co").await;
+    app.project(&tl, "Payments", "payments").await;
+    app.alert_card(
+        &tl,
+        "payments",
+        serde_json::json!({ "kind": "email", "name": "Team", "critical": true, "warning": true,
+                            "emails": "rina@x.co\noncall@x.co" }),
+    )
+    .await;
+    clear_outbox(&app).await;
+    send(&app, &opened("critical")).await;
+    assert_eq!(mailed(&app).await, ["oncall@x.co", "rina@x.co"]);
+}
+
+/// AC-15.02: with the setup unchanged, both levels email the project's owner, also when a super
+/// admin made the project for a tech lead.
+#[tokio::test]
+async fn a_new_project_emails_its_owner() {
     let app = TestApp::spawn("test").await;
     let admin = app.super_admin("admin@x.co").await;
     let tl = app.tl("rina@x.co").await;
@@ -237,95 +337,22 @@ async fn a_new_project_emails_its_owner_until_the_recipients_change() {
         .as_str()
         .unwrap()
         .to_string();
-    let routes = common::json_of(
-        app.api_get(&format!("/api/ui/projects/{slug}/alerts"), Some(&tl))
-            .await,
-    )
-    .await;
-    for r in routes["data"].as_array().unwrap() {
-        assert_eq!(r["emails"], serde_json::json!(["rina@x.co"]), "{r}");
-    }
+    clear_outbox(&app).await;
+    let cards = app.alert_cards(&tl, &slug).await;
+    let warning = cards
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["kind"] == "owner_email" && c["warning"] == true)
+        .unwrap()["id"]
+        .clone();
     let test = app
         .api_post(
-            &format!("/api/ui/projects/{slug}/alerts/warning/test"),
+            &format!("/api/ui/projects/{slug}/alert-cards/{warning}/test"),
             serde_json::json!({}),
             Some(&tl),
         )
         .await;
     assert_eq!(common::json_of(test).await["data"]["sent_to"], 1);
-}
-
-/// Migration 23: a route that sent nothing gets the owner's email; a webhook-only route and a
-/// route with recipients keep theirs.
-#[tokio::test]
-async fn migration_23_gives_silent_routes_the_owners_email() {
-    let app = TestApp::spawn("test").await;
-    let tl = app.tl("rina@x.co").await;
-    for (name, slug) in [("Silent", "silent"), ("Hooked", "hooked"), ("Kept", "kept")] {
-        assert_eq!(app.project(&tl, name, slug).await, 201);
-    }
-    let routes = async |project: &str| -> Vec<String> {
-        monita::platform::db::query_all(
-            &app.state.db.read().await.unwrap(),
-            "SELECT r.emails FROM alert_routes r JOIN projects p ON p.id = r.project_id WHERE p.slug = ?1 ORDER BY r.severity",
-            [project],
-            |r| r.get::<String>(0),
-        )
-        .await
-        .unwrap()
-    };
-    app.state
-        .db
-        .write(async |c| {
-            c.execute_batch(
-                "UPDATE alert_routes SET emails = '';
-                 UPDATE alert_routes SET webhook_url = 'https://hooks.example.com/x', use_webhook = 1
-                   WHERE project_id = (SELECT id FROM projects WHERE slug = 'hooked');
-                 UPDATE alert_routes SET emails = 'oncall@x.co'
-                   WHERE project_id = (SELECT id FROM projects WHERE slug = 'kept');",
-            )
-            .await?;
-            c.execute_batch(include_str!("../migrations/0023_owner_alert_recipients.sql"))
-                .await?;
-            Ok(())
-        })
-        .await
-        .unwrap();
-    assert_eq!(routes("silent").await, ["rina@x.co", "rina@x.co"]);
-    assert_eq!(routes("hooked").await, ["", ""]);
-    assert_eq!(routes("kept").await, ["oncall@x.co", "oncall@x.co"]);
-}
-
-/// Migration 33: a ticked webhook with no URL is unticked; a ticked webhook with a URL stays on.
-#[tokio::test]
-async fn migration_33_unticks_webhooks_without_a_url() {
-    let app = TestApp::spawn("test").await;
-    let tl = app.tl("rina@x.co").await;
-    assert_eq!(app.project(&tl, "Hooks", "hooks").await, 201);
-    app.state
-        .db
-        .write(async |c| {
-            c.execute_batch(
-                "UPDATE alert_routes SET use_webhook = 1, webhook_url = NULL WHERE severity = 'critical';
-                 UPDATE alert_routes SET use_webhook = 1, webhook_url = 'https://hooks.example.com/x' WHERE severity = 'warning';",
-            )
-            .await?;
-            c.execute_batch(include_str!("../migrations/0033_webhook_off_without_url.sql"))
-                .await?;
-            Ok(())
-        })
-        .await
-        .unwrap();
-    let on = monita::platform::db::query_all(
-        &app.state.db.read().await.unwrap(),
-        "SELECT severity, use_webhook FROM alert_routes ORDER BY severity",
-        (),
-        |r| Ok((r.get::<String>(0)?, r.get::<i64>(1)?)),
-    )
-    .await
-    .unwrap();
-    assert_eq!(
-        on,
-        [("critical".to_string(), 0), ("warning".to_string(), 1)]
-    );
+    assert_eq!(mailed(&app).await, ["rina@x.co"]);
 }

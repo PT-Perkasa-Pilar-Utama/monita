@@ -435,11 +435,10 @@ async fn each_new_ticket_calls_the_ticket_webhook_and_never_the_warning_one() {
         "a new project: digest on, webhook off"
     );
     let put = |body: Value| app.api_send(reqwest::Method::PUT, alerts, body, Some(&s.tl));
-    app.api_send(
-        reqwest::Method::PUT,
-        "/api/ui/projects/payments/alerts/warning",
-        json!({ "webhook_url": format!("http://{addr}/warning"), "use_webhook": true }),
-        Some(&s.tl),
+    app.alert_card(
+        &s.tl,
+        "payments",
+        json!({ "kind": "json", "name": "Warning hook", "warning": true, "url": format!("http://{addr}/warning") }),
     )
     .await;
     let rid = ref_id(&app, &s.key, false).await;

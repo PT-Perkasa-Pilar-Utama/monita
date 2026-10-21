@@ -6,7 +6,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { api, errorText } from "@/lib/api";
 import { nowSecs } from "@/lib/time";
 
-type Link = { private: string; group: string; qr: string; expires_at: number };
+type Link = { code: string; private: string; group: string; qr: string; expires_at: number };
 export type TelegramChat = { chat_id: string; title: string };
 
 /** How often the dialog asks whether the bot heard the link. */
@@ -16,11 +16,11 @@ const POLL_MS = 3000;
  * Connects a chat to Monita's bot: a link and its QR code. The person opens it in Telegram, or
  * adds the bot to a group with it; the dialog asks the server until the bot hears it.
  */
-export function TelegramConnect({ slug, severity, bot, onChat }: { slug: string; severity: string; bot: string; onChat: (chat: TelegramChat) => void }): ReactElement {
+export function TelegramConnect({ slug, bot, onChat }: { slug: string; bot: string; onChat: (chat: TelegramChat) => void }): ReactElement {
   const [open, setOpen] = useState(false);
   const [link, setLink] = useState<Link | null>(null);
   const [error, setError] = useState("");
-  const base = `/projects/${slug}/alerts/${severity}/telegram-link`;
+  const base = `/projects/${slug}/telegram-link`;
   // The parent passes a new function each render; the poll should not restart for it.
   const onChatRef = useRef(onChat);
   onChatRef.current = onChat;
@@ -46,7 +46,7 @@ export function TelegramConnect({ slug, severity, bot, onChat }: { slug: string;
         setError("This link expired. Close this and connect again.");
         return;
       }
-      api<{ chat: TelegramChat | null }>(`${base}/check`, "POST")
+      api<{ chat: TelegramChat | null }>(`${base}/check`, "POST", { code: link.code })
         .then(({ chat }) => {
           if (!chat) return;
           window.clearInterval(timer);

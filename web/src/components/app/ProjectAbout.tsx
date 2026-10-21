@@ -10,8 +10,9 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { api, ApiError, dropField, errorText } from "@/lib/api";
-import { alertLine, allowlistSize, publicTabs } from "@/lib/projectFacts";
-import type { AlertRoute, ProjectHead } from "@/lib/types";
+import { LEVELS, levelLine } from "@/lib/alertCards";
+import { allowlistSize, publicTabs } from "@/lib/projectFacts";
+import type { AlertCard, ProjectHead } from "@/lib/types";
 import { stamp } from "@/lib/time";
 import { toast } from "sonner";
 
@@ -112,8 +113,8 @@ export function ProjectAbout({
   head: ProjectHead;
   activeKeys: number;
   triage: number;
-  /** The project's alert routes; undefined while they load. */
-  alerts: AlertRoute[] | undefined;
+  /** The project's alert cards; undefined while they load. */
+  alerts: AlertCard[] | undefined;
   edit: ProjectEdit;
 }): ReactElement {
   const { project: p, counts } = head;
@@ -201,9 +202,9 @@ export function ProjectAbout({
             Alerts
           </Link>
           {alerts ? (
-            alerts.map((r) => (
-              <span key={r.severity} className="block text-muted-foreground">
-                {alertLine(r)}
+            LEVELS.map((l) => (
+              <span key={l} className="block text-muted-foreground">
+                {levelLine(alerts, l)}
               </span>
             ))
           ) : (

@@ -144,6 +144,65 @@ impl TestApp {
             .await
     }
 
+    /// Adds an alert card to a project as the page does; returns its id.
+    pub async fn alert_card(&self, cookie: &str, slug: &str, card: Value) -> i64 {
+        let res = self
+            .api_post(
+                &format!("/api/ui/projects/{slug}/alert-cards"),
+                card,
+                Some(cookie),
+            )
+            .await;
+        assert_eq!(
+            res.status(),
+            201,
+            "{}",
+            res.text().await.unwrap_or_default()
+        );
+        json_of(res).await["data"]["id"].as_i64().unwrap()
+    }
+
+    /// Turns the owner's two email cards off, as a team that replaced the owner would.
+    pub async fn owner_cards_off(&self, cookie: &str, slug: &str) {
+        for card in self.alert_cards(cookie, slug).await.as_array().unwrap() {
+            if card["fixed"] == true {
+                let res = self
+                    .api_send(
+                        reqwest::Method::PUT,
+                        &format!("/api/ui/projects/{slug}/alert-cards/{}/enabled", card["id"]),
+                        json!({ "enabled": false }),
+                        Some(cookie),
+                    )
+                    .await;
+                assert_eq!(res.status(), 204);
+            }
+        }
+    }
+
+    /// Sends `level` alerts to `email` alone: the owner's cards go off and an Email card takes it.
+    pub async fn email_only(&self, cookie: &str, slug: &str, level: &str, email: &str) -> i64 {
+        self.owner_cards_off(cookie, slug).await;
+        self.alert_card(
+            cookie,
+            slug,
+            json!({ "kind": "email", "name": "Email", "emails": email, level: true }),
+        )
+        .await
+    }
+
+    /// A project's cards as the page reads them.
+    pub async fn alert_cards(&self, cookie: &str, slug: &str) -> Value {
+        json_of(
+            self.api_get(
+                &format!("/api/ui/projects/{slug}/alert-cards"),
+                Some(cookie),
+            )
+            .await,
+        )
+        .await["data"]
+            .clone()
+    }
+
     pub async fn super_admin(&self, email: &str) -> String {
         monita::accounts::create_super_admin(&self.state.db, email, PASSWORD)
             .await

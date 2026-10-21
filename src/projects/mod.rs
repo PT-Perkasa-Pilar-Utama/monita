@@ -218,6 +218,12 @@ pub async fn name_slug(
     store::name_slug(c, project_id).await
 }
 
+/// The owner's address while the owner is active, for alerts to the owner's cards. A disabled
+/// owner has left and gets none.
+pub async fn owner_email(c: &turso::Connection, project_id: i64) -> anyhow::Result<Option<String>> {
+    store::owner_email(c, project_id).await
+}
+
 /// US-05: monitors, incidents and tickets stay with the project. The new owner is an active TL
 /// or the super admin making the change; anyone else is 404.
 pub async fn reassign(

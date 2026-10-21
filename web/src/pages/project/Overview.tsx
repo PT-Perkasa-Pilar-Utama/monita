@@ -17,7 +17,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useProject } from "@/lib/project";
 import { ago, duration, nowSecs } from "@/lib/time";
-import type { AlertRoute, Overview as OverviewData, StateKind } from "@/lib/types";
+import type { AlertCard, Overview as OverviewData, StateKind } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 import { cn } from "@/lib/utils";
 
@@ -62,7 +62,7 @@ export function Overview(): ReactElement {
   const { project: p, counts, reload } = useProject();
   const edit = useProjectEdit({ project: p, counts }, reload);
   const o = useApi<OverviewData>(`/projects/${p.slug}/overview`);
-  const alerts = useApi<AlertRoute[]>(`/projects/${p.slug}/alerts`);
+  const alerts = useApi<AlertCard[]>(`/projects/${p.slug}/alert-cards`);
   const base = `/projects/${p.slug}`;
   const now = nowSecs();
   const d = o.data;

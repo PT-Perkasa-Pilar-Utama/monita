@@ -34,9 +34,11 @@ pub enum TelegramError {
     Other(#[from] anyhow::Error),
 }
 
-/// A connect link, with the private chat link as a QR code for the phone.
+/// A connect link, with the private chat link as a QR code for the phone. The page sends `code`
+/// back to ask whether the bot heard it.
 #[derive(Serialize)]
 pub struct Link {
+    pub code: String,
     pub private: String,
     pub group: String,
     pub qr: String,
@@ -163,18 +165,13 @@ pub async fn set_bot(
     Ok(Some(name))
 }
 
-/// A new connect link for one severity of a project.
-pub async fn new_link(
-    db: &Db,
-    project_id: i64,
-    severity: &str,
-    now: i64,
-) -> Result<Link, TelegramError> {
+/// A new connect link for a card of a project. A project has one link open at a time.
+pub async fn new_link(db: &Db, project_id: i64, now: i64) -> Result<Link, TelegramError> {
     let name = bot_name(db).await?.ok_or(TelegramError::NoBot)?;
     let code = token::random_token();
     let hash = token::hash(&code);
     let expires_at = now + LINK_TTL_S;
-    db.write(async |c| store::new_link(c, &hash, project_id, severity, expires_at, now).await)
+    db.write(async |c| store::new_link(c, &hash, project_id, expires_at, now).await)
         .await?;
     let private = format!("https://t.me/{name}?start={code}");
     Ok(Link {
@@ -182,6 +179,7 @@ pub async fn new_link(
         group: format!("https://t.me/{name}?startgroup={code}"),
         private,
         expires_at,
+        code,
     })
 }
 
@@ -240,14 +238,14 @@ fn heard_codes(updates: &Value, bot: &str) -> (Vec<(String, Chat)>, Option<i64>)
     (codes, next)
 }
 
-/// Reads the bot's new messages, records every link they open, and returns the chat this
-/// severity's link was opened in, if it was.
+/// Reads the bot's new messages, records every link they open, and returns the chat the link
+/// with `code` was opened in, if it was.
 pub async fn check_link(
     db: &Db,
     client: &reqwest::Client,
     api: &str,
     project_id: i64,
-    severity: &str,
+    code: &str,
     now: i64,
 ) -> Result<Option<Chat>, TelegramError> {
     let (bot, offset) = {
@@ -275,7 +273,7 @@ pub async fn check_link(
             if let Some(next) = next {
                 store::advance_offset(c, next).await?;
             }
-            store::take_heard(c, project_id, severity, now).await
+            store::take_heard(c, project_id, &token::hash(code), now).await
         })
         .await?;
     Ok(found.map(|(chat_id, title)| Chat { chat_id, title }))

@@ -3,7 +3,7 @@
 use serde::Serialize;
 
 use super::{
-    CertWarning, cert_warning, compose, test_message, ticket_json, tickets::Moved,
+    CertWarning, cert_warning, compose, compose::test_alert, ticket_json, tickets::Moved,
     tickets::ticket_moved_json,
 };
 use crate::incidents::Event;
@@ -115,13 +115,16 @@ pub fn previews(name: &str, slug: &str, base_url: &str, at: i64) -> Vec<Preview>
         email: None,
         webhook: ticket_moved_json(name, slug, &moved, base_url, at),
     });
-    let (subject, body, webhook) = test_message(name, slug, "critical", base_url, at);
+    let test = test_alert(name, slug, "Owner email", base_url, at);
     out.push(Preview {
         event: "test",
         label: "Test",
         route: "critical",
-        email: Some(EmailPreview { subject, body }),
-        webhook,
+        email: Some(EmailPreview {
+            subject: test.subject,
+            body: test.text,
+        }),
+        webhook: test.json,
     });
     out
 }

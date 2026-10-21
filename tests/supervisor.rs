@@ -145,25 +145,22 @@ async fn a_supervisor_never_sees_a_ping_url_a_webhook_url_a_header_value_or_a_bo
     assert_eq!(owner["data"]["monitor"]["headers"], "X-Key: s3cret");
 
     let hook = "https://hooks.example.com/services/T0/B0/s3cret";
-    for path in [
-        "/api/ui/projects/payments/alerts/critical",
-        "/api/ui/projects/payments/ticket-alerts",
-    ] {
-        let saved = app
-            .api_send(
-                Method::PUT,
-                path,
-                json!({ "emails": "", "webhook_url": hook, "use_webhook": true, "digest": true }),
-                Some(&tl),
-            )
-            .await;
-        assert_eq!(saved.status(), 204, "{path}");
-    }
-    let routes = json_of(
-        app.api_get("/api/ui/projects/payments/alerts", Some(&sup))
-            .await,
+    app.alert_card(
+        &tl,
+        "payments",
+        json!({ "kind": "json", "name": "Slack", "critical": true, "url": hook }),
     )
     .await;
+    let saved = app
+        .api_send(
+            Method::PUT,
+            "/api/ui/projects/payments/ticket-alerts",
+            json!({ "webhook_url": hook, "use_webhook": true, "digest": true }),
+            Some(&tl),
+        )
+        .await;
+    assert_eq!(saved.status(), 204);
+    let routes = app.alert_cards(&sup, "payments").await;
     assert!(!routes.to_string().contains("s3cret"), "{routes}");
     let tickets = json_of(
         app.api_get("/api/ui/projects/payments/ticket-alerts", Some(&sup))

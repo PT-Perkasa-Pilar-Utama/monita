@@ -22,8 +22,10 @@ pub const KEYS_PER_PROJECT: i64 = 20;
 /// Sealed secrets in one project, and the longest value.
 pub const SECRETS_PER_PROJECT: i64 = 20;
 pub const SECRET_VALUE_MAX: usize = 4096;
-/// Addresses in one alert route.
-pub const EMAILS_PER_ROUTE: usize = 20;
+/// Addresses in one email alert card.
+pub const EMAILS_PER_CARD: usize = 20;
+/// A project's own alert cards, besides the owner's two (v1.1 Q34).
+pub const ALERT_CARDS: i64 = 10;
 /// Status updates posted on one incident.
 pub const UPDATES_PER_INCIDENT: i64 = 50;
 /// Manual incidents open at once in one project.

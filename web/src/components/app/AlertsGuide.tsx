@@ -32,13 +32,13 @@ function Part({ title, children }: { title: string; children: ReactNode }): Reac
 function Severities(): ReactElement {
   return (
     <Part title="Critical and warning">
-      <p className="text-muted-foreground">You choose critical or warning on each monitor and heartbeat. Its incidents alert that level's recipients.</p>
+      <p className="text-muted-foreground">You choose critical or warning on each monitor and heartbeat. Its incidents go to every alert card that is on and listens to that level. A level no card listens to alerts no one; the incident still opens and shows.</p>
       <Table>
         <TableHeader>
           <TableRow>
             <TableHead>Alert level</TableHead>
             <TableHead>Use it for</TableHead>
-            <TableHead>Sends by default</TableHead>
+            <TableHead>A new project sends to</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -47,14 +47,14 @@ function Severities(): ReactElement {
               <SeverityBadge severity="critical" />
             </TableCell>
             <TableCell className="whitespace-normal">An outage that needs someone now, such as the checkout or the login.</TableCell>
-            <TableCell>Email and webhook</TableCell>
+            <TableCell>The owner's email</TableCell>
           </TableRow>
           <TableRow>
             <TableCell>
               <SeverityBadge severity="warning" />
             </TableCell>
             <TableCell className="whitespace-normal">A problem that can wait for working hours, such as a slow report or a nightly job.</TableCell>
-            <TableCell>Email</TableCell>
+            <TableCell>The owner's email</TableCell>
           </TableRow>
         </TableBody>
       </Table>
@@ -68,7 +68,7 @@ function Severities(): ReactElement {
 }
 
 /** Each kind of alert as Monita sends it, built by the server. */
-function Samples({ slug, webhooks }: { slug: string; webhooks: Record<string, string | null> }): ReactElement {
+function Samples({ slug }: { slug: string }): ReactElement {
   const previews = useApi<Preview[]>(`/projects/${slug}/alerts-preview`);
   const [kind, setKind] = useState("incident.opened");
   const p = previews.data?.find((x) => x.event === kind);
@@ -106,14 +106,14 @@ function Samples({ slug, webhooks }: { slug: string; webhooks: Record<string, st
           <h4 className="font-semibold">Webhook</h4>
           <div className={CODE}>
             <span className="text-muted-foreground">POST </span>
-            {webhooks[p.route] ?? "your webhook URL"}
+            your webhook URL
             {"\n"}
             <span className="text-muted-foreground">Content-Type: application/json</span>
             {"\n\n"}
             {JSON.stringify(p.webhook, null, 2)}
           </div>
           <p className="text-muted-foreground">
-            {p.event === "ticket.moved" ? "Goes to the webhook in Ticket alerts when moves are on." : p.route === "ticket" ? "Goes to the webhook in Ticket alerts when new tickets are on." : `Goes to the ${p.route} webhook when it is on.`} <code className="font-mono">at</code> is
+            {p.event === "ticket.moved" ? "Goes to the webhook in Ticket alerts when moves are on." : p.route === "ticket" ? "Goes to the webhook in Ticket alerts when new tickets are on." : p.event === "test" ? "Goes to the one card you test." : `Goes to every webhook card that listens to ${p.route}. Discord and Telegram cards get the same alert laid out for them.`} <code className="font-mono">at</code> is
             Unix seconds, UTC.
           </p>
         </div>
@@ -139,7 +139,7 @@ function Delivery(): ReactElement {
 }
 
 /** The explanation of alerts, kept off the settings page: severities, samples and delivery rules. */
-export function AlertsGuide({ slug, webhooks }: { slug: string; webhooks: Record<string, string | null> }): ReactElement {
+export function AlertsGuide({ slug }: { slug: string }): ReactElement {
   return (
     <Sheet>
       <SheetTrigger asChild>
@@ -154,7 +154,7 @@ export function AlertsGuide({ slug, webhooks }: { slug: string; webhooks: Record
         </SheetHeader>
         <div className="flex flex-col gap-10 overflow-y-auto px-6 py-6">
           <Severities />
-          <Samples slug={slug} webhooks={webhooks} />
+          <Samples slug={slug} />
           <Delivery />
         </div>
       </SheetContent>

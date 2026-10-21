@@ -77,17 +77,24 @@ export type ApiKey = {
   created_at: number;
 };
 
-export type AlertRoute = {
-  severity: Severity;
-  emails: string[];
-  webhook_url: string | null;
-  use_webhook: boolean;
+/** One alert card (v1.1 Q34). The owner's two cards are `fixed`: only their switch changes. */
+export type AlertCard = {
+  id: number;
+  kind: CardKind;
+  name: string;
+  critical: boolean;
+  warning: boolean;
   enabled: boolean;
-  /** How the webhook speaks (v1.1 Q17). */
-  webhook_format: import("@/lib/webhookFormats").WebhookFormat;
+  /** An email card's addresses. */
+  emails: string[];
+  /** "(hidden)" for a supervisor. */
+  url: string | null;
   /** Telegram's chat ID or PagerDuty's routing key; "(hidden)" for a supervisor. */
-  webhook_key: string | null;
+  key: string | null;
+  fixed: boolean;
 };
+
+export type CardKind = "owner_email" | "email" | import("@/lib/webhookFormats").WebhookFormat;
 
 export type LastCheck = { checked_at: number; ok: boolean; summary: string };
 
