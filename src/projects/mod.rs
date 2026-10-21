@@ -114,8 +114,8 @@ pub struct PublicPages {
     /// Missing means on, as for a new project.
     #[serde(default = "on")]
     pub report: bool,
-    /// The Changelog tab. Missing means off: it starts off on every project.
-    #[serde(default)]
+    /// The Changelog tab. Missing means on, as for a new project (v1.1 Q28).
+    #[serde(default = "on")]
     pub changelog: bool,
 }
 

@@ -14,7 +14,7 @@ The page has up to five tabs. A super admin or the owner picks them in **Setting
 | Incidents | Current problems and past incidents | Optional, on by default |
 | Issues | The public ticket board | Optional |
 | Ticket | A form to report a bug, and the reporter's tickets | Optional |
-| Changelog | Releases, one version at a time | Optional, off by default |
+| Changelog | Releases, one version at a time | Optional, on by default for a new project |
 
 Tick a card and select **Save changes**. A tab that is off disappears from the page. Its address and its JSON answer 404.
 

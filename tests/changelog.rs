@@ -90,9 +90,11 @@ async fn the_public_tab_shows_releases_newest_first_only_when_on() {
     }
     assert_eq!(
         app.get(PUBLIC, None).await.status(),
-        404,
-        "the tab starts off"
+        200,
+        "a new project's tab starts on (Q28)"
     );
+    tab(&app, &tl, false).await;
+    assert_eq!(app.get(PUBLIC, None).await.status(), 404);
 
     tab(&app, &tl, true).await;
     let index = json_of(app.get(PUBLIC, None).await).await;

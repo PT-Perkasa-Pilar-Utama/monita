@@ -77,7 +77,9 @@ pub async fn insert(
     homepage_url: &str,
 ) -> anyhow::Result<i64> {
     c.execute(
-        "INSERT INTO projects (owner_id, name, slug, description, homepage_url) VALUES (?1, ?2, ?3, ?4, ?5)",
+        // The column defaults to 0 so that migration 0021 left old status pages alone; a new
+        // project starts with its Changelog tab on (v1.1 Q28).
+        "INSERT INTO projects (owner_id, name, slug, description, homepage_url, show_changelog) VALUES (?1, ?2, ?3, ?4, ?5, 1)",
         (owner_id, name, slug, description, homepage_url),
     )
     .await?;

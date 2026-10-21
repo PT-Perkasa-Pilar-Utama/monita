@@ -103,7 +103,7 @@ erDiagram
 | show_incidents | INTEGER | no | 1 | | The public Incidents tab. Off: the page JSON carries no incidents and the history answers 404. Uptime always shows. |
 | show_known_issues | INTEGER | no | 1 | | The public Known issues tab (the tickets past Triage). |
 | show_report | INTEGER | no | 1 | | The public Report a bug tab: the form and the reporter's own tickets, both behind a ref ID. Migration 0010 added `show_mine`; migration 0019 dropped it. |
-| show_changelog | INTEGER | no | 0 | | The public Changelog tab. Off by default, so no old status page grows an empty tab. |
+| show_changelog | INTEGER | no | 0 | | The public Changelog tab. The column default 0 kept old status pages as they were; a new project is inserted with 1 (v1.1 Q28). |
 | created_at, updated_at | INTEGER | no | | | |
 
 A public route whose tab is off answers 404.
