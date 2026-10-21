@@ -43,7 +43,7 @@
     <ul class="lp-parts">
       <li>
         <!-- scene:monitors -->
-        <div><h3>Monitors</h3><p>Monita requests your health URL every 30, 60, 180 or 300 seconds. An answer with the expected status inside the timeout passes. A monitor can also send a POST with headers and require a word in the body.</p><a href="docs/monitors/">How monitors work</a></div>
+        <div><h3>Monitors</h3><p>Monita checks a health URL, a TCP port, a DNS name or a host by ping, every 30, 60, 180 or 300 seconds. An HTTP check can send a POST with headers, require a word in the body, and warn before its certificate expires. Add locations to check from more than one place.</p><a href="docs/monitors/">How monitors work</a></div>
       </li>
       <li>
         <!-- scene:heartbeats -->
@@ -51,7 +51,7 @@
       </li>
       <li>
         <!-- scene:incidents -->
-        <div><h3>Incidents</h3><p>Failed checks open an incident, an alert goes out by email and webhook, and the first passing check closes it. The team posts updates, and each update appears on the public status page.</p><a href="docs/incidents/">How incidents work</a></div>
+        <div><h3>Incidents</h3><p>Failed checks open an incident, an alert goes out by email and to Slack, Discord, Telegram, ntfy or PagerDuty, and the first passing check closes it. The team posts updates to the public status page, and plans maintenance windows that raise no alarm.</p><a href="docs/incidents/">How incidents work</a></div>
       </li>
       <li>
         <!-- scene:tickets -->
@@ -208,7 +208,7 @@ curl -s -X POST https://monita.example.com/api/v1/tickets -H 'content-type: appl
       <ol class="lp-steps">
         <li data-step><b>The first check fails</b><span>HTTP 503. Monita waits for the next check.</span></li>
         <li data-step><b>The second check fails</b><span>Two in a row open an automatic incident.</span></li>
-        <li data-step><b>Your team hears about it</b><span>An email to the addresses you list and a webhook to Slack or Teams, through an outbox that retries.</span></li>
+        <li data-step><b>Your team hears about it</b><span>An email to the addresses you list and a webhook to Slack, Discord, Telegram, ntfy or PagerDuty, through an outbox that retries.</span></li>
         <li data-step><b>Users see it</b><span>The status page shows the incident and every update the team posts.</span></li>
         <li data-step><b>The first passing check closes it</b><span>Monita sends a recovery alert with the downtime.</span></li>
       </ol>
@@ -232,10 +232,10 @@ curl -s -X POST https://monita.example.com/api/v1/tickets -H 'content-type: appl
     <h2>What Monita does not do</h2>
     <p class="lp-lead">Read these before you install it. Each one is a choice for version 1, and some of them can change.</p>
     <ul class="lp-limits">
-      <li><b>It checks from one place.</b> Every check runs from the server that runs Monita, so Monita cannot tell a regional outage from a local one.</li>
-      <li><b>It checks HTTP only.</b> TCP, ping and DNS checks are not in version 1.</li>
+      <li><b>It reads A and AAAA answers only.</b> A DNS check does not look at MX, TXT or CNAME records.</li>
+      <li><b>It pings from Linux and macOS.</b> Windows has no ping socket that works without administrator rights, so use a TCP check there.</li>
       <li><b>It alerts by email and webhook.</b> It does not send text messages, make phone calls or manage an on-call rotation.</li>
-      <li><b>It signs people in with an email and a password.</b> Single sign-on and two-factor sign-in are not in version 1.</li>
+      <li><b>It signs people in with an email, a password and an optional authenticator code.</b> Single sign-on is not in version 1.</li>
       <li><b>It keeps single checks for 7 days.</b> Daily summaries stay for good, so the uptime history stays complete.</li>
       <li><b>Tickets hold text only.</b> Users cannot attach files to a bug report.</li>
     </ul>

@@ -5,10 +5,14 @@ Monita's docs, pages and code use each of these words with one meaning. Say "tec
 | Term | Meaning |
 | --- | --- |
 | Project | One system your team runs. It has its own monitors, heartbeats, status page and tickets. |
-| Monitor | A URL that Monita requests on a fixed interval. |
+| Monitor | A URL, a TCP port, a DNS name or a host that Monita checks on a fixed interval. |
 | Check | One request that a monitor makes. It passes or fails. |
+| Ping check | A monitor kind that sends one ICMP echo request to a host. Not the same as a heartbeat ping. |
+| Location | Another machine that runs checks for this Monita with `monita probe` and reports the results. |
+| Place | This server or a location, as a monitor checks from it. |
+| Quorum | How many places must fail for a check to count as failed. |
 | Heartbeat | A URL that a cron job calls when it runs. Monita expects the call before a deadline. |
-| Ping | One call from a cron job to its heartbeat URL. |
+| Ping | One call from a cron job to its heartbeat URL. Not the same as a ping check. |
 | Incident | A record that something is down. Monita opens an automatic incident itself. A tech lead or a super admin opens a manual incident by hand. |
 | Maintenance window | A planned time when a project's chosen monitors and heartbeats open no incident and send no alert. The status page shows them as Maintenance. |
 | Two-factor sign-in | A 6-digit code from an authenticator app that Monita asks for after the password, when the user turned it on. |

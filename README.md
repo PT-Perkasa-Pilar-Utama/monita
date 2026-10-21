@@ -25,14 +25,18 @@ You run it on your own server as one program, and it keeps all its data in one S
 Monita does the same job as a hosted uptime service such as Better Stack, but it runs on a server
 that your team controls.
 
-- A monitor requests one of your URLs every 30 seconds to 5 minutes.
+- A monitor checks a URL, a TCP port, a DNS name or a host by ping, every 30 seconds to 5 minutes.
+  An HTTPS monitor can warn before its certificate expires.
 - A heartbeat expects your cron job to call a Monita URL on a schedule.
 - When a monitor fails twice in a row, or a heartbeat call does not arrive in time, Monita opens an
-  incident. It emails the addresses you list for the project, and it posts to your chat if you
-  add a webhook.
+  incident. It emails the addresses you list for the project, and it posts to Slack, Discord,
+  Telegram, ntfy or PagerDuty if you add a webhook.
+- Locations check from other machines too, and an incident opens only when enough places agree.
+- Maintenance windows keep planned work from opening incidents or sending alerts.
 - Each project has a public status page. The page shows 90 days of uptime and the updates your team
   writes during an incident.
 - Users can report a bug from the status page, and the tech lead sorts the reports on the ticket board.
+- People sign in with a password and, if they choose, an authenticator code.
 
 The [demo](https://pt-perkasa-pilar-utama.github.io/monita/demo/) is a saved copy of the real pages
 with sample data. You can click through it, but it does not save anything you enter.
