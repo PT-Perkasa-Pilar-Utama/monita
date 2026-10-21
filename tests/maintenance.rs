@@ -238,6 +238,18 @@ async fn a_failure_reported_in_a_window_opens_its_incident_after_it_unless_the_j
         1,
         "the backup stayed failed past the window"
     );
+    let cause: String = {
+        let c = app.state.db.read().await.unwrap();
+        let mut rows = c
+            .query("SELECT cause FROM incidents WHERE resolved_at IS NULL", ())
+            .await
+            .unwrap();
+        rows.next().await.unwrap().unwrap().get(0).unwrap()
+    };
+    assert_eq!(
+        cause, "disk full",
+        "the incident carries what the job reported"
+    );
     assert_eq!(
         count(
             &app,

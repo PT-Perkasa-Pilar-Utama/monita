@@ -336,10 +336,10 @@ pub async fn record(
         // Q18: in a maintenance window a reported failure opens nothing, but it is not lost. Its
         // deadline moves to the window's end, so the missed-ping sweep raises it then, unless a
         // success ping comes first and moves the deadline on.
-        if kind == PingKind::Fail
+        if let (PingKind::Fail, Signal::FailPing { cause }) = (kind, &signal)
             && let Some(end) = maintenance::covers(c, SourceKind::Heartbeat, hb.id, t).await?
         {
-            store::hold(c, hb.id, end.min(t + 60)).await?;
+            store::hold_failure(c, hb.id, end.min(t + 60), cause).await?;
         }
         Ok(true)
     })
@@ -373,9 +373,12 @@ pub async fn sweep_missed(
                         store::hold(c, hb.id, end.min(at + 60)).await?;
                         continue;
                     }
-                    if let Some(ev) =
-                        incidents::observe(c, &hb.source(), &Signal::HeartbeatMissed, at).await?
-                    {
+                    // A failure the job reported in a window opens with the job's own words.
+                    let signal = match store::take_held_cause(c, hb.id).await? {
+                        Some(cause) => Signal::FailPing { cause },
+                        None => Signal::HeartbeatMissed,
+                    };
+                    if let Some(ev) = incidents::observe(c, &hb.source(), &signal, at).await? {
                         notify::send(c, &ev, base_url).await?;
                     }
                 }

@@ -223,6 +223,8 @@ Tokens and passwords that monitors sign in with. A value is written once and nev
 
 State words on the team's pages: `Up`, `Down`, `Issue` and `No data yet`. A monitor never checked and a heartbeat never pinged read `No data yet` (was "Waiting"). Migration 0012 gave each heartbeat that a hand resolve left with no deadline, and that was not down, a new one.
 
+`held_cause` (TEXT NULL, migration 0032): the failure text of a `/fail` ping received in a maintenance window, kept until the window ends and the incident opens with it; a success ping clears it.
+
 ### 6.3.9 check_results and pings
 
 | table | columns |
@@ -239,7 +241,7 @@ Migration 0030, v1.1 Q26. Design: [14](14-locations.md).
 | table | columns |
 | --- | --- |
 | locations | id AUTOINCREMENT, name UNIQUE, token_hash UNIQUE (SHA-256), token_prefix, last_seen_at NULL, created_at |
-| monitor_locations | monitor_id FK ON DELETE CASCADE, location_id FK ON DELETE CASCADE, next_check_at, claimed_at NULL (the open claim; migration 0031); PK (monitor_id, location_id); INDEX (location_id, next_check_at) |
+| monitor_locations | monitor_id FK ON DELETE CASCADE, location_id FK ON DELETE CASCADE, next_check_at, claimed_at NULL (the newest claim), open_claims (claims not yet answered, at most 2; migration 0031); PK (monitor_id, location_id); INDEX (location_id, next_check_at) |
 
 `monitors.quorum` (INTEGER, default 1, 1 to 11): how many places must fail for a check to count as failed.
 

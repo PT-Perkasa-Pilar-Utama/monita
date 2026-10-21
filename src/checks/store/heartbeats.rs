@@ -179,7 +179,7 @@ pub async fn insert_ping(
     )
     .await?;
     if kind == PingKind::Ok {
-        c.execute("UPDATE heartbeats SET last_ping_at = ?1, deadline_at = ?1 + period_s + grace_s WHERE id = ?2", (at, id)).await?;
+        c.execute("UPDATE heartbeats SET last_ping_at = ?1, deadline_at = ?1 + period_s + grace_s, held_cause = NULL WHERE id = ?2", (at, id)).await?;
     }
     Ok(())
 }
@@ -192,6 +192,38 @@ pub async fn rearm(c: &Connection, id: i64, at: i64) -> anyhow::Result<()> {
     )
     .await?;
     Ok(())
+}
+
+/// A failure reported in a maintenance window: the sweep looks again at `at` and, once the window
+/// is over, opens the incident with `cause`. A heartbeat already past its deadline (its miss is
+/// being dealt with) is left alone.
+pub async fn hold_failure(c: &Connection, id: i64, at: i64, cause: &str) -> anyhow::Result<()> {
+    c.execute(
+        "UPDATE heartbeats SET deadline_at = ?1, held_cause = ?2 WHERE id = ?3 AND deadline_at IS NOT NULL",
+        (at, cause, id),
+    )
+    .await?;
+    Ok(())
+}
+
+/// The failure a held heartbeat reported, if any, and forgets it.
+pub async fn take_held_cause(c: &Connection, id: i64) -> anyhow::Result<Option<String>> {
+    let cause = crate::platform::db::query_all(
+        c,
+        "SELECT held_cause FROM heartbeats WHERE id = ?1 AND held_cause IS NOT NULL",
+        [id],
+        |r| r.get::<String>(0),
+    )
+    .await?
+    .pop();
+    if cause.is_some() {
+        c.execute(
+            "UPDATE heartbeats SET held_cause = NULL WHERE id = ?1",
+            [id],
+        )
+        .await?;
+    }
+    Ok(cause)
 }
 
 /// Sets the deadline to `at`: the sweep looks at the heartbeat again then.

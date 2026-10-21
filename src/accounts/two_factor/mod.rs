@@ -177,20 +177,23 @@ pub async fn turn_off(
     code: &str,
     now: i64,
 ) -> Result<(), TwoFactorError> {
-    if let Some(e) = spent(limiter, user_id, now) {
-        return Err(e);
-    }
-    db.write(async |c| match spend_code(c, user_id, code, now).await {
-        Ok(true) => {
-            store::clear(c, user_id).await?;
-            Ok(Ok(()))
+    // Checked inside the single writer, so requests sent at once cannot all pass it first.
+    db.write(async |c| {
+        if let Some(e) = spent(limiter, user_id, now) {
+            return Ok(Err(e));
         }
-        Ok(false) => {
-            count_wrong(limiter, user_id, now);
-            Ok(Err(TwoFactorError::WrongCode))
+        match spend_code(c, user_id, code, now).await {
+            Ok(true) => {
+                store::clear(c, user_id).await?;
+                Ok(Ok(()))
+            }
+            Ok(false) => {
+                count_wrong(limiter, user_id, now);
+                Ok(Err(TwoFactorError::WrongCode))
+            }
+            // `?` would turn NotOn into a 500.
+            Err(e) => Ok(Err(e)),
         }
-        // `?` would turn NotOn into a 500.
-        Err(e) => Ok(Err(e)),
     })
     .await?
 }

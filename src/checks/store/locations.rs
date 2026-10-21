@@ -139,17 +139,20 @@ pub async fn of_monitor(c: &Connection, monitor_id: i64) -> anyhow::Result<Vec<(
     .await
 }
 
-/// Spends the location's open claim on the monitor. False when there is none: the location does
-/// not check it, or no check was claimed since its last result.
+/// Spends one of the location's open claims on the monitor. False when there is none to spend:
+/// the location does not check it, every claim was answered, or the newest claim is older than
+/// two intervals, the timeout and 30 seconds, so a result now would be stale.
 pub async fn answer_claim(
     c: &Connection,
     monitor_id: i64,
     location_id: i64,
+    now: i64,
 ) -> anyhow::Result<bool> {
     Ok(c.execute(
-        "UPDATE monitor_locations SET claimed_at = NULL
-         WHERE monitor_id = ?1 AND location_id = ?2 AND claimed_at IS NOT NULL",
-        (monitor_id, location_id),
+        "UPDATE monitor_locations SET open_claims = open_claims - 1
+         WHERE monitor_id = ?1 AND location_id = ?2 AND open_claims > 0
+           AND claimed_at >= ?3 - (SELECT 2 * interval_s + timeout_ms / 1000 + 30 FROM monitors WHERE id = ?1)",
+        (monitor_id, location_id, now),
     )
     .await?
         > 0)

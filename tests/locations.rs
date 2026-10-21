@@ -549,3 +549,49 @@ async fn a_place_newest_result_is_the_latest_by_time_not_the_last_stored() {
     let detail = json_of(app.api_get(&format!("{MONITORS}/1"), Some(&tl)).await).await;
     assert_eq!(detail["data"]["places"][0]["last"][1], true);
 }
+
+#[tokio::test]
+async fn a_slow_probe_keeps_both_results_and_a_stale_claim_takes_none() {
+    let app = TestApp::spawn("test").await;
+    let (admin, tl) = setup(&app).await;
+    let (loc, token) = location(&app, &admin, "Jakarta").await;
+    let res = app
+        .api_post(
+            MONITORS,
+            monitor("https://pay.example.com", &[loc], "1"),
+            Some(&tl),
+        )
+        .await;
+    assert_eq!(res.status(), 201);
+    sql(&app, "UPDATE monitors SET next_check_at = 9999999999").await;
+    const RESULTS: &str = "/api/v1/probe/results";
+    // Handed the same check twice before it reports: both results count, a third does not.
+    assert_eq!(claim(&app, &token).await, 1);
+    assert_eq!(claim(&app, &token).await, 1);
+    let three = json!({ "results": [result(1, true), result(1, true), result(1, true)] });
+    let res = probe(&app, Method::POST, RESULTS, Some(&token), three).await;
+    assert_eq!(
+        json_of(res).await["data"],
+        json!({ "stored": 2, "skipped": 1 })
+    );
+
+    // A claim older than two intervals, the timeout and 30 s (155 s here) is stale.
+    assert_eq!(claim(&app, &token).await, 1);
+    sql(
+        &app,
+        &format!("UPDATE monitor_locations SET claimed_at = {}", now() - 156),
+    )
+    .await;
+    let late = probe(
+        &app,
+        Method::POST,
+        RESULTS,
+        Some(&token),
+        json!({ "results": [result(1, false)] }),
+    )
+    .await;
+    assert_eq!(
+        json_of(late).await["data"],
+        json!({ "stored": 0, "skipped": 1 })
+    );
+}

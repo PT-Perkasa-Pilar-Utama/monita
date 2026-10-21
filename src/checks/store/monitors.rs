@@ -277,7 +277,8 @@ pub async fn claim_for_location(
     .await?;
     for m in &due {
         c.execute(
-            "UPDATE monitor_locations SET next_check_at = ?1, claimed_at = ?2 WHERE monitor_id = ?3 AND location_id = ?4",
+            "UPDATE monitor_locations SET next_check_at = ?1, claimed_at = ?2, open_claims = min(open_claims + 1, 2)
+             WHERE monitor_id = ?3 AND location_id = ?4",
             (at + m.interval_s, at, m.id, location_id),
         )
         .await?;

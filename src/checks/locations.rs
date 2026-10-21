@@ -128,7 +128,7 @@ pub async fn post_results(
         let (mut stored, mut skipped) = (0, 0);
         for r in &results {
             // Spending the claim inside the write also skips a monitor deleted since the claim.
-            if !store::locations::answer_claim(c, r.monitor_id, location_id).await? {
+            if !store::locations::answer_claim(c, r.monitor_id, location_id, t).await? {
                 skipped += 1;
                 continue;
             }

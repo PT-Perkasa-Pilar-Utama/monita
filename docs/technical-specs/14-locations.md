@@ -61,7 +61,7 @@ Caps (`platform::caps`): 10 locations; 50 jobs in one work answer; 50 results in
 
 1. Authenticate the token (14.4).
 2. On a read connection: does this location have a due row (`next_check_at <= now`)? If not, answer `{"jobs": []}`. Update `last_seen_at` only when it is 30 s or more old, so an idle probe does not take the writer each second.
-3. Otherwise, in one write: claim up to N due rows by setting `next_check_at = now + interval_s` and `claimed_at = now` (migration 0031), set `last_seen_at = now`, and read the jobs.
+3. Otherwise, in one write: claim up to N due rows by setting `next_check_at = now + interval_s`, `claimed_at = now` and `open_claims = min(open_claims + 1, 2)` (migration 0031), set `last_seen_at = now`, and read the jobs.
 4. A job is everything one check needs:
 
 ```json
@@ -79,7 +79,7 @@ Caps (`platform::caps`): 10 locations; 50 jobs in one work answer; 50 results in
 `POST /api/v1/probe/results` with `{"results": [{"monitor_id", "ok", "status_code", "latency_ms", "error"}]}`, 1 to 50 items.
 
 - The server takes `checked_at` from its own clock on receipt. A location's clock may drift.
-- A result must answer a claim: its row's `claimed_at` is set, and storing the result clears it. Any other result (not assigned, not claimed, or a second one for the same claim) is skipped and counted in `skipped`. A probe therefore stores at most one row per check it was handed.
+- A result must answer a claim. Each claim adds one to the row's `open_claims` (at most 2, so a slow probe handed the same check again loses neither result) and sets `claimed_at`; each stored result takes one away. A result is refused when no claim is open, or when the newest claim is older than two intervals, the timeout and 30 seconds, since it would count as fresh while it is not. Refused results are counted in `skipped`. A probe therefore stores at most one row per check it was handed.
 - `error` is cut to 1 KB.
 - The whole batch is one `Db::write`. Spending the claim inside it also skips a monitor deleted since the claim, so one gone monitor never fails the batch.
 - A location's result feeds no verdict by itself. It counts in the next verdict of a check from this server (14.7).

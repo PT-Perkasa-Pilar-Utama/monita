@@ -340,3 +340,28 @@ async fn ten_wrong_codes_lock_the_account_s_codes_across_new_challenges() {
         .await;
     assert_eq!(off.status(), 429, "the account page shares the budget");
 }
+
+#[tokio::test]
+async fn codes_sent_at_once_still_meet_the_budget() {
+    let app = TestApp::spawn("test").await;
+    let tl = app.tl("rina@x.co").await;
+    turn_on(&app, &tl).await;
+    let into = now().rem_euclid(900);
+    if into > 885 {
+        tokio::time::sleep(std::time::Duration::from_secs((901 - into) as u64)).await;
+    }
+    let mut set = tokio::task::JoinSet::new();
+    for i in 0..20 {
+        let req = app
+            .http
+            .post(app.url("/api/ui/me/two-factor/off"))
+            .header("origin", common::BASE_URL)
+            .header("cookie", tl.clone())
+            .json(&json!({ "code": format!("{i:06}") }));
+        set.spawn(async move { req.send().await.unwrap().status().as_u16() });
+    }
+    let got = set.join_all().await;
+    let wrong = got.iter().filter(|s| **s == 422).count();
+    let refused = got.iter().filter(|s| **s == 429).count();
+    assert_eq!((wrong, refused), (10, 10), "{got:?}");
+}

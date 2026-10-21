@@ -72,7 +72,7 @@ Each user can ask for a code after the password. Open the avatar menu and select
 3. Enter the 6-digit code the app shows and select **Turn on**.
 4. Save the 10 recovery codes. Monita shows them only once. Each code signs you in once without the phone.
 
-Sign-in then asks for the code after the password. Five wrong codes or five minutes send you back to the password. A code works once. An account takes 10 wrong codes in 15 minutes, across sign-ins and the turn-off form; after that every code waits until the 15 minutes end.
+Sign-in then asks for the code after the password. Five wrong codes or five minutes send you back to the password. A code works once. An account takes 10 wrong codes in each 15-minute window (the windows start at :00, :15, :30 and :45), across sign-ins and the turn-off form; after that every code waits until the window ends.
 
 To turn it off, enter a code or a recovery code on the same page. A super admin can turn it off for another user (see [Act on users](#act-on-users)). A super admin who lost the phone and the codes runs `monita admin reset-password` on the server. A supervisor can turn it on for their own account.
 
