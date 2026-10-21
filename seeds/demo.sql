@@ -32,11 +32,17 @@ INSERT INTO monitors (id, project_id, name, url, interval_s, expected_status, ke
   (6, 2, 'Bank callback', 'https://pay.example.com/callback/ping', 60, '2xx', NULL, 'critical', 1, unixepoch() + 600, unixepoch() - 100 * 86400),
   (7, 3, 'Query gateway', 'https://dwh.example.com/health', 300, '2xx', NULL, 'warning', 0, unixepoch() + 600, unixepoch() - 50 * 86400);
 
+-- v1.1 check kinds (Q16, Q24): a database port, a DNS name and a host that answers ping.
+INSERT INTO monitors (id, project_id, name, url, interval_s, expected_status, keyword, severity, is_public, next_check_at, created_at, kind, expected_address) VALUES
+  (8, 3, 'Warehouse database', 'dwh-db.internal:5432', 60, '2xx', NULL, 'critical', 0, unixepoch() + 600, unixepoch() - 40 * 86400, 'tcp', NULL),
+  (9, 3, 'Reports DNS', 'reports.example.com', 300, '2xx', NULL, 'warning', 0, unixepoch() + 600, unixepoch() - 40 * 86400, 'dns', '203.0.113.20'),
+  (10, 3, 'Loader host', '10.20.4.11', 60, '2xx', NULL, 'warning', 0, unixepoch() + 600, unixepoch() - 30 * 86400, 'ping', NULL);
+
 -- The last hour at each monitor's interval; Login page answers slowly in its last ten checks,
 -- behind the open manual incident.
 INSERT INTO check_results (monitor_id, checked_at, ok, status_code, latency_ms, error)
 WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 120)
-SELECT m.id, unixepoch() - n.i * m.interval_s, 1, 200,
+SELECT m.id, unixepoch() - n.i * m.interval_s, 1, CASE WHEN m.kind = 'http' THEN 200 END,
   CASE WHEN m.id = 3 AND n.i <= 10 THEN 2300 + (n.i * 173) % 900 ELSE 70 + m.id * 12 + (n.i * 37 + m.id * 53) % 60 END,
   NULL
 FROM monitors m, n WHERE n.i * m.interval_s <= 3600;
@@ -47,7 +53,7 @@ INSERT INTO check_results (monitor_id, checked_at, ok, status_code, latency_ms, 
 WITH RECURSIVE n(i) AS (SELECT 13 UNION ALL SELECT i + 1 FROM n WHERE i < 2016)
 SELECT m.id, unixepoch() - n.i * 300,
   CASE WHEN m.id = 6 AND n.i IN (40, 41, 300) THEN 0 ELSE 1 END,
-  CASE WHEN m.id = 6 AND n.i IN (40, 41, 300) THEN 502 ELSE 200 END,
+  CASE WHEN m.id = 6 AND n.i IN (40, 41, 300) THEN 502 WHEN m.kind = 'http' THEN 200 END,
   70 + m.id * 12 + (n.i * 37 + m.id * 53) % 60 + 45 * ((n.i % 288) BETWEEN 96 AND 180),
   CASE WHEN m.id = 6 AND n.i IN (40, 41, 300) THEN 'HTTP 502 from the bank gateway' END
 FROM monitors m, n;
@@ -87,6 +93,7 @@ INSERT INTO incident_items (incident_id, source_kind, source_id) VALUES
 INSERT INTO incident_sources (source_kind, source_id, fail_streak, open_incident_id) VALUES
   ('monitor', 1, 0, NULL), ('monitor', 2, 0, NULL), ('monitor', 3, 0, NULL), ('monitor', 4, 0, NULL),
   ('monitor', 5, 0, NULL), ('monitor', 6, 0, NULL), ('monitor', 7, 0, NULL),
+  ('monitor', 8, 0, NULL), ('monitor', 9, 0, NULL), ('monitor', 10, 0, NULL),
   ('heartbeat', 3, 0, 6);
 
 INSERT INTO status_updates (incident_id, label, message, author_id, created_at) VALUES
@@ -153,3 +160,41 @@ INSERT INTO changelog_entries (project_id, version, released_on, title, sections
     '[{"tag":"Added","items":["Customers can pay by QRIS at checkout."]},{"tag":"Changed","items":["Card payments retry once when the bank does not answer in time."]}]', unixepoch() - 6 * 86400, unixepoch() - 6 * 86400),
   (2, '5.0.2', date(unixepoch() - 27 * 86400, 'unixepoch'), 'Bank callback fixes',
     '[{"tag":"Fixed","items":["A late bank callback no longer marks a paid order as failed.","Refunds show in the order history at once."]}]', unixepoch() - 27 * 86400, unixepoch() - 27 * 86400);
+
+-- v1.1 alert formats (Q17): the portal's critical alerts go to Discord, the payments team's to
+-- PagerDuty with a routing key.
+UPDATE alert_routes SET webhook_format = 'discord', webhook_url = 'https://discord.com/api/webhooks/1234567890/demo'
+  WHERE project_id = 1 AND severity = 'critical';
+UPDATE alert_routes SET webhook_format = 'pagerduty', webhook_url = 'https://events.pagerduty.com/v2/enqueue', webhook_key = 'demo-routing-key'
+  WHERE project_id = 2 AND severity = 'critical';
+
+-- v1.1 certificate warnings (Q25): the portal's website renews in six weeks; the checkout's
+-- certificate is inside its window and has warned once.
+UPDATE monitors SET cert_warn_days = 14, cert_expires_at = unixepoch() + 41 * 86400 WHERE id = 1;
+UPDATE monitors SET cert_warn_days = 14, cert_expires_at = unixepoch() + 9 * 86400 + 3600,
+  cert_warned_for = unixepoch() + 9 * 86400 + 3600 WHERE id = 5;
+UPDATE monitors SET cert_expires_at = unixepoch() + 70 * 86400 WHERE id IN (2, 3, 4, 6, 7);
+
+-- v1.1 locations (Q26): two probes. The query gateway counts as failed when 2 of its 3 places
+-- agree. Both monitors check every 5 minutes, so their results stay fresh while the static demo
+-- is crawled.
+INSERT INTO locations (id, name, token_hash, token_prefix, last_seen_at, created_at) VALUES
+  (1, 'Singapore', 'demo-location-hash-1', 'x7kq', unixepoch() - 12, unixepoch() - 20 * 86400),
+  (2, 'Jakarta', 'demo-location-hash-2', 'p3mz', unixepoch() - 8, unixepoch() - 20 * 86400);
+INSERT INTO monitor_locations (monitor_id, location_id, next_check_at) VALUES
+  (7, 1, unixepoch() + 600), (7, 2, unixepoch() + 600), (4, 1, unixepoch() + 600);
+UPDATE monitors SET quorum = 2 WHERE id = 7;
+INSERT INTO check_results (monitor_id, checked_at, ok, status_code, latency_ms, error, location_id)
+WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 120)
+SELECT ml.monitor_id, unixepoch() - n.i * m.interval_s - 7 * ml.location_id, 1, 200,
+  110 + ml.location_id * 35 + (n.i * 31 + ml.monitor_id * 7) % 50, NULL, ml.location_id
+FROM monitor_locations ml JOIN monitors m ON m.id = ml.monitor_id, n WHERE n.i * m.interval_s <= 3600;
+
+-- v1.1 maintenance windows (Q18): the bank gateway upgrade is on now, a database upgrade is
+-- planned for tomorrow night, and last week's warehouse move has ended.
+INSERT INTO maintenance_windows (id, project_id, title, message, starts_at, ends_at, created_at) VALUES
+  (1, 2, 'Bank gateway upgrade', 'Card callbacks may arrive late. No payment is lost.', unixepoch() - 1800, unixepoch() + 5400, unixepoch() - 3 * 86400),
+  (2, 1, 'API database upgrade', 'The API may answer slowly for a few minutes.', unixepoch() + 86400, unixepoch() + 86400 + 3600, unixepoch() - 86400),
+  (3, 3, 'Warehouse move', '', unixepoch() - 7 * 86400, unixepoch() - 7 * 86400 + 7200, unixepoch() - 9 * 86400);
+INSERT INTO maintenance_items (window_id, source_kind, source_id) VALUES
+  (1, 'monitor', 6), (2, 'monitor', 2), (3, 'monitor', 8), (3, 'monitor', 9);
