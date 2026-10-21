@@ -49,3 +49,14 @@ pub async fn healthz(State(state): State<AppState>) -> impl IntoResponse {
     };
     (code, Json(body))
 }
+
+#[cfg(test)]
+mod tests {
+    /// The sign-in page shows `web/package.json`'s version; it must be the binary's.
+    #[test]
+    fn the_web_app_has_the_binary_version() {
+        let json: serde_json::Value =
+            serde_json::from_str(include_str!("../../web/package.json")).unwrap();
+        assert_eq!(json["version"], env!("CARGO_PKG_VERSION"));
+    }
+}

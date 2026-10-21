@@ -1,6 +1,7 @@
 import type { ReactElement, ReactNode } from "react";
 import { Mark } from "@/components/brand/Mark";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
+import { version } from "../../package.json";
 
 /** Sign-in and invite: the brand, one centred card and a footer. `scene` runs full width along
  * the bottom and gives up its height first, so the page fits the screen without scrolling. Only a
@@ -19,6 +20,7 @@ export function BareLayout({ children, scene }: { children: ReactNode; scene?: R
         <footer className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
           <span>MIT licensed. Made by PT. Perkasa Pilar Utama.</span>
           <span className="flex gap-4">
+            <span className="font-mono">v{version}</span>
             <a className="underline-offset-4 hover:text-foreground hover:underline" href="https://github.com/PT-Perkasa-Pilar-Utama/monita">
               GitHub
             </a>
