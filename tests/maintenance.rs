@@ -185,6 +185,71 @@ async fn a_heartbeat_missed_in_a_window_opens_its_incident_when_the_window_ends(
 }
 
 #[tokio::test]
+async fn a_failure_reported_in_a_window_opens_its_incident_after_it_unless_the_job_recovers() {
+    let app = TestApp::spawn("test").await;
+    let tl = setup(&app, 2).await;
+    for name in ["backup", "export"] {
+        let input = heartbeat::HeartbeatInput {
+            name: name.into(),
+            ..heartbeat::HeartbeatInput::default()
+        };
+        heartbeat::create(&app.state.db, 1, &input).await.unwrap();
+    }
+    plan(&app, &tl, &["heartbeat:1", "heartbeat:2"], "").await;
+    let token = async |id: i64| {
+        let c = app.state.db.read().await.unwrap();
+        let mut rows = c
+            .query("SELECT token FROM heartbeats WHERE id = ?1", [id])
+            .await
+            .unwrap();
+        let t: String = rows.next().await.unwrap().unwrap().get(0).unwrap();
+        t
+    };
+    let ping = async |path: String| {
+        app.http
+            .post(app.url(&path))
+            .body("disk full")
+            .send()
+            .await
+            .unwrap()
+            .status()
+    };
+    let (backup, export) = (token(1).await, token(2).await);
+    assert_eq!(ping(format!("/ping/{backup}/fail")).await, 200);
+    assert_eq!(ping(format!("/ping/{export}/fail")).await, 200);
+    assert_eq!(count(&app, OPEN).await, 0, "nothing opens in the window");
+    // The export job recovers before the window ends; its next deadline is a period away.
+    tokio::time::sleep(std::time::Duration::from_millis(1100)).await;
+    assert_eq!(ping(format!("/ping/{export}")).await, 200);
+    let held = count(&app, "SELECT deadline_at FROM heartbeats WHERE id = 1").await;
+    assert!(held <= now() + 60, "the failure is held, not lost: {held}");
+
+    sql(
+        &app,
+        &format!("UPDATE maintenance_windows SET ends_at = {}", now() - 1),
+    )
+    .await;
+    let read = app.state.db.read().await.unwrap();
+    heartbeat::sweep_missed(&app.state.db, &read, common::BASE_URL, now() + 61)
+        .await
+        .unwrap();
+    assert_eq!(
+        count(&app, OPEN).await,
+        1,
+        "the backup stayed failed past the window"
+    );
+    assert_eq!(
+        count(
+            &app,
+            "SELECT count(*) FROM incident_items WHERE source_id = 2"
+        )
+        .await,
+        0,
+        "the export recovered in time"
+    );
+}
+
+#[tokio::test]
 async fn the_status_page_shows_maintenance_and_the_public_message() {
     let app = TestApp::spawn("test").await;
     let tl = setup(&app, 2).await;

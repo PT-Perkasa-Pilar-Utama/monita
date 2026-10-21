@@ -333,6 +333,14 @@ pub async fn record(
         if let Some(ev) = incidents::observe(c, &hb.source(), &signal, t).await? {
             notify::send(c, &ev, base_url).await?;
         }
+        // Q18: in a maintenance window a reported failure opens nothing, but it is not lost. Its
+        // deadline moves to the window's end, so the missed-ping sweep raises it then, unless a
+        // success ping comes first and moves the deadline on.
+        if kind == PingKind::Fail
+            && let Some(end) = maintenance::covers(c, SourceKind::Heartbeat, hb.id, t).await?
+        {
+            store::hold(c, hb.id, end.min(t + 60)).await?;
+        }
         Ok(true)
     })
     .await

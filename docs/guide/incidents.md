@@ -77,6 +77,7 @@ While a window is active:
 
 - Monita still checks the items and stores every result.
 - A failure opens no incident and sends no alert.
+- A heartbeat's `/fail` ping in the window opens nothing then. If the job still has not sent a success ping when the window ends, the incident opens then, as for a missed ping.
 - The items show **Maintenance** on the team's pages and on the status page. The status page shows the title, the times and the message.
 - A window adds no downtime. An incident that was open before the window stays open, closes as usual, and counts as downtime.
 
