@@ -62,6 +62,7 @@ erDiagram
 | created_at, updated_at | INTEGER | no | | | |
 | totp_secret | TEXT | yes | | | Base32. Set while two-factor sign-in is on; stored as entered (SEC-27). Migration 0027. |
 | totp_pending | TEXT | yes | | | A secret shown but not yet confirmed with a code |
+| totp_pending_expires_at | INTEGER | yes | | | 10 minutes after the secret was shown (v1.1 Q32). Confirm refuses it after; retention clears both columns. Migration 0035. |
 | totp_step | INTEGER | yes | | | The last 30-second step a code was used for; only later steps pass |
 | avatar_at | INTEGER | yes | | | When the user's picture last changed; NULL without one. Versions `/me/avatar?v=`. Migration 0034. |
 

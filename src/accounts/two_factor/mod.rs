@@ -25,9 +25,11 @@ use crate::platform::{
     token,
 };
 
-pub use store::{clear, purge_challenges};
+pub use store::{clear, purge};
 
 const CHALLENGE_TTL_S: i64 = 300;
+/// How long a key shown at setup waits for its first code (v1.1 Q32).
+const PENDING_TTL_S: i64 = 600;
 const MAX_ATTEMPTS: i64 = 5;
 const RECOVERY_CODES: usize = 10;
 const ISSUER: &str = "Monita";
@@ -40,7 +42,7 @@ pub enum TwoFactorError {
     AlreadyOn,
     #[error("Two-factor sign-in is off.")]
     NotOn,
-    #[error("Start again: no secret is waiting for a code.")]
+    #[error("This key expired or was replaced. Select Turn on to get a new one.")]
     NotPending,
     #[error("This sign-in has expired. Sign in again.")]
     ChallengeGone,
@@ -90,13 +92,13 @@ fn qr_svg(link: &str) -> anyhow::Result<String> {
 }
 
 /// A new secret and its `otpauth://` link, waiting for `confirm`.
-pub async fn start(db: &Db, user_id: i64, email: &str) -> Result<Setup, TwoFactorError> {
+pub async fn start(db: &Db, user_id: i64, email: &str, now: i64) -> Result<Setup, TwoFactorError> {
     let secret = totp::new_secret();
     db.write(async |c| {
         if matches!(store::secrets(c, user_id).await?, Some((Some(_), _, _))) {
             return Ok(Err(TwoFactorError::AlreadyOn));
         }
-        store::set_pending(c, user_id, &secret).await?;
+        store::set_pending(c, user_id, &secret, now + PENDING_TTL_S).await?;
         Ok(Ok(()))
     })
     .await??;
@@ -134,10 +136,11 @@ pub async fn confirm(
         .map(|c| token::hash(&recovery_key(c).unwrap_or_default()))
         .collect();
     db.write(async |c| {
-        let pending = match store::secrets(c, user_id).await? {
-            Some((Some(_), _, _)) => return Ok(Err(TwoFactorError::AlreadyOn)),
-            Some((None, Some(p), _)) => p,
-            _ => return Ok(Err(TwoFactorError::NotPending)),
+        if matches!(store::secrets(c, user_id).await?, Some((Some(_), _, _))) {
+            return Ok(Err(TwoFactorError::AlreadyOn));
+        }
+        let Some(pending) = store::pending(c, user_id, now).await? else {
+            return Ok(Err(TwoFactorError::NotPending));
         };
         let Some(step) = totp::check(&pending, code, now, None) else {
             return Ok(Err(TwoFactorError::WrongCode));

@@ -339,8 +339,7 @@ pub async fn can_own_projects(c: &turso::Connection, user_id: i64) -> anyhow::Re
 /// Deletes up to `limit` each of sessions, invites and sign-in challenges; returns how many. The
 /// caller loops.
 pub async fn purge_expired(c: &turso::Connection, now: i64, limit: i64) -> anyhow::Result<u64> {
-    Ok(store::purge_expired(c, now, limit).await?
-        + two_factor::purge_challenges(c, now, limit).await?)
+    Ok(store::purge_expired(c, now, limit).await? + two_factor::purge(c, now, limit).await?)
 }
 
 #[cfg(test)]

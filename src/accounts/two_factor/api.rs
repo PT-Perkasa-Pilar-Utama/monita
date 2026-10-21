@@ -61,7 +61,9 @@ async fn status(State(state): State<AppState>, AccountUser(user): AccountUser) -
 
 /// The secret, its `otpauth://` link and the link as a QR code. Nothing changes until `confirm`.
 async fn start(State(state): State<AppState>, AccountUser(user): AccountUser) -> UiResult {
-    Ok(data(super::start(&state.db, user.id, &user.email).await?))
+    Ok(data(
+        super::start(&state.db, user.id, &user.email, now()).await?,
+    ))
 }
 
 #[derive(Deserialize, Default)]

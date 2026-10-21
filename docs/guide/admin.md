@@ -77,7 +77,7 @@ Each user can ask for a code after the password. Open the avatar menu, select **
 
 1. Select **Turn on**.
 2. Scan the QR code with the authenticator app on your phone. If you cannot scan it, type the key into the app, or select **Open in authenticator app** on the phone itself. Any app that reads time-based codes works, such as 1Password, Google Authenticator or Authy.
-3. Enter the 6-digit code the app shows and select **Turn on**.
+3. Enter the 6-digit code the app shows and select **Turn on**. Do it within 10 minutes; after that, select **Turn on** again for a new key.
 4. Save the 10 recovery codes. Monita shows them only once. Each code signs you in once without the phone.
 
 Sign-in then asks for the code after the password. Five wrong codes or five minutes send you back to the password. A code works once. An account takes 10 wrong codes in each 15-minute window (the windows start at :00, :15, :30 and :45), across sign-ins and the turn-off form; after that every code waits until the window ends.

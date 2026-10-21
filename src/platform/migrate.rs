@@ -92,6 +92,10 @@ const MIGRATIONS: &[(i64, &str)] = &[
         include_str!("../../migrations/0033_webhook_off_without_url.sql"),
     ),
     (34, include_str!("../../migrations/0034_user_avatars.sql")),
+    (
+        35,
+        include_str!("../../migrations/0035_totp_pending_expiry.sql"),
+    ),
 ];
 
 pub async fn run(db: &Db) -> anyhow::Result<()> {

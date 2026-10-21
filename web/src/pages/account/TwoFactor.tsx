@@ -108,7 +108,7 @@ export function TwoFactor(): ReactElement {
           </FieldGroup>
         </SettingsSection>
       ) : setup ? (
-        <SettingsSection id="setup" title="Add Monita to your authenticator app" description="Scan the code with your phone. Then enter the 6 digits the app shows.">
+        <SettingsSection id="setup" title="Add Monita to your authenticator app" description="Scan the code with your phone, then enter the 6 digits the app shows. This key works for 10 minutes.">
           <FieldGroup className="gap-4">
             <img id="totp-qr" src={`data:image/svg+xml;utf8,${encodeURIComponent(setup.qr)}`} alt="QR code for your authenticator app" className="w-fit rounded-md border" />
             <p className="text-sm text-muted-foreground">Cannot scan it? Type this key into the app, or open the link on the phone itself.</p>

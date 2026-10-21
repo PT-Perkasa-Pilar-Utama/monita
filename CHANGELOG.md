@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [1.1.0] - 2026-10-21
 
-More ways to check, alert and plan: TCP, DNS and ping monitors, certificate warnings, checks from more than one place, Discord, Telegram, ntfy and PagerDuty alerts, maintenance windows, and two-factor sign-in. Migrations 0024 to 0034 run on start; 0029 rebuilds the `monitors` table.
+More ways to check, alert and plan: TCP, DNS and ping monitors, certificate warnings, checks from more than one place, Discord, Telegram, ntfy and PagerDuty alerts, maintenance windows, and two-factor sign-in. Migrations 0024 to 0035 run on start; 0029 rebuilds the `monitors` table.
 
 ### Added
 
@@ -27,7 +27,7 @@ More ways to check, alert and plan: TCP, DNS and ping monitors, certificate warn
 - A new project's critical alerts no longer start with the webhook ticked. Neither severity calls a webhook until its owner ticks it and sets a URL. Migration 0033 unticks existing routes that have no URL.
 - The project list shows the newest projects first. Sort by **Name** to get the old order.
 - A new project's status page shows the Changelog tab. Existing projects keep their setting.
-- Two-factor setup shows a QR code to scan. The key and the app link stay below it.
+- Two-factor setup shows a QR code to scan. The key and the app link stay below it. A key not confirmed within 10 minutes expires. Migration 0035.
 - The avatar menu's **Two-factor sign-in** became **User settings**, an area with its own side menu. While two-factor is off, a note under the top bar says so until you close it in that browser.
 
 ### Fixed

@@ -20,13 +20,32 @@ pub async fn secrets(
     .next())
 }
 
-pub async fn set_pending(c: &Connection, user_id: i64, secret: &str) -> anyhow::Result<()> {
+pub async fn set_pending(
+    c: &Connection,
+    user_id: i64,
+    secret: &str,
+    expires_at: i64,
+) -> anyhow::Result<()> {
     c.execute(
-        "UPDATE users SET totp_pending = ?2 WHERE id = ?1",
-        (user_id, secret),
+        "UPDATE users SET totp_pending = ?2, totp_pending_expires_at = ?3 WHERE id = ?1",
+        (user_id, secret, expires_at),
     )
     .await?;
     Ok(())
+}
+
+/// The waiting secret, unless it expired.
+pub async fn pending(c: &Connection, user_id: i64, now: i64) -> anyhow::Result<Option<String>> {
+    Ok(query_all(
+        c,
+        "SELECT totp_pending FROM users WHERE id = ?1 AND totp_pending_expires_at > ?2",
+        (user_id, now),
+        |r| r.get::<Option<String>>(0),
+    )
+    .await?
+    .into_iter()
+    .next()
+    .flatten())
 }
 
 /// The pending secret becomes the secret; `code_hashes` replace any older recovery codes.
@@ -37,7 +56,7 @@ pub async fn enable(
     code_hashes: &[String],
 ) -> anyhow::Result<()> {
     c.execute(
-        "UPDATE users SET totp_secret = totp_pending, totp_pending = NULL, totp_step = ?2 WHERE id = ?1",
+        "UPDATE users SET totp_secret = totp_pending, totp_pending = NULL, totp_pending_expires_at = NULL, totp_step = ?2 WHERE id = ?1",
         (user_id, step),
     )
     .await?;
@@ -91,7 +110,7 @@ pub async fn codes_left(c: &Connection, user_id: i64) -> anyhow::Result<i64> {
 /// Two-factor off: no secret, no pending secret, no codes, no open challenge.
 pub async fn clear(c: &Connection, user_id: i64) -> anyhow::Result<()> {
     c.execute(
-        "UPDATE users SET totp_secret = NULL, totp_pending = NULL, totp_step = NULL WHERE id = ?1",
+        "UPDATE users SET totp_secret = NULL, totp_pending = NULL, totp_pending_expires_at = NULL, totp_step = NULL WHERE id = ?1",
         [user_id],
     )
     .await?;
@@ -156,11 +175,20 @@ pub async fn delete_challenge(c: &Connection, token_hash: &str) -> anyhow::Resul
 }
 
 /// Up to `limit` expired challenges; returns how many it deleted.
-pub async fn purge_challenges(c: &Connection, now: i64, limit: i64) -> anyhow::Result<u64> {
-    c.execute(
-        "DELETE FROM sign_in_challenges WHERE rowid IN (SELECT rowid FROM sign_in_challenges WHERE expires_at < ?1 LIMIT ?2)",
-        (now, limit),
-    )
-    .await
-    .map_err(Into::into)
+/// Expired sign-in challenges, and waiting secrets nobody confirmed in time; up to `limit` of each.
+pub async fn purge(c: &Connection, now: i64, limit: i64) -> anyhow::Result<u64> {
+    let challenges = c
+        .execute(
+            "DELETE FROM sign_in_challenges WHERE rowid IN (SELECT rowid FROM sign_in_challenges WHERE expires_at < ?1 LIMIT ?2)",
+            (now, limit),
+        )
+        .await?;
+    let pending = c
+        .execute(
+            "UPDATE users SET totp_pending = NULL, totp_pending_expires_at = NULL
+             WHERE id IN (SELECT id FROM users WHERE totp_pending_expires_at <= ?1 LIMIT ?2)",
+            (now, limit),
+        )
+        .await?;
+    Ok(challenges + pending)
 }

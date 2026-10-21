@@ -375,3 +375,57 @@ async fn codes_sent_at_once_still_meet_the_budget() {
     let refused = got.iter().filter(|s| **s == 429).count();
     assert_eq!((wrong, refused), (10, 10), "{got:?}");
 }
+
+/// A key shown at setup lasts 10 minutes (Q32): after that it cannot be confirmed, and the
+/// retention job removes it.
+#[tokio::test]
+async fn a_waiting_key_expires_and_retention_clears_it() {
+    let app = TestApp::spawn("test").await;
+    let tl = app.tl("rina@x.co").await;
+    let started = json_of(
+        app.api_post("/api/ui/me/two-factor", json!({}), Some(&tl))
+            .await,
+    )
+    .await;
+    let secret = started["data"]["secret"].as_str().unwrap().to_string();
+    let now = now();
+    app.state
+        .db
+        .write(async |c| {
+            c.execute(
+                "UPDATE users SET totp_pending_expires_at = ?1 WHERE email = 'rina@x.co'",
+                [now],
+            )
+            .await?;
+            Ok(())
+        })
+        .await
+        .unwrap();
+    let code = code_at(&secret, now);
+    let res = app
+        .api_post(
+            "/api/ui/me/two-factor/confirm",
+            json!({ "code": code }),
+            Some(&tl),
+        )
+        .await;
+    assert_eq!(res.status(), 422);
+    assert_eq!(
+        json_of(res).await["error"]["message"],
+        "This key expired or was replaced. Select Turn on to get a new one."
+    );
+
+    app.state
+        .db
+        .write(async |c| monita::accounts::purge_expired(c, now, 100).await)
+        .await
+        .unwrap();
+    let left = monita::platform::db::query_i64(
+        &app.state.db.read().await.unwrap(),
+        "SELECT count(*) FROM users WHERE totp_pending IS NOT NULL",
+        (),
+    )
+    .await
+    .unwrap();
+    assert_eq!(left, Some(0));
+}
