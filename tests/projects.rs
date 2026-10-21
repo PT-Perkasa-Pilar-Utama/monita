@@ -740,11 +740,12 @@ async fn the_project_list_shows_each_projects_state_incidents_tickets_and_last_d
         .db
         .write(async |c| {
             c.execute_batch(&format!(
-                "INSERT INTO monitors (id, project_id, name, url, next_check_at) VALUES (1, 1, 'API', 'https://x.invalid', 9999999999);
+                "INSERT INTO monitors (id, project_id, name, url, next_check_at, created_at) VALUES (1, 1, 'API', 'https://x.invalid', 9999999999, {old});
                  INSERT INTO incidents (id, project_id, origin, title, severity, started_at) VALUES (1, 1, 'auto', 'API is down', 'critical', {start});
                  INSERT INTO incident_items VALUES (1, 'monitor', 1);
                  INSERT INTO incident_sources VALUES ('monitor', 1, 2, 1, NULL);",
                 start = now - 7200,
+                old = now - 2 * 86_400,
             ))
             .await?;
             Ok(())
@@ -760,6 +761,30 @@ async fn the_project_list_shows_each_projects_state_incidents_tickets_and_last_d
     assert_eq!(hours.len(), 24);
     assert_eq!(hours[0]["uptime"], 100.0, "a day ago, before the incident");
     assert_eq!(hours[22]["uptime"], 0.0, "the one system was down all hour");
+
+    project(&app, &tl, "Fresh", "fresh").await;
+    app.state
+        .db
+        .write(async |c| {
+            c.execute(
+                "INSERT INTO monitors (project_id, name, url, next_check_at, created_at) VALUES (2, 'New', 'https://x.invalid', 9999999999, unixepoch() - 60)",
+                (),
+            )
+            .await?;
+            Ok(())
+        })
+        .await
+        .unwrap();
+    let list = json_of(app.api_get("/api/ui/projects", Some(&tl)).await).await;
+    let fresh = list["data"]["projects"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|p| p["slug"] == "fresh")
+        .unwrap();
+    let hours = fresh["pulse"]["hours"].as_array().unwrap();
+    assert!(hours[0]["uptime"].is_null(), "no data before it was added");
+    assert_eq!(hours[23]["uptime"], 100.0);
 }
 
 #[tokio::test]
