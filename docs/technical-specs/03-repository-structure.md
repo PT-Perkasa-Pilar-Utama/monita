@@ -30,7 +30,7 @@ monita/
 │   ├── incidents/             mod.rs, engine.rs (pure), updates.rs, history.rs, manual.rs, availability.rs, api.rs,
 │   │                          store/{mod, reads, across}
 │   ├── notify/                mod.rs (send), delivery.rs (outbox loop), mailer.rs, digest.rs, preview.rs,
-│   │                          tickets.rs (ticket alerts), api.rs, store.rs
+│   │                          tickets.rs (ticket cards), cards/, telegram/, api.rs, store.rs
 │   ├── status/                mod.rs (public wire types), routes.rs (public JSON), months.rs, uptime_calendar.rs
 │   ├── tickets/               mod.rs, routes/{mod, api (/api/v1), public, board}, store/{mod, across}
 │   ├── changelog/             mod.rs, api.rs (team and public routes), store.rs

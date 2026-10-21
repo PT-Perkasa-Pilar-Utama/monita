@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [1.1.0] - 2026-10-21
 
-More ways to check, alert and plan: TCP, DNS and ping monitors, certificate warnings, checks from more than one place, Discord, Telegram, ntfy and PagerDuty alerts, maintenance windows, and two-factor sign-in. Migrations 0024 to 0038 run on start; 0029 rebuilds the `monitors` table.
+More ways to check, alert and plan: TCP, DNS and ping monitors, certificate warnings, checks from more than one place, Discord, Telegram, ntfy and PagerDuty alerts, maintenance windows, and two-factor sign-in. Migrations 0024 to 0039 run on start; 0029 rebuilds the `monitors` table, and 0039 rebuilds `alert_cards`.
 
 ### Added
 
@@ -21,18 +21,19 @@ More ways to check, alert and plan: TCP, DNS and ping monitors, certificate warn
 - TCP port and DNS name monitors beside HTTP ([#9](https://github.com/PT-Perkasa-Pilar-Utama/monita/issues/9)). Migration 0024.
 - **User settings**, **Password**: change your own password with the current one. Your other sessions sign out.
 - **User settings**, **Profile**: a picture the top bar shows in place of your initial. Migration 0034.
-- A global Telegram bot for every project: a super admin sets it up once in **Admin**, **Telegram**, and a project picks **Global Telegram** and connects a chat with a link or QR code. `MONITA_TELEGRAM_API` points at a self-hosted Bot API server. Migration 0036.
+- A global Telegram bot for every project: a super admin sets it up once in **Admin**, **Telegram**, and a project picks **Global Telegram** and connects a chat with a link or QR code. The card form shows the link at once and says when the chat is connected. `MONITA_TELEGRAM_API` points at a self-hosted Bot API server. Migration 0036.
 - Discord and Telegram alerts are laid out for reading: a coloured title that links to Monita, the project, and the cause or how long it was down. Discord posts them as Monita.
 
 ### Changed
 
-- The ticket webhook picks a format, as an alert card does: JSON, Discord, Telegram, the global Telegram bot or ntfy. Migration 0038.
+- **Ticket alerts** are alert cards too, in their own section. Every project has three fixed owner cards: the daily digest, each new ticket, and each ticket move. A new project starts with all three off. A project adds up to 10 ticket cards of its own: an email list or a webhook in JSON, Discord, Telegram, the global Telegram bot or ntfy, each listening to new tickets, moves or both. Migrations 0038 and 0039 convert the old settings: the digest keeps its state, and a saved ticket webhook becomes a card.
 - Passwords need 8 characters or more, down from 12.
-- **Alert cards** replace the Critical and Warning sections. Every project keeps two fixed cards that email its owner, one per level, and adds up to 10 of its own: an email list or a webhook in any format, each listening to critical, warning or both, each with its own switch and test. Migration 0037 converts the old settings; nobody who got alerts stops getting them.
+- **Alert cards** replace the Critical and Warning sections. Every project keeps two fixed cards that email its owner, one per level, and adds up to 10 of its own: an email list or a webhook in any format, each listening to critical, warning or both, each with its own switch and test. A card needs no name: it takes its kind, or its Telegram chat. Migration 0037 converts the old settings; nobody who got alerts stops getting them.
 - A new project's critical alerts no longer start with the webhook ticked. Neither severity calls a webhook until its owner ticks it and sets a URL. Migration 0033 unticks existing routes that have no URL.
 - The project list shows the newest projects first. Sort by **Name** to get the old order.
 - A new project's status page shows the Changelog tab. Existing projects keep their setting.
 - Two-factor setup shows a QR code to scan. The key and the app link stay below it. A key not confirmed within 10 minutes expires. Migration 0035.
+- **Documentation** moved from the top bar into the avatar menu, so it no longer takes clicks meant for the links beside it.
 - The avatar menu's **Two-factor sign-in** became **User settings**, an area with its own side menu. While two-factor is off, a note under the top bar says so until you close it in that browser.
 
 ### Fixed

@@ -112,8 +112,7 @@ A GET shows a supervisor the same JSON as anyone else, with these values replace
 | `GET /api/ui/projects/{slug}/monitors` and `.../monitors/{id}` | `headers` | Each line as `Name: (hidden)`. A line with no colon reads `(hidden)`. |
 | same | `body` | `"(hidden)"` when a body is set |
 | same | `auth_user` | `"(hidden)"` when set |
-| `GET /api/ui/projects/{slug}/alerts` | `webhook_url` of each route | `"(hidden)"` when set |
-| `GET /api/ui/projects/{slug}/ticket-alerts` | `webhook_url` | `"(hidden)"` when set |
+| `GET /api/ui/projects/{slug}/alert-cards` | `url` and `key` of each card, ticket cards too | `"(hidden)"` when set |
 
 `GET /api/ui/me` tells the page which role it has (2.2). The web app hides its create, edit and delete controls when `read_only` is true.
 

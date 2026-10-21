@@ -18,8 +18,8 @@ Under 768 px (`md`) a side navigation becomes one scrolling row. The tab bar scr
 
 | Place | Items |
 | --- | --- |
-| Top bar | Mark and project crumb (outside a project: a way back to the last one opened, from `lib/lastProject.ts`, kept per signed-in email and forgotten when it answers 404), then the area links Projects, Incidents, Tickets, Admin (super admin or supervisor) and Documentation, then the account menu |
-| Account menu | Who is signed in and their role, Toggle theme, Sign out. On a phone Admin and Documentation move in here. |
+| Top bar | Mark and project crumb (outside a project: a way back to the last one opened, from `lib/lastProject.ts`, kept per signed-in email and forgotten when it answers 404), then the area links Projects, Incidents, Tickets, Admin (super admin or supervisor), then the account menu |
+| Account menu | Who is signed in and their role, Documentation, User settings, Toggle theme, Sign out. On a phone Admin moves in here. |
 | Project tabs | Overview, Monitors, Heartbeats, Incidents, Tickets, Changelog, Settings. A Status page button sits at the right end and leaves the app for `/status/{slug}`. |
 | Settings side nav | General, Status page, Alerts, API keys, Secrets, Allowlist |
 | Admin side nav | User management, Rate limits, Outgoing email, Telegram, Time zone, System information |
@@ -30,7 +30,7 @@ Area links in the top bar:
 - Projects, Incidents and Tickets show across the signed-in user's projects. A tech lead sees only their own projects.
 - The open area is a raised pill.
 - Admin opens the admin page opened last (`lib/adminPage.ts`, kept per browser). The first time it opens User management.
-- Documentation leaves the app in a new tab.
+- Documentation sits in the account menu and leaves the app in a new tab.
 
 Only Settings and Admin have a side navigation. Every list stays full width.
 
@@ -163,7 +163,7 @@ A settings page is a `SettingsPage` of `SettingsSection`s in one column. Each se
 | --- | --- |
 | General | Project (name and slug read-only, homepage, description, icon), Owner, and a Danger zone that only a super admin sees. Project edits in place with Save. The danger zone deletes the project after the name is typed. |
 | Status page | Public tabs: `CheckCards` for Uptime (always on), Incidents, Issues, Ticket and Changelog, with the status page URL in the footer. Custom status page: a `reference` section. It offers a downloadable one-file HTML page, then a `Tabs` row with one tab per public endpoint. Each tab shows who can call it, a `CodeCopy` request, an example response (`lang="js"`) and its rules. |
-| Alerts | An Alert cards `SettingsSection` (action: Add alert card) holding a two-column list of card tiles, then Ticket alerts. A tile shows the name, the kind unless the name says it, grey `SeverityBadge`s for the levels it hears, where it sends, an `AlertSwitch`, Send a test and Edit (not on the owner's two cards). A level no card hears gets a one-sentence `Alert` above the list. Add and Edit open `AlertCardSheet`, a `FormSheet`: `DestinationFields` (a Global Telegram or Custom switch when a bot is set up, then Sends by and the kind's fields), Name and Listens to. Delete sits at the footer's left. Ticket alerts use the same `DestinationFields` for their webhook. On this page lists the two sections. The page action opens `AlertsGuide`, a half sheet with how alerts work, the payload samples and delivery. |
+| Alerts | Two `SettingsSection`s. Alert cards (action: Add alert card) and Ticket alerts (action: Add ticket card). Each holds a two-column list of card tiles. A tile shows the name, the kind unless the name says it, grey badges for what it hears, where it sends, an `AlertSwitch`, Send a test and Edit (not on the owner's cards). An incident card shows grey `SeverityBadge`s for its levels. A ticket card shows event badges: Daily digest, New tickets, Ticket moves. A level no card hears gets a one-sentence `Alert` above the incident list. Add and Edit open `AlertCardSheet`, a `FormSheet`: `DestinationFields` (a Global Telegram or Custom switch when a bot is set up, then Sends by and the kind's fields) and Listens to. The form has no Name field. The server names the card after its kind. Delete sits at the footer's left. On this page lists the two sections. The page action opens `AlertsGuide`, a half sheet with how alerts work, the payload samples and delivery. |
 | API keys | One `TableCard` with New API key in a `FormSheet`. A new key shows once in an `Alert` with `CopyField`. |
 | Secrets | One `TableCard` of secrets by name with what uses each, New secret and Replace value in a `FormSheet`, and Delete, which is off while a monitor uses the secret. A value is never shown after it is saved. |
 | Allowlist | One section with the allowed IP ranges. |

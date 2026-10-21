@@ -107,4 +107,4 @@ A project's **Incidents** page lists its incidents with alert level, latest upda
 
 ## Daily digest
 
-Once a day, at `MONITA_DIGEST_UTC_HOUR`, each project owner gets one email listing new tickets still in Triage. No email goes out when there are none. A project can turn this off in [Ticket alerts](alerts.md#ticket-alerts).
+Once a day, at `MONITA_DIGEST_UTC_HOUR`, each project owner gets one email listing new tickets still in Triage. No email goes out when there are none. The digest is off for a new project. Turn on the **Daily digest** card in [Ticket alerts](alerts.md#ticket-alerts).

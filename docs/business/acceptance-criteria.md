@@ -210,4 +210,4 @@ This file is an index. The full Given/When/Then bodies live in the per-sprint fi
 
 - AC-30.01 : Daily digest
 - AC-30.02 : No digest without new tickets
-- AC-30.03 : Webhook for each new ticket
+- AC-30.03 : Alert for each new ticket

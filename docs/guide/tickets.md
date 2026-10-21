@@ -124,7 +124,7 @@ Select **New ticket** to file a ticket for your own team.
 2. Pick a **Column**: Triage, Backlog or In progress. The default is Backlog.
 3. Select **File ticket**.
 
-A team-filed ticket has no reporter and no ref ID. It skips the daily caps. It sends no new-ticket webhook. The panel says "Filed by" with your email.
+A team-filed ticket has no reporter and no ref ID. It skips the daily caps. It sends no new-ticket alert. The panel says "Filed by" with your email.
 
 ## The public tabs
 
@@ -146,4 +146,4 @@ After a report, the page shows the reporter's tickets at once. The old addresses
 
 ## Alerts
 
-Ticket alerts have their own settings: the owner's daily digest, a webhook for each new ticket, and a webhook for each move. See [Alerts](alerts.md#ticket-alerts).
+Ticket alerts are ticket cards: the owner's daily digest, new tickets and moves, plus cards of your own. See [Alerts](alerts.md#ticket-alerts).

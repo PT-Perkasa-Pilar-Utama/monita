@@ -30,7 +30,6 @@ erDiagram
   projects ||--o{ incidents : has
   projects ||--o{ ref_ids : has
   projects ||--o{ tickets : has
-  projects ||--o| ticket_alerts : has
   projects ||--o{ project_secrets : has
   projects ||--o{ changelog_entries : has
   projects ||--o{ maintenance_windows : has
@@ -145,30 +144,20 @@ Migration 0037 (v1.1 Q34) replaced `alert_routes`, the one row per severity, wit
 | id | INTEGER | no | | PK | |
 | project_id | INTEGER | no | | FK projects ON DELETE CASCADE | INDEX |
 | kind | TEXT | no | | | `owner_email`, `email`, or a webhook format: `json`, `discord`, `telegram`, `telegram_bot`, `ntfy`, `pagerduty` |
-| name | TEXT | no | | | 1 to 60 characters; `Owner email` for the owner's cards |
-| critical, warning | INTEGER | no | | | The levels the card listens to. `CHECK (critical = 1 OR warning = 1)` |
+| name | TEXT | no | | | 1 to 60 characters; `Owner email` for the owner's cards. The server fills it from the kind when the form sends none. |
+| critical, warning | INTEGER | no | 0 | | The levels the card listens to |
+| new_tickets, ticket_moves, digest | INTEGER | no | 0 | | The ticket events the card listens to (migration 0039, v1.1 Q37). Only an owner card has `digest`. |
 | enabled | INTEGER | no | 1 | | The card's switch. Off keeps the card and sends nothing. |
 | emails | TEXT | no | `''` | | An `email` card's addresses, one a line, 20 at most. Empty for other kinds; an `owner_email` card looks the owner's address up when it sends. |
 | url | TEXT | yes | | | A webhook card's URL; `https://api.telegram.org/` for `telegram_bot`. A supervisor never sees it. |
 | key | TEXT | yes | | | Telegram's chat ID or PagerDuty's routing key. A supervisor never sees it. |
 | created_at | INTEGER | no | now | | |
 
-A project has its two `owner_email` cards (one critical, one warning), which only change by their switch, and at most `caps::ALERT_CARDS` (10) of its own.
+Two CHECKs hold the rules. At least one of `critical`, `warning`, `new_tickets`, `ticket_moves` and `digest` is 1. A card never mixes `critical` or `warning` with a ticket event. The section is not stored. It is `incidents` when `critical` or `warning` is set, and `tickets` otherwise.
 
-### 6.3.6a ticket_alerts
+A project has five `owner_email` cards, which only change by their switch: critical and warning (on), and Daily digest, New tickets and Ticket moves (off for a new project). It also has at most `caps::ALERT_CARDS` (10) of its own in each section.
 
-One row per project. Ticket alerts are apart from the alert cards (migration 0007).
-
-| column | type | nullable | default | key | notes |
-| --- | --- | --- | --- | --- | --- |
-| project_id | INTEGER | no | | PK, FK projects ON DELETE CASCADE | |
-| digest | INTEGER | no | 1 | | The owner's daily email of new Triage tickets |
-| webhook_url | TEXT | yes | | | The ticket webhook. Kept while both webhook boxes are off. |
-| use_webhook | INTEGER | no | 0 | | `CHECK (use_webhook = 0 OR webhook_url IS NOT NULL)`. One `ticket.created` call per reporter ticket. |
-| webhook_moves | INTEGER | no | 0 | | One `ticket.moved` call per column move (migration 0011). The app checks that the URL is set, because SQLite cannot add that `CHECK` afterwards. |
-| enabled | INTEGER | no | 1 | | The section's on and off switch (migration 0008) |
-| webhook_format | TEXT | no | `'json'` | | `json`, `discord`, `telegram`, `telegram_bot` or `ntfy` (migration 0038, v1.1 Q36). Not `pagerduty`. |
-| webhook_key | TEXT | yes | | | A Telegram chat ID. A supervisor never sees it. |
+Migration 0039 (v1.1 Q37) rebuilt the table, because SQLite cannot change a CHECK, and dropped `ticket_alerts`. Incident cards keep their ids. The owner's Daily digest card is on when the old ticket alerts and their digest were on (a project with no row keeps it on). The owner's New tickets and Ticket moves cards start off. A saved ticket webhook URL became a ticket card in its format, named JSON webhook, Discord, Telegram, Global Telegram or ntfy. It listens to new tickets, moves or both, as ticked. With neither ticked, it became a card that is off and listens to new tickets, so the URL is kept.
 
 ### 6.3.7 monitors
 

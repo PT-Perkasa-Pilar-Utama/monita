@@ -15,15 +15,15 @@ You pick an **Alert level**, critical or warning, on each monitor and heartbeat.
 | Critical | An outage that needs someone now |
 | Warning | A problem that can wait for working hours |
 
-Every project has two **Owner email** cards, one for critical and one for warning. They email the project's owner and follow the owner when the project changes hands. You cannot edit or delete them; turn one off when someone else should hear instead.
+Every project has two **Owner email** cards, one for critical and one for warning. They email the project's owner and follow the owner when the project changes hands. You cannot edit or delete them. Turn one off when someone else should hear instead.
 
-Select **Add alert card** to add your own, up to 10:
+Select **Add alert card** to add your own, up to 10. Monita names a card after its kind, such as `Discord`. A global Telegram card takes its chat's name.
+
 
 | Field | Means |
 | --- | --- |
 | Global Telegram or Custom | Shows when the global Telegram bot is set up. Custom offers the rest. |
 | Sends by | Email, or a webhook format. See the table below. |
-| Name | What the card is called on the page and in its test, such as `On call` |
 | Listens to | **Critical alerts**, **Warning alerts** or both |
 | Email addresses | Email cards only. One per line, up to 20. |
 | Webhook URL | Where Monita posts. Not for PagerDuty or the global Telegram bot. |
@@ -31,7 +31,7 @@ Select **Add alert card** to add your own, up to 10:
 
 Each card has an **On** or **Off** switch, which saves at once. Off keeps the card and sends nothing. **Send a test** sends one test alert to that card alone. **Edit** changes the card or deletes it.
 
-An address in two cards that hear the same alert gets one email. When no card that is on listens to a level, the page says so. Alerts of that level then go to no one; the incident still opens and shows on the status page.
+An address in two cards that hear the same alert gets one email. When no card that is on listens to a level, the page says so. Alerts of that level then go to no one. The incident still opens and shows on the status page.
 
 | Format | URL | Also needs | What Monita posts |
 | --- | --- | --- | --- |
@@ -46,11 +46,11 @@ An address in two cards that hear the same alert gets one email. When no card th
 
 A super admin sets up one bot for every project in **Admin**, **Telegram**. Once it is set, the card form starts with a switch: **Global Telegram** or **Custom**.
 
-1. Select **Add alert card**, pick **Global Telegram**, and select **Connect a chat**.
-2. Scan the QR code with your phone, or select **Open in Telegram**, then select **Start**. To alert a group, select **Add to a group** and pick the group.
-3. The dialog closes when the bot hears you. The chat fills in. Select **Add card**.
+1. Select **Add alert card** and pick **Global Telegram**. The form shows a connect link at once.
+2. Scan the QR code with your phone, or select **Open in Telegram**, then select **Start**. To alert a group, select **Add @bot to a group** and pick the group.
+3. The form checks every 3 seconds. When the bot hears you, it shows **Connected to** and the chat's name. Select **Change** to pick another chat. Select **Add card**.
 
-The link works for 10 minutes. A bot cannot send to a person by @username, so the link is how Monita learns the chat. A public channel can also be typed as `@channel`. Add the bot to the channel as an admin first.
+The link works for 10 minutes. After that, select **Get a new link**. A bot cannot send to a person by @username, so the link is how Monita learns the chat. To type a chat instead, select **Enter a chat ID instead**. A public channel can be typed as `@channel`. Add the bot to the channel as an admin first.
 
 Each recipient gets one alert when an incident opens and one when it closes. A manual incident sends no alert. It shows on the status page.
 
@@ -62,17 +62,24 @@ A monitor or heartbeat with **Send alerts** off sends nothing at all.
 
 ## Ticket alerts
 
-This section covers user bug reports and moves on the ticket board. A ticket your team files sends no new-ticket alert.
+This section holds ticket cards. A ticket card sends new bug reports from your users, each move on the board, or both. A ticket your team files sends no new-ticket alert.
 
-| Box | Means |
+Every project has three fixed **Owner email** ticket cards. They are off by default for a new project. Turn one on to use it. You cannot edit or delete them.
+
+| Card | Sends |
 | --- | --- |
-| Email `<owner>` a daily list of new tickets in Triage | The digest. On by default. It goes to the project owner. |
-| Send each new ticket to the webhook | Off by default |
-| Send each ticket move to the webhook | Off by default |
-| Global Telegram or Custom, then the format | Where the webhook goes: JSON, Discord, Telegram, ntfy or the global Telegram bot. Not PagerDuty, because a ticket is not an incident. |
-| Webhook URL or chat | Required when either webhook box is ticked |
+| Daily digest | One email a day to the project owner. It lists new tickets in Triage. |
+| New tickets | An email to the owner for each new ticket |
+| Ticket moves | An email to the owner each time a ticket changes column |
 
-The new-ticket and move alerts go to this webhook, not to any alert card. Discord and Telegram get them laid out as for incidents. **Send a test** works when either webhook box is saved as on.
+Select **Add ticket card** to add your own, up to 10. The form is the same as for alert cards, with these differences:
+
+| Field | Means |
+| --- | --- |
+| Sends by | Email, JSON, Discord, Telegram, Global Telegram or ntfy. PagerDuty is not offered, because a ticket never resolves. |
+| Listens to | **New tickets**, **Ticket moves** or both |
+
+Each ticket card has an **On** or **Off** switch and **Send a test**. An email list gets one email for each ticket. An address in several cards gets one email. A card shows badges for what it sends: **Daily digest**, **New tickets** or **Ticket moves**.
 
 ## What recipients get
 
@@ -85,9 +92,9 @@ Select **How alerts work**, then **What recipients get**. Pick an alert to see t
 | `source.down` | A source with incidents off fails. Adds `source_url`. | Critical or warning |
 | `source.up` | That source recovers. Adds `duration_s` and `source_url`. | Critical or warning |
 | `certificate.expiring` | An HTTPS monitor's certificate expires within its warning window. Once per certificate. Adds `expires_at` and `source_url`. | Warning |
-| `ticket.created` | A user files a ticket. Adds `ticket_number`, `title` and `ticket_url`. | Ticket |
-| `ticket.moved` | A ticket changes column. Adds `ticket_number`, `title`, `ticket_url`, `from`, `to` and `close_reason`. | Ticket |
-| `test` | A card's or the ticket test button | The card or section tested |
+| `ticket.created` | A user files a ticket. Adds `ticket_number`, `title` and `ticket_url`. | Ticket cards |
+| `ticket.moved` | A ticket changes column. Adds `ticket_number`, `title`, `ticket_url`, `from`, `to` and `close_reason`. | Ticket cards |
+| `test` | A card's test button | The card tested |
 
 Every body has `text`, `event`, `project`, `at` (Unix seconds, UTC) and, for incidents, `source`, `severity` and `cause`. The `text` field makes the body work as-is with Slack and Google Chat incoming webhooks. In a ticket's `text`, Monita writes `&`, `<` and `>` as `&amp;`, `&lt;` and `&gt;`, so a reporter's title cannot add a link or an `@channel` mention. The `title` field keeps the words as typed.
 
@@ -121,7 +128,7 @@ A moved ticket sends this:
 }
 ```
 
-A new ticket and a move send no email. Only the webhook gets them. The owner's daily digest lists new tickets.
+A new ticket sends an email with the subject `[TICKET] {project} / #{n} {title}`. A move sends `[TICKET] {project} / #{n} moved to {Stage}`, and a close adds the reason, such as `Done (Fixed)`. The body has the title and a link: **Open the ticket**. A move also shows the From and To columns.
 
 ## Delivery
 

@@ -39,7 +39,7 @@ Monita is a self-hosted uptime and incident service for every project in the IT 
 
 ### 1.2.5 notify
 - Alert cards that listen to critical, warning or both; alerts on open and close (US-15, US-16; v1.1 Q34).
-- The daily ticket digest and the ticket webhook, with its own switches for new tickets and moves (US-30).
+- Ticket cards: the daily digest, new tickets and ticket moves, by email or webhook (US-30; v1.1 Q37).
 - The mail server a super admin saves on the Email page.
 
 ### 1.2.6 status

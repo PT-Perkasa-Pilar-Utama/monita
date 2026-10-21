@@ -185,9 +185,19 @@ Then Monita lists the reporter's tickets, including tickets in Triage
 ### AC-30.01: Daily digest
 
 ```gherkin
-Given a project received new tickets in Triage today
+Given the project's Daily digest card is on
+  And a project received new tickets in Triage today
 When the daily digest runs
-Then Monita sends one email that lists them
+Then Monita sends one email that lists them to the project owner
+```
+
+The Daily digest card is off for a new project (v1.1 Q37). With the card off, the digest sends no email.
+
+```gherkin
+Given the project's Daily digest card is off
+  And a project received new tickets in Triage today
+When the daily digest runs
+Then Monita sends no email
 ```
 
 ### AC-30.02: No digest without new tickets
@@ -198,12 +208,11 @@ When the daily digest runs
 Then Monita sends no email
 ```
 
-### AC-30.03: Webhook for each new ticket
+### AC-30.03: Alert for each new ticket
 
 ```gherkin
-Given the project's ticket alerts have the ticket webhook on
-  And the ticket webhook has a URL
+Given the project has a ticket card that is on and listens to new tickets
 When a reporter submits a ticket
-Then Monita calls the ticket webhook for that ticket
-  And Monita does not call the warning webhook
+Then Monita sends that ticket to the card
+  And Monita does not send it to a card that listens to alert levels
 ```
