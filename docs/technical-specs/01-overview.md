@@ -38,7 +38,7 @@ Monita is a self-hosted uptime and incident service for every project in the IT 
 - Status updates and manual incidents (US-19, US-20).
 
 ### 1.2.5 notify
-- Alert routes per severity, alerts on open and close (US-15, US-16).
+- Alert cards that listen to critical, warning or both; alerts on open and close (US-15, US-16; v1.1 Q34).
 - The daily ticket digest and the ticket webhook, with its own switches for new tickets and moves (US-30).
 - The mail server a super admin saves on the Email page.
 
@@ -83,7 +83,7 @@ TL
   accept invite -> set password -> sign in
   create project(name, slug)
   create API key -> give to the project backend
-  set alert routes(critical, warning)
+  set alert cards(critical, warning)
   create monitor(url, interval, severity, public)
   create heartbeat(period, grace, severity, public) -> give ping URL to the job
   on alert:

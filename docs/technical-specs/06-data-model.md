@@ -24,7 +24,7 @@ erDiagram
   users ||--o{ projects : owns
   projects ||--o{ api_keys : has
   projects ||--o| project_icons : has
-  projects ||--o{ alert_routes : has
+  projects ||--o{ alert_cards : has
   projects ||--o{ monitors : has
   projects ||--o{ heartbeats : has
   projects ||--o{ incidents : has
@@ -136,19 +136,24 @@ The icon's bytes, apart from `projects` so a project list never reads them.
 | revoked_at | INTEGER | yes | | | |
 | created_at | INTEGER | no | | | |
 
-### 6.3.6 alert_routes
+### 6.3.6 alert_cards
+
+Migration 0037 (v1.1 Q34) replaced `alert_routes`, the one row per severity, with cards. It made two `owner_email` cards per project, on where the route was on and listed the owner; an `email` card with a route's whole list when it held anyone but the owner alone; and a card per webhook URL, off when its box was unticked.
 
 | column | type | nullable | default | key | notes |
 | --- | --- | --- | --- | --- | --- |
 | id | INTEGER | no | | PK | |
-| project_id | INTEGER | no | | FK projects | UNIQUE with severity |
-| severity | TEXT | no | | | `critical`, `warning` |
-| emails | TEXT | no | `''` | | Newline-separated. A new project's routes start with the owner's email (AC-15.02). Migration 0023 gave the owner's email to every route that had no email and no webhook in use. |
-| webhook_url | TEXT | yes | | | |
-| use_webhook | INTEGER | no | | | 0 for a new project's routes (v1.1 Q27; migration 0033 unticked routes with no URL) |
-| webhook_format | TEXT | no | `'json'` | | `json`, `discord`, `telegram`, `telegram_bot`, `ntfy` or `pagerduty` (migration 0025, v1.1 Q17; `telegram_bot` from migration 0036, Q33, which rebuilt the table) |
-| webhook_key | TEXT | yes | | | Telegram's chat ID or PagerDuty's routing key. A supervisor never sees it, like the URL. |
-| enabled | INTEGER | no | 1 | | The route's on and off switch (migration 0008). Off keeps the emails and the webhook, and sends nothing. |
+| project_id | INTEGER | no | | FK projects ON DELETE CASCADE | INDEX |
+| kind | TEXT | no | | | `owner_email`, `email`, or a webhook format: `json`, `discord`, `telegram`, `telegram_bot`, `ntfy`, `pagerduty` |
+| name | TEXT | no | | | 1 to 60 characters; `Owner email` for the owner's cards |
+| critical, warning | INTEGER | no | | | The levels the card listens to. `CHECK (critical = 1 OR warning = 1)` |
+| enabled | INTEGER | no | 1 | | The card's switch. Off keeps the card and sends nothing. |
+| emails | TEXT | no | `''` | | An `email` card's addresses, one a line, 20 at most. Empty for other kinds; an `owner_email` card looks the owner's address up when it sends. |
+| url | TEXT | yes | | | A webhook card's URL; `https://api.telegram.org/` for `telegram_bot`. A supervisor never sees it. |
+| key | TEXT | yes | | | Telegram's chat ID or PagerDuty's routing key. A supervisor never sees it. |
+| created_at | INTEGER | no | now | | |
+
+A project has its two `owner_email` cards (one critical, one warning), which only change by their switch, and at most `caps::ALERT_CARDS` (10) of its own.
 
 ### 6.3.6a ticket_alerts
 
@@ -290,7 +295,7 @@ Uptime % for a day = `1 - downtime_s / 86400`. The status page computes the same
 | last_error | TEXT NULL | |
 | created_at | INTEGER | Rows older than 30 days are deleted |
 
-`telegram_links` (migration 0036, v1.1 Q33): `code_hash` TEXT PK (SHA-256 of a connect link's code), `project_id` FK projects ON DELETE CASCADE, `severity` (`critical` or `warning`), `expires_at` (10 minutes after the link), `chat_id` and `chat_title` (set when the bot hears the code). A new link deletes the severity's older links and every expired link. Monita's bot itself is three `settings` rows: `telegram_bot_token`, `telegram_bot_name` and `telegram_offset` (the next update to read).
+`telegram_links` (migration 0036, v1.1 Q33; reshaped by 0037): `code_hash` TEXT PK (SHA-256 of a connect link's code), `project_id` FK projects ON DELETE CASCADE, `expires_at` (10 minutes after the link), `chat_id` and `chat_title` (set when the bot hears the code). A project has one open link: a new one deletes its older link and every expired one. Monita's bot itself is three `settings` rows: `telegram_bot_token`, `telegram_bot_name` and `telegram_offset` (the next update to read).
 
 ### 6.3.13 ref_ids and tickets
 

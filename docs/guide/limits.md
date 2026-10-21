@@ -12,7 +12,8 @@ No page or job in Monita grows without bound. A list you add to refuses one more
 | Secrets per project | 20, up to 4 KB each |
 | Headers on a monitor | 20, up to 4 KB a value |
 | Request body of a monitor | 64 KB |
-| Addresses per alert route | 20 |
+| Alert cards per project, besides the owner's two | 10 |
+| Addresses per email alert card | 20 |
 | Updates per incident | 50 |
 | Open manual incidents per project | 20 |
 | Tickets per board column | newest 25 shown, all counted; Show more loads the next 25 |

@@ -47,7 +47,7 @@ Legend: `OK` implemented and tested, `WIP` in progress, `TODO` not started, `SCA
 | Project incidents, incident items, updates | [05](05-incidents.md#51-frontend-routes) | OK |
 | Incidents across projects (`/api/ui/incidents`) | [05](05-incidents.md#52-incidents-across-projects) | OK |
 | Maintenance windows | [05](05-incidents.md#53-maintenance-windows) | OK |
-| Alert routes, the on/off switch, alerts preview | [06](06-notify.md#61-frontend-routes) | OK |
+| Alert cards (list, add, edit, delete, switch, test), alerts preview | [06](06-notify.md#61-frontend-routes) | OK |
 | Ticket alerts (`webhook_moves`) and their test | [06](06-notify.md#61-frontend-routes) | OK |
 | Monita's Telegram bot: admin token, connect link and check | [06](06-notify.md#64-monitas-telegram-bot) | OK |
 | Status page: status, history | [07](07-status.md#72-frontend-routes) | OK |

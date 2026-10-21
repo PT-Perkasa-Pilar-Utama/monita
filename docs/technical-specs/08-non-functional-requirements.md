@@ -28,7 +28,8 @@ No list is unbounded. No page renders every row of a list that can grow: it read
 | Monitors per project | 100 | New monitor refused |
 | Heartbeats per project | 100 | New heartbeat refused |
 | Live API keys per project | 20 | New key refused; settings also shows the newest 20 revoked |
-| Addresses per alert route | 20 | Route not saved |
+| Addresses per email alert card | 20 | Card not saved |
+| Alert cards per project, besides the owner's two | 10 | Card not added |
 | Status updates per incident | 50 | Update refused |
 | Open manual incidents per project | 20 | New manual incident refused |
 | Tickets per board column | 25 a page | The newest show; Show more loads the next page; the header counts all. Done links to a paged list. |

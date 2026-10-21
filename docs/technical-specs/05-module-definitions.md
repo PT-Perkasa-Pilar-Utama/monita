@@ -94,17 +94,18 @@ Each module owns its tables (see [06](06-data-model.md)). Other modules use only
 
 ## 5.5 notify
 
-**Responsibility:** alert routes, ticket alerts, the outbox, delivery, the mail port, the ticket digest. Serves US-15, US-16 and US-30. A project whose owner is disabled gets no digest; its Triage tickets wait on the ticket board for the new owner, and the digest watermark moves past them.
+**Responsibility:** alert cards, ticket alerts, the outbox, delivery, the mail port, the ticket digest. Serves US-15, US-16 and US-30. A project whose owner is disabled gets no digest; its Triage tickets wait on the ticket board for the new owner, and the digest watermark moves past them.
 
 | Item | Contract |
 | --- | --- |
-| `send(c, &Event, base_url)` | Looks up the enabled route for the event's severity, inserts one outbox row per recipient, and returns. It never blocks on SMTP or HTTP. It handles `Opened`, `Resolved`, `Down` and `Up`. |
+| `send(c, &Event, base_url)` | Finds the cards that are on and listen to the event's level, inserts one outbox row per address (each address once) and per webhook card, and returns. With no card listening it inserts nothing and returns Ok. It never blocks on SMTP or HTTP. It handles `Opened`, `Resolved`, `Down` and `Up`. |
 | `previews(name, slug, base_url, at) -> Vec<Preview>` | A sample of every kind of alert, built by the code that builds the real ones: the event, label, route (`critical`, `warning` or `ticket`), the email and the webhook body. `GET /api/ui/projects/{slug}/alerts-preview` serves it. |
-| `routes`, `save_route`, `set_enabled` | The Critical and Warning routes: emails (at most 20), webhook, and the on and off switch. Off keeps the recipients. |
+| `create_alerts(c, project_id)` | A new project's two `owner_email` cards, on, and its ticket alerts row. |
+| `cards::{list, create, update, delete, set_enabled, send_test}` | Alert cards (v1.1 Q34). The owner's cards refuse every change but the switch. A project has at most `caps::ALERT_CARDS` of its own; an email card at most 20 addresses. A test goes to the one card. |
 | `ticket_alerts`, `save_ticket_alerts` | The Ticket alerts section: digest, the ticket webhook URL, the new-ticket box (`use_webhook`) and the moves box (`webhook_moves`). A box on needs the URL. |
 | `send_ticket(c, project_id, number, title, base_url)` | One `ticket.created` call for a reporter's ticket, when the ticket webhook is on. Inside the submit transaction. |
 | `send_ticket_moved(c, project_id, &Moved, base_url)` | One `ticket.moved` call (`from`, `to`, `close_reason`) when the moves box is on. A move to the same column sends nothing. |
-| `send_test`, `send_ticket_test` | The test buttons. A test sends the `test` event, which never looks like a ticket. The ticket test works when either webhook box is on. |
+| `send_ticket_test` | The ticket test button. A test sends the `test` event, which never looks like a ticket. The ticket test works when either webhook box is on. |
 | `test_connection(&MailSettings)`, `Mailer::send_now` | The admin Email page: connect and sign in without sending, and send one email now to any address. The error says what failed. |
 | `email_health(db, since)` | Sent, failed and waiting counts and the newest error, for the Email page. |
 | `card::{discord, telegram}` | Every alert builds a `Card` beside its plain text: a tone (critical, warning, good, info), a label, a title, the project, named facts and a link label. Discord gets one embed posted as Monita; Telegram gets HTML with every outside word escaped. Email, JSON, ntfy and PagerDuty keep the plain text. |
@@ -123,7 +124,7 @@ Each module owns its tables (see [06](06-data-model.md)). Other modules use only
 | `source.up` | `source`, `severity`, `duration_s`, `source_url` | That source works again. The text starts `[UP]`. |
 | `ticket.created` | `ticket_number`, `title`, `ticket_url` | A reporter files a ticket and the new-ticket box is on |
 | `ticket.moved` | `ticket_number`, `title`, `from`, `to`, `close_reason`, `ticket_url` | A ticket changes column and the moves box is on |
-| `test` | `severity` (alert routes only), `link` (ticket alerts only) | A test button |
+| `test` | `card` (a card's test), `link` (ticket alerts only) | A test button |
 
 Critical and warning events go to the route of the event's severity. Ticket events go to the ticket webhook. The warning webhook no longer hears tickets. The digest skips a project whose Ticket alerts turn the digest off.
 

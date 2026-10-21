@@ -123,7 +123,7 @@ src/incidents/
 
 | Non-goal | Where it lives |
 | --- | --- |
-| Decide who gets told | `notify` (alert routes) |
+| Decide who gets told | `notify` (alert cards) |
 | Run checks or detect missed deadlines | `checks` scheduler ([13](13-check-scheduler.md)) |
 | Escalate or repeat alerts | Out of scope for v1 |
 | Acknowledge | Out of scope. One owner, no escalation. |

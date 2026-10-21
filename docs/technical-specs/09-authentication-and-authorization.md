@@ -38,7 +38,7 @@ Roles: `super_admin`, `tl` and `supervisor`. A supervisor sees every project and
 | Change your own password or picture (User settings) | yes | yes | yes | yes | no | no |
 | Create project | yes | no | yes | yes | no | no |
 | View a project and its pages | yes (all) | yes (all) | yes | no (404) | no | no |
-| Manage monitors, heartbeats, alert routes, ticket alerts, keys, allowlist, secrets, status page tabs | yes | no | yes | no | no | no |
+| Manage monitors, heartbeats, alert cards, ticket alerts, keys, allowlist, secrets, status page tabs | yes | no | yes | no | no | no |
 | Post status update, open manual incident, resolve an automatic incident by hand | yes | no | yes | no | no | no |
 | Move tickets, rewrite public title, revoke ref ID, file a ticket from the board | yes | no | yes | no | no | no |
 | Issue ref ID from the ticket board | yes | no | yes | no | no | no |

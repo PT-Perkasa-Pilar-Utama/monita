@@ -13,14 +13,15 @@
 
 ## US-15: Set alert recipients per severity (TL)
 
-### AC-15.01: Recipients for each severity
+### AC-15.01: Alert cards (v1.1 Q34)
 
 ```gherkin
 Given the TL owns a project
 When the TL opens the alert setup
-Then each severity has:
-  - a list of email addresses
-  - an optional webhook URL
+Then the TL sees the project's alert cards
+  And can add a card: an email list, or a webhook in one format
+  And each card listens to critical, warning or both
+  And each card has its own on and off switch and its own test
 ```
 
 ### AC-15.02: Default routing
@@ -28,9 +29,14 @@ Then each severity has:
 ```gherkin
 Given the TL has not changed the alert setup
 When an alert fires
-Then a critical alert goes to email
-  And a warning alert goes to email
-  And no webhook is called until the TL ticks it and sets its URL (v1.1 Q27)
+Then it goes to the owner's email card for its level
+  And no webhook is called until the TL adds a webhook card
+
+Given no card that is on listens to a level
+When an alert of that level fires
+Then no one is alerted
+  And the incident still opens and shows
+  And the alerts page says that no card listens to that level
 ```
 
 ## US-16: Get alerts on open and close (TL)
