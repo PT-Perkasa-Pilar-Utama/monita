@@ -380,22 +380,22 @@ async fn page_of(app: &TestApp, cookie: &str, query: &str) -> (Vec<String>, i64,
 }
 
 #[tokio::test]
-async fn the_project_list_pages_20_at_a_time_in_name_order() {
+async fn the_project_list_pages_20_at_a_time_newest_first() {
     let app = TestApp::spawn("test").await;
     let admin = app.super_admin("admin@x.co").await;
     let rina = app.tl("rina@x.co").await;
     let budi = app.tl("budi@x.co").await;
-    for i in (1..=22).rev() {
+    for i in 1..=22 {
         create(&app, &rina, json!({ "name": format!("Svc {i:02}") })).await;
     }
     create(&app, &budi, json!({ "name": "Shop" })).await;
 
     let (first, total, page) = page_of(&app, &rina, "").await;
     assert_eq!((first.len(), total, page), (20, 22, 1));
-    assert_eq!(first[0], "Svc 01");
+    assert_eq!(first[0], "Svc 22");
     assert_eq!(
         page_of(&app, &rina, "?page=2").await,
-        (vec!["Svc 21".into(), "Svc 22".into()], 22, 2)
+        (vec!["Svc 02".into(), "Svc 01".into()], 22, 2)
     );
     assert_eq!(page_of(&app, &rina, "?page=0").await.0, first);
     assert_eq!(page_of(&app, &rina, "?page=abc").await.0, first);
@@ -423,7 +423,7 @@ async fn the_project_list_searches_every_page_on_the_server() {
     let (names, total, _) = page_of(&app, &rina, "?q=%20SVC%202%20").await;
     assert_eq!(
         (names, total),
-        (vec!["Svc 20".into(), "Svc 21".into(), "Svc 22".into()], 3)
+        (vec!["Svc 22".into(), "Svc 21".into(), "Svc 20".into()], 3)
     );
     assert_eq!(page_of(&app, &admin, "?q=budi%40").await.1, 2);
     assert_eq!(page_of(&app, &admin, "?q=refund").await.0, ["Shop"]);
@@ -443,10 +443,10 @@ async fn the_project_list_filters_by_owner_and_sorts_by_age() {
     sql_ages(&app).await;
 
     let rows = page_of(&app, &admin, "?owner=rina%40x.co").await;
-    assert_eq!((rows.0, rows.1), (vec!["Beta".into(), "Gamma".into()], 2));
+    assert_eq!((rows.0, rows.1), (vec!["Gamma".into(), "Beta".into()], 2));
     assert_eq!(
-        page_of(&app, &admin, "?sort=newest").await.0,
-        ["Gamma", "Alpha", "Beta"]
+        page_of(&app, &admin, "?sort=name").await.0,
+        ["Alpha", "Beta", "Gamma"]
     );
     assert_eq!(
         page_of(&app, &admin, "?sort=oldest").await.0,
@@ -454,7 +454,8 @@ async fn the_project_list_filters_by_owner_and_sorts_by_age() {
     );
     assert_eq!(
         page_of(&app, &admin, "?sort=junk").await.0,
-        ["Alpha", "Beta", "Gamma"]
+        ["Gamma", "Alpha", "Beta"],
+        "anything else is newest first"
     );
     let list = json_of(app.get("/api/ui/projects", Some(&admin)).await).await;
     assert_eq!(

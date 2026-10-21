@@ -84,7 +84,7 @@ struct ListQuery {
     q: String,
     /// An owner's email; empty for any.
     owner: String,
-    /// `newest` or `oldest`; anything else sorts by name.
+    /// `name` or `oldest`; anything else is newest first.
     sort: String,
 }
 
@@ -113,9 +113,9 @@ async fn list(
 ) -> UiResult {
     let page = q.page.trim().parse().unwrap_or(1);
     let sort = match q.sort.as_str() {
-        "newest" => super::Sort::Newest,
+        "name" => super::Sort::Name,
         "oldest" => super::Sort::Oldest,
-        _ => super::Sort::Name,
+        _ => super::Sort::Newest,
     };
     let found = super::page_for(&state.db, &user, &q.q, &q.owner, sort, page).await?;
     let owner_options = if user.is_admin() {

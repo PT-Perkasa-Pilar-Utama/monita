@@ -63,7 +63,8 @@ test("the project list pages 20 at a time and searches on the server", async ({ 
   await expect(pages).toContainText("21");
   await pages.getByRole("button", { name: "Next" }).click();
   await expect(page).toHaveURL(/[?&]page=2/);
-  await expect(page.getByText(`${stamp} 21`)).toBeVisible();
+  // Newest first, so the oldest project is the one on page 2.
+  await expect(page.getByText(`${stamp} 01`)).toBeVisible();
   await page.getByLabel("Search projects").fill(`${stamp} 07`);
   await expect(pages).toHaveCount(0);
   await expect(page.getByText(`${stamp} 07`)).toBeVisible();

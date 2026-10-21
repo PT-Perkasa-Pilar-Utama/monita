@@ -29,7 +29,8 @@ export function Projects(): ReactElement {
   const params = new URLSearchParams(search);
   const q = params.get("q") ?? "";
   const owner = params.get("owner") ?? "";
-  const sort = params.get("sort") ?? "";
+  // Any other value reads newest first, as the server does.
+  const sort = ["name", "oldest"].includes(params.get("sort") ?? "") ? params.get("sort")! : "";
   const page = pageParam(params.get("page"));
   // The cards and rows show live state, so the page reads again every 30 seconds.
   const list = useApi<ProjectList>(`/projects${listQuery({ q, owner, sort, page })}`, LIVE_MS);
@@ -97,9 +98,9 @@ export function Projects(): ReactElement {
         heading="Sort by"
         value={sort}
         options={[
-          { value: "", label: "Name" },
-          { value: "newest", label: "Newest first" },
+          { value: "", label: "Newest first" },
           { value: "oldest", label: "Oldest first" },
+          { value: "name", label: "Name" },
         ]}
         onChange={(v) => go({ sort: v }, 1, true)}
       />
@@ -153,8 +154,8 @@ export function Projects(): ReactElement {
                 projects={projects}
                 loading={loading}
                 skeletons={skeletons}
-                sort={sort === "newest" ? { by: "created", dir: "desc" } : sort === "oldest" ? { by: "created", dir: "asc" } : { by: "name", dir: "asc" }}
-                onSort={(by) => go({ sort: by === "name" ? "" : sort === "newest" ? "oldest" : "newest" }, 1, true)}
+                sort={sort === "name" ? { by: "name", dir: "asc" } : sort === "oldest" ? { by: "created", dir: "asc" } : { by: "created", dir: "desc" }}
+                onSort={(by) => go({ sort: by === "name" ? "name" : sort === "oldest" ? "" : "oldest" }, 1, true)}
               />}
           </TableCard>
         )}

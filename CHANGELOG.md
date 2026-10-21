@@ -23,6 +23,7 @@ More ways to check, alert and plan: TCP, DNS and ping monitors, certificate warn
 ### Changed
 
 - A new project's critical alerts no longer start with the webhook ticked. Neither severity calls a webhook until its owner ticks it and sets a URL. Migration 0033 unticks existing routes that have no URL.
+- The project list shows the newest projects first. Sort by **Name** to get the old order.
 
 ### Fixed
 

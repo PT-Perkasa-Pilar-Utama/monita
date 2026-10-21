@@ -8,7 +8,7 @@ A project groups the monitors, heartbeats, incidents and tickets of one system. 
 
 - Switch between the card view and the list view. Monita remembers your choice. Both show the project's state, open incidents and open tickets. The card also shows the owner, the creation date and a link to the status page.
 - **Search projects** runs on the server.
-- Filter by **Owner** (only when more than one owner exists). Sort by name, **Newest first** or **Oldest first**.
+- Filter by **Owner** (only when more than one owner exists). Sort by **Newest first** (the default), **Oldest first** or **Name**.
 - Monita reopens your last search and page when you return to the list.
 - **Refresh** reads the list again. The list also reads itself every 30 seconds.
 
