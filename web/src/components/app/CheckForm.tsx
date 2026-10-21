@@ -14,7 +14,7 @@ export function SeverityField({ value, onChange }: { value: Severity; onChange: 
       value={value}
       onChange={onChange}
       choices={[
-        { value: "critical", title: "Critical", description: "For an outage that needs someone now. Alerts by email and webhook." },
+        { value: "critical", title: "Critical", description: "For an outage that needs someone now. Alerts by email, and a webhook when one is set." },
         { value: "warning", title: "Warning", description: "For a problem that can wait for working hours. Alerts by email." },
       ]}
     />

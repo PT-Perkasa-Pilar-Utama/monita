@@ -166,7 +166,7 @@ pub async fn claim_due(
 
 pub async fn create_routes(c: &Connection, project_id: i64, emails: &str) -> anyhow::Result<()> {
     c.execute(
-        "INSERT INTO alert_routes (project_id, severity, use_webhook, emails) VALUES (?1, 'critical', 1, ?2), (?1, 'warning', 0, ?2)",
+        "INSERT INTO alert_routes (project_id, severity, use_webhook, emails) VALUES (?1, 'critical', 0, ?2), (?1, 'warning', 0, ?2)",
         (project_id, emails),
     )
     .await?;

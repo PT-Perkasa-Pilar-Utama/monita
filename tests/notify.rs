@@ -295,3 +295,37 @@ async fn migration_23_gives_silent_routes_the_owners_email() {
     assert_eq!(routes("hooked").await, ["", ""]);
     assert_eq!(routes("kept").await, ["oncall@x.co", "oncall@x.co"]);
 }
+
+/// Migration 33: a ticked webhook with no URL is unticked; a ticked webhook with a URL stays on.
+#[tokio::test]
+async fn migration_33_unticks_webhooks_without_a_url() {
+    let app = TestApp::spawn("test").await;
+    let tl = app.tl("rina@x.co").await;
+    assert_eq!(app.project(&tl, "Hooks", "hooks").await, 201);
+    app.state
+        .db
+        .write(async |c| {
+            c.execute_batch(
+                "UPDATE alert_routes SET use_webhook = 1, webhook_url = NULL WHERE severity = 'critical';
+                 UPDATE alert_routes SET use_webhook = 1, webhook_url = 'https://hooks.example.com/x' WHERE severity = 'warning';",
+            )
+            .await?;
+            c.execute_batch(include_str!("../migrations/0033_webhook_off_without_url.sql"))
+                .await?;
+            Ok(())
+        })
+        .await
+        .unwrap();
+    let on = monita::platform::db::query_all(
+        &app.state.db.read().await.unwrap(),
+        "SELECT severity, use_webhook FROM alert_routes ORDER BY severity",
+        (),
+        |r| Ok((r.get::<String>(0)?, r.get::<i64>(1)?)),
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        on,
+        [("critical".to_string(), 0), ("warning".to_string(), 1)]
+    );
+}

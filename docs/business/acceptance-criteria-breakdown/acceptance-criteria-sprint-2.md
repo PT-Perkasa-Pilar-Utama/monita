@@ -28,8 +28,9 @@ Then each severity has:
 ```gherkin
 Given the TL has not changed the alert setup
 When an alert fires
-Then a critical alert goes to email and the webhook
-  And a warning alert goes to email only
+Then a critical alert goes to email
+  And a warning alert goes to email
+  And no webhook is called until the TL ticks it and sets its URL (v1.1 Q27)
 ```
 
 ## US-16: Get alerts on open and close (TL)

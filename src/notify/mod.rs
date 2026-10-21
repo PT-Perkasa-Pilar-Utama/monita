@@ -31,8 +31,8 @@ pub use tickets::{
     Moved, save_ticket_alerts, send_ticket, send_ticket_moved, send_ticket_test, ticket_alerts,
 };
 
-/// AC-15.02: a new project's two routes, both emailing the owner. Critical calls its webhook
-/// once one is set; warning does not.
+/// AC-15.02: a new project's two routes, both emailing the owner, with the webhook unticked until
+/// the owner adds one (v1.1 Q27).
 pub async fn create_routes(c: &Connection, project_id: i64, owner_id: i64) -> anyhow::Result<()> {
     let owner = crate::accounts::active_email(c, owner_id).await?;
     store::create_routes(c, project_id, owner.as_deref().unwrap_or_default()).await

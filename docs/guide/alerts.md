@@ -20,8 +20,10 @@ You pick critical or warning on each monitor and heartbeat. Its incidents alert 
 
 | Severity | Use it for | Sends by default |
 | --- | --- | --- |
-| Critical | An outage that needs someone now | Email and webhook |
+| Critical | An outage that needs someone now | Email |
 | Warning | A problem that can wait for working hours | Email |
+
+Neither severity calls a webhook until you tick **Also send to a webhook** and set its URL.
 
 Each section has these fields:
 

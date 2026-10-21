@@ -17,7 +17,7 @@ test("@US-15 TL sets who gets critical alerts and sends a test", async ({ page }
   const { slug } = await projectWithHeartbeat(page);
   await page.goto(`/projects/${slug}/settings/alerts`);
   const critical = page.locator("#critical");
-  await expect(page.locator("#use-critical")).toBeChecked();
+  await expect(page.locator("#use-critical")).not.toBeChecked();
   await expect(page.locator("#use-warning")).not.toBeChecked();
   await page.locator("#emails-critical").fill("oncall@monita.test\nnot-an-email");
   await critical.getByRole("button", { name: "Save changes" }).click();
@@ -32,6 +32,7 @@ test("a severity posts to PagerDuty with a routing key and no URL", async ({ pag
   const { slug } = await projectWithHeartbeat(page);
   await page.goto(`/projects/${slug}/settings/alerts`);
   const critical = page.locator("#critical");
+  await page.locator("#use-critical").click();
   await page.locator("#format-critical").click();
   await page.getByRole("option", { name: "PagerDuty" }).click();
   await expect(page.locator("#webhook-critical")).toHaveCount(0);

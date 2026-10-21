@@ -205,7 +205,11 @@ async fn a_project_has_both_severities_with_the_default_routing() {
             )
         })
         .collect();
-    assert_eq!(use_webhook, [("critical", true), ("warning", false)]);
+    assert_eq!(
+        use_webhook,
+        [("critical", false), ("warning", false)],
+        "the webhook starts unticked (Q27)"
+    );
     let bad = app
         .api_send(
             reqwest::Method::PUT,

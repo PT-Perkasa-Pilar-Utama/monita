@@ -89,7 +89,7 @@ A check fails on a timeout, a connection error, a status outside the expected li
 
 | Setting | Means |
 | --- | --- |
-| Severity | Critical alerts by email and webhook. Warning alerts by email only. Default: warning. |
+| Severity | Which alert setup the monitor uses: critical or warning. Each has its own emails and webhook. Default: warning. |
 | It counts as down after | The number of failed checks in a row, from 1 to 99. Default: 2. |
 | Send alerts to the people in Alerts settings | Off means Monita sends nothing for this monitor. |
 | Open an incident | Off means no incident and nothing on the status page. |

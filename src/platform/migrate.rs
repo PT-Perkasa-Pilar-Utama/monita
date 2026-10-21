@@ -87,6 +87,10 @@ const MIGRATIONS: &[(i64, &str)] = &[
         include_str!("../../migrations/0031_location_claims.sql"),
     ),
     (32, include_str!("../../migrations/0032_held_failure.sql")),
+    (
+        33,
+        include_str!("../../migrations/0033_webhook_off_without_url.sql"),
+    ),
 ];
 
 pub async fn run(db: &Db) -> anyhow::Result<()> {
