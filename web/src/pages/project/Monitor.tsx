@@ -1,5 +1,6 @@
 import { RefreshButton } from "@/components/app/RefreshButton";
 import { Writable } from "@/lib/session";
+import { PlacesCard } from "@/components/app/PlacesCard";
 import { kindTag } from "@/lib/checks";
 import type { ReactElement } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
@@ -78,6 +79,7 @@ export function Monitor({ editing = false }: { editing?: boolean }): ReactElemen
             <StatCards stats={d.stats} />
             <ChartCard insight={d.insight} />
             <AvailabilityCard insight={d.insight} />
+            {d.places.length > 0 && <PlacesCard places={d.places} intervalS={m.interval_s} quorum={m.quorum} />}
             <TableCard title="Checks, last 7 days">
               {d.checks.length === 0 ? (
                 <TableEmpty title="Waiting for the first check" description="The first check runs within one interval of saving." />
@@ -87,6 +89,7 @@ export function Monitor({ editing = false }: { editing?: boolean }): ReactElemen
                     <TableHeader>
                       <TableRow>
                         <TableHead>Time</TableHead>
+                        {d.places.length > 0 && <TableHead>Place</TableHead>}
                         <TableHead>Result</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead className="text-right">Latency</TableHead>
@@ -97,6 +100,7 @@ export function Monitor({ editing = false }: { editing?: boolean }): ReactElemen
                       {d.checks.map((c) => (
                         <TableRow key={c.id}>
                           <TableCell className="font-mono text-[13px]">{stamp(c.checked_at)}</TableCell>
+                          {d.places.length > 0 && <TableCell>{c.place ?? "This server"}</TableCell>}
                           <TableCell>
                             <StateBadge kind={c.ok ? "up" : "down"} label={c.ok ? "OK" : "Failed"} />
                           </TableCell>

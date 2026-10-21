@@ -70,6 +70,8 @@ struct MonitorView {
     alert: bool,
     auto_incident: bool,
     fails_to_open: i64,
+    /// How many places must fail (technical-specs 14.7).
+    quorum: i64,
     method: String,
     /// `Name: value` lines. Owner and super admin only, like the rest of this view.
     headers: String,
@@ -134,6 +136,7 @@ fn view(m: Monitor, state: &'static str, read_only: bool) -> MonitorView {
         alert: m.alert,
         auto_incident: m.auto_incident,
         fails_to_open: m.fails_to_open,
+        quorum: m.quorum,
         method: m.method,
         headers: if read_only {
             hide_values(&headers)
@@ -231,6 +234,10 @@ struct DetailView {
     checks: Vec<CheckRow>,
     /// The cursor for the next older page, when there is one.
     older: Option<String>,
+    /// The locations the monitor also checks from.
+    location_ids: Vec<i64>,
+    /// Each place's newest result, this server first; empty without locations.
+    places: Vec<checks::locations::PlaceView>,
 }
 
 async fn detail(
@@ -279,6 +286,7 @@ async fn detail(
         ),
         insight.incidents_stat(),
     ]);
+    let (location_ids, places) = checks::locations::places(&state.db, id).await?;
     let secret_name = match m.auth_secret_id {
         Some(sid) => projects::secrets::name_of(&state.db.read().await?, p.id, sid).await?,
         None => None,
@@ -292,6 +300,8 @@ async fn detail(
         insight: insight.into(),
         checks: rows,
         older,
+        location_ids,
+        places,
     }))
 }
 
@@ -307,6 +317,7 @@ fn refused_error(s: Saved) -> UiError {
     match s {
         Saved::Full => UiError::field("name", caps::MONITORS_FULL),
         Saved::ForeignSecret => UiError::field("auth_secret_id", "Pick a secret of this project."),
+        Saved::UnknownLocation => UiError::field("location_ids", "Pick locations from the list."),
         Saved::Done(_) | Saved::NotFound => UiError::NotFound,
     }
 }

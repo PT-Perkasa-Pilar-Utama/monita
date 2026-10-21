@@ -2,6 +2,7 @@
 
 pub mod charts;
 pub mod heartbeats;
+pub mod locations;
 mod monitors;
 mod results;
 pub mod rollup;

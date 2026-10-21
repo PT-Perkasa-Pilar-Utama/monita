@@ -21,6 +21,7 @@
 11. [Environment Configuration](11-environment-configuration.md)
 12. [Incident Engine](12-incident-engine.md)
 13. [Check Scheduler](13-check-scheduler.md)
+14. [Locations](14-locations.md)
 
 ## Companion Documents
 

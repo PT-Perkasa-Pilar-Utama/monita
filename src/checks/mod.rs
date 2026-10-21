@@ -7,17 +7,22 @@ pub mod chart;
 pub mod heartbeat;
 mod input;
 pub(crate) mod insight;
+pub mod job;
+pub mod locations;
 pub(crate) mod overview;
 pub mod ping_routes;
 mod probe;
+pub mod probe_routes;
 pub mod retention;
 pub mod scheduler;
 pub mod series;
 mod store;
+pub mod verdict;
 
 use crate::platform::{caps, db::Db, now, token};
 
 pub use input::{CERT_WARN_DAYS, FieldErrors, MonitorInput, valid_expected_status};
+pub use job::{Job, JobAuth};
 pub use probe::{Auth, Clients, Target, probe, status_matches};
 pub use store::{CheckRow, Monitor};
 
@@ -124,6 +129,20 @@ pub enum Saved {
     NotFound,
     /// `auth_secret_id` is not a secret of this project.
     ForeignSecret,
+    /// A `location_ids` entry names no location.
+    UnknownLocation,
+}
+
+/// Whether every location the form names exists, on the writer's connection.
+async fn known_locations(c: &turso::Connection, input: &MonitorInput) -> anyhow::Result<bool> {
+    if input.location_ids.is_empty() {
+        return Ok(true);
+    }
+    let known = store::locations::names(c).await?;
+    Ok(input
+        .location_ids
+        .iter()
+        .all(|id| known.iter().any(|(k, _)| k == id)))
 }
 
 /// Whether the form's secret belongs to the project, on the writer's connection.
@@ -153,9 +172,12 @@ pub async fn create_monitor(
         if !own_secret(c, project_id, input).await? {
             return Ok(Saved::ForeignSecret);
         }
-        store::insert_monitor(c, project_id, input, next)
-            .await
-            .map(Saved::Done)
+        if !known_locations(c, input).await? {
+            return Ok(Saved::UnknownLocation);
+        }
+        let id = store::insert_monitor(c, project_id, input, next).await?;
+        store::locations::set_for_monitor(c, id, &input.location_ids, next).await?;
+        Ok(Saved::Done(id))
     })
     .await
 }
@@ -173,13 +195,14 @@ pub async fn update_monitor(
         if !own_secret(c, project_id, input).await? {
             return Ok(Saved::ForeignSecret);
         }
-        Ok(
-            if store::update_monitor(c, project_id, id, input, next).await? {
-                Saved::Done(id)
-            } else {
-                Saved::NotFound
-            },
-        )
+        if !known_locations(c, input).await? {
+            return Ok(Saved::UnknownLocation);
+        }
+        if !store::update_monitor(c, project_id, id, input, next).await? {
+            return Ok(Saved::NotFound);
+        }
+        store::locations::set_for_monitor(c, id, &input.location_ids, next).await?;
+        Ok(Saved::Done(id))
     })
     .await
 }
@@ -191,33 +214,12 @@ pub const SECRET_GONE: &str =
 /// Probes one claimed monitor, with its secret's value when it signs in. `Err` only when the
 /// secret could not be read: the check is skipped then, not failed.
 pub async fn run_check(db: &Db, clients: &Clients, m: &Monitor) -> anyhow::Result<CheckResult> {
-    match m.kind.as_str() {
-        "tcp" => return Ok(probe::probe_tcp(&m.url, m.timeout_ms).await),
-        "ping" => return Ok(probe::icmp::probe_ping(&m.url, m.timeout_ms).await),
-        "dns" => {
-            let expected = m.expected_address.as_deref();
-            return Ok(probe::probe_dns(&m.url, expected, m.timeout_ms).await);
-        }
-        _ => {}
-    }
-    if m.auth_kind == "none" {
-        return Ok(probe(&m.target(None), clients).await);
-    }
-    let secret = match m.auth_secret_id {
-        Some(id) => crate::projects::secrets::value_of(&db.read().await?, m.project_id, id).await?,
-        None => None,
+    let secret = if Job::signs_in(m) {
+        Job::read_secret(&db.read().await?, m).await?
+    } else {
+        None
     };
-    Ok(match secret {
-        Some(value) => probe(&m.target(Some(&value)), clients).await,
-        None => CheckResult {
-            checked_at: now(),
-            ok: false,
-            status_code: None,
-            latency_ms: 0,
-            error: Some(SECRET_GONE.into()),
-            cert_expires_at: None,
-        },
-    })
+    Ok(Job::new(m, secret).run(clients).await)
 }
 
 /// Also closes the monitor's open incident and alerts that it ended.
@@ -246,29 +248,7 @@ pub async fn record_check(
     monitor: &Monitor,
     result: &CheckResult,
 ) -> anyhow::Result<()> {
-    let signal = if result.ok {
-        crate::incidents::Signal::CheckOk
-    } else {
-        crate::incidents::Signal::CheckFailed {
-            cause: result
-                .error
-                .clone()
-                .unwrap_or_else(|| "Check failed".into()),
-        }
-    };
-    db.write(async |c| {
-        store::insert_check(c, monitor.id, result).await?;
-        if let Some(ev) =
-            crate::incidents::observe(c, &monitor.source(), &signal, result.checked_at).await?
-        {
-            crate::notify::send(c, &ev, base_url).await?;
-        }
-        if let Some(expires_at) = result.cert_expires_at {
-            record_cert(c, base_url, monitor, expires_at).await?;
-        }
-        Ok(())
-    })
-    .await
+    locations::record_at(db, base_url, monitor, None, result).await
 }
 
 /// Keeps the certificate expiry an HTTPS check saw, and warns once per certificate when the

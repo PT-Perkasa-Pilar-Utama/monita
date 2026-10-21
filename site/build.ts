@@ -37,7 +37,7 @@ type Group = { title: string; icon: string; blurb: string; pages: string[] };
 /** The sidebar, in reading order. Every guide file belongs to one group. */
 const GROUPS: Group[] = [
   { title: "Start", icon: "play", blurb: "What Monita does, a first monitor on your laptop, a production install, and project settings.", pages: ["getting-started", "install", "project-settings"] },
-  { title: "Watch", icon: "pulse", blurb: "HTTP monitors for URLs and heartbeats for cron jobs.", pages: ["monitors", "heartbeats"] },
+  { title: "Watch", icon: "pulse", blurb: "Monitors for URLs, ports, names and hosts, heartbeats for cron jobs, and checks from more than one place.", pages: ["monitors", "heartbeats", "locations"] },
   { title: "Respond", icon: "bell", blurb: "Incidents, alerts, the public status page, bug tickets and the changelog.", pages: ["incidents", "alerts", "status-page", "tickets", "changelog"] },
   { title: "Operate", icon: "wrench", blurb: "Users and roles, configuration, the command line, backups, upgrades and limits.", pages: ["admin", "configuration", "cli", "operations", "limits"] },
   { title: "Integrate", icon: "code", blurb: "The public API: status JSON, tickets, ref IDs, heartbeat pings and webhooks.", pages: ["api"] },

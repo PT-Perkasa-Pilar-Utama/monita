@@ -17,7 +17,7 @@ pub async fn check_buckets(
     crate::platform::db::query_all(
         c,
         "SELECT (checked_at - ?2) / ?3 AS b, count(*), sum(ok), CAST(avg(latency_ms) AS INTEGER) FROM check_results
-         WHERE monitor_id = ?1 AND checked_at >= ?2 AND checked_at < ?4 GROUP BY b ORDER BY b LIMIT ?5",
+         WHERE monitor_id = ?1 AND location_id IS NULL AND checked_at >= ?2 AND checked_at < ?4 GROUP BY b ORDER BY b LIMIT ?5",
         (monitor_id, from, step, until, buckets as i64),
         |r| {
             Ok(Bucket {
@@ -90,7 +90,7 @@ pub async fn project_buckets(
         c,
         "SELECT r.monitor_id, (r.checked_at - ?2) / ?3 AS b, count(*), sum(r.ok), CAST(avg(r.latency_ms) AS INTEGER)
          FROM check_results r JOIN monitors m ON m.id = r.monitor_id
-         WHERE m.project_id = ?1 AND r.checked_at >= ?2 AND r.checked_at < ?4
+         WHERE m.project_id = ?1 AND r.location_id IS NULL AND r.checked_at >= ?2 AND r.checked_at < ?4
          GROUP BY r.monitor_id, b ORDER BY r.monitor_id, b LIMIT ?5",
         (project_id, from, step, until, limit),
         |r| {

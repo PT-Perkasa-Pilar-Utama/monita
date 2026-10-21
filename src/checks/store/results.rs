@@ -12,12 +12,20 @@ pub struct CheckRow {
     pub status_code: Option<i64>,
     pub latency_ms: Option<i64>,
     pub error: Option<String>,
+    /// The location that ran it, or None for this server (technical-specs 14).
+    pub place: Option<String>,
 }
 
-pub async fn insert_check(c: &Connection, monitor_id: i64, r: &CheckResult) -> anyhow::Result<()> {
+/// `location_id` None: this server ran it.
+pub async fn insert_check(
+    c: &Connection,
+    monitor_id: i64,
+    location_id: Option<i64>,
+    r: &CheckResult,
+) -> anyhow::Result<()> {
     c.execute(
-        "INSERT INTO check_results (monitor_id, checked_at, ok, status_code, latency_ms, error) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-        (monitor_id, r.checked_at, r.ok, r.status_code.map(i64::from), r.latency_ms, r.error.clone()),
+        "INSERT INTO check_results (monitor_id, checked_at, ok, status_code, latency_ms, error, location_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        (monitor_id, r.checked_at, r.ok, r.status_code.map(i64::from), r.latency_ms, r.error.clone(), location_id),
     )
     .await?;
     Ok(())
@@ -32,9 +40,10 @@ pub async fn recent_checks(
 ) -> anyhow::Result<Vec<CheckRow>> {
     crate::platform::db::query_all(
         c,
-        "SELECT id, checked_at, ok, status_code, latency_ms, error FROM check_results
-         WHERE monitor_id = ?1 AND checked_at >= ?2 AND (checked_at < ?3 OR (checked_at = ?3 AND id < ?4))
-         ORDER BY checked_at DESC, id DESC LIMIT ?5",
+        "SELECT r.id, r.checked_at, r.ok, r.status_code, r.latency_ms, r.error, l.name
+         FROM check_results r LEFT JOIN locations l ON l.id = r.location_id
+         WHERE r.monitor_id = ?1 AND r.checked_at >= ?2 AND (r.checked_at < ?3 OR (r.checked_at = ?3 AND r.id < ?4))
+         ORDER BY r.checked_at DESC, r.id DESC LIMIT ?5",
         (monitor_id, since, before.0, before.1, limit),
         |r| {
             Ok(CheckRow {
@@ -44,6 +53,7 @@ pub async fn recent_checks(
                 status_code: r.get(3)?,
                 latency_ms: r.get(4)?,
                 error: r.get(5)?,
+                place: r.get(6)?,
             })
         },
     )

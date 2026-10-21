@@ -1,7 +1,7 @@
 import { readLocal, writeLocal } from "@/lib/store";
 
 /** The admin pages, in side-nav order. The first is where Admin opens the first time. */
-export const ADMIN_PAGES = ["/admin/users", "/admin/limits", "/admin/email", "/admin/time-zone", "/admin/system"] as const;
+export const ADMIN_PAGES = ["/admin/users", "/admin/locations", "/admin/limits", "/admin/email", "/admin/time-zone", "/admin/system"] as const;
 
 const KEY = "monita.admin-page";
 

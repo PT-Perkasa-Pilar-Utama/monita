@@ -56,7 +56,7 @@ Each module owns its tables (see [06](06-data-model.md)). Other modules use only
 | Item | Contract |
 | --- | --- |
 | `probe(&Target, &Clients) -> CheckResult` | One HTTP request with the monitor's method, headers, body and timeout, and its credential when `Target.auth` is set. `ok` when the status matches `expected_status` and the body contains `keyword` (if set). Never returns an error: failures are a `CheckResult` with `ok = false` and an `error` string. Reads at most 1 MB of body. Values of headers, the body and the credential never appear in the error. |
-| `run_check(db, &Clients, &Monitor) -> Result<CheckResult>` | What the scheduler calls. For a monitor with `auth_kind` other than `none` it reads the secret just before the probe, through `projects::secrets::value_of`. A deleted secret gives a failed check with the fixed sentence `SECRET_GONE`. `Err` only when the secret cannot be read; the check is skipped then, not failed. |
+| `run_check(db, &Clients, &Monitor) -> Result<CheckResult>` | What the scheduler calls. It builds a `Job` (one check as data, the same a location's probe receives) and runs it. For a monitor with `auth_kind` other than `none` it reads the secret just before the probe, through `projects::secrets::value_of`. A deleted secret gives a failed check with the fixed sentence `SECRET_GONE`. `Err` only when the secret cannot be read; the check is skipped then, not failed. |
 | `create_monitor`, `update_monitor` -> `Saved` | `Saved::Done(id)`, `Full` (100 monitors), `NotFound` or `ForeignSecret` (the form names a secret of another project, a 422 on `auth_secret_id`). Both pick a random first check inside the interval. |
 | `delete_monitor(db, base_url, project_id, id)` | Also closes the monitor's open incident and alerts that it ended. |
 | `rearm_heartbeat(c, id, now)` | Sets `deadline_at = now + period_s + grace_s`. Called by `incidents::post_update` when a TL resolves a heartbeat's incident by hand. |
@@ -65,6 +65,8 @@ Each module owns its tables (see [06](06-data-model.md)). Other modules use only
 | `counts(db, project_id)`, `summaries(db, project_id)` | The project's monitor and heartbeat totals and state lines, for the About column and the project list. |
 | `admit(db, limiter, &Ping) -> Admission` | Used by the `/ping` routes first. Refuses an IP over its unknown-token budget, finds the heartbeat by token (`UnknownToken`), then applies the per-heartbeat limit (`Limited(retry)`, with `/fail` in its own bucket). Returns an `Admitted` value that only `record` takes; a ping body is read only after it. |
 | `record(db, base_url, Admitted, cause) -> bool` | Stores the ping: an OK ping pushes `deadline_at` forward, a fail ping opens an incident. False when the heartbeat was deleted after `admit`. |
+| `locations::record_at(db, base_url, &Monitor, location_id, &CheckResult)` | Stores one result from this server (`None`) or a location, judges the monitor across its places (`verdict::judge`, technical-specs 14.7), and feeds the verdict to `incidents::observe`. `record_check` is `record_at` with `None`. |
+| `locations::{list, create, delete, claim_work, post_results}` | The Locations admin page and the probe API (`probe_routes`). Owns `locations` and `monitor_locations`. See [14](14-locations.md). |
 | scheduler loop | Internal. See [13](13-check-scheduler.md). |
 
 **Seam:** the outbound HTTP client is a `reqwest::Client` in `AppState`. Tests point monitors at a local axum test server, so no port is needed.

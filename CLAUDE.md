@@ -45,7 +45,7 @@ site/                 landing page and docs site builder    docs/guide/ user doc
 | --- | --- | --- |
 | accounts | users, invites, sessions, recovery_codes, sign_in_challenges | `CurrentUser` (refuses a supervisor's writes) and `AdminUser` (super admin, or a supervisor reading) extractors, `purge_expired` |
 | projects | projects, project_icons, api_keys, project_secrets | `ApiProject` extractor, `find_for`, `can_view`, `owns_any` |
-| checks | monitors, heartbeats, check_results, pings, daily_summaries | `probe`, `heartbeat::admit` and `record`, `scheduler::spawn` |
+| checks | monitors, heartbeats, check_results, pings, daily_summaries, locations, monitor_locations | `probe`, `Job`, `heartbeat::admit` and `record`, `scheduler::spawn`, `locations::record_at` |
 | incidents | incidents, incident_items, incident_sources, status_updates | `observe` (the only door for check results), `open_manual`, `post_update`, `states_for`, `source_deleted` |
 | notify | alert_routes, outbox | `send(Event)`: inserts outbox rows, never blocks; `create_routes`, `purge_delivered` |
 | status | none | public page and JSON |
@@ -64,7 +64,7 @@ Two builders (the user and Claude), 2 days, sprints 1 to 4 in `docs/business/spr
 ## Architecture laws
 
 - A module writes only its own tables. A read-only `JOIN users` for an email or name is allowed, and so is a read-only `project_id IN (SELECT id FROM projects WHERE owner_id = ?)` that scopes a cross-project list to a tech lead's projects. Cross-module calls go through `pub` items in `mod.rs`. Never import another module's `store` or `engine`.
-- Handlers in `api.rs` (or `routes.rs` for the ping and `/api/v1` routes) parse, call, answer. No SQL and no business rules in handlers.
+- Handlers in `api.rs` (or `routes.rs` for the ping and `/api/v1` routes, `probe_routes.rs` for a location's probe) parse, call, answer. No SQL and no business rules in handlers.
 - SQL lives in `store.rs`. Rules live in `mod.rs` or a named logic file (`engine.rs`, `probe.rs`).
 - Every write goes through `Db::write` (one writer connection, `BEGIN IMMEDIATE`). Reads use `Db::read()`. Never open a writing connection elsewhere.
 - No unbounded list. No page renders every row of a list that can grow: it reads one page (a page size from `platform::caps`) and paginates. Every multi-row query has a `LIMIT` from `platform::caps`, a keyset or offset page, or a `GROUP BY` with a fixed number of groups. A per-project list with an insert cap (monitors, keys) reads that same number, so it never hides a row. Projects have no cap; their list pages 20 at a time on the server. Every job reads and deletes in batches and loops until a batch comes back short.
@@ -136,7 +136,7 @@ A new e2e spec file must match a project in `e2e/lib/shards.ts`; `bun test lib` 
 | Violation | Why |
 | --- | --- |
 | `/admin/reset-state` reachable when `MONITA_ENV=prod` | SEC-17: the route must not be registered |
-| Raw API keys, session tokens, invite tokens, ref IDs, recovery codes or sign-in challenges stored or logged | Only SHA-256 hashes are stored (SEC-07, SEC-20). One exception: an outbox body holds an invite link until delivery or final failure, then it is cleared (spec 05 section 5.5). |
+| Raw API keys, session tokens, invite tokens, ref IDs, recovery codes, sign-in challenges or location tokens stored or logged | Only SHA-256 hashes are stored (SEC-07, SEC-20). One exception: an outbox body holds an invite link until delivery or final failure, then it is cleared (spec 05 section 5.5). |
 | Ticket description or reporter shown on a public page | SEC-14 |
 | An update's author, or Monita's cause text, on a status page | SEC-21 |
 | A Triage ticket on the public board | Decision Q11 |
@@ -173,6 +173,7 @@ Each line was argued in review and decided. Do not reopen one without a new fact
 - [ ] Maintenance windows (Q18): scheduled, active, ended, from the times. During an active one a covered source's failure opens no incident and sends no alert; a monitor's streak keeps counting; a missed heartbeat waits until the window ends. Delete only scheduled; End now only active.
 - [ ] Monitor kinds: `http`, `tcp` (`host:port`), `dns` (host name, optional expected address), `ping` (host; one echo over an unprivileged ICMP datagram socket, Q24; refused on Windows); non-HTTP kinds keep none of the HTTP fields (`MonitorInput::for_kind`). Intervals: 30, 60, 180, 300 s. Default timeout 10 s, expected `2xx`.
 - [ ] Certificate warning (Q25): an `https://` monitor may warn 7, 14 or 30 days before `notAfter` (read through reqwest `tls_info`); one `certificate.expiring` alert per certificate on the warning route; no incident; alert switch off sends none.
+- [ ] Locations (Q26, technical-specs 14): a super admin adds one (cap 10) and gets an `ml_` token once; `monita probe` pulls `/api/v1/probe/work` and posts `/api/v1/probe/results` (server time, 300/min per location). A monitor checks from this server plus picked locations; a check fails when `failing >= min(quorum, fresh)` and at least one failed (fresh: 2 intervals + 30 s); the streak counts verdicts. Charts and summaries read local results only.
 - [ ] Ref IDs: `POST /api/v1/ref-ids`, project from the API key, `single_use` flag. Caps: 5 per ref ID per day, 100 per project per day.
 - [ ] Rate limits: 60/min per IP (public, ticket form, invite links, wrong API keys; login in its own `login:` bucket), 120/min per API key, 1/s per heartbeat (extra pings return 429 and are not stored; the ping accepted in that second keeps the heartbeat alive); `/fail` has its own 1/s bucket `pingfail:{id}`. Request bodies are capped at 128 KiB (413), except the ping routes (see Settled trade-offs).
 - [ ] API key format `mk_` + 26 base32 chars; heartbeat tokens stored raw; everything else hashed.

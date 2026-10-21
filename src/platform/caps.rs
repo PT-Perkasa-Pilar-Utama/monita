@@ -14,6 +14,10 @@ pub const HEARTBEATS_FULL: &str = "This project has 100 heartbeats, its limit. D
 /// Monitors and heartbeats together: what an incident can name.
 pub const SOURCES_PER_PROJECT: i64 = MONITORS_PER_PROJECT + HEARTBEATS_PER_PROJECT;
 /// Live API keys per project. Settings also shows the newest revoked ones, up to this many.
+/// Other machines that run checks for this Monita (technical-specs 14).
+pub const LOCATIONS: i64 = 10;
+/// Jobs in one work answer, and results in one post, of a probe.
+pub const PROBE_BATCH: i64 = 50;
 pub const KEYS_PER_PROJECT: i64 = 20;
 /// Sealed secrets in one project, and the longest value.
 pub const SECRETS_PER_PROJECT: i64 = 20;

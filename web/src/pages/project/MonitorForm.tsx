@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { FormEvent, ReactElement } from "react";
 import { useNavigate } from "react-router-dom";
+import { CheckFrom } from "@/components/app/CheckFrom";
 import { PublicField, SeverityField, WhenItFails } from "@/components/app/CheckForm";
 import { FormSheet, FormSheetBody } from "@/components/app/FormSheet";
 import { MonitorGuide } from "@/components/app/Guides";
@@ -35,6 +36,8 @@ type Form = RequestPart & {
   fails_to_open: string;
   /** `7`, `14` or `30`; empty is off. */
   cert_warn_days: string;
+  location_ids: number[];
+  quorum: string;
 };
 
 /** New monitor, or edit one when the URL names it. Edit also deletes. */
@@ -58,12 +61,12 @@ function MonitorFormBody({ id, onClose, onSaved }: { id: string | undefined; onC
     setForm(
       m
         ? {
-            name: m.name, kind: m.kind, url: m.url, expected_address: m.expected_address ?? "", interval_s: m.interval_s, timeout_s: String(m.timeout_s), expected_status: m.expected_status, keyword: m.keyword ?? "", skip_tls_verify: m.skip_tls_verify, severity: m.severity, is_public: m.is_public, alert: m.alert, auto_incident: m.auto_incident, method: m.method, body: m.body ?? "", fails_to_open: String(m.fails_to_open), cert_warn_days: m.cert_warn_days ? String(m.cert_warn_days) : "",
+            name: m.name, kind: m.kind, url: m.url, expected_address: m.expected_address ?? "", interval_s: m.interval_s, timeout_s: String(m.timeout_s), expected_status: m.expected_status, keyword: m.keyword ?? "", skip_tls_verify: m.skip_tls_verify, severity: m.severity, is_public: m.is_public, alert: m.alert, auto_incident: m.auto_incident, method: m.method, body: m.body ?? "", fails_to_open: String(m.fails_to_open), cert_warn_days: m.cert_warn_days ? String(m.cert_warn_days) : "", location_ids: current.data?.location_ids ?? [], quorum: String(m.quorum),
             header_rows: parseHeaderLines(m.headers).map(([name, value]) => ({ name, value })),
             auth_kind: m.auth_kind, auth_secret_id: m.auth_secret_id, auth_user: m.auth_user ?? "", auth_header: m.auth_header ?? "",
           }
         : {
-            name: "", kind: "http", url: "", expected_address: "", interval_s: o.monitor.interval_s, timeout_s: String(o.monitor.timeout_s), expected_status: o.monitor.expected_status, keyword: "", skip_tls_verify: false, severity: o.monitor.severity, is_public: false, alert: true, auto_incident: true, method: "GET", body: "", fails_to_open: "2", cert_warn_days: "",
+            name: "", kind: "http", url: "", expected_address: "", interval_s: o.monitor.interval_s, timeout_s: String(o.monitor.timeout_s), expected_status: o.monitor.expected_status, keyword: "", skip_tls_verify: false, severity: o.monitor.severity, is_public: false, alert: true, auto_incident: true, method: "GET", body: "", fails_to_open: "2", cert_warn_days: "", location_ids: [], quorum: "1",
             header_rows: [], auth_kind: "none", auth_secret_id: null, auth_user: "", auth_header: "",
           },
     );
@@ -201,6 +204,12 @@ function MonitorFormBody({ id, onClose, onSaved }: { id: string | undefined; onC
                   </FieldSet>
                   <FieldSeparator />
                   </>
+                  )}
+                  {options.data.locations.length > 0 && (
+                    <>
+                      <CheckFrom locations={options.data.locations} ids={form.location_ids} quorum={form.quorum} err={err} onChange={(ids, q) => (set("location_ids", ids), set("quorum", q))} />
+                      <FieldSeparator />
+                    </>
                   )}
                   <FieldSet className="gap-7">
                   <FieldLegend>Alerts and status page</FieldLegend>

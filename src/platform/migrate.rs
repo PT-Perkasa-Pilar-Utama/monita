@@ -81,6 +81,7 @@ const MIGRATIONS: &[(i64, &str)] = &[
         include_str!("../../migrations/0028_certificate_expiry.sql"),
     ),
     (29, include_str!("../../migrations/0029_ping_checks.sql")),
+    (30, include_str!("../../migrations/0030_locations.sql")),
 ];
 
 pub async fn run(db: &Db) -> anyhow::Result<()> {

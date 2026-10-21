@@ -52,3 +52,15 @@ Paths in the unit must be absolute and free of spaces. Root runs `setup` and the
 ## 10.4 `monita whereis`
 
 Without an argument it prints one `label value` row for `env`, `data`, `backups`, `bin`, `service` and `logs`. With one, it prints that value alone, for scripts: `monita whereis data` prints the database path. It prints the values as written and checks none of them, so it works when the settings are what is wrong. `service uninstall`, `status` and `logs` read no settings either.
+
+## 10.5 `monita probe`
+
+Runs checks for one location of another Monita (technical-specs 14). It reads no env file and opens no database.
+
+| Option | Variable | Meaning |
+| --- | --- | --- |
+| `--server <url>` | `MONITA_PROBE_SERVER` | The Monita to report to, such as `https://monita.company.co.id` |
+| `--token <token>` | `MONITA_PROBE_TOKEN` | The location's token. Prefer the variable: a command line shows in `ps`. |
+| `--concurrency <n>` | | Checks at once, 1 to 50, default 20 |
+
+Each second it asks for as many jobs as it has free slots, runs them, and posts each finished batch. A server it cannot reach is logged and tried again 5 seconds later. A 401 means the token was deleted: it logs that and exits with status 1. It stops on Ctrl-C or SIGTERM after the checks in flight.

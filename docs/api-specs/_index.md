@@ -22,9 +22,13 @@ Legend: `OK` implemented and tested, `WIP` in progress, `TODO` not started, `SCA
 | `GET /api/v1/public/status/{slug}` | [07](07-status.md#71-get-apiv1publicstatusslug) | OK |
 | `GET, HEAD, POST /ping/{token}` | [04](04-checks.md#41-get-head-post-pingtoken) | OK |
 | `GET, HEAD, POST /ping/{token}/fail` | [04](04-checks.md#42-get-head-post-pingtokenfail) | OK |
+| `GET /api/v1/probe/work` | [04](04-checks.md#45-locations-v11-q26) | OK |
+| `POST /api/v1/probe/results` | [04](04-checks.md#45-locations-v11-q26) | OK |
 | `GET /healthz` | [09](09-system.md#91-get-healthz) | OK |
 | `POST /admin/reset-state` | [09](09-system.md#92-post-adminreset-state) | OK (header token in dev and test; the session option is not built) |
 | `monita setup`, `service`, `whereis`, `--env-file` | [10](10-cli.md) | OK |
+| `monita probe` | [10](10-cli.md#105-monita-probe) | OK |
+| Admin locations: list, add, delete | [04](04-checks.md#45-locations-v11-q26) | OK |
 
 ### Frontend routes (`/api/ui/`)
 

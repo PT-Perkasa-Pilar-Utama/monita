@@ -80,6 +80,7 @@ pub fn router(state: AppState) -> Router {
         .merge(crate::tickets::routes::router())
         .merge(crate::checks::api::router())
         .merge(crate::checks::ping_routes::router())
+        .merge(crate::checks::probe_routes::router())
         .merge(crate::incidents::api::router())
         .merge(crate::maintenance::api::router())
         .merge(crate::notify::api::router())

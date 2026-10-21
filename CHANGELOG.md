@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- Locations: checks from more than one place. A super admin adds a location and runs `monita probe` on another machine with its token. A monitor checks from this server and any locations, and counts a check as failed only when a chosen number of places agree ([#6](https://github.com/PT-Perkasa-Pilar-Utama/monita/issues/6)). Migration 0030. Design: `docs/technical-specs/14-locations.md`.
 - Ping monitors: one ICMP echo per check through an unprivileged socket, with no root and no capability. Linux needs `net.ipv4.ping_group_range` to cover Monita's group; Windows does not offer ping ([#7](https://github.com/PT-Perkasa-Pilar-Utama/monita/issues/7)). Migration 0029 rebuilds `monitors`.
 - A warning before an HTTPS monitor's certificate expires: 7, 14 or 30 days ahead, once per certificate, through the warning route, without an incident ([#8](https://github.com/PT-Perkasa-Pilar-Utama/monita/issues/8)). Migration 0028.
 - Two-factor sign-in with an authenticator app, recovery codes, and a super admin action to turn it off for a user ([#12](https://github.com/PT-Perkasa-Pilar-Utama/monita/issues/12)). Migration 0027.

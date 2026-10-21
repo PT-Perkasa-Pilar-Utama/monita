@@ -36,6 +36,10 @@ pub(super) struct MonitorForm {
     auth_header: String,
     /// `7`, `14` or `30`; empty or missing is off.
     cert_warn_days: String,
+    /// Locations the monitor also checks from; missing is none (technical-specs 14).
+    location_ids: Vec<i64>,
+    /// How many places must fail; missing means 1.
+    quorum: Option<String>,
 }
 
 impl From<MonitorForm> for MonitorInput {
@@ -62,6 +66,13 @@ impl From<MonitorForm> for MonitorInput {
             alert: f.alert.unwrap_or(true),
             auto_incident: f.auto_incident.unwrap_or(true),
             fails_to_open: f.fails_to_open.map_or(2, |n| n.trim().parse().unwrap_or(0)),
+            quorum: f.quorum.map_or(1, |n| n.trim().parse().unwrap_or(0)),
+            location_ids: {
+                let mut ids = f.location_ids;
+                ids.sort_unstable();
+                ids.dedup();
+                ids
+            },
             method: f.method.trim().to_uppercase(),
             headers: f.headers,
             body: Some(f.body).filter(|b| !b.trim().is_empty()),

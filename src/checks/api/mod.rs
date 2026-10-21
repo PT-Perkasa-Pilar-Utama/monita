@@ -1,10 +1,11 @@
 //! Monitors and heartbeats as JSON for the frontend. Contract: docs/api-specs/04-checks.md.
 
 mod heartbeats;
+mod locations;
 mod monitors;
 mod views;
 
-use axum::{Router, routing::get};
+use axum::{Router, extract::State, routing::get};
 use serde::Deserialize;
 
 use super::chart::Range;
@@ -18,6 +19,7 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/api/ui/check-options", get(options))
         .merge(monitors::router())
+        .merge(locations::router())
         .merge(heartbeats::router())
 }
 
@@ -59,7 +61,7 @@ struct Choice {
 }
 
 /// What the monitor and heartbeat forms offer, and their defaults.
-async fn options(CurrentUser(_): CurrentUser) -> UiResult {
+async fn options(State(state): State<AppState>, CurrentUser(_): CurrentUser) -> UiResult {
     let choices = |table: &[(i64, &str)]| -> Vec<Choice> {
         table
             .iter()
@@ -77,6 +79,11 @@ async fn options(CurrentUser(_): CurrentUser) -> UiResult {
         })
         .collect();
     let m = super::MonitorInput::defaults();
+    let locations: Vec<serde_json::Value> = super::locations::names(&state.db)
+        .await?
+        .into_iter()
+        .map(|(id, name)| serde_json::json!({ "id": id, "name": name }))
+        .collect();
     let h = super::heartbeat::HeartbeatInput::default();
     Ok(data(serde_json::json!({
         "intervals": intervals,
@@ -92,6 +99,7 @@ async fn options(CurrentUser(_): CurrentUser) -> UiResult {
             "expected_status": m.expected_status,
             "severity": m.severity,
         },
+        "locations": locations,
         "heartbeat": {
             "period_s": h.period_s,
             "grace_s": h.grace_s,

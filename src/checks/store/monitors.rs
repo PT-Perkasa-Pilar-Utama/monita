@@ -38,6 +38,8 @@ pub struct Monitor {
     pub cert_expires_at: Option<i64>,
     /// The `notAfter` the last certificate warning was about.
     pub cert_warned_for: Option<i64>,
+    /// How many places must fail for a check to count as failed (technical-specs 14.7).
+    pub quorum: i64,
     pub next_check_at: i64,
     pub last: Option<CheckRow>,
     pub created_at: i64,
@@ -68,6 +70,9 @@ impl Monitor {
             auth_user: self.auth_user.clone(),
             auth_header: self.auth_header.clone(),
             cert_warn_days: self.cert_warn_days,
+            quorum: self.quorum,
+            // The form reads them from monitor_locations.
+            location_ids: Vec::new(),
         }
     }
 
@@ -83,43 +88,10 @@ impl Monitor {
             fails_to_open: self.fails_to_open as u32,
         }
     }
-
-    /// What one check sends. `secret` is the value of `auth_secret_id`; without it the check
-    /// sends no sign-in.
-    pub fn target<'a>(&'a self, secret: Option<&'a str>) -> crate::checks::probe::Target<'a> {
-        use crate::checks::probe::Auth;
-        let auth = secret.and_then(|value| match self.auth_kind.as_str() {
-            "bearer" => Some(Auth::Bearer(value)),
-            "basic" => Some(Auth::Basic {
-                user: self.auth_user.as_deref().unwrap_or_default(),
-                password: value,
-            }),
-            "header" => Some(Auth::Header {
-                name: self.auth_header.as_deref().unwrap_or_default(),
-                value,
-            }),
-            _ => None,
-        });
-        crate::checks::probe::Target {
-            url: &self.url,
-            method: &self.method,
-            // Validated on save, so a parse error here means an edited row; send no headers.
-            headers: crate::checks::probe::parse_headers(
-                self.headers.as_deref().unwrap_or_default(),
-            )
-            .unwrap_or_default(),
-            body: self.body.as_deref(),
-            timeout_ms: self.timeout_ms,
-            expected_status: &self.expected_status,
-            keyword: self.keyword.as_deref(),
-            skip_tls_verify: self.skip_tls_verify,
-            auth,
-        }
-    }
 }
 
-const COLS: &str = "m.id, m.project_id, m.name, m.url, m.interval_s, m.timeout_ms, m.expected_status, m.keyword, m.skip_tls_verify, m.severity, m.is_public, m.next_check_at, c.checked_at, c.ok, c.status_code, c.latency_ms, c.error, m.created_at, c.id, m.alert, m.auto_incident, m.method, m.headers, m.body, m.fails_to_open, m.auth_kind, m.auth_secret_id, m.auth_user, m.auth_header, m.kind, m.expected_address, m.cert_warn_days, m.cert_expires_at, m.cert_warned_for";
-const FROM: &str = "FROM monitors m LEFT JOIN check_results c ON c.id = (SELECT id FROM check_results WHERE monitor_id = m.id ORDER BY checked_at DESC, id DESC LIMIT 1)";
+const COLS: &str = "m.id, m.project_id, m.name, m.url, m.interval_s, m.timeout_ms, m.expected_status, m.keyword, m.skip_tls_verify, m.severity, m.is_public, m.next_check_at, c.checked_at, c.ok, c.status_code, c.latency_ms, c.error, m.created_at, c.id, m.alert, m.auto_incident, m.method, m.headers, m.body, m.fails_to_open, m.auth_kind, m.auth_secret_id, m.auth_user, m.auth_header, m.kind, m.expected_address, m.cert_warn_days, m.cert_expires_at, m.cert_warned_for, m.quorum";
+const FROM: &str = "FROM monitors m LEFT JOIN check_results c ON c.id = (SELECT id FROM check_results WHERE monitor_id = m.id AND location_id IS NULL ORDER BY checked_at DESC, id DESC LIMIT 1)";
 
 fn monitor(r: &turso::Row) -> turso::Result<Monitor> {
     let last = match r.get::<Option<i64>>(12)? {
@@ -130,6 +102,7 @@ fn monitor(r: &turso::Row) -> turso::Result<Monitor> {
             status_code: r.get(14)?,
             latency_ms: r.get(15)?,
             error: r.get(16)?,
+            place: None,
         }),
         None => None,
     };
@@ -160,6 +133,7 @@ fn monitor(r: &turso::Row) -> turso::Result<Monitor> {
         cert_warn_days: r.get(31)?,
         cert_expires_at: r.get(32)?,
         cert_warned_for: r.get(33)?,
+        quorum: r.get(34)?,
         next_check_at: r.get(11)?,
         last,
         created_at: r.get(17)?,
@@ -208,7 +182,7 @@ async fn set_switches(c: &Connection, id: i64, m: &MonitorInput) -> anyhow::Resu
     c.execute(
         "UPDATE monitors SET alert = ?1, auto_incident = ?2, method = ?3, headers = ?4, body = ?5, fails_to_open = ?7,
            auth_kind = ?8, auth_secret_id = ?9, auth_user = ?10, auth_header = ?11, kind = ?12, expected_address = ?13,
-           cert_warn_days = ?14
+           cert_warn_days = ?14, quorum = ?15
          WHERE id = ?6",
         (
             m.alert,
@@ -225,6 +199,7 @@ async fn set_switches(c: &Connection, id: i64, m: &MonitorInput) -> anyhow::Resu
             m.kind(),
             m.expected_address.as_deref(),
             m.cert_warn_days,
+            m.quorum.max(1),
         ),
     )
     .await?;
@@ -308,6 +283,42 @@ pub async fn list_monitors(c: &Connection, project_id: i64) -> anyhow::Result<Ve
         (project_id, caps::MONITORS_PER_PROJECT),
     )
     .await
+}
+
+/// A monitor by id alone, for a location's result, which names no project.
+pub async fn find_any(c: &Connection, id: i64) -> anyhow::Result<Option<Monitor>> {
+    Ok(
+        many(c, format!("SELECT {COLS} {FROM} WHERE m.id = ?1"), [id])
+            .await?
+            .pop(),
+    )
+}
+
+/// Claims up to `limit` of a location's due checks by moving each one interval ahead, and
+/// returns their monitors.
+pub async fn claim_for_location(
+    c: &Connection,
+    location_id: i64,
+    at: i64,
+    limit: i64,
+) -> anyhow::Result<Vec<Monitor>> {
+    let due = many(
+        c,
+        format!(
+            "SELECT {COLS} {FROM} JOIN monitor_locations ml ON ml.monitor_id = m.id
+             WHERE ml.location_id = ?1 AND ml.next_check_at <= ?2 ORDER BY ml.next_check_at LIMIT ?3"
+        ),
+        (location_id, at, limit),
+    )
+    .await?;
+    for m in &due {
+        c.execute(
+            "UPDATE monitor_locations SET next_check_at = ?1 WHERE monitor_id = ?2 AND location_id = ?3",
+            (at + m.interval_s, m.id, location_id),
+        )
+        .await?;
+    }
+    Ok(due)
 }
 
 pub async fn find_monitor(

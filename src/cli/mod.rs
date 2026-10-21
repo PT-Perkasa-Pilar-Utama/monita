@@ -2,6 +2,7 @@
 //! docs/api-specs/10-cli.md.
 
 mod envfile;
+mod probe;
 mod service;
 mod setup;
 
@@ -52,6 +53,18 @@ enum Cmd {
     },
     /// Print where the env file, the data and the logs are.
     Whereis { what: Option<Place> },
+    /// Run checks for one location of another Monita and report them. Reads no env file.
+    Probe {
+        /// The Monita to report to, such as https://monita.company.co.id. Or MONITA_PROBE_SERVER.
+        #[arg(long)]
+        server: Option<String>,
+        /// The location's token. Prefer MONITA_PROBE_TOKEN: a command line shows in `ps`.
+        #[arg(long)]
+        token: Option<String>,
+        /// Checks at once, 1 to 50.
+        #[arg(long, default_value_t = 20, value_parser = clap::value_parser!(u16).range(1..=50))]
+        concurrency: u16,
+    },
     /// Manage accounts.
     Admin {
         #[command(subcommand)]
@@ -119,12 +132,32 @@ pub async fn run(cli: Cli) -> anyhow::Result<()> {
             whereis(&|k| lookup(&file, k), env_path.as_deref(), what);
             return Ok(());
         }
+        Cmd::Probe {
+            server,
+            token,
+            concurrency,
+        } => {
+            let filter = std::env::var("MONITA_LOG").unwrap_or_else(|_| "info".into());
+            tracing_subscriber::fmt()
+                .with_env_filter(tracing_subscriber::EnvFilter::new(filter))
+                .init();
+            let var = |k: &str| std::env::var(k).ok().filter(|v| !v.trim().is_empty());
+            let server = server
+                .or_else(|| var("MONITA_PROBE_SERVER"))
+                .context("Give --server or MONITA_PROBE_SERVER.")?;
+            let token = var("MONITA_PROBE_TOKEN")
+                .or(token)
+                .context("Give MONITA_PROBE_TOKEN, or --token.")?;
+            return probe::run(&server, &token, concurrency).await;
+        }
         _ => {}
     }
     let (config, env_path) = load(cli.env_file)?;
     init_tracing(&config);
     match cli.cmd {
-        Cmd::Setup { .. } | Cmd::Whereis { .. } => unreachable!("handled above"),
+        Cmd::Setup { .. } | Cmd::Whereis { .. } | Cmd::Probe { .. } => {
+            unreachable!("handled above")
+        }
         Cmd::Serve => crate::app::serve(config).await,
         Cmd::Migrate => offline(&config, async |_| Ok(())).await,
         Cmd::Service { cmd } => match cmd {

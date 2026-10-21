@@ -103,3 +103,33 @@ The React pages under `/admin` (`system`, `limits`, `email`, `time-zone`) call t
 
 The offset is a fixed number of minutes, with no daylight saving. It sets chart labels, "since" lines, availability for Today, the status page's day bars and the pulse hours. Daily summaries and the month chart stay on UTC days. Ticket daily caps, retention and the digest hour stay on UTC.
 
+
+## 4.5 Locations (v1.1 Q26)
+
+Design: [technical-specs 14](../technical-specs/14-locations.md).
+
+### Probe API
+
+A probe authenticates with `Authorization: Bearer ml_…`. A missing or unknown token is 401 `unauthorized` and counts in the caller IP's `keymiss:` bucket. A known token counts in `probe:{id}`, 300 calls a minute; over it, 429 with `Retry-After`.
+
+| Method | Path | Input | Behavior |
+| --- | --- | --- | --- |
+| GET | `/api/v1/probe/work` | `?free=N`, 1 to 50, missing 50; any other value is 422 on `free` | Claims up to N of this location's due checks and moves each one interval ahead. 200 `{"jobs": [job]}`, empty when nothing is due. A job: `monitor_id`, `kind`, `target`, `method`, `headers`, `body`, `timeout_ms`, `expected_status`, `keyword`, `skip_tls_verify`, `expected_address`, `auth` (`{kind, user, header, secret}` or null), `secret_gone` (true when the monitor's secret was deleted: the job fails with a fixed sentence). |
+| POST | `/api/v1/probe/results` | `{"results": [{monitor_id, ok, status_code, latency_ms, error}]}`, 1 to 50 items | Stores each result with this server's clock and judges it (spec 14.7). A monitor not assigned to the location is skipped. 200 `{"stored", "skipped"}`. An empty or longer list, or a missing field, is 422. |
+
+### Pages
+
+| Method | Path | Access | Input | Behavior |
+| --- | --- | --- | --- | --- |
+| GET | `/api/ui/admin/locations` | super_admin, supervisor | | `locations`: each `{id, name, token_prefix, last_seen_at, monitors, created_at}`, by name; `max`, the cap (10). |
+| POST | `/api/ui/admin/locations` | super_admin | `name`, 1 to 40 characters, unique | 201 `{id, name, token}`. The token shows only in this answer. A blank, long or taken name is 422 on `name`; an 11th location is 422 on `name`. |
+| DELETE | `/api/ui/admin/locations/{id}` | super_admin | | Deletes the location, its assignments and its results. Each monitor's quorum drops to at most its number of places. 204; 404 when unknown. |
+
+The monitor form (4.3) takes two more fields:
+
+| Field | Type | Rule |
+| --- | --- | --- |
+| `location_ids` | array of numbers | Locations this monitor also checks from. Missing or empty: this server only. An unknown id is 422 on `location_ids`. |
+| `quorum` | string | 1 to 1 + the number of `location_ids`: how many places must fail. Missing means 1. |
+
+The monitor view adds `quorum`. The monitor page's answer adds `location_ids` and `places`: one `{location_id, name, last}` per place, this server first with `location_id` null, `last` as `[checked_at, ok, error]` or null; `places` is empty when the monitor has no locations. `GET /api/ui/check-options` adds `locations`: each `{id, name}`. Each check in the monitor page's list adds `place`, the location's name or null for this server.

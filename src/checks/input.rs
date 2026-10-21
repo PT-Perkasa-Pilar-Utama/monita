@@ -43,6 +43,11 @@ pub struct MonitorInput {
     pub auth_header: Option<String>,
     /// HTTPS only: warn this many days before the certificate expires; None is off.
     pub cert_warn_days: Option<i64>,
+    /// How many places must fail for a check to count as failed: 1 to 1 + the locations.
+    pub quorum: i64,
+    /// The locations the monitor also checks from (technical-specs 14). Their existence is
+    /// checked when the form is saved.
+    pub location_ids: Vec<i64>,
 }
 
 /// The certificate warnings a monitor may choose, in days (v1.1 Q25).
@@ -64,6 +69,7 @@ impl MonitorInput {
             alert: true,
             auto_incident: true,
             fails_to_open: 2,
+            quorum: 1,
             ..Self::default()
         }
     }
@@ -85,6 +91,17 @@ impl MonitorInput {
         let fails = crate::incidents::engine::FAILS_RANGE;
         if !(i64::from(*fails.start())..=i64::from(*fails.end())).contains(&self.fails_to_open) {
             e.insert("fails_to_open", "Enter a number from 1 to 99.");
+        }
+        let places = 1 + self.location_ids.len() as i64;
+        if !(1..=places).contains(&self.quorum) {
+            e.insert(
+                "quorum",
+                if places == 1 {
+                    "With this server alone, 1 place decides."
+                } else {
+                    "Enter a number from 1 to the number of places."
+                },
+            );
         }
         let url = self.url.trim();
         match self.kind() {

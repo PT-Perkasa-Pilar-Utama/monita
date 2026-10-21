@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { apiSend } from "../lib/api";
+import { apiProject, apiSend } from "../lib/api";
 import { authFile } from "../lib/roles";
 
 test.use({ storageState: authFile("admin") });
@@ -74,4 +74,31 @@ test("Admin in the header opens the admin page opened last", async ({ page }) =>
   await page.goto("/");
   await page.getByRole("link", { name: "Admin", exact: true }).click();
   await expect(page).toHaveURL(/\/admin\/email$/);
+});
+
+test("a location is added with its token shown once, a monitor checks from it, and it is deleted", async ({ page }) => {
+  const name = `Jakarta ${Date.now() % 100000}`;
+  await page.goto("/admin/locations");
+  await page.getByRole("button", { name: "Add location" }).click();
+  await page.getByLabel("Name").fill(name);
+  await page.getByRole("dialog").getByRole("button", { name: "Add location" }).click();
+  await expect(page.getByText(`${name} is ready.`)).toBeVisible();
+  await expect(page.locator("#probe-command")).toContainText("MONITA_PROBE_TOKEN='ml_");
+  const row = page.getByRole("row").filter({ hasText: name });
+  await expect(row).toContainText("Never");
+
+  const slug = await apiProject(page, "Places");
+  await page.goto(`/projects/${slug}/monitors/new`);
+  await page.locator("#m-name").fill("Checkout");
+  await page.locator("#m-url").fill("http://127.0.0.1:9/");
+  await page.getByLabel(name).check();
+  await page.locator("#m-quorum").fill("2");
+  await page.getByRole("button", { name: "Save monitor" }).click();
+  await expect(page.getByText("Places: a check fails when 2 of 2 fail")).toBeVisible();
+  await expect(page.getByRole("cell", { name, exact: true })).toBeVisible();
+
+  await page.goto("/admin/locations");
+  await page.getByRole("button", { name: `Delete ${name}` }).click();
+  await page.getByRole("button", { name: "Delete location" }).click();
+  await expect(row).toHaveCount(0);
 });

@@ -31,6 +31,7 @@ import { Status } from "@/pages/public/Status";
 import { Email } from "@/pages/admin/Email";
 import { RateLimits } from "@/pages/admin/RateLimits";
 import { System } from "@/pages/admin/System";
+import { Locations } from "@/pages/admin/Locations";
 import { TimeZone } from "@/pages/admin/TimeZone";
 import { Users } from "@/pages/admin/users/Users";
 import { AllIncidents } from "@/pages/AllIncidents";
@@ -58,6 +59,7 @@ export default function App(): ReactElement {
             <Route path="/admin/users" element={<Users />} />
             <Route path="/admin/limits" element={<RateLimits />} />
             <Route path="/admin/email" element={<Email />} />
+            <Route path="/admin/locations" element={<Locations />} />
             <Route path="/admin/time-zone" element={<TimeZone />} />
             <Route path="/admin/system" element={<System />} />
             <Route path="/admin/settings" element={<Navigate to="/admin/system" replace />} />

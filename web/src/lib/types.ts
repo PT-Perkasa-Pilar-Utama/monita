@@ -117,6 +117,8 @@ export type MonitorView = {
   alert: boolean;
   auto_incident: boolean;
   fails_to_open: number;
+  /** How many places must fail for a check to count as failed. */
+  quorum: number;
   method: "GET" | "HEAD" | "POST" | "PUT";
   /** `Name: value` lines. */
   headers: string;
@@ -191,7 +193,12 @@ export type CheckRow = {
   status_code: number | null;
   latency_ms: number | null;
   error: string | null;
+  /** The location that ran it, or null for this server. */
+  place: string | null;
 };
+
+/** One place a monitor checks from and its newest result: `[checked_at, ok, error]`. */
+export type PlaceView = { location_id: number | null; name: string; last: [number, boolean, string | null] | null };
 
 export type MonitorDetail = {
   monitor: MonitorView;
@@ -199,7 +206,15 @@ export type MonitorDetail = {
   insight: Insight;
   checks: CheckRow[];
   older: string | null;
+  /** The locations the monitor also checks from. */
+  location_ids: number[];
+  /** Each place's newest result, this server first; empty without locations. */
+  places: PlaceView[];
 };
+
+export type LocationRow = { id: number; name: string; token_prefix: string; last_seen_at: number | null; monitors: number; created_at: number };
+
+export type LocationList = { locations: LocationRow[]; max: number };
 
 export type Due = { used: number; late: boolean; text: string };
 
@@ -248,6 +263,8 @@ export type CheckOptions = {
   fails: { min: number; max: number };
   monitor: { interval_s: number; timeout_s: number; expected_status: string; severity: Severity };
   heartbeat: { period_s: number; grace_s: number; severity: Severity };
+  /** Every location a monitor can also check from. */
+  locations: { id: number; name: string }[];
 };
 
 export type UpdateRow = { label: UpdateLabel; message: string; author_email: string | null; created_at: number };

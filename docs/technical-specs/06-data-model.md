@@ -227,10 +227,21 @@ State words on the team's pages: `Up`, `Down`, `Issue` and `No data yet`. A moni
 
 | table | columns |
 | --- | --- |
-| check_results | id, monitor_id FK, checked_at INDEX(monitor_id, checked_at), ok, status_code NULL, latency_ms NULL, error NULL |
+| check_results | id, monitor_id FK, checked_at INDEX(monitor_id, checked_at), ok, status_code NULL, latency_ms NULL, error NULL, location_id NULL FK locations ON DELETE CASCADE INDEX(monitor_id, location_id, checked_at) (null: this server; migration 0030) |
 | pings | id, heartbeat_id FK, received_at INDEX(heartbeat_id, received_at), kind (`ok`, `fail`), source_ip, cause (NULL, the first 1 KB of a `/fail` body after leading whitespace) |
 
-Both keep 7 days. See [13 section 13.6](13-check-scheduler.md).
+Both keep 7 days. See [13 section 13.6](13-check-scheduler.md). Charts, daily summaries and the monitor list's last check read this server's results only (`location_id IS NULL`).
+
+### 6.3.9a locations and monitor_locations
+
+Migration 0030, v1.1 Q26. Design: [14](14-locations.md).
+
+| table | columns |
+| --- | --- |
+| locations | id AUTOINCREMENT, name UNIQUE, token_hash UNIQUE (SHA-256), token_prefix, last_seen_at NULL, created_at |
+| monitor_locations | monitor_id FK ON DELETE CASCADE, location_id FK ON DELETE CASCADE, next_check_at; PK (monitor_id, location_id); INDEX (location_id, next_check_at) |
+
+`monitors.quorum` (INTEGER, default 1, 1 to 11): how many places must fail for a check to count as failed.
 
 ### 6.3.10 daily_summaries
 
