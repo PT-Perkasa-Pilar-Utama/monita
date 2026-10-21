@@ -90,8 +90,9 @@ fn html(s: &str) -> String {
         .replace('"', "&quot;")
 }
 
-/// A Telegram `sendMessage` body for `chat`, in HTML: a bold title, the project, the facts and a
-/// named link.
+/// A Telegram `sendMessage` body for `chat`, in HTML: a bold title, the project, the facts and the
+/// link. The link shows its own URL: Telegram drops links to hosts it will not open, such as
+/// `localhost`, and a named link would then leave nothing to copy.
 pub(super) fn telegram(card: &Card, link: &str, chat: &str) -> Value {
     let mut text = format!(
         "{} <b>{}: {}</b>\n{}\n",
@@ -103,9 +104,9 @@ pub(super) fn telegram(card: &Card, link: &str, chat: &str) -> Value {
     for (name, value) in &card.facts {
         text.push_str(&format!("\n<b>{name}:</b> {}", html(value)));
     }
+    let link = html(link);
     text.push_str(&format!(
-        "\n\n<a href=\"{}\">{}</a>",
-        html(link),
+        "\n\n{}: <a href=\"{link}\">{link}</a>",
         card.link_label
     ));
     json!({
@@ -154,7 +155,7 @@ mod tests {
         assert_eq!(b["parse_mode"], "HTML");
         assert_eq!(
             b["text"],
-            "🔴 <b>Critical: API &lt;health&gt; is down</b>\nPay &amp; Go\n\n<b>Cause:</b> HTTP 503 @everyone\n\n<a href=\"https://m.co/i/7?a=1&amp;b=&quot;2&quot;\">Open the incident</a>"
+            "🔴 <b>Critical: API &lt;health&gt; is down</b>\nPay &amp; Go\n\n<b>Cause:</b> HTTP 503 @everyone\n\nOpen the incident: <a href=\"https://m.co/i/7?a=1&amp;b=&quot;2&quot;\">https://m.co/i/7?a=1&amp;b=&quot;2&quot;</a>"
         );
     }
 }
