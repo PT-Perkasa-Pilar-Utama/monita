@@ -1,4 +1,4 @@
-//! SQL for Monita's Telegram bot: its settings rows and the connect links.
+//! SQL for the global Telegram bot: its settings rows and the connect links.
 
 use turso::Connection;
 

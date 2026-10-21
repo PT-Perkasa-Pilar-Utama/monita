@@ -17,7 +17,7 @@ pub const FORMATS: [&str; 6] = [
 /// PagerDuty's Events API v2. A route in this format posts here, whatever URL the form sent.
 pub(super) const PAGERDUTY_URL: &str = "https://events.pagerduty.com/v2/enqueue";
 
-/// What a `telegram_bot` route stores as its URL. Delivery adds Monita's bot token then, so no
+/// What a `telegram_bot` route stores as its URL. Delivery adds the global bot's token then, so no
 /// route or outbox row ever holds it (v1.1 Q33).
 pub(super) const TELEGRAM_BOT_URL: &str = "https://api.telegram.org/";
 
@@ -99,7 +99,7 @@ pub(super) fn webhook(
     let critical = msg.json["severity"] == "critical";
     match format {
         "discord" => (url.to_string(), card::discord(&msg.card, &msg.link)),
-        // Monita's bot posts to the chat; delivery adds the token (`telegram::send_url`).
+        // the global Telegram bot posts to the chat; delivery adds the token (`telegram::send_url`).
         "telegram_bot" => (
             key.unwrap_or_default().to_string(),
             card::telegram(&msg.card, &msg.link, key.unwrap_or_default()),
@@ -244,7 +244,10 @@ mod tests {
             "pay",
             &msg(false),
         );
-        assert_eq!(to, "4242", "Monita's bot queues the chat, not a URL");
+        assert_eq!(
+            to, "4242",
+            "the global Telegram bot queues the chat, not a URL"
+        );
         assert!(
             body["text"]
                 .as_str()

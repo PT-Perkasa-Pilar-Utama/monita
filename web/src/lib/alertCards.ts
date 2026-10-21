@@ -23,6 +23,7 @@ export function unheard(cards: AlertCard[]): Level[] {
 export function kindLabel(kind: CardKind): string {
   if (kind === "owner_email") return "The owner's email";
   if (kind === "email") return "Email";
+  if (kind === "json") return "JSON webhook";
   return WEBHOOK_FORMATS.find((f) => f.value === kind)?.label ?? kind;
 }
 

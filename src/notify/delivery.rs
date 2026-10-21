@@ -111,7 +111,7 @@ async fn deliver_one(state: &AppState, row: store::OutboxRow) -> anyhow::Result<
                 let Some(url) =
                     super::telegram::send_url(&state.db, &state.config.telegram_api).await?
                 else {
-                    anyhow::bail!("Monita's Telegram bot is not set");
+                    anyhow::bail!("The global Telegram bot is not set");
                 };
                 super::telegram::post(state.http.webhook(), &url, &row.body).await
             }

@@ -5,8 +5,8 @@ export type WebhookFormat = "json" | "discord" | "telegram" | "telegram_bot" | "
 export const WEBHOOK_FORMATS: { value: WebhookFormat; label: string }[] = [
   { value: "json", label: "JSON (Slack, Google Chat, any receiver)" },
   { value: "discord", label: "Discord" },
-  { value: "telegram_bot", label: "Telegram with Monita's bot" },
-  { value: "telegram", label: "Telegram with your own bot" },
+  { value: "telegram_bot", label: "Global Telegram" },
+  { value: "telegram", label: "Telegram" },
   { value: "ntfy", label: "ntfy" },
   { value: "pagerduty", label: "PagerDuty" },
 ];
@@ -34,10 +34,4 @@ export function webhookFields(format: WebhookFormat): WebhookFields {
     default:
       return { url: { label: "Webhook URL", placeholder: "https://hooks.slack.com/services/…" }, key: null };
   }
-}
-
-/** The formats the form offers: Monita's bot only once a super admin set one, unless the route
- * already uses it. */
-export function formatsFor(bot: string | null, current: WebhookFormat): { value: WebhookFormat; label: string }[] {
-  return WEBHOOK_FORMATS.filter((f) => f.value !== "telegram_bot" || bot !== null || current === "telegram_bot");
 }

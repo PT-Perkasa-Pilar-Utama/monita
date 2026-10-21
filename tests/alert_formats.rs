@@ -201,3 +201,62 @@ async fn the_form_names_what_a_format_needs_and_a_supervisor_never_sees_the_key(
     assert_eq!(seen["key"], "(hidden)");
     assert_eq!(seen["url"], "(hidden)");
 }
+
+/// v1.1 Q36: the ticket webhook speaks a format too, PagerDuty aside.
+#[tokio::test]
+async fn ticket_alerts_speak_a_format_but_not_pagerduty() {
+    let app = TestApp::spawn("test").await;
+    let tl = setup(&app).await;
+    let put = async |body: Value| {
+        app.api_send(
+            reqwest::Method::PUT,
+            "/api/ui/projects/payments/ticket-alerts",
+            body,
+            Some(&tl),
+        )
+        .await
+    };
+    let field = async |res: reqwest::Response| {
+        assert_eq!(res.status(), 422);
+        json_of(res).await["error"]["fields"]
+            .as_object()
+            .unwrap()
+            .keys()
+            .cloned()
+            .collect::<Vec<_>>()
+    };
+    let pd =
+        json!({ "use_webhook": true, "webhook_format": "pagerduty", "webhook_key": "R0utingKey1" });
+    assert_eq!(field(put(pd).await).await, ["webhook_format"]);
+    let bot =
+        json!({ "use_webhook": true, "webhook_format": "telegram_bot", "webhook_key": "4242" });
+    assert_eq!(
+        field(put(bot).await).await,
+        ["webhook_format"],
+        "no global bot is set"
+    );
+
+    let discord = json!({ "digest": true, "use_webhook": true, "webhook_format": "discord",
+                          "webhook_url": "https://discord.com/api/webhooks/2/t" });
+    assert_eq!(put(discord).await.status(), 204);
+    app.state
+        .db
+        .write(async |c| {
+            monita::notify::send_ticket(c, 1, 7, "Receipt shows <b>", common::BASE_URL).await
+        })
+        .await
+        .unwrap();
+    let sent = webhooks(&app).await;
+    let (to, body) = sent.last().unwrap();
+    assert_eq!(to, "https://discord.com/api/webhooks/2/t");
+    assert_eq!(
+        body["embeds"][0]["title"],
+        "🔵 New ticket: #7 Receipt shows <b>"
+    );
+    assert!(
+        body["embeds"][0]["url"]
+            .as_str()
+            .unwrap()
+            .ends_with("/projects/payments/tickets/7")
+    );
+}

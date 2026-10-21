@@ -27,7 +27,7 @@ pub struct Config {
     pub smtp_url: Option<String>,
     pub mail_from: String,
     pub ping_url: Option<String>,
-    /// The Telegram Bot API server Monita's bot uses: Telegram's, or a self-hosted one (v1.1 Q33).
+    /// The Telegram Bot API server the global Telegram bot uses: Telegram's, or a self-hosted one (v1.1 Q33).
     pub telegram_api: String,
     pub trust_proxy: bool,
     pub digest_utc_hour: u32,

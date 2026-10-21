@@ -1,4 +1,4 @@
-//! Monita's Telegram bot as JSON: the admin setting and a severity's connect link.
+//! The global Telegram bot as JSON: the admin setting and a severity's connect link.
 //! Contract: docs/api-specs/06-notify.md section 6.4.
 
 use axum::{

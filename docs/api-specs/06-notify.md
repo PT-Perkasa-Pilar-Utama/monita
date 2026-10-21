@@ -15,8 +15,8 @@ The React page `/projects/{slug}/settings/alerts` calls these (conventions 1.10)
 | PUT | `/api/ui/projects/{slug}/alert-cards/{id}/enabled` | owner, super_admin | `enabled` (boolean) | Any card, the owner's too. Off sends nothing and keeps the card. 204, or 404. | |
 | POST | `/api/ui/projects/{slug}/alert-cards/{id}/test` | owner, super_admin | | One `test` alert to this card alone, on or off. 200 `{sent_to}`: its addresses, or 1 for a webhook card. A PagerDuty test sends a trigger and its resolve. | |
 | PUT | `/api/ui/projects/{slug}/ticket-alerts/enabled` | owner, super_admin | `enabled` (boolean) | Ticket alerts on or off; their settings stay. 204. | |
-| GET | `/api/ui/projects/{slug}/ticket-alerts` | owner, super_admin, supervisor | | `enabled`, `digest` (the owner's daily digest), `webhook_url`, `use_webhook` (a webhook per new ticket) and `webhook_moves` (a webhook per column move). A project with no saved row reads digest on, both webhooks off, `enabled` on. | AC-30.01 |
-| PUT | `/api/ui/projects/{slug}/ticket-alerts` | owner, super_admin | `digest`, `webhook_url`, `use_webhook`, `webhook_moves` (booleans and a URL) | Save, 204. The URL is required when `use_webhook` or `webhook_moves` is on, and it must be `http://` or `https://`: 422 on `webhook_url` otherwise. A URL kept while both boxes are off waits for the next time. It does not change `enabled`. | AC-30.03 |
+| GET | `/api/ui/projects/{slug}/ticket-alerts` | owner, super_admin, supervisor | | `enabled`, `digest` (the owner's daily digest), `webhook_url`, `use_webhook` (a webhook per new ticket) `webhook_moves` (a webhook per column move), `webhook_format` and `webhook_key`. A supervisor reads `(hidden)` for a set URL and key. A project with no saved row reads digest on, both webhooks off, `enabled` on. | AC-30.01 |
+| PUT | `/api/ui/projects/{slug}/ticket-alerts` | owner, super_admin | `digest`, `webhook_url`, `use_webhook`, `webhook_moves` (booleans and a URL), `webhook_format` (`json`, `discord`, `telegram`, `telegram_bot` or `ntfy`; blank is `json`; v1.1 Q36), `webhook_key` (a Telegram chat ID) | Save, 204. The format and key are checked as for a card; PagerDuty is refused on `webhook_format`, and so is `telegram_bot` while no global bot is set. Discord and Telegram get the ticket as a card. The URL is required when `use_webhook` or `webhook_moves` is on, and it must be `http://` or `https://`: 422 on `webhook_url` otherwise. A URL kept while both boxes are off waits for the next time. It does not change `enabled`. | AC-30.03 |
 | POST | `/api/ui/projects/{slug}/ticket-alerts/test` | owner, super_admin | | Send one `test` event to the ticket webhook. 200 `{sent_to}`: 1, or 0 when the ticket alerts are off, neither webhook box is on, or no URL is saved. | |
 | GET | `/api/ui/projects/{slug}/alerts-preview` | owner, super_admin, supervisor | | Sample alerts of every kind, built by the code that sends the real ones, with this project's name: a list of `{event, label, route, email, webhook}`. `event` is the webhook `event` (6.2). `route` is the setting that sends it: `critical`, `warning` or `ticket`. `email` is `{subject, body}`, or null for a kind that sends no email. | |
 
@@ -52,7 +52,7 @@ Ticket alerts are apart from the alert cards. No card receives tickets.
 
 A monitor or heartbeat with its alert switch off sends none of the first five (4.3).
 
-## 6.4 Monita's Telegram bot
+## 6.4 The global Telegram bot
 
 v1.1 Q33. A super admin sets one bot for the whole Monita. A severity in the `telegram_bot` format posts through it to a chat that a connect link found. The token stays in `settings`: no page, route, outbox row or log line holds it. Delivery queues an outbox row with `channel = 'telegram'` and the chat ID as `recipient`, then adds the token when it sends. `MONITA_TELEGRAM_API` points at another Bot API server.
 

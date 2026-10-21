@@ -13,7 +13,7 @@ export type TelegramChat = { chat_id: string; title: string };
 const POLL_MS = 3000;
 
 /**
- * Connects a chat to Monita's bot: a link and its QR code. The person opens it in Telegram, or
+ * Connects a chat to the global Telegram bot: a link and its QR code. The person opens it in Telegram, or
  * adds the bot to a group with it; the dialog asks the server until the bot hears it.
  */
 export function TelegramConnect({ slug, bot, onChat }: { slug: string; bot: string; onChat: (chat: TelegramChat) => void }): ReactElement {

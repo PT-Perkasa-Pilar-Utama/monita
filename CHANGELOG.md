@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [1.1.0] - 2026-10-21
 
-More ways to check, alert and plan: TCP, DNS and ping monitors, certificate warnings, checks from more than one place, Discord, Telegram, ntfy and PagerDuty alerts, maintenance windows, and two-factor sign-in. Migrations 0024 to 0037 run on start; 0029 rebuilds the `monitors` table.
+More ways to check, alert and plan: TCP, DNS and ping monitors, certificate warnings, checks from more than one place, Discord, Telegram, ntfy and PagerDuty alerts, maintenance windows, and two-factor sign-in. Migrations 0024 to 0038 run on start; 0029 rebuilds the `monitors` table.
 
 ### Added
 
@@ -21,11 +21,12 @@ More ways to check, alert and plan: TCP, DNS and ping monitors, certificate warn
 - TCP port and DNS name monitors beside HTTP ([#9](https://github.com/PT-Perkasa-Pilar-Utama/monita/issues/9)). Migration 0024.
 - **User settings**, **Password**: change your own password with the current one. Your other sessions sign out.
 - **User settings**, **Profile**: a picture the top bar shows in place of your initial. Migration 0034.
-- Monita's own Telegram bot: a super admin sets it once in **Admin**, **Telegram**, and a project picks **Telegram with Monita's bot** and connects a chat with a link or QR code. `MONITA_TELEGRAM_API` points at a self-hosted Bot API server. Migration 0036.
+- A global Telegram bot for every project: a super admin sets it up once in **Admin**, **Telegram**, and a project picks **Global Telegram** and connects a chat with a link or QR code. `MONITA_TELEGRAM_API` points at a self-hosted Bot API server. Migration 0036.
 - Discord and Telegram alerts are laid out for reading: a coloured title that links to Monita, the project, and the cause or how long it was down. Discord posts them as Monita.
 
 ### Changed
 
+- The ticket webhook picks a format, as an alert card does: JSON, Discord, Telegram, the global Telegram bot or ntfy. Migration 0038.
 - Passwords need 8 characters or more, down from 12.
 - **Alert cards** replace the Critical and Warning sections. Every project keeps two fixed cards that email its owner, one per level, and adds up to 10 of its own: an email list or a webhook in any format, each listening to critical, warning or both, each with its own switch and test. Migration 0037 converts the old settings; nobody who got alerts stops getting them.
 - A new project's critical alerts no longer start with the webhook ticked. Neither severity calls a webhook until its owner ticks it and sets a URL. Migration 0033 unticks existing routes that have no URL.

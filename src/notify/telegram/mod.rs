@@ -1,4 +1,4 @@
-//! Monita's own Telegram bot (v1.1 Q33). A super admin sets its token once. A project's severity
+//! The global Telegram bot (v1.1 Q33). A super admin sets its token once. A project's severity
 //! then uses the `telegram_bot` format with a chat that a connect link found: the owner opens
 //! `t.me/<bot>?start=<code>`, or adds the bot to a group with `?startgroup=<code>`; the bot hears
 //! `/start <code>`; the page's check reads the bot's messages and fills in the chat ID.
@@ -26,7 +26,7 @@ pub enum TelegramError {
         "This bot sends its messages to a webhook, so Monita cannot read them. Use a bot for Monita alone."
     )]
     WebhookSet,
-    #[error("Ask a super admin to set Monita's Telegram bot first.")]
+    #[error("Ask a super admin to set the global Telegram bot first.")]
     NoBot,
     #[error("Monita could not reach Telegram. Try again.")]
     Unreachable,
@@ -130,7 +130,7 @@ async fn call(
     Ok((status, body))
 }
 
-/// Saves Monita's bot after Telegram confirms the token; an empty token forgets the bot.
+/// Saves the global Telegram bot after Telegram confirms the token; an empty token forgets the bot.
 /// Returns the bot's name.
 pub async fn set_bot(
     db: &Db,

@@ -21,11 +21,12 @@ Select **Add alert card** to add your own, up to 10:
 
 | Field | Means |
 | --- | --- |
+| Global Telegram or Custom | Shows when the global Telegram bot is set up. Custom offers the rest. |
 | Sends by | Email, or a webhook format. See the table below. |
 | Name | What the card is called on the page and in its test, such as `On call` |
 | Listens to | **Critical alerts**, **Warning alerts** or both |
 | Email addresses | Email cards only. One per line, up to 20. |
-| Webhook URL | Where Monita posts. Not for PagerDuty or Monita's Telegram bot. |
+| Webhook URL | Where Monita posts. Not for PagerDuty or the global Telegram bot. |
 | Chat ID or Routing key | Telegram and PagerDuty only |
 
 Each card has an **On** or **Off** switch, which saves at once. Off keeps the card and sends nothing. **Send a test** sends one test alert to that card alone. **Edit** changes the card or deletes it.
@@ -36,20 +37,20 @@ An address in two cards that hear the same alert gets one email. When no card th
 | --- | --- | --- | --- |
 | JSON | Any receiver, Slack or Google Chat incoming webhook | | The body under [What recipients get](#what-recipients-get) |
 | Discord | The channel's webhook URL | | An embed, posted as Monita: a coloured title that links to Monita (red critical, orange warning, green resolved or up, blue test), the project, and the cause or how long it was down. Mentions such as `@everyone` in the text do not ping. |
-| Telegram with Monita's bot | None: Monita uses the bot a super admin set | A chat, connected with a link | A bold title with the same coloured mark, the project, the cause or how long it was down, and the link to Monita. Telegram makes no link of a `localhost` address; the URL still shows, to copy. |
-| Telegram with your own bot | `https://api.telegram.org/bot<token>/sendMessage` | The chat ID, such as `-1001234567890` or `@team_alerts` | The same as with Monita's bot |
+| Global Telegram | None: Monita uses the bot a super admin set | A chat, connected with a link | A bold title with the same coloured mark, the project, the cause or how long it was down, and the link to Monita. Telegram makes no link of a `localhost` address; the URL still shows, to copy. |
+| Telegram | `https://api.telegram.org/bot<token>/sendMessage` | The chat ID, such as `-1001234567890` or `@team_alerts` | The same as with the global Telegram bot |
 | ntfy | The topic URL, such as `https://ntfy.sh/team-alerts` | | A title, the message and a link; priority 5 for critical, 4 for warning, 3 when it resolves |
 | PagerDuty | Fixed: the Events API v2 | The routing key of an Events API v2 integration | A trigger when an incident opens or a source goes down, and a resolve with the same dedup key when it ends. **Send a test** sends a trigger and its resolve. |
 
-### Telegram with Monita's bot
+### Global Telegram
 
-The format shows once a super admin sets the bot in **Admin**, **Telegram**.
+A super admin sets up one bot for every project in **Admin**, **Telegram**. Once it is set, the card form starts with a switch: **Global Telegram** or **Custom**.
 
-1. Select **Add alert card**, pick **Telegram with Monita's bot** under **Sends by**, and select **Connect a chat**.
+1. Select **Add alert card**, pick **Global Telegram**, and select **Connect a chat**.
 2. Scan the QR code with your phone, or select **Open in Telegram**, then select **Start**. To alert a group, select **Add to a group** and pick the group.
 3. The dialog closes when the bot hears you. The chat fills in. Select **Add card**.
 
-The link works for 10 minutes. A bot cannot send to a person by @username, so the link is how Monita learns the chat. A public channel can also be typed as `@channel`; add the bot to the channel as an admin first.
+The link works for 10 minutes. A bot cannot send to a person by @username, so the link is how Monita learns the chat. A public channel can also be typed as `@channel`. Add the bot to the channel as an admin first.
 
 Each recipient gets one alert when an incident opens and one when it closes. A manual incident sends no alert. It shows on the status page.
 
@@ -68,9 +69,10 @@ This section covers user bug reports and moves on the ticket board. A ticket you
 | Email `<owner>` a daily list of new tickets in Triage | The digest. On by default. It goes to the project owner. |
 | Send each new ticket to the webhook | Off by default |
 | Send each ticket move to the webhook | Off by default |
-| Webhook URL | Required when either webhook box is ticked |
+| Global Telegram or Custom, then the format | Where the webhook goes: JSON, Discord, Telegram, ntfy or the global Telegram bot. Not PagerDuty, because a ticket is not an incident. |
+| Webhook URL or chat | Required when either webhook box is ticked |
 
-The new-ticket and move alerts go to this webhook, not to the warning webhook. **Send a test** works when either webhook box is saved as on.
+The new-ticket and move alerts go to this webhook, not to any alert card. Discord and Telegram get them laid out as for incidents. **Send a test** works when either webhook box is saved as on.
 
 ## What recipients get
 

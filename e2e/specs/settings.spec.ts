@@ -93,7 +93,7 @@ test("ticket alerts keep the column-move box once saved", async ({ page }) => {
   await page.goto(`/projects/${slug}/settings/alerts`);
   const tickets = page.locator("#tickets");
   await tickets.locator("#ticket-webhook-on").click();
-  await tickets.locator("#ticket-webhook").fill("https://hooks.example.com/tickets");
+  await tickets.locator("#ticket-url").fill("https://hooks.example.com/tickets");
   await tickets.locator("#ticket-webhook-moves").click();
   await tickets.getByRole("button", { name: "Save changes" }).click();
   await expect(page.getByText("Ticket alerts saved.")).toBeVisible();

@@ -146,7 +146,7 @@ export function Alerts(): ReactElement {
           }}
         />
       )}
-      {tickets.data ? <TicketAlertsSection slug={p.slug} owner={p.owner_email} initial={tickets.data} onSaved={() => undefined} /> : <Skeleton className="h-56 rounded-xl" />}
+      {tickets.data && telegram.data ? <TicketAlertsSection slug={p.slug} owner={p.owner_email} bot={telegram.data?.bot ?? null} initial={tickets.data} /> : <Skeleton className="h-56 rounded-xl" />}
     </SettingsPage>
   );
 }

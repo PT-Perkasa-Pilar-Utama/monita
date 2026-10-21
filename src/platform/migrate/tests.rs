@@ -282,7 +282,7 @@ async fn migration_33_unticks_webhooks_without_a_url() {
     );
 }
 
-/// Migration 36 rebuilt alert_routes and outbox for Monita's Telegram bot; rows keep their ids.
+/// Migration 36 rebuilt alert_routes and outbox for the global Telegram bot; rows keep their ids.
 #[tokio::test]
 async fn migration_36_keeps_routes_and_outbox_rows_and_takes_the_bot() {
     let (_dir, db) = at(35).await;

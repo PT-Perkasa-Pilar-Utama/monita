@@ -157,7 +157,7 @@ A project has its two `owner_email` cards (one critical, one warning), which onl
 
 ### 6.3.6a ticket_alerts
 
-One row per project. Ticket alerts are apart from the severities (migration 0007).
+One row per project. Ticket alerts are apart from the alert cards (migration 0007).
 
 | column | type | nullable | default | key | notes |
 | --- | --- | --- | --- | --- | --- |
@@ -167,6 +167,8 @@ One row per project. Ticket alerts are apart from the severities (migration 0007
 | use_webhook | INTEGER | no | 0 | | `CHECK (use_webhook = 0 OR webhook_url IS NOT NULL)`. One `ticket.created` call per reporter ticket. |
 | webhook_moves | INTEGER | no | 0 | | One `ticket.moved` call per column move (migration 0011). The app checks that the URL is set, because SQLite cannot add that `CHECK` afterwards. |
 | enabled | INTEGER | no | 1 | | The section's on and off switch (migration 0008) |
+| webhook_format | TEXT | no | `'json'` | | `json`, `discord`, `telegram`, `telegram_bot` or `ntfy` (migration 0038, v1.1 Q36). Not `pagerduty`. |
+| webhook_key | TEXT | yes | | | A Telegram chat ID. A supervisor never sees it. |
 
 ### 6.3.7 monitors
 
@@ -285,7 +287,7 @@ Uptime % for a day = `1 - downtime_s / 86400`. The status page computes the same
 | column | type | notes |
 | --- | --- | --- |
 | id | INTEGER | PK |
-| channel | TEXT | `email`, `webhook`, `telegram` (Monita's bot; migration 0036 rebuilt the table for it) |
+| channel | TEXT | `email`, `webhook`, `telegram` (the global Telegram bot; migration 0036 rebuilt the table for it) |
 | recipient | TEXT | Email address, URL, or a Telegram chat ID. A `telegram` row never holds the bot token; delivery adds it. |
 | subject | TEXT NULL | Email only |
 | body | TEXT | Plain text, or JSON for webhooks |
@@ -295,7 +297,7 @@ Uptime % for a day = `1 - downtime_s / 86400`. The status page computes the same
 | last_error | TEXT NULL | |
 | created_at | INTEGER | Rows older than 30 days are deleted |
 
-`telegram_links` (migration 0036, v1.1 Q33; reshaped by 0037): `code_hash` TEXT PK (SHA-256 of a connect link's code), `project_id` FK projects ON DELETE CASCADE, `expires_at` (10 minutes after the link), `chat_id` and `chat_title` (set when the bot hears the code). A project has one open link: a new one deletes its older link and every expired one. Monita's bot itself is three `settings` rows: `telegram_bot_token`, `telegram_bot_name` and `telegram_offset` (the next update to read).
+`telegram_links` (migration 0036, v1.1 Q33; reshaped by 0037): `code_hash` TEXT PK (SHA-256 of a connect link's code), `project_id` FK projects ON DELETE CASCADE, `expires_at` (10 minutes after the link), `chat_id` and `chat_title` (set when the bot hears the code). A project has one open link: a new one deletes its older link and every expired one. the global Telegram bot itself is three `settings` rows: `telegram_bot_token`, `telegram_bot_name` and `telegram_offset` (the next update to read).
 
 ### 6.3.13 ref_ids and tickets
 

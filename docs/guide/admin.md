@@ -139,7 +139,7 @@ A badge reads **Sending** or **Log only**. The section shows the mail server, th
 
 ## Telegram
 
-**Admin**, **Telegram** sets Monita's own bot. Projects then pick **Telegram with Monita's bot** and connect a chat with a link, with no token of their own.
+**Admin**, **Telegram** sets the global Telegram bot. Projects then pick **Global Telegram** and connect a chat with a link, with no token of their own.
 
 1. In Telegram, message @BotFather, send `/newbot`, and copy the token.
 2. Paste it in **Bot token** and select **Save token**. Monita checks the token with Telegram first.

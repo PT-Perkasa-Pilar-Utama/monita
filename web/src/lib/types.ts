@@ -323,7 +323,17 @@ export type StageCounts = Record<Stage, number>;
 export type TicketBoard = { tickets: TicketRow[]; counts: StageCounts };
 
 /** Who hears about new tickets: the owner's daily digest, and a webhook per ticket. */
-export type TicketAlerts = { enabled: boolean; digest: boolean; webhook_url: string | null; use_webhook: boolean; webhook_moves: boolean };
+export type TicketAlerts = {
+  enabled: boolean;
+  digest: boolean;
+  webhook_url: string | null;
+  use_webhook: boolean;
+  webhook_moves: boolean;
+  /** How the webhook speaks (v1.1 Q36): json, discord, telegram, telegram_bot or ntfy. */
+  webhook_format: import("@/lib/webhookFormats").WebhookFormat;
+  /** A Telegram chat ID; "(hidden)" for a supervisor. */
+  webhook_key: string | null;
+};
 
 /** One more page of one column (`?stage=&page=`). */
 export type ColumnPage<T> = { tickets: T[]; page: number; total: number; page_size: number };

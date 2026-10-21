@@ -74,7 +74,7 @@ fn check(f: &CardForm<'_>) -> Result<Saved, AlertError> {
     })
 }
 
-/// Checks the form, and that Monita's bot is set for a card that uses it.
+/// Checks the form, and that the global Telegram bot is set for a card that uses it.
 async fn checked(db: &Db, f: &CardForm<'_>) -> Result<Saved, AlertError> {
     let saved = check(f)?;
     if saved.kind == "telegram_bot" && telegram::bot_name(db).await?.is_none() {
@@ -187,14 +187,7 @@ async fn queue_webhook(
     let Some(url) = card.url.as_deref() else {
         return Ok(());
     };
-    let (target, body) = format::webhook(&card.kind, url, card.key.as_deref(), slug, msg);
-    // Monita's bot: the row names the chat; delivery adds the token.
-    let channel = if card.kind == "telegram_bot" {
-        "telegram"
-    } else {
-        "webhook"
-    };
-    super::store::queue(c, channel, &target, None, &body.to_string(), at).await
+    super::queue_webhook(c, &card.kind, url, card.key.as_deref(), slug, msg, at).await
 }
 
 /// The card's test button: one test message to that card alone, on or off. Returns how many

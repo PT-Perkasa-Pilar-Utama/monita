@@ -1,56 +1,42 @@
 import { useState } from "react";
 import type { ReactElement } from "react";
 import { ConfirmDialog } from "@/components/app/ConfirmDialog";
+import { DestinationFields } from "@/components/app/DestinationFields";
+import type { Dest, DestKind } from "@/components/app/DestinationFields";
 import { FormSheet, FormSheetBody } from "@/components/app/FormSheet";
-import { TelegramConnect } from "@/components/app/TelegramConnect";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
-import { Textarea } from "@/components/ui/textarea";
 import { api, ApiError, dropField, errorText } from "@/lib/api";
 import { kindLabel } from "@/lib/alertCards";
-import type { AlertCard, CardKind } from "@/lib/types";
-import { formatsFor, webhookFields } from "@/lib/webhookFormats";
-import type { WebhookFormat } from "@/lib/webhookFormats";
+import type { AlertCard } from "@/lib/types";
 
-/** The form's values; `card` is null for a new card. */
-function initial(card: AlertCard | null) {
-  return {
-    kind: (card?.kind ?? "email") as Exclude<CardKind, "owner_email">,
-    name: card?.name ?? kindLabel("email"),
-    critical: card?.critical ?? true,
-    warning: card?.warning ?? false,
+/** What a custom card can send by. Global Telegram has its own switch above. */
+const CUSTOM_KINDS: DestKind[] = ["email", "json", "discord", "telegram", "ntfy", "pagerduty"];
+
+/** Adds or edits one of the project's own alert cards. Delete sits at the left of the footer. */
+export function AlertCardSheet({ slug, bot, card, open, onClose, onSaved }: { slug: string; bot: string | null; card: AlertCard | null; open: boolean; onClose: () => void; onSaved: () => void }): ReactElement {
+  const [dest, setDest] = useState<Dest>(() => ({
+    kind: card && card.kind !== "owner_email" ? card.kind : "email",
     emails: card?.emails.join("\n") ?? "",
     url: card?.url ?? "",
     key: card?.key ?? "",
-  };
-}
-
-/**
- * Adds or edits one of the project's own alert cards: what sends (email or a webhook format), a
- * name, the levels it listens to, and what that kind needs. Delete sits at the left of the footer.
- */
-export function AlertCardSheet({ slug, bot, card, open, onClose, onSaved }: { slug: string; bot: string | null; card: AlertCard | null; open: boolean; onClose: () => void; onSaved: () => void }): ReactElement {
-  const [f, setF] = useState(() => initial(card));
+  }));
+  const [name, setName] = useState(card?.name ?? kindLabel("email"));
+  const [levels, setLevels] = useState({ critical: card?.critical ?? true, warning: card?.warning ?? false });
   const [error, setError] = useState<ApiError | null>(null);
   const [busy, setBusy] = useState(false);
-  const [connected, setConnected] = useState("");
-  const set = (patch: Partial<typeof f>, field?: string): void => {
-    setF((v) => ({ ...v, ...patch }));
-    if (field) setError((e) => e && dropField(e, field));
-  };
-  const fields = f.kind === "email" ? null : webhookFields(f.kind as WebhookFormat);
-  const kinds = [{ value: "email", label: "Email" }, ...formatsFor(bot, (card?.kind ?? "json") as WebhookFormat)];
-  const fieldError = (name: string): string | undefined => error?.fields[name];
+  const clear = (field: string): void => setError((e) => e && dropField(e, field));
+  const fieldError = (f: string): string | undefined => error?.fields[f];
 
   const save = async (): Promise<void> => {
     setBusy(true);
     setError(null);
     try {
-      const body = { ...f, emails: f.kind === "email" ? f.emails : "", url: f.kind === "email" ? "" : f.url, key: f.kind === "email" ? "" : f.key };
+      const email = dest.kind === "email";
+      const body = { kind: dest.kind, name, ...levels, emails: email ? dest.emails : "", url: email ? "" : dest.url, key: email ? "" : dest.key };
       await (card ? api(`/projects/${slug}/alert-cards/${card.id}`, "PUT", body) : api(`/projects/${slug}/alert-cards`, "POST", body));
       onSaved();
     } catch (err) {
@@ -76,7 +62,7 @@ export function AlertCardSheet({ slug, bot, card, open, onClose, onSaved }: { sl
                   </Button>
                 }
                 title={`Delete ${card.name}?`}
-                description="Its alerts stop. Monitors and heartbeats keep their alert level."
+                description="Its alerts stop."
                 action="Delete card"
                 onConfirm={async () => {
                   await api(`/projects/${slug}/alert-cards/${card.id}`, "DELETE");
@@ -96,38 +82,29 @@ export function AlertCardSheet({ slug, bot, card, open, onClose, onSaved }: { sl
         }
       >
         <FieldGroup className="gap-5">
-          <Field data-invalid={fieldError("kind") ? true : undefined}>
-            <FieldLabel htmlFor="card-kind">Sends by</FieldLabel>
-            <Select
-              value={f.kind}
-              onValueChange={(v) => {
-                const kind = v as typeof f.kind;
+          <DestinationFields
+            prefix="card"
+            slug={slug}
+            bot={bot}
+            kinds={CUSTOM_KINDS}
+            value={dest}
+            errors={{ kind: fieldError("kind"), emails: fieldError("emails"), url: fieldError("url"), key: fieldError("key") }}
+            onChange={(patch, field) => {
+              if (patch.kind && patch.kind !== dest.kind) {
                 // A name still equal to the old kind's label follows the new kind.
-                set({ kind, name: !f.name || f.name === kindLabel(f.kind) ? kindLabel(kind) : f.name });
-                // The kind decides which fields the card needs; old errors no longer apply.
+                if (!name || name === kindLabel(dest.kind)) setName(kindLabel(patch.kind));
+                // The kind decides which fields the card needs. Old errors no longer apply.
                 setError(null);
-              }}
-            >
-              <SelectTrigger id="card-kind" aria-invalid={fieldError("kind") ? true : undefined}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {kinds.map((k) => (
-                    <SelectItem key={k.value} value={k.value}>
-                      {k.label}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-            {fieldError("kind") && <FieldError>{fieldError("kind")}</FieldError>}
-          </Field>
+              }
+              setDest((d) => ({ ...d, ...patch }));
+              if (field) clear(field);
+            }}
+          />
           <Field data-invalid={fieldError("name") ? true : undefined}>
             <FieldLabel htmlFor="card-name" required>
               Name
             </FieldLabel>
-            <Input id="card-name" maxLength={60} placeholder="On call" aria-invalid={fieldError("name") ? true : undefined} value={f.name} onChange={(e) => set({ name: e.target.value }, "name")} />
+            <Input id="card-name" maxLength={60} placeholder="On call" aria-invalid={fieldError("name") ? true : undefined} value={name} onChange={(e) => (setName(e.target.value), clear("name"))} />
             {fieldError("name") && <FieldError>{fieldError("name")}</FieldError>}
           </Field>
           <FieldSet data-invalid={fieldError("levels") ? true : undefined}>
@@ -135,7 +112,7 @@ export function AlertCardSheet({ slug, bot, card, open, onClose, onSaved }: { sl
             <div className="flex gap-6">
               {(["critical", "warning"] as const).map((l) => (
                 <Field key={l} orientation="horizontal">
-                  <Checkbox id={`card-${l}`} checked={f[l]} onCheckedChange={(v) => set({ [l]: v === true }, "levels")} />
+                  <Checkbox id={`card-${l}`} checked={levels[l]} onCheckedChange={(v) => (setLevels((x) => ({ ...x, [l]: v === true })), clear("levels"))} />
                   <FieldLabel htmlFor={`card-${l}`} className="font-normal">
                     {l === "critical" ? "Critical alerts" : "Warning alerts"}
                   </FieldLabel>
@@ -144,43 +121,6 @@ export function AlertCardSheet({ slug, bot, card, open, onClose, onSaved }: { sl
             </div>
             {fieldError("levels") && <FieldError>{fieldError("levels")}</FieldError>}
           </FieldSet>
-          {f.kind === "email" && (
-            <Field data-invalid={fieldError("emails") ? true : undefined}>
-              <FieldLabel htmlFor="card-emails" required>
-                Email addresses
-              </FieldLabel>
-              <Textarea id="card-emails" rows={4} placeholder={"oncall@company.co.id\nlead@company.co.id"} aria-invalid={fieldError("emails") ? true : undefined} value={f.emails} onChange={(e) => set({ emails: e.target.value }, "emails")} />
-              {fieldError("emails") && <FieldError>{fieldError("emails")}</FieldError>}
-            </Field>
-          )}
-          {fields?.url && (
-            <Field data-invalid={fieldError("url") ? true : undefined}>
-              <FieldLabel htmlFor="card-url" required>
-                {fields.url.label}
-              </FieldLabel>
-              <Input id="card-url" type="url" placeholder={fields.url.placeholder} aria-invalid={fieldError("url") ? true : undefined} value={f.url} onChange={(e) => set({ url: e.target.value }, "url")} />
-              {fieldError("url") && <FieldError>{fieldError("url")}</FieldError>}
-            </Field>
-          )}
-          {fields?.key && (
-            <Field data-invalid={fieldError("key") ? true : undefined}>
-              <FieldLabel htmlFor="card-key" required>
-                {fields.key.label}
-              </FieldLabel>
-              <Input id="card-key" className="font-mono" placeholder={fields.key.placeholder} aria-invalid={fieldError("key") ? true : undefined} value={f.key} onChange={(e) => {
-                set({ key: e.target.value }, "key");
-                setConnected("");
-              }} />
-              {f.kind === "telegram_bot" && bot && (
-                <TelegramConnect slug={slug} bot={bot} onChat={(chat) => {
-                  set({ key: chat.chat_id }, "key");
-                  setConnected(`Connected to ${chat.title}.`);
-                }} />
-              )}
-              {connected && <p role="status" className="text-sm text-muted-foreground">{connected}</p>}
-              {fieldError("key") && <FieldError>{fieldError("key")}</FieldError>}
-            </Field>
-          )}
           {unplaced && <p className="text-sm text-destructive">{error.message}</p>}
         </FieldGroup>
       </FormSheetBody>

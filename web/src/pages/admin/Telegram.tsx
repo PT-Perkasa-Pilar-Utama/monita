@@ -13,7 +13,7 @@ import { Writable } from "@/lib/session";
 import { useApi } from "@/lib/useApi";
 import { toast } from "sonner";
 
-/** Admin, Telegram: Monita's own bot, which projects can send alerts through. */
+/** Admin, Telegram: the global Telegram bot that every project can send alerts through. */
 export function Telegram(): ReactElement {
   const res = useApi<{ bot: string | null }>("/telegram");
   const [token, setToken] = useState("");
@@ -25,7 +25,7 @@ export function Telegram(): ReactElement {
     const r = await api<{ bot: string | null }>("/admin/telegram", "PUT", { token: value });
     setToken("");
     res.reload();
-    toast.success(r.bot ? `Monita sends through @${r.bot}.` : "Monita's bot is removed.");
+    toast.success(r.bot ? `Saved. The global bot is @${r.bot}.` : "Global Telegram bot removed.");
   };
   const submit = async (e: FormEvent): Promise<void> => {
     e.preventDefault();
@@ -49,8 +49,8 @@ export function Telegram(): ReactElement {
         <form onSubmit={(e) => void submit(e)}>
           <SettingsSection
             id="bot"
-            title={bot ? `Monita's bot is @${bot}` : "Monita's bot"}
-            description="Projects can send alerts through this bot: an owner picks Telegram with Monita's bot and connects a chat with a link. Create a bot with @BotFather and paste its token here. Use a bot for Monita alone."
+            title={bot ? `Global Telegram bot: @${bot}` : "Global Telegram bot"}
+            description="One bot that every project can send alerts through. Create a bot with @BotFather, then paste its token here."
             footer={
               <Writable>
                 {bot && (
@@ -60,8 +60,8 @@ export function Telegram(): ReactElement {
                         Remove bot
                       </Button>
                     }
-                    title="Remove Monita's bot?"
-                    description="Alerts set to Monita's bot stop sending until a bot is set again."
+                    title="Remove the global Telegram bot?"
+                    description="Global Telegram cards stop sending until a bot is set again."
                     action="Remove bot"
                     onConfirm={() => save("")}
                   />

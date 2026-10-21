@@ -73,6 +73,7 @@ async fn ticket_alerts(
     let mut alerts = super::ticket_alerts(&state.db, p.id).await?;
     if user.is_read_only() {
         alerts.webhook_url = hidden(alerts.webhook_url.take());
+        alerts.webhook_key = hidden(alerts.webhook_key.take());
     }
     Ok(data(alerts))
 }
@@ -87,6 +88,10 @@ struct TicketAlertsInput {
     use_webhook: bool,
     #[serde(default)]
     webhook_moves: bool,
+    #[serde(default)]
+    webhook_format: String,
+    #[serde(default)]
+    webhook_key: String,
 }
 
 /// The owner's daily digest, the webhook per new ticket and the webhook per move, each on or off.
@@ -97,17 +102,21 @@ async fn save_ticket_alerts(
     Body(f): Body<TicketAlertsInput>,
 ) -> UiResult {
     let p = projects::find_for(&state.db, &user, &slug).await?;
-    let saved = super::save_ticket_alerts(
-        &state.db,
-        p.id,
-        f.digest,
-        &f.webhook_url,
-        f.use_webhook,
-        f.webhook_moves,
-    );
-    match saved.await {
+    let form = super::TicketForm {
+        digest: f.digest,
+        webhook_url: &f.webhook_url,
+        use_webhook: f.use_webhook,
+        webhook_moves: f.webhook_moves,
+        webhook_format: &f.webhook_format,
+        webhook_key: &f.webhook_key,
+    };
+    match super::save_ticket_alerts(&state.db, p.id, &form).await {
         Ok(()) => Ok(StatusCode::NO_CONTENT.into_response()),
         Err(AlertError::Other(e)) => Err(e.into()),
+        Err(e @ (AlertError::BadFormat | AlertError::NoBot)) => {
+            Err(UiError::field("webhook_format", e.to_string()))
+        }
+        Err(e @ AlertError::BadKey(_)) => Err(UiError::field("webhook_key", e.to_string())),
         Err(e) => Err(UiError::field("webhook_url", e.to_string())),
     }
 }

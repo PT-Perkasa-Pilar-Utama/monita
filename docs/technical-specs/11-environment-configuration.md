@@ -13,7 +13,7 @@ Monita reads its configuration from environment variables at start. systemd load
 | `MONITA_SMTP_URL` | Fallback mail server: `smtp://` or `smtps://user:pass@host:port`. Used only while no super admin has saved a mail server on the admin Email page. With neither, Monita logs emails instead of sending. | empty | empty | set, or empty when the Email page holds the server |
 | `MONITA_MAIL_FROM` | Sender for the fallback server. A saved mail server has its own sender. Unset, it is `Monita <monita@{host}>`, with the host of `MONITA_BASE_URL`. | `Monita <monita@localhost>` | `Monita <monita@localhost>` | `Monita <monita@company.co.id>` |
 | `MONITA_PING_URL` | Peer or outside heartbeat. Empty disables. | empty | empty | peer URL |
-| `MONITA_TELEGRAM_API` | The Bot API server for Monita's Telegram bot (v1.1 Q33): Telegram's, or a self-hosted `telegram-bot-api`. An `http://` or `https://` URL; a trailing `/` is dropped. | `https://api.telegram.org` | same | same |
+| `MONITA_TELEGRAM_API` | The Bot API server for the global Telegram bot (v1.1 Q33): Telegram's, or a self-hosted `telegram-bot-api`. An `http://` or `https://` URL; a trailing `/` is dropped. | `https://api.telegram.org` | same | same |
 | `MONITA_TRUST_PROXY` | Read the client IP from `X-Forwarded-For` | `false` | `false` | `true` behind the reverse proxy |
 | `MONITA_DIGEST_UTC_HOUR` | Hour of the ticket digest | `1` | `1` | `1` (08:00 WIB) |
 | `MONITA_RESET_TOKEN` | Header token for reset-state in `dev` and `test` | optional; unset disables reset-state | random per run | absent |

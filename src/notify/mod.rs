@@ -32,7 +32,8 @@ pub use mailer::{Mailer, SentEmail, test_connection};
 pub use preview::{Preview, previews};
 pub use store::TicketAlerts;
 pub use tickets::{
-    Moved, save_ticket_alerts, send_ticket, send_ticket_moved, send_ticket_test, ticket_alerts,
+    Moved, TicketForm, save_ticket_alerts, send_ticket, send_ticket_moved, send_ticket_test,
+    ticket_alerts,
 };
 
 /// AC-15.02: a new project's alerts: the owner's two email cards, on (v1.1 Q34), and ticket
@@ -80,7 +81,7 @@ pub enum AlertError {
     /// The chat ID or routing key the format needs, with what to enter.
     #[error("{0}")]
     BadKey(&'static str),
-    #[error("Ask a super admin to set Monita's Telegram bot first, or use your own bot.")]
+    #[error("Ask a super admin to set the global Telegram bot first, or use your own bot.")]
     NoBot,
     #[error("Enter a name of up to 60 characters.")]
     NoName,
@@ -97,6 +98,26 @@ pub enum AlertError {
     NotFound,
     #[error(transparent)]
     Other(#[from] anyhow::Error),
+}
+
+/// Queues one webhook call for an alert in `format`: to the URL, or, for the global Telegram bot,
+/// to the chat, which delivery sends with the token.
+async fn queue_webhook(
+    c: &Connection,
+    format: &str,
+    url: &str,
+    key: Option<&str>,
+    slug: &str,
+    msg: &compose::Composed,
+    at: i64,
+) -> anyhow::Result<()> {
+    let (target, body) = format::webhook(format, url, key, slug, msg);
+    let channel = if format == "telegram_bot" {
+        "telegram"
+    } else {
+        "webhook"
+    };
+    store::queue(c, channel, &target, None, &body.to_string(), at).await
 }
 
 /// Turns ticket alerts on or off; their settings stay.

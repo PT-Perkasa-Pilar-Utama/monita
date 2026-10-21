@@ -1,4 +1,4 @@
-//! Monita's Telegram bot (v1.1 Q33), against a fake Bot API server: the admin setting, the
+//! The global Telegram bot (v1.1 Q33), against a fake Bot API server: the admin setting, the
 //! connect link, and delivery that adds the token only when it sends.
 
 mod common;
@@ -137,7 +137,7 @@ async fn a_connect_link_fills_the_chat_and_alerts_carry_no_token() {
     assert_eq!(before.status(), 422);
     assert_eq!(
         json_of(before).await["error"]["fields"]["kind"],
-        "Ask a super admin to set Monita's Telegram bot first, or use your own bot."
+        "Ask a super admin to set the global Telegram bot first, or use your own bot."
     );
     let link_path = "/api/ui/projects/pay/telegram-link";
     assert_eq!(

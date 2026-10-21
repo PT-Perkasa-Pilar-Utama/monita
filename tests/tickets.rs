@@ -431,7 +431,7 @@ async fn each_new_ticket_calls_the_ticket_webhook_and_never_the_warning_one() {
     let alerts = "/api/ui/projects/payments/ticket-alerts";
     assert_eq!(
         read(&app, alerts, Some(&s.tl)).await,
-        json!({"enabled": true, "digest": true, "webhook_url": null, "use_webhook": false, "webhook_moves": false}),
+        json!({"enabled": true, "digest": true, "webhook_url": null, "use_webhook": false, "webhook_moves": false, "webhook_format": "json", "webhook_key": null}),
         "a new project: digest on, webhook off"
     );
     let put = |body: Value| app.api_send(reqwest::Method::PUT, alerts, body, Some(&s.tl));
