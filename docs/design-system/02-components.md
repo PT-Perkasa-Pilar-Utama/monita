@@ -40,7 +40,7 @@ File: `components/app/Tone.tsx`. A badge is the only place a state gets color.
 | Component | Input | Output |
 | --- | --- | --- |
 | `StateBadge` | `kind`: `up`, `down`, `issue`, `unknown`; optional `label` | Up, Down, Issue, No data yet |
-| `SeverityBadge` | `severity` | Critical (`down`), Warning (`issue`) |
+| `SeverityBadge` | `severity` | Grey `outline` with a bell: Critical (ringing, filled), Warning (plain). Severity is a setting, so it never takes a state colour. |
 | `LabelBadge` | status update label | Investigating (`down`), Identified (`issue`), Monitoring (`neutral`), Resolved (`up`) |
 | `StageBadge` | `stage`, optional `ring` | Triage (`unknown`), Backlog (`neutral`), In progress (`issue`), Done (`up`) |
 | `ReasonBadge` | `reason` | Fixed (`up`), Won't fix (`neutral`), Duplicate (`unknown`) |

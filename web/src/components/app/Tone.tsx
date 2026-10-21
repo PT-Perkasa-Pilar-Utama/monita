@@ -1,4 +1,5 @@
 import type { ReactElement } from "react";
+import { Bell, BellRinging } from "@/components/icons";
 import { Badge } from "@/components/ui/badge";
 import { reasonLabel, stageLabel } from "@/lib/tickets";
 import type { CloseReason, Severity, Stage, StateKind, UpdateLabel } from "@/lib/types";
@@ -14,9 +15,18 @@ export function StateBadge({ kind, label, id }: { kind: StateKind; label?: strin
   );
 }
 
-/** Critical alerts by email and webhook; Warning by email only. */
+/**
+ * Which alert setup a monitor, heartbeat or incident uses. It is a setting, not a state, so it is
+ * grey: beside a green Up, a red Critical read as an outage. The bell tells the two apart.
+ */
 export function SeverityBadge({ severity }: { severity: Severity }): ReactElement {
-  return <Badge variant={severity === "critical" ? "down" : "issue"}>{severity === "critical" ? "Critical" : "Warning"}</Badge>;
+  const critical = severity === "critical";
+  return (
+    <Badge variant="outline">
+      {critical ? <BellRinging weight="fill" aria-hidden /> : <Bell aria-hidden />}
+      {critical ? "Critical" : "Warning"}
+    </Badge>
+  );
 }
 
 const LABEL: Record<UpdateLabel, [string, "down" | "issue" | "neutral" | "up"]> = {

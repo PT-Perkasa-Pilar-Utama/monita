@@ -22,6 +22,7 @@ export {
   Prohibit as Ban,
   ChartBar as BarChart3,
   Bell,
+  BellRinging,
   BoxArrowDown,
   BoxArrowUp,
   SquaresFour as Blocks,
