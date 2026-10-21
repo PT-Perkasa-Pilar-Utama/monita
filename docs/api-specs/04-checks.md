@@ -115,7 +115,7 @@ A probe authenticates with `Authorization: Bearer ml_…`. A missing or unknown 
 | Method | Path | Input | Behavior |
 | --- | --- | --- | --- |
 | GET | `/api/v1/probe/work` | `?free=N`, 1 to 50, missing 50; any other value is 422 on `free` | Claims up to N of this location's due checks and moves each one interval ahead. 200 `{"jobs": [job]}`, empty when nothing is due. A job: `monitor_id`, `kind`, `target`, `method`, `headers`, `body`, `timeout_ms`, `expected_status`, `keyword`, `skip_tls_verify`, `expected_address`, `auth` (`{kind, user, header, secret}` or null), `secret_gone` (true when the monitor's secret was deleted: the job fails with a fixed sentence). |
-| POST | `/api/v1/probe/results` | `{"results": [{monitor_id, ok, status_code, latency_ms, error}]}`, 1 to 50 items | Stores each result with this server's clock and judges it (spec 14.7). A monitor not assigned to the location is skipped. 200 `{"stored", "skipped"}`. An empty or longer list, or a missing field, is 422. |
+| POST | `/api/v1/probe/results` | `{"results": [{monitor_id, ok, status_code, latency_ms, error}]}`, 1 to 50 items | Stores each result that answers a check this location claimed, with this server's clock, one result per claim (spec 14.6). Any other result is skipped. A stored result counts in the monitor's next verdict (14.7). 200 `{"stored", "skipped"}`. An empty or longer list, or a missing field, is 422. |
 
 ### Pages
 

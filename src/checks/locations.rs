@@ -115,63 +115,58 @@ pub struct Reported {
     pub error: Option<String>,
 }
 
-/// Stores and judges each result of a location's batch. Returns (stored, skipped): a result for a
-/// monitor the location does not check is skipped.
+/// Stores each result of a location's batch that answers a check it claimed. Returns (stored,
+/// skipped). A location's result feeds no verdict itself: it counts in the next verdict of a check
+/// from this server (technical-specs 14.7).
 pub async fn post_results(
     db: &Db,
-    base_url: &str,
     location_id: i64,
     results: Vec<Reported>,
 ) -> anyhow::Result<(usize, usize)> {
-    let (mut stored, mut skipped) = (0, 0);
-    for r in results {
-        let monitor = {
-            let c = db.read().await?;
-            if store::locations::assigned(&c, r.monitor_id, location_id).await? {
-                store::find_any(&c, r.monitor_id).await?
-            } else {
-                None
+    let t = now();
+    db.write(async |c| {
+        let (mut stored, mut skipped) = (0, 0);
+        for r in &results {
+            // Spending the claim inside the write also skips a monitor deleted since the claim.
+            if !store::locations::answer_claim(c, r.monitor_id, location_id).await? {
+                skipped += 1;
+                continue;
             }
-        };
-        let Some(monitor) = monitor else {
-            skipped += 1;
-            continue;
-        };
-        let result = CheckResult {
-            checked_at: now(),
-            ok: r.ok,
-            status_code: r.status_code,
-            latency_ms: r.latency_ms.clamp(0, 600_000),
-            error: r.error.map(|e| cut(&e, 1024)),
-            cert_expires_at: None,
-        };
-        record_at(db, base_url, &monitor, Some(location_id), &result).await?;
-        stored += 1;
-    }
-    db.write(async |c| store::locations::touch(c, location_id, now()).await)
-        .await?;
-    Ok((stored, skipped))
+            let result = CheckResult {
+                checked_at: t,
+                ok: r.ok,
+                status_code: r.status_code,
+                latency_ms: r.latency_ms.clamp(0, 600_000),
+                error: r.error.as_deref().map(|e| cut(e, 1024)),
+                cert_expires_at: None,
+            };
+            store::insert_check(c, r.monitor_id, Some(location_id), &result).await?;
+            stored += 1;
+        }
+        store::locations::touch(c, location_id, t).await?;
+        Ok((stored, skipped))
+    })
+    .await
 }
 
-/// Stores one result from a place and feeds the monitor's verdict to the incident engine, in one
-/// transaction (spec 12). `location_id` None is this server, whose HTTPS checks also keep the
-/// certificate's expiry.
-pub async fn record_at(
+/// Stores one check from this server and feeds the monitor's verdict across its places to the
+/// incident engine, in one transaction (spec 12). An HTTPS check also keeps the certificate's
+/// expiry. The failed-check count in a row counts these verdicts, one per check from this server.
+pub async fn record_local(
     db: &Db,
     base_url: &str,
     monitor: &Monitor,
-    location_id: Option<i64>,
     result: &CheckResult,
 ) -> anyhow::Result<()> {
     db.write(async |c| {
-        store::insert_check(c, monitor.id, location_id, result).await?;
+        store::insert_check(c, monitor.id, None, result).await?;
         let signal = signal(c, monitor, result).await?;
         if let Some(ev) =
             crate::incidents::observe(c, &monitor.source(), &signal, result.checked_at).await?
         {
             crate::notify::send(c, &ev, base_url).await?;
         }
-        if let (None, Some(expires_at)) = (location_id, result.cert_expires_at) {
+        if let Some(expires_at) = result.cert_expires_at {
             super::record_cert(c, base_url, monitor, expires_at).await?;
         }
         Ok(())
@@ -179,16 +174,15 @@ pub async fn record_at(
     .await
 }
 
-/// What the new result means for the monitor. A monitor with no locations reads the result
-/// directly, as before 1.1, after one lookup of its locations.
+/// What a check from this server means for the monitor. A monitor with no locations reads it
+/// directly, as before 1.1, with no query.
 async fn signal(
     c: &turso::Connection,
     monitor: &Monitor,
     result: &CheckResult,
 ) -> anyhow::Result<crate::incidents::Signal> {
     use crate::incidents::Signal;
-    let located = store::locations::of_monitor(c, monitor.id).await?;
-    let verdict = if located.is_empty() {
+    let verdict = if monitor.located == 0 {
         if result.ok {
             Verdict::Passed
         } else {
@@ -200,6 +194,7 @@ async fn signal(
             }
         }
     } else {
+        let located = store::locations::of_monitor(c, monitor.id).await?;
         let ids: Vec<Option<i64>> = std::iter::once(None)
             .chain(located.iter().map(|(id, _)| Some(*id)))
             .collect();

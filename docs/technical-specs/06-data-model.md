@@ -239,7 +239,7 @@ Migration 0030, v1.1 Q26. Design: [14](14-locations.md).
 | table | columns |
 | --- | --- |
 | locations | id AUTOINCREMENT, name UNIQUE, token_hash UNIQUE (SHA-256), token_prefix, last_seen_at NULL, created_at |
-| monitor_locations | monitor_id FK ON DELETE CASCADE, location_id FK ON DELETE CASCADE, next_check_at; PK (monitor_id, location_id); INDEX (location_id, next_check_at) |
+| monitor_locations | monitor_id FK ON DELETE CASCADE, location_id FK ON DELETE CASCADE, next_check_at, claimed_at NULL (the open claim; migration 0031); PK (monitor_id, location_id); INDEX (location_id, next_check_at) |
 
 `monitors.quorum` (INTEGER, default 1, 1 to 11): how many places must fail for a check to count as failed.
 

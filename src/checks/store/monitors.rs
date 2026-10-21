@@ -40,6 +40,8 @@ pub struct Monitor {
     pub cert_warned_for: Option<i64>,
     /// How many places must fail for a check to count as failed (technical-specs 14.7).
     pub quorum: i64,
+    /// How many locations also check it; 0 means this server alone.
+    pub located: i64,
     pub next_check_at: i64,
     pub last: Option<CheckRow>,
     pub created_at: i64,
@@ -60,7 +62,7 @@ impl Monitor {
     }
 }
 
-const COLS: &str = "m.id, m.project_id, m.name, m.url, m.interval_s, m.timeout_ms, m.expected_status, m.keyword, m.skip_tls_verify, m.severity, m.is_public, m.next_check_at, c.checked_at, c.ok, c.status_code, c.latency_ms, c.error, m.created_at, c.id, m.alert, m.auto_incident, m.method, m.headers, m.body, m.fails_to_open, m.auth_kind, m.auth_secret_id, m.auth_user, m.auth_header, m.kind, m.expected_address, m.cert_warn_days, m.cert_expires_at, m.cert_warned_for, m.quorum";
+const COLS: &str = "m.id, m.project_id, m.name, m.url, m.interval_s, m.timeout_ms, m.expected_status, m.keyword, m.skip_tls_verify, m.severity, m.is_public, m.next_check_at, c.checked_at, c.ok, c.status_code, c.latency_ms, c.error, m.created_at, c.id, m.alert, m.auto_incident, m.method, m.headers, m.body, m.fails_to_open, m.auth_kind, m.auth_secret_id, m.auth_user, m.auth_header, m.kind, m.expected_address, m.cert_warn_days, m.cert_expires_at, m.cert_warned_for, m.quorum, (SELECT count(*) FROM monitor_locations WHERE monitor_id = m.id)";
 const FROM: &str = "FROM monitors m LEFT JOIN check_results c ON c.id = (SELECT id FROM check_results WHERE monitor_id = m.id AND location_id IS NULL ORDER BY checked_at DESC, id DESC LIMIT 1)";
 
 fn monitor(r: &turso::Row) -> turso::Result<Monitor> {
@@ -104,6 +106,7 @@ fn monitor(r: &turso::Row) -> turso::Result<Monitor> {
         cert_expires_at: r.get(32)?,
         cert_warned_for: r.get(33)?,
         quorum: r.get(34)?,
+        located: r.get(35)?,
         next_check_at: r.get(11)?,
         last,
         created_at: r.get(17)?,
@@ -255,15 +258,6 @@ pub async fn list_monitors(c: &Connection, project_id: i64) -> anyhow::Result<Ve
     .await
 }
 
-/// A monitor by id alone, for a location's result, which names no project.
-pub async fn find_any(c: &Connection, id: i64) -> anyhow::Result<Option<Monitor>> {
-    Ok(
-        many(c, format!("SELECT {COLS} {FROM} WHERE m.id = ?1"), [id])
-            .await?
-            .pop(),
-    )
-}
-
 /// Claims up to `limit` of a location's due checks by moving each one interval ahead, and
 /// returns their monitors.
 pub async fn claim_for_location(
@@ -283,8 +277,8 @@ pub async fn claim_for_location(
     .await?;
     for m in &due {
         c.execute(
-            "UPDATE monitor_locations SET next_check_at = ?1 WHERE monitor_id = ?2 AND location_id = ?3",
-            (at + m.interval_s, m.id, location_id),
+            "UPDATE monitor_locations SET next_check_at = ?1, claimed_at = ?2 WHERE monitor_id = ?3 AND location_id = ?4",
+            (at + m.interval_s, at, m.id, location_id),
         )
         .await?;
     }

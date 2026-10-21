@@ -248,7 +248,7 @@ pub async fn record_check(
     monitor: &Monitor,
     result: &CheckResult,
 ) -> anyhow::Result<()> {
-    locations::record_at(db, base_url, monitor, None, result).await
+    locations::record_local(db, base_url, monitor, result).await
 }
 
 /// Keeps the certificate expiry an HTTPS check saw, and warns once per certificate when the

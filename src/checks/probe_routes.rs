@@ -130,8 +130,7 @@ async fn results(
     if !(1..=caps::PROBE_BATCH).contains(&n) {
         return Err(UiError::field("results", "Send 1 to 50 results."));
     }
-    let (stored, skipped) =
-        locations::post_results(&state.db, &state.config.base_url, at.id, body.results).await?;
+    let (stored, skipped) = locations::post_results(&state.db, at.id, body.results).await?;
     Ok(data(
         serde_json::json!({ "stored": stored, "skipped": skipped }),
     ))

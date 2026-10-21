@@ -61,7 +61,7 @@ Caps (`platform::caps`): 10 locations; 50 jobs in one work answer; 50 results in
 
 1. Authenticate the token (14.4).
 2. On a read connection: does this location have a due row (`next_check_at <= now`)? If not, answer `{"jobs": []}`. Update `last_seen_at` only when it is 30 s or more old, so an idle probe does not take the writer each second.
-3. Otherwise, in one write: claim up to N due rows by setting `next_check_at = now + interval_s`, set `last_seen_at = now`, and read the jobs.
+3. Otherwise, in one write: claim up to N due rows by setting `next_check_at = now + interval_s` and `claimed_at = now` (migration 0031), set `last_seen_at = now`, and read the jobs.
 4. A job is everything one check needs:
 
 ```json
@@ -79,14 +79,15 @@ Caps (`platform::caps`): 10 locations; 50 jobs in one work answer; 50 results in
 `POST /api/v1/probe/results` with `{"results": [{"monitor_id", "ok", "status_code", "latency_ms", "error"}]}`, 1 to 50 items.
 
 - The server takes `checked_at` from its own clock on receipt. A location's clock may drift.
-- A result for a monitor not assigned to this location is skipped and counted in `skipped`.
+- A result must answer a claim: its row's `claimed_at` is set, and storing the result clears it. Any other result (not assigned, not claimed, or a second one for the same claim) is skipped and counted in `skipped`. A probe therefore stores at most one row per check it was handed.
 - `error` is cut to 1 KB.
-- Each result is stored and judged in its own `Db::write`, like a local check: insert `check_results(location_id)`, then the verdict (14.7), then `incidents::observe`, then `notify::send`.
+- The whole batch is one `Db::write`. Spending the claim inside it also skips a monitor deleted since the claim, so one gone monitor never fails the batch.
+- A location's result feeds no verdict by itself. It counts in the next verdict of a check from this server (14.7).
 - The answer is `{"stored": n, "skipped": m}`.
 
 ## 14.7 Verdict
 
-A pure function, `checks::verdict::judge`, decides what one new result means for the monitor. It runs after every result, from this server or from a location.
+A pure function, `checks::verdict::judge`, decides what a check from this server means for the monitor, given every place's newest result. It runs once per check from this server; a location's result only waits to be counted.
 
 Inputs:
 
@@ -109,7 +110,7 @@ Rules:
 | This server, Jakarta, Tokyo | 2 | fail; the others stale | failed (`needed` = 1) |
 | This server, Jakarta | 2 | ok, fail | passed |
 
-The verdict feeds `incidents::observe` as `CheckOk` or `CheckFailed`. The failed-check count in a row (`fails_to_open`) now counts verdicts, and a monitor with locations gets one verdict per result. A monitor with no locations gets exactly one verdict per local check, the same as before 1.1.
+The verdict feeds `incidents::observe` as `CheckOk` or `CheckFailed`. There is one verdict per check from this server, so the failed-check count in a row (`fails_to_open`) keeps its meaning, "N intervals in a row", whatever the number of places. A monitor with no locations reads its own result, the same as before 1.1, with no query: the monitor row carries its location count. A failure that only a location sees is raised at this server's next check, at most one interval later.
 
 Rule 3 means a location that goes silent never blocks an incident: the places that still answer decide.
 

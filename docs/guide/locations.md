@@ -63,7 +63,7 @@ Put `MONITA_PROBE_TOKEN=ml_…` in `/etc/monita/probe.env` with mode 0600.
 | This server, Jakarta | 1 | Any failing place counts, as before. |
 | This server, Jakarta | 2 | Both must fail. A local network fault alone opens no incident. |
 
-Only fresh results count: a place's newest result counts for two intervals and 30 seconds. When a probe goes silent, the places that still answer decide, so a lost probe never hides an outage. The failure count in a row (**It counts as down after**) counts these verdicts, one per result from any place.
+Only fresh results count: a place's newest result counts for two intervals and 30 seconds. When a probe goes silent, the places that still answer decide, so a lost probe never hides an outage. Monita weighs the places at each check from this server, so **It counts as down after** still means checks in a row, one per interval. A failure only a location sees counts at this server's next check.
 
 ## What the pages show
 

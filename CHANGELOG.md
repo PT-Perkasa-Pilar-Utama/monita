@@ -8,14 +8,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [1.1.0] - 2026-10-21
 
-More ways to check, alert and plan: TCP, DNS and ping monitors, certificate warnings, checks from more than one place, Discord, Telegram, ntfy and PagerDuty alerts, maintenance windows, and two-factor sign-in. Migrations 0024 to 0030 run on start; 0029 rebuilds the `monitors` table.
+More ways to check, alert and plan: TCP, DNS and ping monitors, certificate warnings, checks from more than one place, Discord, Telegram, ntfy and PagerDuty alerts, maintenance windows, and two-factor sign-in. Migrations 0024 to 0031 run on start; 0029 rebuilds the `monitors` table.
 
 ### Added
 
-- Locations: checks from more than one place. A super admin adds a location and runs `monita probe` on another machine with its token. A monitor checks from this server and any locations, and counts a check as failed only when a chosen number of places agree ([#6](https://github.com/PT-Perkasa-Pilar-Utama/monita/issues/6)). Migration 0030. Design: `docs/technical-specs/14-locations.md`.
+- Locations: checks from more than one place. A super admin adds a location and runs `monita probe` on another machine with its token. A monitor checks from this server and any locations, and counts a check as failed only when a chosen number of places agree ([#6](https://github.com/PT-Perkasa-Pilar-Utama/monita/issues/6)). Migrations 0030 and 0031. Design: `docs/technical-specs/14-locations.md`.
 - Ping monitors: one ICMP echo per check through an unprivileged socket, with no root and no capability. Linux needs `net.ipv4.ping_group_range` to cover Monita's group; Windows does not offer ping ([#7](https://github.com/PT-Perkasa-Pilar-Utama/monita/issues/7)). Migration 0029 rebuilds `monitors`.
 - A warning before an HTTPS monitor's certificate expires: 7, 14 or 30 days ahead, once per certificate, through the warning route, without an incident ([#8](https://github.com/PT-Perkasa-Pilar-Utama/monita/issues/8)). Migration 0028.
-- Two-factor sign-in with an authenticator app, recovery codes, and a super admin action to turn it off for a user ([#12](https://github.com/PT-Perkasa-Pilar-Utama/monita/issues/12)). Migration 0027.
+- Two-factor sign-in with an authenticator app, recovery codes, and a super admin action to turn it off for a user ([#12](https://github.com/PT-Perkasa-Pilar-Utama/monita/issues/12)). An account takes 10 wrong codes per 15 minutes. Migration 0027.
 - Maintenance windows: a tech lead plans one over chosen monitors and heartbeats. During it, failures open no incident and send no alert, and the status page shows Maintenance with the team's message ([#11](https://github.com/PT-Perkasa-Pilar-Utama/monita/issues/11)). Migration 0026.
 - Discord, Telegram, ntfy and PagerDuty as webhook formats for each severity ([#10](https://github.com/PT-Perkasa-Pilar-Utama/monita/issues/10)). Migration 0025.
 - TCP port and DNS name monitors beside HTTP ([#9](https://github.com/PT-Perkasa-Pilar-Utama/monita/issues/9)). Migration 0024.
@@ -24,6 +24,7 @@ More ways to check, alert and plan: TCP, DNS and ping monitors, certificate warn
 
 - Signing in at `http://127.0.0.1:7466` no longer fails with "wrong origin" when Monita's address is the default `http://localhost:7466`. The start-up log names the address to open.
 - The install steps put `admin create` last in its block, so a pasted block no longer types the next command into the password prompt.
+- Sending a new invite stops the old password at once, as the guide says. Before, it kept working until the new link was used.
 - The online demo's side panels (a ticket, a new or edited monitor) close with their X, Cancel, the backdrop or Escape.
 
 ## [1.0.1] - 2026-10-19

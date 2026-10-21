@@ -139,15 +139,19 @@ pub async fn of_monitor(c: &Connection, monitor_id: i64) -> anyhow::Result<Vec<(
     .await
 }
 
-/// Whether the location checks the monitor.
-pub async fn assigned(c: &Connection, monitor_id: i64, location_id: i64) -> anyhow::Result<bool> {
-    Ok(query_i64(
-        c,
-        "SELECT count(*) FROM monitor_locations WHERE monitor_id = ?1 AND location_id = ?2",
+/// Spends the location's open claim on the monitor. False when there is none: the location does
+/// not check it, or no check was claimed since its last result.
+pub async fn answer_claim(
+    c: &Connection,
+    monitor_id: i64,
+    location_id: i64,
+) -> anyhow::Result<bool> {
+    Ok(c.execute(
+        "UPDATE monitor_locations SET claimed_at = NULL
+         WHERE monitor_id = ?1 AND location_id = ?2 AND claimed_at IS NOT NULL",
         (monitor_id, location_id),
     )
     .await?
-    .unwrap_or(0)
         > 0)
 }
 

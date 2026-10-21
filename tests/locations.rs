@@ -248,6 +248,23 @@ async fn the_probe_api_needs_the_token_and_hands_out_each_due_check_once() {
     );
 }
 
+/// Makes every assigned check due, and claims them as the location's probe would.
+async fn claim(app: &TestApp, token: &str) -> usize {
+    sql(app, "UPDATE monitor_locations SET next_check_at = 0").await;
+    let work = json_of(
+        probe(
+            app,
+            Method::GET,
+            "/api/v1/probe/work",
+            Some(token),
+            json!({}),
+        )
+        .await,
+    )
+    .await;
+    work["data"]["jobs"].as_array().unwrap().len()
+}
+
 #[tokio::test]
 async fn a_check_fails_only_when_the_quorum_of_places_agrees() {
     let app = TestApp::spawn("test").await;
@@ -269,53 +286,71 @@ async fn a_check_fails_only_when_the_quorum_of_places_agrees() {
         )
         .await;
     assert_eq!(res.status(), 422, "an unknown location");
-    assert_eq!(
-        app.api_post(
+    let res = app
+        .api_post(
             MONITORS,
             monitor("https://pay.example.com", &[loc], "2"),
-            Some(&tl)
+            Some(&tl),
         )
-        .await
-        .status(),
-        201
-    );
-    sql(&app, "UPDATE monitors SET next_check_at = 9999999999; UPDATE monitor_locations SET next_check_at = 9999999999").await;
+        .await;
+    assert_eq!(res.status(), 201);
+    sql(&app, "UPDATE monitors SET next_check_at = 9999999999").await;
     const RESULTS: &str = "/api/v1/probe/results";
     const OPEN: &str = "SELECT count(*) FROM incidents WHERE resolved_at IS NULL";
+    let local = async |ok: bool| {
+        let m = checks::find_monitor(&app.state.db, 1, 1)
+            .await
+            .unwrap()
+            .unwrap();
+        let r = CheckResult {
+            checked_at: now(),
+            ok,
+            status_code: None,
+            latency_ms: 5000,
+            error: (!ok).then(|| "Timeout after 5000 ms".into()),
+            cert_expires_at: None,
+        };
+        checks::record_check(&app.state.db, BASE_URL, &m, &r)
+            .await
+            .unwrap();
+    };
 
+    // A result that answers no claim is skipped.
+    let unclaimed = probe(
+        &app,
+        Method::POST,
+        RESULTS,
+        Some(&token),
+        json!({ "results": [result(1, false)] }),
+    )
+    .await;
+    assert_eq!(
+        json_of(unclaimed).await["data"],
+        json!({ "stored": 0, "skipped": 1 })
+    );
+
+    assert_eq!(claim(&app, &token).await, 1);
     let ok = probe(
         &app,
         Method::POST,
         RESULTS,
         Some(&token),
-        json!({ "results": [result(1, true)] }),
+        json!({ "results": [result(1, true), result(1, true)] }),
     )
     .await;
     assert_eq!(
         json_of(ok).await["data"],
-        json!({ "stored": 1, "skipped": 0 })
+        json!({ "stored": 1, "skipped": 1 }),
+        "one result per claim"
     );
-    let m = checks::find_monitor(&app.state.db, 1, 1)
-        .await
-        .unwrap()
-        .unwrap();
-    let local_fail = CheckResult {
-        checked_at: now(),
-        ok: false,
-        status_code: None,
-        latency_ms: 5000,
-        error: Some("Timeout after 5000 ms".into()),
-        cert_expires_at: None,
-    };
-    checks::record_check(&app.state.db, BASE_URL, &m, &local_fail)
-        .await
-        .unwrap();
+    local(false).await;
     assert_eq!(
         count(&app, OPEN).await,
         0,
         "one of two places is short of a quorum of 2"
     );
 
+    assert_eq!(claim(&app, &token).await, 1);
     let res = probe(
         &app,
         Method::POST,
@@ -328,7 +363,17 @@ async fn a_check_fails_only_when_the_quorum_of_places_agrees() {
         json_of(res).await["data"],
         json!({ "stored": 1, "skipped": 1 })
     );
-    assert_eq!(count(&app, OPEN).await, 1, "both places failed");
+    assert_eq!(
+        count(&app, OPEN).await,
+        0,
+        "a location's result feeds no verdict by itself"
+    );
+    local(false).await;
+    assert_eq!(
+        count(&app, OPEN).await,
+        1,
+        "this server's next check sees both places fail"
+    );
     let cause: String = {
         let c = app.state.db.read().await.unwrap();
         let mut rows = c
@@ -370,6 +415,7 @@ async fn deleting_a_location_drops_its_results_and_lowers_the_quorum() {
         .status(),
         201
     );
+    assert_eq!(claim(&app, &token).await, 1);
     probe(
         &app,
         Method::POST,
