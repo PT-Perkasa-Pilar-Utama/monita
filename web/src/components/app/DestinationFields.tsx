@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { ReactElement } from "react";
 import { TelegramConnect } from "@/components/app/TelegramConnect";
+import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -12,19 +13,20 @@ import type { WebhookFormat } from "@/lib/webhookFormats";
 
 /** Where alerts go: an email list, or a webhook in one format. */
 export type DestKind = "email" | WebhookFormat;
-export type Dest = { kind: DestKind; emails: string; url: string; key: string };
+/** `title` is the connected Telegram chat's name, when the page learned it. */
+export type Dest = { kind: DestKind; emails: string; url: string; key: string; title?: string };
 export type DestErrors = { kind?: string | undefined; emails?: string | undefined; url?: string | undefined; key?: string | undefined };
 
 /**
- * Picks where an alert card or ticket alerts send. With a global Telegram bot set up, a switch
- * comes first: Global Telegram connects a chat to that bot, Custom offers `kinds`. Then the fields
- * the kind needs.
+ * Picks where an alert card sends. With a global Telegram bot set up, a switch comes first:
+ * Global Telegram connects a chat to that bot in place, Custom offers `kinds` and their fields.
  */
 export function DestinationFields({ prefix, slug, bot, kinds, value, errors, onChange }: { prefix: string; slug: string; bot: string | null; kinds: DestKind[]; value: Dest; errors: DestErrors; onChange: (patch: Partial<Dest>, field?: keyof Dest) => void }): ReactElement {
   const global = value.kind === "telegram_bot";
   // The custom kind to go back to from Global Telegram.
   const [custom, setCustom] = useState<DestKind>(global ? kinds[0]! : value.kind);
-  const [connected, setConnected] = useState("");
+  // Typing a chat ID by hand, as for a public @channel, instead of connecting with a link.
+  const [manual, setManual] = useState(false);
   const fields = value.kind === "email" ? null : webhookFields(value.kind);
   const id = (f: string): string => `${prefix}-${f}`;
 
@@ -66,6 +68,33 @@ export function DestinationFields({ prefix, slug, bot, kinds, value, errors, onC
       )}
       {global && errors.kind && <FieldError>{errors.kind}</FieldError>}
       {global && bot === null && <p className="text-sm text-muted-foreground">No global Telegram bot is set up. Pick Custom.</p>}
+      {global && bot !== null && (
+        <Field data-invalid={errors.key ? true : undefined}>
+          {manual ? (
+            <>
+              <FieldLabel htmlFor={id("key")} required>
+                Chat ID
+              </FieldLabel>
+              <Input id={id("key")} className="font-mono" placeholder="-1001234567890 or @team_alerts" aria-invalid={errors.key ? true : undefined} value={value.key} onChange={(e) => onChange({ key: e.target.value, title: "" }, "key")} />
+            </>
+          ) : value.key ? (
+            <div className="flex items-center justify-between gap-3 rounded-lg border bg-paper p-4 text-sm">
+              <span>
+                Connected to <span className="font-medium">{value.title || `chat ${value.key}`}</span>
+              </span>
+              <Button type="button" variant="outline" size="sm" onClick={() => onChange({ key: "", title: "" }, "key")}>
+                Change
+              </Button>
+            </div>
+          ) : (
+            <TelegramConnect slug={slug} bot={bot} onChat={(chat) => onChange({ key: chat.chat_id, title: chat.title }, "key")} />
+          )}
+          <Button type="button" variant="link" size="sm" className="h-auto w-fit p-0" onClick={() => setManual((m) => !m)}>
+            {manual ? "Connect with a link instead" : "Enter a chat ID instead"}
+          </Button>
+          {errors.key && <FieldError>{errors.key}</FieldError>}
+        </Field>
+      )}
       {value.kind === "email" && (
         <Field data-invalid={errors.emails ? true : undefined}>
           <FieldLabel htmlFor={id("emails")} required>
@@ -84,33 +113,12 @@ export function DestinationFields({ prefix, slug, bot, kinds, value, errors, onC
           {errors.url && <FieldError>{errors.url}</FieldError>}
         </Field>
       )}
-      {fields?.key && (global ? bot !== null : true) && (
+      {!global && fields?.key && (
         <Field data-invalid={errors.key ? true : undefined}>
           <FieldLabel htmlFor={id("key")} required>
             {fields.key.label}
           </FieldLabel>
-          <Input
-            id={id("key")}
-            className="font-mono"
-            placeholder={fields.key.placeholder}
-            aria-invalid={errors.key ? true : undefined}
-            value={value.key}
-            onChange={(e) => {
-              onChange({ key: e.target.value }, "key");
-              setConnected("");
-            }}
-          />
-          {global && bot !== null && (
-            <TelegramConnect
-              slug={slug}
-              bot={bot}
-              onChat={(chat) => {
-                onChange({ key: chat.chat_id }, "key");
-                setConnected(`Connected to ${chat.title}.`);
-              }}
-            />
-          )}
-          {connected && <p role="status" className="text-sm text-muted-foreground">{connected}</p>}
+          <Input id={id("key")} className="font-mono" placeholder={fields.key.placeholder} aria-invalid={errors.key ? true : undefined} value={value.key} onChange={(e) => onChange({ key: e.target.value }, "key")} />
           {errors.key && <FieldError>{errors.key}</FieldError>}
         </Field>
       )}

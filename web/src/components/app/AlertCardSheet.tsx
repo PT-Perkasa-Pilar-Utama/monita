@@ -7,25 +7,45 @@ import { FormSheet, FormSheetBody } from "@/components/app/FormSheet";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { api, ApiError, dropField, errorText } from "@/lib/api";
-import { kindLabel } from "@/lib/alertCards";
-import type { AlertCard } from "@/lib/types";
+import type { AlertCard, CardSection } from "@/lib/types";
 
-/** What a custom card can send by. Global Telegram has its own switch above. */
-const CUSTOM_KINDS: DestKind[] = ["email", "json", "discord", "telegram", "ntfy", "pagerduty"];
+/** What a custom card can send by. Global Telegram has its own switch above. A ticket never
+ * resolves, so a ticket card has no PagerDuty. */
+const CUSTOM_KINDS: Record<CardSection, DestKind[]> = {
+  incidents: ["email", "json", "discord", "telegram", "ntfy", "pagerduty"],
+  tickets: ["email", "json", "discord", "telegram", "ntfy"],
+};
+
+/** What each section's card listens to. */
+const LISTENS: Record<CardSection, { key: "critical" | "warning" | "new_tickets" | "ticket_moves"; label: string }[]> = {
+  incidents: [
+    { key: "critical", label: "Critical alerts" },
+    { key: "warning", label: "Warning alerts" },
+  ],
+  tickets: [
+    { key: "new_tickets", label: "New tickets" },
+    { key: "ticket_moves", label: "Ticket moves" },
+  ],
+};
 
 /** Adds or edits one of the project's own alert cards. Delete sits at the left of the footer. */
-export function AlertCardSheet({ slug, bot, card, open, onClose, onSaved }: { slug: string; bot: string | null; card: AlertCard | null; open: boolean; onClose: () => void; onSaved: () => void }): ReactElement {
+export function AlertCardSheet({ slug, bot, section, card, open, onClose, onSaved }: { slug: string; bot: string | null; section: CardSection; card: AlertCard | null; open: boolean; onClose: () => void; onSaved: () => void }): ReactElement {
   const [dest, setDest] = useState<Dest>(() => ({
     kind: card && card.kind !== "owner_email" ? card.kind : "email",
     emails: card?.emails.join("\n") ?? "",
     url: card?.url ?? "",
     key: card?.key ?? "",
+    title: card?.kind === "telegram_bot" ? card.name : "",
   }));
-  const [name, setName] = useState(card?.name ?? kindLabel("email"));
-  const [levels, setLevels] = useState({ critical: card?.critical ?? true, warning: card?.warning ?? false });
+  // A new card listens to the first choice: critical alerts, or new tickets.
+  const [levels, setLevels] = useState({
+    critical: card?.critical ?? section === "incidents",
+    warning: card?.warning ?? false,
+    new_tickets: card?.new_tickets ?? section === "tickets",
+    ticket_moves: card?.ticket_moves ?? false,
+  });
   const [error, setError] = useState<ApiError | null>(null);
   const [busy, setBusy] = useState(false);
   const clear = (field: string): void => setError((e) => e && dropField(e, field));
@@ -36,7 +56,10 @@ export function AlertCardSheet({ slug, bot, card, open, onClose, onSaved }: { sl
     setError(null);
     try {
       const email = dest.kind === "email";
-      const body = { kind: dest.kind, name, ...levels, emails: email ? dest.emails : "", url: email ? "" : dest.url, key: email ? "" : dest.key };
+      // No name field: a global Telegram card is called after its chat, a card that keeps its kind
+      // keeps its name, and the server names the rest after their kind.
+      const name = dest.kind === "telegram_bot" ? (dest.title ?? "") : card && card.kind === dest.kind ? card.name : "";
+      const body = { section, kind: dest.kind, name, ...levels, emails: email ? dest.emails : "", url: email ? "" : dest.url, key: email ? "" : dest.key };
       await (card ? api(`/projects/${slug}/alert-cards/${card.id}`, "PUT", body) : api(`/projects/${slug}/alert-cards`, "POST", body));
       onSaved();
     } catch (err) {
@@ -45,12 +68,13 @@ export function AlertCardSheet({ slug, bot, card, open, onClose, onSaved }: { sl
       setBusy(false);
     }
   };
-  const unplaced = error && !["kind", "name", "levels", "emails", "url", "key"].some((k) => error.fields[k]);
+  const listenField = section === "incidents" ? "levels" : "events";
+  const unplaced = error && !["kind", listenField, "emails", "url", "key"].some((k) => error.fields[k]);
 
   return (
     <FormSheet open={open} onClose={onClose}>
       <FormSheetBody
-        title={card ? `Edit ${card.name}` : "Add alert card"}
+        title={card ? `Edit ${card.name}` : section === "incidents" ? "Add alert card" : "Add ticket card"}
         onSubmit={() => void save()}
         footer={
           <>
@@ -86,40 +110,29 @@ export function AlertCardSheet({ slug, bot, card, open, onClose, onSaved }: { sl
             prefix="card"
             slug={slug}
             bot={bot}
-            kinds={CUSTOM_KINDS}
+            kinds={CUSTOM_KINDS[section]}
             value={dest}
             errors={{ kind: fieldError("kind"), emails: fieldError("emails"), url: fieldError("url"), key: fieldError("key") }}
             onChange={(patch, field) => {
-              if (patch.kind && patch.kind !== dest.kind) {
-                // A name still equal to the old kind's label follows the new kind.
-                if (!name || name === kindLabel(dest.kind)) setName(kindLabel(patch.kind));
-                // The kind decides which fields the card needs. Old errors no longer apply.
-                setError(null);
-              }
+              // The kind decides which fields the card needs. Old errors no longer apply.
+              if (patch.kind && patch.kind !== dest.kind) setError(null);
               setDest((d) => ({ ...d, ...patch }));
               if (field) clear(field);
             }}
           />
-          <Field data-invalid={fieldError("name") ? true : undefined}>
-            <FieldLabel htmlFor="card-name" required>
-              Name
-            </FieldLabel>
-            <Input id="card-name" maxLength={60} placeholder="On call" aria-invalid={fieldError("name") ? true : undefined} value={name} onChange={(e) => (setName(e.target.value), clear("name"))} />
-            {fieldError("name") && <FieldError>{fieldError("name")}</FieldError>}
-          </Field>
-          <FieldSet data-invalid={fieldError("levels") ? true : undefined}>
+          <FieldSet data-invalid={fieldError(listenField) ? true : undefined}>
             <FieldLegend variant="label">Listens to</FieldLegend>
             <div className="flex gap-6">
-              {(["critical", "warning"] as const).map((l) => (
-                <Field key={l} orientation="horizontal">
-                  <Checkbox id={`card-${l}`} checked={levels[l]} onCheckedChange={(v) => (setLevels((x) => ({ ...x, [l]: v === true })), clear("levels"))} />
-                  <FieldLabel htmlFor={`card-${l}`} className="font-normal">
-                    {l === "critical" ? "Critical alerts" : "Warning alerts"}
+              {LISTENS[section].map(({ key, label }) => (
+                <Field key={key} orientation="horizontal">
+                  <Checkbox id={`card-${key}`} checked={levels[key]} onCheckedChange={(v) => (setLevels((x) => ({ ...x, [key]: v === true })), clear(listenField))} />
+                  <FieldLabel htmlFor={`card-${key}`} className="font-normal">
+                    {label}
                   </FieldLabel>
                 </Field>
               ))}
             </div>
-            {fieldError("levels") && <FieldError>{fieldError("levels")}</FieldError>}
+            {fieldError(listenField) && <FieldError>{fieldError(listenField)}</FieldError>}
           </FieldSet>
           {unplaced && <p className="text-sm text-destructive">{error.message}</p>}
         </FieldGroup>

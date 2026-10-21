@@ -1,4 +1,4 @@
-// Alert cards in words, for the Alerts page and the project's About column (v1.1 Q34).
+// Alert cards in words, for the Alerts page and the project's About column (v1.1 Q34, Q37).
 import type { AlertCard, CardKind } from "@/lib/types";
 import { WEBHOOK_FORMATS } from "@/lib/webhookFormats";
 
@@ -17,6 +17,15 @@ export function levelLine(cards: AlertCard[], level: Level): string {
 /** The levels that no card that is on listens to: their alerts go to no one. */
 export function unheard(cards: AlertCard[]): Level[] {
   return LEVELS.filter((l) => !cards.some((c) => c.enabled && c[l]));
+}
+
+export type TicketEvent = "digest" | "new_tickets" | "ticket_moves";
+
+const EVENT_WORD: Record<TicketEvent, string> = { digest: "Daily digest", new_tickets: "New tickets", ticket_moves: "Ticket moves" };
+
+/** The ticket events a card listens to, in words. */
+export function cardEvents(card: AlertCard): string[] {
+  return (Object.keys(EVENT_WORD) as TicketEvent[]).filter((e) => card[e]).map((e) => EVENT_WORD[e]);
 }
 
 /** What sends the card's alerts, in words. */

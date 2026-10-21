@@ -151,29 +151,16 @@ async fn a_supervisor_never_sees_a_ping_url_a_webhook_url_a_header_value_or_a_bo
         json!({ "kind": "json", "name": "Slack", "critical": true, "url": hook }),
     )
     .await;
-    let saved = app
-        .api_send(
-            Method::PUT,
-            "/api/ui/projects/payments/ticket-alerts",
-            json!({ "webhook_url": hook, "use_webhook": true, "digest": true }),
-            Some(&tl),
-        )
-        .await;
-    assert_eq!(saved.status(), 204);
+    app.alert_card(
+        &tl,
+        "payments",
+        json!({ "section": "tickets", "kind": "json", "new_tickets": true, "url": hook }),
+    )
+    .await;
     let routes = app.alert_cards(&sup, "payments").await;
     assert!(!routes.to_string().contains("s3cret"), "{routes}");
-    let tickets = json_of(
-        app.api_get("/api/ui/projects/payments/ticket-alerts", Some(&sup))
-            .await,
-    )
-    .await;
-    assert_eq!(tickets["data"]["webhook_url"], "(hidden)");
-    let owner = json_of(
-        app.api_get("/api/ui/projects/payments/ticket-alerts", Some(&tl))
-            .await,
-    )
-    .await;
-    assert_eq!(owner["data"]["webhook_url"], hook);
+    let owner = app.alert_cards(&tl, "payments").await;
+    assert!(owner.to_string().contains("s3cret"), "the owner sees it");
 
     let hb_path = format!("/api/ui/projects/payments/heartbeats/{hb_id}");
     let seen = json_of(app.api_get(&hb_path, Some(&sup)).await).await;

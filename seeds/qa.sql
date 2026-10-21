@@ -11,5 +11,8 @@ INSERT INTO users (email, role, password_hash) VALUES ('supervisor@monita.test',
 INSERT INTO projects (id, owner_id, name, slug, created_at) VALUES (900, 1, 'Archive', 'qa-archive', unixepoch() - 200 * 86400);
 INSERT INTO alert_cards (project_id, kind, name, critical, warning) VALUES
   (900, 'owner_email', 'Owner email', 1, 0), (900, 'owner_email', 'Owner email', 0, 1);
+INSERT INTO alert_cards (project_id, kind, name, digest, new_tickets, ticket_moves, enabled) VALUES
+  (900, 'owner_email', 'Owner email', 1, 0, 0, 0), (900, 'owner_email', 'Owner email', 0, 1, 0, 0),
+  (900, 'owner_email', 'Owner email', 0, 0, 1, 0);
 INSERT INTO monitors (id, project_id, name, url, interval_s, expected_status, severity, is_public, next_check_at, created_at) VALUES
   (900, 900, 'Archive site', 'http://127.0.0.1:9/', 300, '2xx', 'warning', 1, unixepoch() + 3650 * 86400, unixepoch() - 200 * 86400);

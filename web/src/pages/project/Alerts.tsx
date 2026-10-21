@@ -4,18 +4,18 @@ import { AlertCardSheet } from "@/components/app/AlertCardSheet";
 import { AlertsGuide } from "@/components/app/AlertsGuide";
 import { AlertSwitch } from "@/components/app/AlertSwitch";
 import { SettingsPage, SettingsSection } from "@/components/app/SettingsSection";
-import { TicketAlertsSection } from "@/components/app/TicketAlertsSection";
 import { SeverityBadge } from "@/components/app/Tone";
 import { Plus, Send } from "@/components/icons";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { api, errorText } from "@/lib/api";
-import { cardTarget, kindLabel, unheard } from "@/lib/alertCards";
+import { cardEvents, cardTarget, kindLabel, unheard } from "@/lib/alertCards";
 import { useProject } from "@/lib/project";
 import { Writable } from "@/lib/session";
-import type { AlertCard, TicketAlerts } from "@/lib/types";
+import type { AlertCard, CardSection } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 import { toast } from "sonner";
 
@@ -51,6 +51,11 @@ function CardTile({ slug, card, owner, onEdit, onToggle }: { slug: string; card:
       <div className="flex flex-wrap gap-1.5">
         {card.critical && <SeverityBadge severity="critical" />}
         {card.warning && <SeverityBadge severity="warning" />}
+        {cardEvents(card).map((e) => (
+          <Badge key={e} variant="outline">
+            {e}
+          </Badge>
+        ))}
       </div>
       <p className="truncate text-sm text-muted-foreground" title={cardTarget(card, owner)}>
         {card.fixed ? `${owner}, the project owner` : cardTarget(card, owner)}
@@ -72,14 +77,22 @@ function CardTile({ slug, card, owner, onEdit, onToggle }: { slug: string; card:
   );
 }
 
-/** Settings, Alerts: the project's alert cards, then ticket alerts. The guide opens beside it. */
+const SECTIONS: Record<CardSection, { title: string; description: string; add: string }> = {
+  incidents: { title: "Alert cards", description: "Each card sends alerts for the levels it listens to.", add: "Add alert card" },
+  tickets: {
+    title: "Ticket alerts",
+    description: "Each card sends new bug reports from your users, each move on the board, or both. A ticket your team files sends no new-ticket alert.",
+    add: "Add ticket card",
+  },
+};
+
+/** Settings, Alerts: the incident cards, then the ticket cards. The guide opens beside it. */
 export function Alerts(): ReactElement {
   const { project: p } = useProject();
   const cards = useApi<AlertCard[]>(`/projects/${p.slug}/alert-cards`);
-  const tickets = useApi<TicketAlerts>(`/projects/${p.slug}/ticket-alerts`);
   const telegram = useApi<{ bot: string | null }>("/telegram");
-  // undefined: the sheet is closed; null: a new card.
-  const [editing, setEditing] = useState<AlertCard | null | undefined>(undefined);
+  // The sheet: closed, or a section with the card to edit (null: a new card).
+  const [editing, setEditing] = useState<{ section: CardSection; card: AlertCard | null } | null>(null);
   // A switch flipped on this page, until the next read of the cards.
   const [flipped, setFlipped] = useState<Record<number, boolean>>({});
   const list = (cards.data ?? []).map((c) => (c.id in flipped ? { ...c, enabled: flipped[c.id]! } : c));
@@ -90,8 +103,8 @@ export function Alerts(): ReactElement {
       title="Alerts"
       actions={<AlertsGuide slug={p.slug} />}
       toc={[
-        { id: "cards", label: "Alert cards" },
-        { id: "tickets", label: "Ticket alerts" },
+        { id: "incidents", label: SECTIONS.incidents.title },
+        { id: "tickets", label: SECTIONS.tickets.title },
       ]}
     >
       {cards.error && (
@@ -99,54 +112,58 @@ export function Alerts(): ReactElement {
           <AlertDescription>{cards.error.message}</AlertDescription>
         </Alert>
       )}
-      <SettingsSection
-        id="cards"
-        title="Alert cards"
-        description="Each card sends alerts for the levels it listens to."
-        action={
-          <Writable>
-            <Button type="button" onClick={() => setEditing(null)}>
-              <Plus data-icon="inline-start" />
-              Add alert card
-            </Button>
-          </Writable>
-        }
-      >
-        {!cards.data || !telegram.data ? (
-          <Skeleton className="h-48 rounded-lg" />
-        ) : (
-          <div className="flex flex-col gap-4">
-            {deaf.map((l) => (
-              <Alert key={l}>
-                <AlertDescription>
-                  No card listens to {l} alerts. Nobody hears them.
-                </AlertDescription>
-              </Alert>
-            ))}
-            <ul aria-label="Alert cards" className="grid gap-4 md:grid-cols-2">
-              {list.map((c) => (
-                <CardTile key={c.id} slug={p.slug} card={c} owner={p.owner_email} onEdit={() => setEditing(c)} onToggle={(on) => setFlipped((f) => ({ ...f, [c.id]: on }))} />
-              ))}
-            </ul>
-          </div>
-        )}
-      </SettingsSection>
-      {editing !== undefined && (
+      {(["incidents", "tickets"] as const).map((section) => (
+        <SettingsSection
+          key={section}
+          id={section}
+          title={SECTIONS[section].title}
+          description={SECTIONS[section].description}
+          action={
+            <Writable>
+              <Button type="button" onClick={() => setEditing({ section, card: null })}>
+                <Plus data-icon="inline-start" />
+                {SECTIONS[section].add}
+              </Button>
+            </Writable>
+          }
+        >
+          {!cards.data || !telegram.data ? (
+            <Skeleton className="h-48 rounded-lg" />
+          ) : (
+            <div className="flex flex-col gap-4">
+              {section === "incidents" &&
+                deaf.map((l) => (
+                  <Alert key={l}>
+                    <AlertDescription>No card listens to {l} alerts. Nobody hears them.</AlertDescription>
+                  </Alert>
+                ))}
+              <ul aria-label={SECTIONS[section].title} className="grid gap-4 md:grid-cols-2">
+                {list
+                  .filter((c) => c.section === section)
+                  .map((c) => (
+                    <CardTile key={c.id} slug={p.slug} card={c} owner={p.owner_email} onEdit={() => setEditing({ section, card: c })} onToggle={(on) => setFlipped((f) => ({ ...f, [c.id]: on }))} />
+                  ))}
+              </ul>
+            </div>
+          )}
+        </SettingsSection>
+      ))}
+      {editing && (
         <AlertCardSheet
-          key={editing?.id ?? "new"}
+          key={editing.card?.id ?? `new-${editing.section}`}
           slug={p.slug}
           bot={telegram.data?.bot ?? null}
-          card={editing}
+          section={editing.section}
+          card={editing.card}
           open
-          onClose={() => setEditing(undefined)}
+          onClose={() => setEditing(null)}
           onSaved={() => {
-            setEditing(undefined);
+            setEditing(null);
             setFlipped({});
             cards.reload();
           }}
         />
       )}
-      {tickets.data && telegram.data ? <TicketAlertsSection slug={p.slug} owner={p.owner_email} bot={telegram.data?.bot ?? null} initial={tickets.data} /> : <Skeleton className="h-56 rounded-xl" />}
     </SettingsPage>
   );
 }

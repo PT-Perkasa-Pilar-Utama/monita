@@ -88,15 +88,25 @@ test("the allowlist saves, and with both owner cards off the page says no one he
   await expect(page.getByText("No card listens to critical alerts.", { exact: false })).toBeVisible();
 });
 
-test("ticket alerts keep the column-move box once saved", async ({ page }) => {
+test("ticket alerts are cards: the owner's three start off, and a webhook card keeps its events", async ({ page }) => {
   const slug = await apiProject(page, "Ticket alerts");
   await page.goto(`/projects/${slug}/settings/alerts`);
-  const tickets = page.locator("#tickets");
-  await tickets.locator("#ticket-webhook-on").click();
-  await tickets.locator("#ticket-url").fill("https://hooks.example.com/tickets");
-  await tickets.locator("#ticket-webhook-moves").click();
-  await tickets.getByRole("button", { name: "Save changes" }).click();
-  await expect(page.getByText("Ticket alerts saved.")).toBeVisible();
+  const tickets = page.getByRole("list", { name: "Ticket alerts" });
+  await expect(tickets.getByRole("listitem")).toHaveCount(3);
+  for (const s of await tickets.getByRole("switch").all()) await expect(s).not.toBeChecked();
+
+  await page.getByRole("button", { name: "Add ticket card" }).click();
+  await page.locator("#card-kind").click();
+  await expect(page.getByRole("option", { name: "PagerDuty" })).toHaveCount(0);
+  await page.getByRole("option", { name: "Discord" }).click();
+  await page.locator("#card-url").fill("https://discord.com/api/webhooks/1/tickets");
+  await page.locator("#card-ticket_moves").click();
+  await page.getByRole("button", { name: "Add card" }).click();
+  const card = tickets.getByRole("listitem", { name: "Discord" });
+  await expect(card).toContainText("New tickets");
+  await expect(card).toContainText("Ticket moves");
   await page.reload();
-  await expect(tickets.locator("#ticket-webhook-moves")).toBeChecked();
+  await card.getByRole("button", { name: "Edit" }).click();
+  await expect(page.locator("#card-ticket_moves")).toBeChecked();
+  await expect(page.locator("#card-critical")).toHaveCount(0);
 });

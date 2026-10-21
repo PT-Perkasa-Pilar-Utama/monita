@@ -75,7 +75,8 @@ async fn the_digest_reaches_a_project_past_the_first_batch() {
     sql(&app, &format!(
         "INSERT INTO projects (owner_id, name, slug) {} SELECT 1, 'P' || i, 'p-' || i FROM n;
          INSERT INTO ref_ids (project_id, token_hash) VALUES ({last}, 'ref');
-         INSERT INTO tickets (project_id, number, ref_id, title, description) VALUES ({last}, 1, 1, 'bug', 'd');",
+         INSERT INTO tickets (project_id, number, ref_id, title, description) VALUES ({last}, 1, 1, 'bug', 'd');
+         INSERT INTO alert_cards (project_id, kind, name, digest) VALUES ({last}, 'owner_email', 'Owner email', 1);",
         upto(caps::JOB_BATCH)
     ))
     .await;
@@ -217,34 +218,38 @@ async fn an_incident_takes_50_updates_and_a_project_20_open_manual_incidents() {
 }
 
 #[tokio::test]
-async fn an_email_card_takes_20_addresses_and_a_project_10_cards() {
+async fn an_email_card_takes_20_addresses_and_each_section_10_cards() {
     let app = TestApp::spawn("test").await;
     tl_with_project(&app).await;
     let emails: Vec<String> = (0..=caps::EMAILS_PER_CARD)
         .map(|i| format!("a{i}@x.co"))
         .collect();
-    let card = async |emails: &str| {
+    let card = async |section: &str, emails: &str| {
         let f = monita::notify::CardForm {
+            section,
             kind: "email",
             name: "On call",
             critical: true,
             warning: false,
+            new_tickets: true,
+            ticket_moves: false,
             emails,
             url: "",
             key: "",
         };
         monita::notify::cards::create(&app.state.db, 1, &f).await
     };
-    let err = card(&emails.join("\n")).await.unwrap_err();
+    let err = card("", &emails.join("\n")).await.unwrap_err();
     assert!(
         matches!(err, monita::notify::AlertError::TooManyEmails),
         "{err}"
     );
     for _ in 0..caps::ALERT_CARDS {
-        card(&emails[1..].join("\n")).await.unwrap();
+        card("incidents", &emails[1..].join("\n")).await.unwrap();
     }
-    let full = card("b@x.co").await.unwrap_err();
+    let full = card("incidents", "b@x.co").await.unwrap_err();
     assert!(matches!(full, monita::notify::AlertError::Full), "{full}");
+    card("tickets", "b@x.co").await.unwrap();
 }
 
 #[tokio::test]
@@ -340,7 +345,8 @@ async fn a_digest_lists_50_tickets_and_says_how_many_more_wait() {
     let n = caps::DIGEST_LINES + 10;
     sql(&app, &format!(
         "INSERT INTO ref_ids (project_id, token_hash) VALUES (1, 'ref');
-         INSERT INTO tickets (project_id, number, ref_id, title, description) {} SELECT 1, i, 1, 'bug ' || i, 'd' FROM n;",
+         INSERT INTO tickets (project_id, number, ref_id, title, description) {} SELECT 1, i, 1, 'bug ' || i, 'd' FROM n;
+         UPDATE alert_cards SET enabled = 1 WHERE project_id = 1 AND digest = 1;",
         upto(n)
     ))
     .await;

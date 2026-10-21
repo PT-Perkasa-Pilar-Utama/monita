@@ -32,6 +32,16 @@ INSERT INTO alert_cards (project_id, kind, name, critical, warning, enabled, ema
   (3, 'owner_email', 'Owner email', 0, 1, 1, '', NULL, NULL),
   (3, 'email', 'Data team', 1, 1, 1, 'data@example.com', NULL, NULL);
 
+-- Ticket cards (v1.1 Q37): the owner's three, with the digest on for every project; the portal
+-- team also hears new tickets and moves in Discord.
+INSERT INTO alert_cards (project_id, kind, name, digest, new_tickets, ticket_moves, enabled)
+SELECT p.id, 'owner_email', 'Owner email', e.digest, e.new_tickets, e.ticket_moves, e.digest
+FROM projects p
+CROSS JOIN (SELECT 1 AS digest, 0 AS new_tickets, 0 AS ticket_moves
+            UNION ALL SELECT 0, 1, 0 UNION ALL SELECT 0, 0, 1) e;
+INSERT INTO alert_cards (project_id, kind, name, new_tickets, ticket_moves, enabled, url) VALUES
+  (1, 'discord', 'Team Discord', 1, 1, 1, 'https://discord.com/api/webhooks/1234567890/demo');
+
 INSERT INTO monitors (id, project_id, name, url, interval_s, expected_status, keyword, severity, is_public, next_check_at, created_at) VALUES
   (1, 1, 'Website', 'https://portal.example.com/', 60, '2xx', NULL, 'critical', 1, unixepoch() + 600, unixepoch() - 100 * 86400),
   (2, 1, 'API', 'https://api.portal.example.com/healthz', 30, '200', NULL, 'critical', 1, unixepoch() + 600, unixepoch() - 100 * 86400),

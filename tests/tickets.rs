@@ -365,6 +365,16 @@ async fn the_digest_lists_new_triage_tickets_once_and_skips_quiet_projects() {
     let rid = ref_id(&app, &s.key, false).await;
     submit(&app, &rid, "Checkout broken").await;
     submit(&app, &rid, "Receipt wrong").await;
+    assert_eq!(
+        monita::notify::digest(&app.state.db, common::BASE_URL, now())
+            .await
+            .unwrap(),
+        0,
+        "v1.1 Q37: the digest card starts off"
+    );
+    let digest = app.owner_card(&s.tl, "payments", "digest").await;
+    app.card_on(&s.tl, "payments", digest, true).await;
+    sql_reset_watermark(&app).await;
 
     assert_eq!(
         monita::notify::digest(&app.state.db, common::BASE_URL, now())
@@ -400,11 +410,20 @@ async fn the_digest_lists_new_triage_tickets_once_and_skips_quiet_projects() {
     );
 }
 
+/// Forgets the last digest, so the next one lists every ticket again.
+async fn sql_reset_watermark(app: &TestApp) {
+    app.state
+        .db
+        .write(async |c| settings::set_raw(c, "last_digest_ticket_id", "0").await)
+        .await
+        .unwrap();
+}
+
 /// Webhook calls a test server got, by path name.
 type Calls = Arc<Mutex<Vec<(String, Value)>>>;
 
 #[tokio::test]
-async fn each_new_ticket_calls_the_ticket_webhook_and_never_the_warning_one() {
+async fn each_new_ticket_reaches_the_ticket_cards_and_never_an_incident_card() {
     // AC-30.03
     let got: Calls = Arc::default();
     let sink = Router::new()
@@ -428,31 +447,39 @@ async fn each_new_ticket_calls_the_ticket_webhook_and_never_the_warning_one() {
 
     let app = TestApp::spawn("test").await;
     let s = setup(&app).await;
-    let alerts = "/api/ui/projects/payments/ticket-alerts";
+    let cards = app.alert_cards(&s.tl, "payments").await;
+    let ticket_cards: Vec<_> = cards
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|c| c["section"] == "tickets")
+        .map(|c| (c["kind"].as_str().unwrap(), c["enabled"].as_bool().unwrap()))
+        .collect();
     assert_eq!(
-        read(&app, alerts, Some(&s.tl)).await,
-        json!({"enabled": true, "digest": true, "webhook_url": null, "use_webhook": false, "webhook_moves": false, "webhook_format": "json", "webhook_key": null}),
-        "a new project: digest on, webhook off"
+        ticket_cards,
+        [("owner_email", false); 3],
+        "a new project: three owner ticket cards, all off"
     );
-    let put = |body: Value| app.api_send(reqwest::Method::PUT, alerts, body, Some(&s.tl));
     app.alert_card(
         &s.tl,
         "payments",
-        json!({ "kind": "json", "name": "Warning hook", "warning": true, "url": format!("http://{addr}/warning") }),
+        json!({ "kind": "json", "warning": true, "url": format!("http://{addr}/warning") }),
     )
     .await;
     let rid = ref_id(&app, &s.key, false).await;
     submit(&app, &rid, "Off: no webhook").await;
 
-    let res = put(json!({"digest": true, "use_webhook": true})).await;
-    assert_eq!(res.status(), 422, "a webhook switched on needs its URL");
+    let card =
+        |body: Value| app.api_post("/api/ui/projects/payments/alert-cards", body, Some(&s.tl));
+    let res = card(json!({"section": "tickets", "kind": "json", "new_tickets": true})).await;
+    assert_eq!(res.status(), 422, "a webhook card needs its URL");
     let hook = format!("http://{addr}/tickets");
-    assert_eq!(
-        put(json!({"digest": true, "webhook_url": &hook, "use_webhook": true}))
-            .await
-            .status(),
-        204
-    );
+    let res = card(json!({"section": "tickets", "kind": "json", "url": &hook})).await;
+    assert_eq!(res.status(), 422, "a ticket card needs an event");
+    let new = json!({"section": "tickets", "kind": "json", "url": &hook, "new_tickets": true, "critical": true});
+    assert_eq!(card(new).await.status(), 201);
+    let mail = app.owner_card(&s.tl, "payments", "new_tickets").await;
+    app.card_on(&s.tl, "payments", mail, true).await;
     submit(&app, &rid, "On: webhook").await;
     let team = json!({"title": "Filed by the team", "description": "x", "stage": "backlog"});
     app.api_post("/api/ui/projects/payments/tickets", team, Some(&s.tl))
@@ -470,32 +497,54 @@ async fn each_new_ticket_calls_the_ticket_webhook_and_never_the_warning_one() {
     assert_eq!(calls[0].1["event"], "ticket.created");
     assert_eq!(calls[0].1["ticket_number"], 2);
     assert_eq!(calls[0].1["text"], "[TICKET] Payments #2: On: webhook");
+    let mails: Vec<_> = app
+        .state
+        .mailer
+        .sent()
+        .into_iter()
+        .filter(|m| m.subject.starts_with("[TICKET]"))
+        .collect();
+    assert_eq!(mails.len(), 1, "the owner's new-ticket card emails once");
+    assert_eq!(
+        (mails[0].to.as_str(), mails[0].subject.as_str()),
+        ("rina@x.co", "[TICKET] Payments / #2 On: webhook")
+    );
+    assert!(mails[0].body.contains("/projects/payments/tickets/2"));
 }
 
 #[tokio::test]
-async fn a_column_move_calls_the_ticket_webhook_only_when_moves_are_on() {
+async fn a_column_move_reaches_only_the_cards_that_listen_to_moves() {
     let app = TestApp::spawn("test").await;
     let s = setup(&app).await;
     let rid = ref_id(&app, &s.key, false).await;
     submit(&app, &rid, "Checkout broken").await;
-    let alerts = "/api/ui/projects/payments/ticket-alerts";
-    let put = |body: Value| app.api_send(reqwest::Method::PUT, alerts, body, Some(&s.tl));
     let hooks = "SELECT count(*) FROM outbox WHERE channel = 'webhook'";
-
-    let res = put(json!({"digest": true, "webhook_moves": true})).await;
-    assert_eq!(res.status(), 422, "moves need the webhook URL");
     let url = "http://127.0.0.1:9/t";
-    let off = json!({"digest": true, "webhook_url": url, "webhook_moves": false});
-    assert_eq!(put(off).await.status(), 204);
+    let id = app
+        .alert_card(
+            &s.tl,
+            "payments",
+            json!({"section": "tickets", "kind": "json", "url": url, "new_tickets": true}),
+        )
+        .await;
+    let path = format!("/api/ui/projects/payments/alert-cards/{id}");
     stage(&app, &s.tl, json!({ "stage": "backlog" })).await;
     assert_eq!(
         count(&app, hooks).await,
         0,
-        "moves off: the URL alone sends nothing"
+        "a card for new tickets hears no move"
     );
 
-    let on = json!({"digest": true, "webhook_url": url, "webhook_moves": true});
-    assert_eq!(put(on).await.status(), 204);
+    let moves = json!({"section": "tickets", "kind": "json", "url": url, "ticket_moves": true});
+    let res = app
+        .api_send(reqwest::Method::PUT, &path, moves, Some(&s.tl))
+        .await;
+    assert_eq!(res.status(), 204);
+    let incidents = json!({"kind": "json", "url": url, "critical": true});
+    let res = app
+        .api_send(reqwest::Method::PUT, &path, incidents, Some(&s.tl))
+        .await;
+    assert_eq!(res.status(), 404, "a card stays in its section");
     stage(&app, &s.tl, json!({ "stage": "backlog" })).await;
     assert_eq!(count(&app, hooks).await, 0, "the same column is no move");
     let done = json!({ "stage": "done", "close_reason": "fixed" });
@@ -524,13 +573,10 @@ async fn a_column_move_calls_the_ticket_webhook_only_when_moves_are_on() {
         (&json!("backlog"), &json!("done"), &json!("fixed"))
     );
 
-    let test = "/api/ui/projects/payments/ticket-alerts/test";
-    let res = app.api_post(test, json!({}), Some(&s.tl)).await;
-    assert_eq!(
-        json_of(res).await["data"]["sent_to"],
-        1,
-        "the test button works with moves alone"
-    );
+    let res = app
+        .api_post(&format!("{path}/test"), json!({}), Some(&s.tl))
+        .await;
+    assert_eq!(json_of(res).await["data"]["sent_to"], 1);
 }
 
 #[tokio::test]
@@ -539,16 +585,9 @@ async fn the_digest_skips_a_project_that_turned_it_off() {
     let s = setup(&app).await;
     let rid = ref_id(&app, &s.key, false).await;
     submit(&app, &rid, "Checkout broken").await;
-    let off = json!({"digest": false, "webhook_url": "", "use_webhook": false});
-    let res = app
-        .api_send(
-            reqwest::Method::PUT,
-            "/api/ui/projects/payments/ticket-alerts",
-            off,
-            Some(&s.tl),
-        )
-        .await;
-    assert_eq!(res.status(), 204);
+    let digest = app.owner_card(&s.tl, "payments", "digest").await;
+    app.card_on(&s.tl, "payments", digest, true).await;
+    app.card_on(&s.tl, "payments", digest, false).await;
     let queued = monita::notify::digest(&app.state.db, common::BASE_URL, now())
         .await
         .unwrap();
@@ -681,6 +720,8 @@ async fn the_digest_skips_a_disabled_owner() {
     let s = setup(&app).await;
     let rid = ref_id(&app, &s.key, false).await;
     submit(&app, &rid, "Checkout broken").await;
+    let digest = app.owner_card(&s.tl, "payments", "digest").await;
+    app.card_on(&s.tl, "payments", digest, true).await;
     app.super_admin("admin@x.co").await;
     let users = monita::accounts::list_users(&app.state.db).await.unwrap();
     let id_of = |email: &str| users.iter().find(|u| u.email == email).unwrap().id;

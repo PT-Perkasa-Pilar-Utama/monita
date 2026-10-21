@@ -202,19 +202,14 @@ async fn the_form_names_what_a_format_needs_and_a_supervisor_never_sees_the_key(
     assert_eq!(seen["url"], "(hidden)");
 }
 
-/// v1.1 Q36: the ticket webhook speaks a format too, PagerDuty aside.
+/// v1.1 Q36, Q37: a ticket card speaks a format too, PagerDuty aside.
 #[tokio::test]
-async fn ticket_alerts_speak_a_format_but_not_pagerduty() {
+async fn ticket_cards_speak_a_format_but_not_pagerduty() {
     let app = TestApp::spawn("test").await;
     let tl = setup(&app).await;
-    let put = async |body: Value| {
-        app.api_send(
-            reqwest::Method::PUT,
-            "/api/ui/projects/payments/ticket-alerts",
-            body,
-            Some(&tl),
-        )
-        .await
+    let post = async |body: Value| {
+        app.api_post("/api/ui/projects/payments/alert-cards", body, Some(&tl))
+            .await
     };
     let field = async |res: reqwest::Response| {
         assert_eq!(res.status(), 422);
@@ -225,20 +220,19 @@ async fn ticket_alerts_speak_a_format_but_not_pagerduty() {
             .cloned()
             .collect::<Vec<_>>()
     };
-    let pd =
-        json!({ "use_webhook": true, "webhook_format": "pagerduty", "webhook_key": "R0utingKey1" });
-    assert_eq!(field(put(pd).await).await, ["webhook_format"]);
+    let pd = json!({ "section": "tickets", "new_tickets": true, "kind": "pagerduty", "key": "R0utingKey1" });
+    assert_eq!(field(post(pd).await).await, ["kind"]);
     let bot =
-        json!({ "use_webhook": true, "webhook_format": "telegram_bot", "webhook_key": "4242" });
+        json!({ "section": "tickets", "new_tickets": true, "kind": "telegram_bot", "key": "4242" });
     assert_eq!(
-        field(put(bot).await).await,
-        ["webhook_format"],
+        field(post(bot).await).await,
+        ["kind"],
         "no global bot is set"
     );
 
-    let discord = json!({ "digest": true, "use_webhook": true, "webhook_format": "discord",
-                          "webhook_url": "https://discord.com/api/webhooks/2/t" });
-    assert_eq!(put(discord).await.status(), 204);
+    let discord = json!({ "section": "tickets", "new_tickets": true, "kind": "discord",
+                          "url": "https://discord.com/api/webhooks/2/t" });
+    assert_eq!(post(discord).await.status(), 201);
     app.state
         .db
         .write(async |c| {

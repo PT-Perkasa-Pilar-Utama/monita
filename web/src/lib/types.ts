@@ -84,6 +84,12 @@ export type AlertCard = {
   name: string;
   critical: boolean;
   warning: boolean;
+  new_tickets: boolean;
+  ticket_moves: boolean;
+  /** The owner's daily digest of new tickets. Only an owner card has it. */
+  digest: boolean;
+  /** Incident cards listen to levels, ticket cards to events (v1.1 Q37). */
+  section: CardSection;
   enabled: boolean;
   /** An email card's addresses. */
   emails: string[];
@@ -93,6 +99,8 @@ export type AlertCard = {
   key: string | null;
   fixed: boolean;
 };
+
+export type CardSection = "incidents" | "tickets";
 
 export type CardKind = "owner_email" | "email" | import("@/lib/webhookFormats").WebhookFormat;
 
@@ -323,18 +331,6 @@ export type StageCounts = Record<Stage, number>;
 export type TicketBoard = { tickets: TicketRow[]; counts: StageCounts };
 
 /** Who hears about new tickets: the owner's daily digest, and a webhook per ticket. */
-export type TicketAlerts = {
-  enabled: boolean;
-  digest: boolean;
-  webhook_url: string | null;
-  use_webhook: boolean;
-  webhook_moves: boolean;
-  /** How the webhook speaks (v1.1 Q36): json, discord, telegram, telegram_bot or ntfy. */
-  webhook_format: import("@/lib/webhookFormats").WebhookFormat;
-  /** A Telegram chat ID; "(hidden)" for a supervisor. */
-  webhook_key: string | null;
-};
-
 /** One more page of one column (`?stage=&page=`). */
 export type ColumnPage<T> = { tickets: T[]; page: number; total: number; page_size: number };
 

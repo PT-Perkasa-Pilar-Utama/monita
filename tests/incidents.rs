@@ -180,30 +180,39 @@ async fn the_resolved_alert_goes_where_the_opened_one_went() {
 }
 
 #[tokio::test]
-async fn a_new_project_has_the_owners_two_email_cards_on() {
-    // AC-15.01, AC-15.02, v1.1 Q34
+async fn a_new_project_has_the_owners_email_cards() {
+    // AC-15.01, AC-15.02, v1.1 Q34: incident cards on. v1.1 Q37: ticket cards off.
     let app = TestApp::spawn("test").await;
     let tl = setup(&app).await;
     let cards = app.alert_cards(&tl, "payments").await;
-    let seen: Vec<(String, bool, bool, bool, bool)> = cards
+    let seen: Vec<String> = cards
         .as_array()
         .unwrap()
         .iter()
         .map(|c| {
-            (
-                c["kind"].as_str().unwrap().to_string(),
-                c["critical"].as_bool().unwrap(),
-                c["warning"].as_bool().unwrap(),
-                c["enabled"].as_bool().unwrap(),
-                c["fixed"].as_bool().unwrap(),
+            let on = |k: &'static str| if c[k] == true { k } else { "" };
+            format!(
+                "{} {} {}{}{}{}{} on={} fixed={}",
+                c["kind"].as_str().unwrap(),
+                c["section"].as_str().unwrap(),
+                on("critical"),
+                on("warning"),
+                on("digest"),
+                on("new_tickets"),
+                on("ticket_moves"),
+                c["enabled"],
+                c["fixed"],
             )
         })
         .collect();
     assert_eq!(
         seen,
         [
-            ("owner_email".to_string(), true, false, true, true),
-            ("owner_email".to_string(), false, true, true, true),
+            "owner_email incidents critical on=true fixed=true",
+            "owner_email incidents warning on=true fixed=true",
+            "owner_email tickets digest on=false fixed=true",
+            "owner_email tickets new_tickets on=false fixed=true",
+            "owner_email tickets ticket_moves on=false fixed=true",
         ]
     );
     let owner_id = cards[0]["id"].clone();

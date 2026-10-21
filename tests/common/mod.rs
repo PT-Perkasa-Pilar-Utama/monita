@@ -162,21 +162,40 @@ impl TestApp {
         json_of(res).await["data"]["id"].as_i64().unwrap()
     }
 
-    /// Turns the owner's two email cards off, as a team that replaced the owner would.
+    /// Turns the owner's email cards off, as a team that replaced the owner would.
     pub async fn owner_cards_off(&self, cookie: &str, slug: &str) {
         for card in self.alert_cards(cookie, slug).await.as_array().unwrap() {
             if card["fixed"] == true {
-                let res = self
-                    .api_send(
-                        reqwest::Method::PUT,
-                        &format!("/api/ui/projects/{slug}/alert-cards/{}/enabled", card["id"]),
-                        json!({ "enabled": false }),
-                        Some(cookie),
-                    )
+                self.card_on(cookie, slug, card["id"].as_i64().unwrap(), false)
                     .await;
-                assert_eq!(res.status(), 204);
             }
         }
+    }
+
+    /// Switches one card on or off.
+    pub async fn card_on(&self, cookie: &str, slug: &str, id: i64, on: bool) {
+        let res = self
+            .api_send(
+                reqwest::Method::PUT,
+                &format!("/api/ui/projects/{slug}/alert-cards/{id}/enabled"),
+                json!({ "enabled": on }),
+                Some(cookie),
+            )
+            .await;
+        assert_eq!(res.status(), 204);
+    }
+
+    /// The id of the owner's card that listens to `event`: `critical`, `warning`, `digest`,
+    /// `new_tickets` or `ticket_moves`.
+    pub async fn owner_card(&self, cookie: &str, slug: &str, event: &str) -> i64 {
+        let cards = self.alert_cards(cookie, slug).await;
+        let card = cards
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|c| c["fixed"] == true && c[event] == true)
+            .unwrap();
+        card["id"].as_i64().unwrap()
     }
 
     /// Sends `level` alerts to `email` alone: the owner's cards go off and an Email card takes it.

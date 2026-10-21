@@ -22,13 +22,13 @@ test("@US-15 TL adds an email card, fixes a bad address, and sends a test", asyn
   await expect(cards.getByRole("listitem").first().getByRole("button", { name: "Edit" })).toHaveCount(0);
 
   await page.getByRole("button", { name: "Add alert card" }).click();
-  await page.locator("#card-name").fill("On call");
   await page.locator("#card-emails").fill("oncall@monita.test\nnot-an-email");
   await page.getByRole("button", { name: "Add card" }).click();
   await expect(page.getByText("Not a valid email address: not-an-email")).toBeVisible();
   await page.locator("#card-emails").fill("oncall@monita.test");
   await page.getByRole("button", { name: "Add card" }).click();
-  const card = cards.getByRole("listitem", { name: "On call" });
+  // The form asks for no name: an email card is called Email.
+  const card = cards.getByRole("listitem", { name: "Email", exact: true });
   await expect(card).toContainText("oncall@monita.test");
   await card.getByRole("button", { name: "Send a test" }).click();
   await expect(page.getByText("Test sent to 1 recipient.")).toBeVisible();
@@ -41,7 +41,6 @@ test("a PagerDuty card needs a routing key and no URL", async ({ page }) => {
   await page.locator("#card-kind").click();
   await page.getByRole("option", { name: "PagerDuty" }).click();
   await expect(page.locator("#card-url")).toHaveCount(0);
-  await expect(page.locator("#card-name")).toHaveValue("PagerDuty");
   await page.getByRole("button", { name: "Add card" }).click();
   await expect(page.getByText("Enter the routing key of the PagerDuty integration.")).toBeVisible();
   await page.locator("#card-key").fill("R0utingKey1");

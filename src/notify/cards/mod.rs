@@ -1,29 +1,47 @@
-//! Alert cards (v1.1 Q34). A project has two fixed cards that email its owner, one for critical
-//! and one for warning, and up to `caps::ALERT_CARDS` of its own: an email list or a webhook in
-//! one format, each listening to critical, warning or both, each with its own switch.
-//! Contract: docs/api-specs/06-notify.md section 6.1.
+//! Alert cards (v1.1 Q34, Q37), in two sections. Incident cards listen to critical, warning or
+//! both; ticket cards to new tickets, ticket moves or both. A project has fixed cards that email
+//! its owner (critical and warning; the daily digest, new tickets and moves) and up to
+//! `caps::ALERT_CARDS` of its own in each section: an email list or a webhook in one format, each
+//! with its own switch. Contract: docs/api-specs/06-notify.md section 6.1.
 
 pub mod api;
 mod store;
 
 use turso::Connection;
 
-pub use store::AlertCard;
 use store::Saved;
+pub use store::{AlertCard, Listen};
 
 use super::{AlertError, compose::Composed, format, telegram};
 use crate::platform::{caps, db::Db, now};
 
 /// What the card form sends.
 pub struct CardForm<'a> {
+    /// `tickets` for a ticket card; anything else is an incident card.
+    pub section: &'a str,
     pub kind: &'a str,
     pub name: &'a str,
     pub critical: bool,
     pub warning: bool,
+    pub new_tickets: bool,
+    pub ticket_moves: bool,
     /// An email card's addresses, one a line or comma-separated.
     pub emails: &'a str,
     pub url: &'a str,
     pub key: &'a str,
+}
+
+/// What a card is called when the form sends no name.
+fn default_name(kind: &str) -> &'static str {
+    match kind {
+        "email" => "Email",
+        "json" => "JSON webhook",
+        "discord" => "Discord",
+        "telegram" => "Telegram",
+        "telegram_bot" => "Global Telegram",
+        "ntfy" => "ntfy",
+        _ => "PagerDuty",
+    }
 }
 
 /// The form as it will be stored, or the first thing wrong with it.
@@ -35,12 +53,30 @@ fn check(f: &CardForm<'_>) -> Result<Saved, AlertError> {
     if kind != "email" && !format::FORMATS.contains(&kind) {
         return Err(AlertError::BadFormat);
     }
-    let name = f.name.trim();
-    if name.is_empty() || name.chars().count() > 60 {
+    let tickets = f.section == "tickets";
+    // A ticket is no incident, so a PagerDuty trigger would never resolve.
+    if tickets && kind == "pagerduty" {
+        return Err(AlertError::TicketPagerDuty);
+    }
+    // The form asks for no name. A global Telegram card sends its chat's title; others get the
+    // kind's label.
+    let name = Some(f.name.trim())
+        .filter(|n| !n.is_empty())
+        .unwrap_or_else(|| default_name(kind));
+    if name.chars().count() > 60 {
         return Err(AlertError::NoName);
     }
-    if !f.critical && !f.warning {
-        return Err(AlertError::NoLevel);
+    let (critical, warning, new_tickets, ticket_moves) = if tickets {
+        (false, false, f.new_tickets, f.ticket_moves)
+    } else {
+        (f.critical, f.warning, false, false)
+    };
+    if !(critical || warning || new_tickets || ticket_moves) {
+        return Err(if tickets {
+            AlertError::NoEvent
+        } else {
+            AlertError::NoLevel
+        });
     }
     let (emails, url, key) = if kind == "email" {
         let mut emails = Vec::new();
@@ -66,8 +102,10 @@ fn check(f: &CardForm<'_>) -> Result<Saved, AlertError> {
     Ok(Saved {
         kind: kind.to_string(),
         name: name.to_string(),
-        critical: f.critical,
-        warning: f.warning,
+        critical,
+        warning,
+        new_tickets,
+        ticket_moves,
         emails,
         url,
         key,
@@ -91,7 +129,7 @@ pub async fn list(db: &Db, project_id: i64) -> anyhow::Result<Vec<AlertCard>> {
 pub async fn create(db: &Db, project_id: i64, f: &CardForm<'_>) -> Result<i64, AlertError> {
     let saved = checked(db, f).await?;
     db.write(async |c| {
-        if store::own_count(c, project_id).await? >= caps::ALERT_CARDS {
+        if store::own_count(c, project_id, saved.incidents()).await? >= caps::ALERT_CARDS {
             return Ok(Err(AlertError::Full));
         }
         Ok(Ok(store::insert(c, project_id, &saved).await?))
@@ -100,19 +138,24 @@ pub async fn create(db: &Db, project_id: i64, f: &CardForm<'_>) -> Result<i64, A
 }
 
 /// Rejects the owner's cards and a card of another project.
-async fn own_card(c: &Connection, project_id: i64, id: i64) -> Result<(), AlertError> {
+async fn own_card(c: &Connection, project_id: i64, id: i64) -> Result<AlertCard, AlertError> {
     match store::one(c, project_id, id).await? {
         None => Err(AlertError::NotFound),
         Some(card) if card.fixed => Err(AlertError::Fixed),
-        Some(_) => Ok(()),
+        Some(card) => Ok(card),
     }
 }
 
+/// A card stays in its section, so the cap of each section holds.
 pub async fn update(db: &Db, project_id: i64, id: i64, f: &CardForm<'_>) -> Result<(), AlertError> {
     let saved = checked(db, f).await?;
     db.write(async |c| {
-        if let Err(e) = own_card(c, project_id, id).await {
-            return Ok(Err(e));
+        match own_card(c, project_id, id).await {
+            Err(e) => return Ok(Err(e)),
+            Ok(card) if (card.section == "incidents") != saved.incidents() => {
+                return Ok(Err(AlertError::NotFound));
+            }
+            Ok(_) => {}
         }
         store::update(c, project_id, id, &saved).await?;
         Ok(Ok(()))
@@ -143,22 +186,22 @@ pub async fn set_enabled(db: &Db, project_id: i64, id: i64, on: bool) -> Result<
     }
 }
 
-/// A new project's two owner cards. Runs inside the caller's write.
+/// A new project's owner cards. Runs inside the caller's write.
 pub async fn create_owner_cards(c: &Connection, project_id: i64) -> anyhow::Result<()> {
     store::create_owner_cards(c, project_id).await
 }
 
-/// Queues one alert to every card that is on and listens to `severity`. An address in several
-/// cards gets one email. False when no card listens: the alert then goes nowhere, which is no
-/// error, and the check, ping or incident that caused it goes on as usual.
+/// Queues one alert to every card that is on and listens to `what`. An address in several cards
+/// gets one email. False when no card listens: the alert then goes nowhere, which is no error,
+/// and the check, ping, incident or ticket that caused it goes on as usual.
 pub(super) async fn queue_alert(
     c: &Connection,
     project_id: i64,
     slug: &str,
-    severity: &str,
+    what: Listen,
     msg: &Composed,
 ) -> anyhow::Result<bool> {
-    let cards = store::listening(c, project_id, severity).await?;
+    let cards = store::listening(c, project_id, what).await?;
     let at = now();
     let mut emails: Vec<String> = Vec::new();
     for card in &cards {
@@ -174,6 +217,13 @@ pub(super) async fn queue_alert(
         super::store::queue(c, "email", to, Some(&msg.subject), &msg.text, at).await?;
     }
     Ok(!cards.is_empty())
+}
+
+/// Is the owner's daily digest card on?
+pub(super) async fn digest_on(c: &Connection, project_id: i64) -> anyhow::Result<bool> {
+    Ok(!store::listening(c, project_id, Listen::Digest)
+        .await?
+        .is_empty())
 }
 
 /// One webhook card's call for one alert, in the card's format.
@@ -237,10 +287,13 @@ mod tests {
 
     fn form<'a>(kind: &'a str, emails: &'a str, url: &'a str, key: &'a str) -> CardForm<'a> {
         CardForm {
+            section: "",
             kind,
             name: "On call",
             critical: true,
             warning: false,
+            new_tickets: false,
+            ticket_moves: false,
             emails,
             url,
             key,
@@ -248,7 +301,7 @@ mod tests {
     }
 
     #[test]
-    fn a_card_needs_a_kind_a_name_a_level_and_what_its_kind_sends_to() {
+    fn a_card_needs_a_kind_a_level_or_event_and_what_its_kind_sends_to() {
         let err = |f: CardForm<'_>| check(&f).err().map(|e| e.to_string());
         assert_eq!(
             err(form("owner_email", "", "", "")),
@@ -258,12 +311,22 @@ mod tests {
             err(form("sms", "", "", "")),
             Some(AlertError::BadFormat.to_string())
         );
+        let long = "x".repeat(61);
         assert_eq!(
             err(CardForm {
-                name: " ",
+                name: &long,
                 ..form("email", "a@x.co", "", "")
             }),
             Some(AlertError::NoName.to_string())
+        );
+        let unnamed = CardForm {
+            name: " ",
+            ..form("discord", "", "https://discord.com/api/webhooks/1/x", "")
+        };
+        assert_eq!(
+            check(&unnamed).unwrap().name,
+            "Discord",
+            "no name: the kind's label"
         );
         assert_eq!(
             err(CardForm {
@@ -279,6 +342,28 @@ mod tests {
         assert_eq!(
             err(form("discord", "", "", "")),
             Some(AlertError::BadWebhook.to_string())
+        );
+        let ticket = |kind| CardForm {
+            section: "tickets",
+            ..form(kind, "a@x.co", "https://ntfy.sh/t", "")
+        };
+        assert_eq!(
+            err(ticket("pagerduty")),
+            Some(AlertError::TicketPagerDuty.to_string())
+        );
+        assert_eq!(
+            err(ticket("email")),
+            Some(AlertError::NoEvent.to_string()),
+            "a ticket card ignores the levels"
+        );
+        let moves = check(&CardForm {
+            ticket_moves: true,
+            ..ticket("ntfy")
+        })
+        .unwrap();
+        assert_eq!(
+            (moves.incidents(), moves.critical, moves.ticket_moves),
+            (false, false, true)
         );
         let ok = check(&form("email", "B@x.co, b@x.co\nc@x.co", "ignored", "")).unwrap();
         assert_eq!(

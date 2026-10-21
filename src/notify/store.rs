@@ -91,87 +91,6 @@ pub async fn claim_due(
     Ok(out)
 }
 
-/// A new project's ticket alerts, with their defaults.
-pub async fn create_ticket_alerts(c: &Connection, project_id: i64) -> anyhow::Result<()> {
-    c.execute(
-        "INSERT INTO ticket_alerts (project_id) VALUES (?1)",
-        [project_id],
-    )
-    .await?;
-    Ok(())
-}
-
-/// Who hears about tickets: the owner's daily digest of new ones, and a webhook for each new
-/// ticket and, on its own switch, each column move.
-#[derive(serde::Serialize, Debug, PartialEq, Eq)]
-pub struct TicketAlerts {
-    pub enabled: bool,
-    pub digest: bool,
-    pub webhook_url: Option<String>,
-    pub use_webhook: bool,
-    pub webhook_moves: bool,
-    /// `json`, `discord`, `telegram`, `telegram_bot` or `ntfy` (migration 0038).
-    pub webhook_format: String,
-    /// A Telegram chat ID. Like the URL, a supervisor never sees it.
-    pub webhook_key: Option<String>,
-}
-
-/// A project with no row has the defaults: digest on, webhook off.
-pub async fn ticket_alerts(c: &Connection, project_id: i64) -> anyhow::Result<TicketAlerts> {
-    let mut rows = c
-        .query(
-            "SELECT digest, webhook_url, use_webhook, enabled, webhook_moves, webhook_format, webhook_key
-             FROM ticket_alerts WHERE project_id = ?1",
-            [project_id],
-        )
-        .await?;
-    Ok(match rows.next().await? {
-        Some(r) => TicketAlerts {
-            enabled: r.get::<i64>(3)? == 1,
-            digest: r.get::<i64>(0)? == 1,
-            webhook_url: r.get(1)?,
-            use_webhook: r.get::<i64>(2)? == 1,
-            webhook_moves: r.get::<i64>(4)? == 1,
-            webhook_format: r.get(5)?,
-            webhook_key: r.get(6)?,
-        },
-        None => TicketAlerts {
-            enabled: true,
-            digest: true,
-            webhook_url: None,
-            use_webhook: false,
-            webhook_moves: false,
-            webhook_format: "json".into(),
-            webhook_key: None,
-        },
-    })
-}
-
-pub async fn save_ticket_alerts(
-    c: &Connection,
-    project_id: i64,
-    a: &TicketAlerts,
-) -> anyhow::Result<()> {
-    c.execute(
-        "INSERT INTO ticket_alerts (project_id, digest, webhook_url, use_webhook, webhook_moves, webhook_format, webhook_key)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
-         ON CONFLICT (project_id) DO UPDATE SET digest = excluded.digest, webhook_url = excluded.webhook_url,
-           use_webhook = excluded.use_webhook, webhook_moves = excluded.webhook_moves,
-           webhook_format = excluded.webhook_format, webhook_key = excluded.webhook_key",
-        (
-            project_id,
-            a.digest,
-            a.webhook_url.as_deref(),
-            a.use_webhook,
-            a.webhook_moves,
-            a.webhook_format.as_str(),
-            a.webhook_key.as_deref(),
-        ),
-    )
-    .await?;
-    Ok(())
-}
-
 /// Deletes up to `limit` finished rows older than `cutoff`; returns how many it deleted.
 pub async fn purge_delivered(c: &Connection, cutoff: i64, limit: i64) -> anyhow::Result<u64> {
     Ok(c.execute(
@@ -225,14 +144,4 @@ pub async fn email_latest(c: &Connection) -> anyhow::Result<(Option<i64>, Option
     )
     .await?;
     Ok((sent, error.into_iter().next()))
-}
-
-/// Ticket alerts on or off; a project with no row gets one.
-pub async fn set_ticket_enabled(c: &Connection, project_id: i64, on: bool) -> anyhow::Result<()> {
-    c.execute(
-        "INSERT INTO ticket_alerts (project_id, enabled) VALUES (?1, ?2) ON CONFLICT (project_id) DO UPDATE SET enabled = excluded.enabled",
-        (project_id, on),
-    )
-    .await?;
-    Ok(())
 }

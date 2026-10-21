@@ -162,7 +162,8 @@ async fn ticket_alerts_keep_the_warning_webhook_a_project_had_on() {
     })
     .await
     .unwrap();
-    run(&db).await.unwrap();
+    // Migration 7 alone: migration 39 drops ticket_alerts.
+    apply(&db, 6..7).await;
     let rows = crate::platform::db::query_all(
         &db.read().await.unwrap(),
         "SELECT project_id, digest, coalesce(webhook_url, ''), use_webhook FROM ticket_alerts ORDER BY project_id",
@@ -377,4 +378,74 @@ async fn migration_37_turns_routes_into_cards() {
         "INSERT INTO telegram_links (code_hash, project_id, expires_at) VALUES ('h', 1, 0);",
     )
     .await;
+}
+
+/// Migration 39 moves ticket alerts into ticket cards: the owner's digest keeps its state, new
+/// tickets and moves by email start off, and the webhook becomes a card. Incident cards keep ids.
+#[tokio::test]
+async fn migration_39_turns_ticket_alerts_into_cards() {
+    let (_dir, db) = at(38).await;
+    exec(
+        &db,
+        "INSERT INTO users (id, email, role) VALUES (1, 'own@x.co', 'tl');
+         INSERT INTO projects (id, owner_id, name, slug) VALUES
+           (1, 1, 'Plain', 'plain'), (2, 1, 'Off', 'off'), (3, 1, 'Bare', 'bare'), (4, 1, 'Kept', 'kept'), (5, 1, 'Bot', 'bot');
+         DELETE FROM alert_cards;
+         INSERT INTO alert_cards (id, project_id, kind, name, critical, warning) VALUES (42, 1, 'discord', 'D', 1, 0);
+         DELETE FROM ticket_alerts;
+         INSERT INTO ticket_alerts (project_id, digest, enabled, webhook_url, use_webhook, webhook_moves, webhook_format, webhook_key) VALUES
+           (1, 1, 1, NULL, 0, 0, 'json', NULL),
+           (2, 1, 0, 'https://discord.com/api/webhooks/1/x', 1, 1, 'discord', NULL),
+           (4, 0, 1, 'https://hooks.example.com/t', 0, 0, 'json', NULL),
+           (5, 1, 1, 'https://api.telegram.org/', 0, 1, 'telegram_bot', '-100');",
+    )
+    .await;
+    apply(&db, 38..39).await;
+    let cards = strings(
+        &db,
+        "SELECT project_id || ' ' || kind || ' ' || name || ' c' || critical || ' d' || digest
+           || ' n' || new_tickets || ' m' || ticket_moves || ' on' || enabled || ' ' || coalesce(key, '-')
+         FROM alert_cards ORDER BY project_id, id",
+    )
+    .await;
+    assert_eq!(
+        cards,
+        [
+            "1 discord D c1 d0 n0 m0 on1 -",
+            "1 owner_email Owner email c0 d1 n0 m0 on1 -",
+            "1 owner_email Owner email c0 d0 n1 m0 on0 -",
+            "1 owner_email Owner email c0 d0 n0 m1 on0 -",
+            "2 owner_email Owner email c0 d1 n0 m0 on0 -",
+            "2 owner_email Owner email c0 d0 n1 m0 on0 -",
+            "2 owner_email Owner email c0 d0 n0 m1 on0 -",
+            "2 discord Discord c0 d0 n1 m1 on0 -",
+            "3 owner_email Owner email c0 d1 n0 m0 on1 -",
+            "3 owner_email Owner email c0 d0 n1 m0 on0 -",
+            "3 owner_email Owner email c0 d0 n0 m1 on0 -",
+            "4 owner_email Owner email c0 d1 n0 m0 on0 -",
+            "4 owner_email Owner email c0 d0 n1 m0 on0 -",
+            "4 owner_email Owner email c0 d0 n0 m1 on0 -",
+            "4 json JSON webhook c0 d0 n1 m0 on0 -",
+            "5 owner_email Owner email c0 d1 n0 m0 on1 -",
+            "5 owner_email Owner email c0 d0 n1 m0 on0 -",
+            "5 owner_email Owner email c0 d0 n0 m1 on0 -",
+            "5 telegram_bot Global Telegram c0 d0 n0 m1 on1 -100",
+        ]
+    );
+    assert_eq!(
+        strings(
+            &db,
+            "SELECT CAST(id AS TEXT) FROM alert_cards WHERE project_id = 1 AND kind = 'discord'"
+        )
+        .await,
+        ["42"]
+    );
+    assert!(
+        strings(
+            &db,
+            "SELECT name FROM sqlite_master WHERE name = 'ticket_alerts'"
+        )
+        .await
+        .is_empty()
+    );
 }

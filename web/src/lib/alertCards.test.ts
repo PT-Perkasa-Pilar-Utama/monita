@@ -1,8 +1,16 @@
 import { expect, test } from "bun:test";
-import { cardTarget, kindLabel, levelLine, unheard } from "@/lib/alertCards";
+import { cardEvents, cardTarget, kindLabel, levelLine, unheard } from "@/lib/alertCards";
 import type { AlertCard } from "@/lib/types";
 
-const card = (over: Partial<AlertCard>): AlertCard => ({ id: 1, kind: "email", name: "On call", critical: true, warning: false, enabled: true, emails: ["a@x.co"], url: null, key: null, fixed: false, ...over });
+const card = (over: Partial<AlertCard>): AlertCard => ({ id: 1, kind: "email", name: "On call", critical: true, warning: false, new_tickets: false, ticket_moves: false, digest: false, section: "incidents", enabled: true, emails: ["a@x.co"], url: null, key: null, fixed: false, ...over });
+
+test("a ticket card names its events and never counts for a level", () => {
+  const t = card({ section: "tickets", critical: false, new_tickets: true, ticket_moves: true });
+  expect(cardEvents(t)).toEqual(["New tickets", "Ticket moves"]);
+  expect(cardEvents(card({ section: "tickets", critical: false, digest: true }))).toEqual(["Daily digest"]);
+  expect(unheard([t])).toEqual(["critical", "warning"]);
+  expect(levelLine([t], "critical")).toBe("Critical: no one is alerted.");
+});
 
 test("each level counts the cards that are on and listen to it", () => {
   const cards = [card({}), card({ id: 2, warning: true }), card({ id: 3, enabled: false, warning: true, critical: false })];

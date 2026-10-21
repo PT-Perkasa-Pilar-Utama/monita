@@ -13,13 +13,19 @@ pub struct AlertCard {
     pub name: String,
     pub critical: bool,
     pub warning: bool,
+    pub new_tickets: bool,
+    pub ticket_moves: bool,
+    /// The owner's daily digest of new tickets; only an owner card has it.
+    pub digest: bool,
+    /// `incidents` or `tickets`, from what the card listens to. A card never hears both.
+    pub section: &'static str,
     pub enabled: bool,
     /// An `email` card's addresses.
     pub emails: Vec<String>,
     pub url: Option<String>,
     /// Telegram's chat ID or PagerDuty's routing key.
     pub key: Option<String>,
-    /// The owner's two cards: only their switch changes.
+    /// The owner's cards: only their switch changes.
     pub fixed: bool,
 }
 
@@ -29,12 +35,42 @@ pub struct Saved {
     pub name: String,
     pub critical: bool,
     pub warning: bool,
+    pub new_tickets: bool,
+    pub ticket_moves: bool,
     pub emails: Vec<String>,
     pub url: Option<String>,
     pub key: Option<String>,
 }
 
-const COLS: &str = "id, kind, name, critical, warning, enabled, emails, url, key";
+impl Saved {
+    pub fn incidents(&self) -> bool {
+        self.critical || self.warning
+    }
+}
+
+const COLS: &str = "id, kind, name, critical, warning, new_tickets, ticket_moves, digest, enabled, emails, url, key";
+
+/// What a card listens to. Each names one column, so no caller text reaches the SQL.
+#[derive(Clone, Copy)]
+pub enum Listen {
+    Critical,
+    Warning,
+    NewTickets,
+    TicketMoves,
+    Digest,
+}
+
+impl Listen {
+    fn column(self) -> &'static str {
+        match self {
+            Listen::Critical => "critical",
+            Listen::Warning => "warning",
+            Listen::NewTickets => "new_tickets",
+            Listen::TicketMoves => "ticket_moves",
+            Listen::Digest => "digest",
+        }
+    }
+}
 
 /// Addresses kept one a line; a list from before cards may use commas.
 pub fn split_emails(raw: &str) -> Vec<String> {
@@ -47,30 +83,46 @@ pub fn split_emails(raw: &str) -> Vec<String> {
 
 fn row(r: &turso::Row) -> turso::Result<AlertCard> {
     let kind: String = r.get(1)?;
+    let flag = |i: usize| r.get::<i64>(i).map(|v| v == 1);
+    let (critical, warning) = (flag(3)?, flag(4)?);
     Ok(AlertCard {
         id: r.get(0)?,
         fixed: kind == "owner_email",
         kind,
         name: r.get(2)?,
-        critical: r.get::<i64>(3)? == 1,
-        warning: r.get::<i64>(4)? == 1,
-        enabled: r.get::<i64>(5)? == 1,
-        emails: split_emails(&r.get::<String>(6)?),
-        url: r.get(7)?,
-        key: r.get(8)?,
+        critical,
+        warning,
+        new_tickets: flag(5)?,
+        ticket_moves: flag(6)?,
+        digest: flag(7)?,
+        section: if critical || warning {
+            "incidents"
+        } else {
+            "tickets"
+        },
+        enabled: flag(8)?,
+        emails: split_emails(&r.get::<String>(9)?),
+        url: r.get(10)?,
+        key: r.get(11)?,
     })
 }
 
-/// The most rows a project holds: its own cards and the owner's two.
-const ALL: i64 = caps::ALERT_CARDS + 2;
+/// The SQL that picks a section's cards.
+const INCIDENTS: &str = "(critical = 1 OR warning = 1)";
 
-/// The owner's cards first, critical before warning, then the project's own as they were added.
+/// The most rows a project holds: its own cards in each section and the owner's five.
+const ALL: i64 = 2 * caps::ALERT_CARDS + 5;
+
+/// Incident cards, then ticket cards. In each, the owner's cards come first in a fixed order,
+/// then the project's own as they were added.
 pub async fn list(c: &Connection, project_id: i64) -> anyhow::Result<Vec<AlertCard>> {
     query_all(
         c,
         &format!(
             "SELECT {COLS} FROM alert_cards WHERE project_id = ?1
-             ORDER BY kind <> 'owner_email', warning, id LIMIT ?2"
+             ORDER BY NOT {INCIDENTS}, kind <> 'owner_email',
+               CASE kind WHEN 'owner_email' THEN warning + new_tickets + 2 * ticket_moves END, id
+             LIMIT ?2"
         ),
         (project_id, ALL),
         row,
@@ -78,20 +130,20 @@ pub async fn list(c: &Connection, project_id: i64) -> anyhow::Result<Vec<AlertCa
     .await
 }
 
-/// The cards that are on and listen to `severity`.
+/// The cards that are on and listen to `what`.
 pub async fn listening(
     c: &Connection,
     project_id: i64,
-    severity: &str,
+    what: Listen,
 ) -> anyhow::Result<Vec<AlertCard>> {
     query_all(
         c,
         &format!(
-            "SELECT {COLS} FROM alert_cards WHERE project_id = ?1 AND enabled = 1
-             AND (CASE ?2 WHEN 'critical' THEN critical ELSE warning END) = 1
-             ORDER BY id LIMIT ?3"
+            "SELECT {COLS} FROM alert_cards WHERE project_id = ?1 AND enabled = 1 AND {} = 1
+             ORDER BY id LIMIT ?2",
+            what.column()
         ),
-        (project_id, severity, ALL),
+        (project_id, ALL),
         row,
     )
     .await
@@ -108,12 +160,15 @@ pub async fn one(c: &Connection, project_id: i64, id: i64) -> anyhow::Result<Opt
     .pop())
 }
 
-/// The project's own cards, which the cap counts.
-pub async fn own_count(c: &Connection, project_id: i64) -> anyhow::Result<i64> {
+/// The project's own cards in one section, which the cap counts.
+pub async fn own_count(c: &Connection, project_id: i64, incidents: bool) -> anyhow::Result<i64> {
     Ok(crate::platform::db::query_i64(
         c,
-        "SELECT count(*) FROM alert_cards WHERE project_id = ?1 AND kind <> 'owner_email'",
-        [project_id],
+        &format!(
+            "SELECT count(*) FROM alert_cards WHERE project_id = ?1 AND kind <> 'owner_email'
+             AND {INCIDENTS} = ?2"
+        ),
+        (project_id, incidents),
     )
     .await?
     .unwrap_or(0))
@@ -121,14 +176,17 @@ pub async fn own_count(c: &Connection, project_id: i64) -> anyhow::Result<i64> {
 
 pub async fn insert(c: &Connection, project_id: i64, s: &Saved) -> anyhow::Result<i64> {
     c.execute(
-        "INSERT INTO alert_cards (project_id, kind, name, critical, warning, emails, url, key)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        "INSERT INTO alert_cards
+           (project_id, kind, name, critical, warning, new_tickets, ticket_moves, emails, url, key)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
         (
             project_id,
             s.kind.as_str(),
             s.name.as_str(),
             s.critical,
             s.warning,
+            s.new_tickets,
+            s.ticket_moves,
             s.emails.join("\n"),
             s.url.as_deref(),
             s.key.as_deref(),
@@ -142,8 +200,8 @@ pub async fn insert(c: &Connection, project_id: i64, s: &Saved) -> anyhow::Resul
 pub async fn update(c: &Connection, project_id: i64, id: i64, s: &Saved) -> anyhow::Result<bool> {
     let n = c
         .execute(
-            "UPDATE alert_cards SET kind = ?3, name = ?4, critical = ?5, warning = ?6, emails = ?7,
-               url = ?8, key = ?9
+            "UPDATE alert_cards SET kind = ?3, name = ?4, critical = ?5, warning = ?6,
+               new_tickets = ?7, ticket_moves = ?8, emails = ?9, url = ?10, key = ?11
              WHERE project_id = ?1 AND id = ?2 AND kind <> 'owner_email'",
             (
                 project_id,
@@ -152,6 +210,8 @@ pub async fn update(c: &Connection, project_id: i64, id: i64, s: &Saved) -> anyh
                 s.name.as_str(),
                 s.critical,
                 s.warning,
+                s.new_tickets,
+                s.ticket_moves,
                 s.emails.join("\n"),
                 s.url.as_deref(),
                 s.key.as_deref(),
@@ -186,11 +246,17 @@ pub async fn set_enabled(
     Ok(n > 0)
 }
 
-/// A new project's two cards: the owner's email for critical and for warning, both on.
+/// A new project's owner cards: email for critical and for warning, both on (v1.1 Q34), and for
+/// the daily digest, each new ticket and each move, all off (v1.1 Q37).
 pub async fn create_owner_cards(c: &Connection, project_id: i64) -> anyhow::Result<()> {
     c.execute(
-        "INSERT INTO alert_cards (project_id, kind, name, critical, warning) VALUES
-           (?1, 'owner_email', 'Owner email', 1, 0), (?1, 'owner_email', 'Owner email', 0, 1)",
+        "INSERT INTO alert_cards
+           (project_id, kind, name, critical, warning, digest, new_tickets, ticket_moves, enabled)
+         VALUES (?1, 'owner_email', 'Owner email', 1, 0, 0, 0, 0, 1),
+                (?1, 'owner_email', 'Owner email', 0, 1, 0, 0, 0, 1),
+                (?1, 'owner_email', 'Owner email', 0, 0, 1, 0, 0, 0),
+                (?1, 'owner_email', 'Owner email', 0, 0, 0, 1, 0, 0),
+                (?1, 'owner_email', 'Owner email', 0, 0, 0, 0, 1, 0)",
         [project_id],
     )
     .await?;

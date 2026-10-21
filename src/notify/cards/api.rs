@@ -41,9 +41,10 @@ impl From<AlertError> for UiError {
             AlertError::Other(_) => None,
             AlertError::NotFound => return UiError::NotFound,
             AlertError::Fixed | AlertError::Full => return UiError::invalid(e.to_string()),
-            AlertError::BadFormat | AlertError::NoBot => Some("kind"),
+            AlertError::BadFormat | AlertError::NoBot | AlertError::TicketPagerDuty => Some("kind"),
             AlertError::NoName => Some("name"),
             AlertError::NoLevel => Some("levels"),
+            AlertError::NoEvent => Some("events"),
             AlertError::BadEmail(_) | AlertError::TooManyEmails | AlertError::NoEmails => {
                 Some("emails")
             }
@@ -82,10 +83,14 @@ async fn list(
 #[derive(Deserialize, Default)]
 #[serde(default)]
 struct CardInput {
+    /// `incidents` (the default) or `tickets`.
+    section: String,
     kind: String,
     name: String,
     critical: bool,
     warning: bool,
+    new_tickets: bool,
+    ticket_moves: bool,
     /// One address a line.
     emails: String,
     url: String,
@@ -95,10 +100,13 @@ struct CardInput {
 impl CardInput {
     fn form(&self) -> CardForm<'_> {
         CardForm {
+            section: &self.section,
             kind: &self.kind,
             name: &self.name,
             critical: self.critical,
             warning: self.warning,
+            new_tickets: self.new_tickets,
+            ticket_moves: self.ticket_moves,
             emails: &self.emails,
             url: &self.url,
             key: &self.key,

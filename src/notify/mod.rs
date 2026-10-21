@@ -1,4 +1,4 @@
-//! notify module: alert cards, ticket alerts, the outbox, delivery.
+//! notify module: alert cards for incidents and tickets, the outbox, delivery.
 //! Spec: docs/technical-specs/05-module-definitions.md section 5.5, api-specs 06.
 //! Callers queue messages inside their own write transaction; the outbox loop delivers them,
 //! so a slow SMTP server or webhook never blocks a check or a request.
@@ -25,22 +25,18 @@ use crate::{
     platform::{db::Db, now},
 };
 
+use cards::Listen;
 pub use cards::{AlertCard, CardForm};
 pub use delivery::{deliver_due, spawn_delivery};
 pub use digest::digest;
 pub use mailer::{Mailer, SentEmail, test_connection};
 pub use preview::{Preview, previews};
-pub use store::TicketAlerts;
-pub use tickets::{
-    Moved, TicketForm, save_ticket_alerts, send_ticket, send_ticket_moved, send_ticket_test,
-    ticket_alerts,
-};
+pub use tickets::{Moved, send_ticket, send_ticket_moved};
 
-/// AC-15.02: a new project's alerts: the owner's two email cards, on (v1.1 Q34), and ticket
-/// alerts with their defaults. Runs inside the caller's write.
+/// AC-15.02: a new project's alerts: the owner's email cards (v1.1 Q34, Q37). Runs inside the
+/// caller's write.
 pub async fn create_alerts(c: &Connection, project_id: i64) -> anyhow::Result<()> {
-    cards::create_owner_cards(c, project_id).await?;
-    store::create_ticket_alerts(c, project_id).await
+    cards::create_owner_cards(c, project_id).await
 }
 
 /// Retention (US-32): finished rows older than `cutoff`. Runs inside the caller's write.
@@ -60,7 +56,7 @@ pub async fn queue_email(
     store::queue(c, "email", to, Some(subject), body, at).await
 }
 
-/// Why an alert card or the ticket webhook was refused.
+/// Why an alert card was refused.
 #[derive(Debug, thiserror::Error)]
 pub enum AlertError {
     #[error("Not a valid email address: {0}")]
@@ -83,14 +79,18 @@ pub enum AlertError {
     BadKey(&'static str),
     #[error("Ask a super admin to set the global Telegram bot first, or use your own bot.")]
     NoBot,
-    #[error("Enter a name of up to 60 characters.")]
+    #[error("Keep the name to 60 characters.")]
     NoName,
     #[error("Pick critical, warning or both.")]
     NoLevel,
+    #[error("Pick new tickets, ticket moves or both.")]
+    NoEvent,
+    #[error("PagerDuty takes incidents only. Pick another kind for tickets.")]
+    TicketPagerDuty,
     #[error("The owner's email cards stay as they are. Turn them on or off.")]
     Fixed,
     #[error(
-        "This project has {} alert cards, its limit. Delete one first.",
+        "This section has {} cards, its limit. Delete one first.",
         crate::platform::caps::ALERT_CARDS
     )]
     Full,
@@ -120,12 +120,6 @@ async fn queue_webhook(
     store::queue(c, channel, &target, None, &body.to_string(), at).await
 }
 
-/// Turns ticket alerts on or off; their settings stay.
-pub async fn set_ticket_enabled(db: &Db, project_id: i64, on: bool) -> anyhow::Result<()> {
-    db.write(async |c| store::set_ticket_enabled(c, project_id, on).await)
-        .await
-}
-
 /// US-16. Queues the alert to every card that is on and listens to the event's severity.
 /// Call it inside the same write transaction as `incidents::observe`.
 pub async fn send(c: &Connection, ev: &Event, base_url: &str) -> anyhow::Result<()> {
@@ -139,7 +133,12 @@ pub async fn send(c: &Connection, ev: &Event, base_url: &str) -> anyhow::Result<
         return Ok(());
     };
     let (severity, msg) = compose(ev, &project, base_url);
-    cards::queue_alert(c, project_id, &project.1, &severity, &msg).await?;
+    let what = if severity == "critical" {
+        Listen::Critical
+    } else {
+        Listen::Warning
+    };
+    cards::queue_alert(c, project_id, &project.1, what, &msg).await?;
     Ok(())
 }
 
@@ -162,7 +161,7 @@ pub async fn send_cert_warning(
         return Ok(false);
     };
     let msg = cert_warning(w, &project, base_url, now());
-    cards::queue_alert(c, w.project_id, &project.1, "warning", &msg).await
+    cards::queue_alert(c, w.project_id, &project.1, Listen::Warning, &msg).await
 }
 
 /// How email delivery went since `since`, for the system page.
