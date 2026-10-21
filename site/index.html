@@ -97,7 +97,7 @@ sudo monita service install</code></pre>
 tar -xzf monita_darwin_arm64.tar.gz
 export MONITA_ENV=dev
 ./monita admin create --email you@company.co.id</code></pre>
-        <p>The last command asks for a password of at least 12 characters. Then start Monita:</p>
+        <p>The last command asks for a password of at least 8 characters. Then start Monita:</p>
 <pre class="code"><code class="language-sh">./monita serve</code></pre>
         <p>Open <code>http://localhost:7466</code> and sign in.</p>
       </div>
@@ -108,7 +108,7 @@ Expand-Archive monita_windows_amd64.zip -DestinationPath monita
 cd monita
 $env:MONITA_ENV = "dev"
 .\monita.exe admin create --email you@company.co.id</code></pre>
-        <p>The last command asks for a password of at least 12 characters. Then start Monita:</p>
+        <p>The last command asks for a password of at least 8 characters. Then start Monita:</p>
 <pre class="code"><code class="language-sh">.\monita.exe serve</code></pre>
         <p>Open <code>http://localhost:7466</code> and sign in.</p>
       </div>
@@ -116,7 +116,7 @@ $env:MONITA_ENV = "dev"
         <p>The image runs on Linux, and on Windows and macOS through Docker Desktop. It holds the same binary, for amd64 and arm64.</p>
 <pre class="code"><code class="language-sh">docker volume create monita-data
 docker run --rm -it -v monita-data:/data -e MONITA_ENV=dev ghcr.io/pt-perkasa-pilar-utama/monita:1 admin create --email you@company.co.id</code></pre>
-        <p>The last command asks for a password of at least 12 characters. Then start Monita:</p>
+        <p>The last command asks for a password of at least 8 characters. Then start Monita:</p>
 <pre class="code"><code class="language-sh">docker run -d --name monita -p 127.0.0.1:7466:7466 -v monita-data:/data -e MONITA_ENV=dev ghcr.io/pt-perkasa-pilar-utama/monita:1</code></pre>
         <p>Open <code>http://localhost:7466</code> and sign in. For a server, see the <a href="docs/install/#with-docker">Compose file in the install guide</a>.</p>
       </div>

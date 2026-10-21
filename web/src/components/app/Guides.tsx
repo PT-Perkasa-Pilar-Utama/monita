@@ -124,7 +124,7 @@ export function HeartbeatGuide(): ReactElement {
       steps={[
         "After you save, Monita gives the heartbeat a secret ping URL.",
         "Your job calls that URL when it finishes. The next call must come within the time the job runs every, plus the time it can be late by. That moment is the deadline.",
-        "For example: a job runs every 1 day and can be late by 1 hour. It calls at 01:00. The next deadline is 02:00 the next day. A call at 01:40 is in time; no call by 02:00 is a miss.",
+        "For example: a job runs every 1 day and can be late by 1 hour. It calls at 01:00. The next deadline is 02:00 the next day. A call at 01:40 is in time. No call by 02:00 is a miss.",
         "If no call arrives by the deadline, Monita opens an incident. The next call closes it.",
         "A call to the URL with /fail at the end opens an incident at once.",
         "With incidents off, a miss or a fail call only sends a down alert, and the next call sends an up alert.",

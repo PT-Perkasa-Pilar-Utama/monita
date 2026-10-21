@@ -26,6 +26,7 @@ More ways to check, alert and plan: TCP, DNS and ping monitors, certificate warn
 
 ### Changed
 
+- Passwords need 8 characters or more, down from 12.
 - **Alert cards** replace the Critical and Warning sections. Every project keeps two fixed cards that email its owner, one per level, and adds up to 10 of its own: an email list or a webhook in any format, each listening to critical, warning or both, each with its own switch and test. Migration 0037 converts the old settings; nobody who got alerts stops getting them.
 - A new project's critical alerts no longer start with the webhook ticked. Neither severity calls a webhook until its owner ticks it and sets a URL. Migration 0033 unticks existing routes that have no URL.
 - The project list shows the newest projects first. Sort by **Name** to get the old order.

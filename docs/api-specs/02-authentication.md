@@ -7,9 +7,9 @@ Session strategy: [../technical-specs/07-security.md](../technical-specs/07-secu
 | Part | Contract |
 | --- | --- |
 | Signature | `monita admin create --email <email>`. The password is read from a prompt, or from stdin when not a TTY. |
-| Behavior | Validates the email and a password of 12 or more chars. Inserts `users(role=super_admin)`. (AC-01.01) |
+| Behavior | Validates the email and a password of 8 or more characters. Inserts `users(role=super_admin)`. (AC-01.01) |
 | Output | Exit 0, prints `created super admin <email>`. |
-| Errors | Exit 1 `An account with this email already exists.` (AC-01.02). Exit 1 `Use at least 12 characters.` |
+| Errors | Exit 1 `An account with this email already exists.` (AC-01.02). Exit 1 `Use at least 8 characters.` |
 
 ## 2.2 Sign-in and invites
 
@@ -61,6 +61,6 @@ The signed-in user's own account (v1.1 Q30, Q31). Every role may use these route
 
 | Method | Path | Access | Input | Behavior | AC |
 | --- | --- | --- | --- | --- | --- |
-| POST | `/api/ui/me/password` | session | `current`, `new` | Checks `current`, stores `new` (12 characters or more), and ends every other session of the user; this session stays. 204. Empty or wrong `current`: 422 on `current`. A short `new`: 422 on `new`. An account takes 10 tries per fixed 15-minute window, right or wrong; then 429 `too_many_tries`. | |
+| POST | `/api/ui/me/password` | session | `current`, `new` | Checks `current`, stores `new` (8 characters or more), and ends every other session of the user; this session stays. 204. Empty or wrong `current`: 422 on `current`. A short `new`: 422 on `new`. An account takes 10 tries per fixed 15-minute window, right or wrong; then 429 `too_many_tries`. | |
 | PUT | `/api/ui/me/avatar` | session | `avatar`: base64 of a PNG or WebP, with or without a `data:` prefix; empty removes the picture | The page crops and scales the picture to 128 px; the server checks the type and 32 KB, as for a project icon. Sets `avatar_at`. 204. SVG or any other type, bad base64, or over 32 KB: 422 on `avatar`. | |
 | GET | `/me/avatar` | session | `?v={avatar_at}` | The user's own picture with its type, `Cache-Control: private, max-age=31536000, immutable`. No picture: 404. No session: to `/login`. | |

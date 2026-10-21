@@ -22,7 +22,7 @@ pub use two_factor::TwoFactorError;
 pub const SESSION_COOKIE: &str = "monita_session";
 const SESSION_TTL_S: i64 = 14 * 86_400;
 const INVITE_TTL_S: i64 = 72 * 3_600;
-pub const MIN_PASSWORD: usize = 12;
+pub const MIN_PASSWORD: usize = 8;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Role {
@@ -81,7 +81,7 @@ pub enum AccountError {
     EmailTaken,
     #[error("Enter a valid email address.")]
     InvalidEmail,
-    #[error("Use at least 12 characters.")]
+    #[error("Use at least 8 characters.")]
     PasswordTooShort,
     #[error("Wrong email or password.")]
     BadCredentials,

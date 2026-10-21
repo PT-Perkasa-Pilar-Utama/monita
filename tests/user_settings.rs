@@ -6,7 +6,8 @@ use common::{BASE_URL, PASSWORD, TestApp, json_of};
 use serde_json::json;
 
 const PATH: &str = "/api/ui/me/password";
-const NEW: &str = "a-new-long-password";
+/// Exactly the minimum: 8 characters.
+const NEW: &str = "8chars!!";
 
 async fn change(app: &TestApp, cookie: &str, current: &str, new: &str) -> reqwest::Response {
     app.api_post(
@@ -58,8 +59,8 @@ async fn a_new_password_needs_the_current_one_and_ends_other_sessions() {
         "This is not your current password."
     );
     assert_eq!(
-        field(change(&app, &here, PASSWORD, "short").await, "new").await,
-        "Use at least 12 characters."
+        field(change(&app, &here, PASSWORD, "7chars!").await, "new").await,
+        "Use at least 8 characters."
     );
 
     assert_eq!(change(&app, &here, PASSWORD, NEW).await.status(), 204);

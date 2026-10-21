@@ -65,7 +65,7 @@ export function endpointDocs(origin: string, slug: string, name: string): Endpoi
         "overall is up, down, issue or maintenance. state is up, down, issue, maintenance or unknown (no data yet).",
         "maintenance[] lists the active maintenance windows that cover a public system: title, message, starts_at, ends_at and items.",
         "days[] runs oldest first. uptime is null for a day before the system existed.",
-        "Times are Unix seconds. updates[] runs newest first; label is investigating, identified, monitoring or resolved.",
+        "Times are Unix seconds. updates[] runs newest first. label is investigating, identified, monitoring or resolved.",
         "Only systems marked public appear. While the Incidents tab is off, incidents is empty.",
         "Each visitor address may call 60 times a minute. An answer can be up to 30 seconds old.",
       ],
@@ -75,7 +75,7 @@ export function endpointDocs(origin: string, slug: string, name: string): Endpoi
       method: "POST",
       path: "/api/v1/tickets",
       purpose: "Files a bug report from your page or app. It lands in Triage on the ticket board.",
-      access: "Anyone who has a ref ID. Your page sends the ref ID in the JSON body; no API key.",
+      access: "Anyone who has a ref ID. Your page sends the ref ID in the JSON body. It needs no API key.",
       request: `curl -s -X POST "${origin}/api/v1/tickets" \\
   -H "Content-Type: application/json" \\
   -d '{"ref_id": "rf_5k2m9q7w3x8p1t6v4y0z2a8bcd", "title": "Export button does nothing", "description": "I click Export on the March report and nothing downloads.", "page_url": "https://app.example.com/reports/march"}'`,

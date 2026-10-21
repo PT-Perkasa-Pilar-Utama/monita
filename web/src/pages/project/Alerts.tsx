@@ -102,7 +102,7 @@ export function Alerts(): ReactElement {
       <SettingsSection
         id="cards"
         title="Alert cards"
-        description="Each card sends the alerts of the levels it listens to. Monitors and heartbeats pick their alert level. The owner's two email cards stay; turn them off if someone else should hear."
+        description="Each card sends alerts for the levels it listens to."
         action={
           <Writable>
             <Button type="button" onClick={() => setEditing(null)}>
@@ -119,7 +119,7 @@ export function Alerts(): ReactElement {
             {deaf.map((l) => (
               <Alert key={l}>
                 <AlertDescription>
-                  No card listens to {l} alerts. Monitors and heartbeats set to {l} alert no one; their incidents still open and show.
+                  No card listens to {l} alerts. Nobody hears them.
                 </AlertDescription>
               </Alert>
             ))}

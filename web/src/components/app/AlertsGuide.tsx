@@ -32,7 +32,7 @@ function Part({ title, children }: { title: string; children: ReactNode }): Reac
 function Severities(): ReactElement {
   return (
     <Part title="Critical and warning">
-      <p className="text-muted-foreground">You choose critical or warning on each monitor and heartbeat. Its incidents go to every alert card that is on and listens to that level. A level no card listens to alerts no one; the incident still opens and shows.</p>
+      <p className="text-muted-foreground">You choose critical or warning on each monitor and heartbeat. Its incidents go to every alert card that listens to that level. If no card listens, nobody hears it. The incident still opens.</p>
       <Table>
         <TableHeader>
           <TableRow>

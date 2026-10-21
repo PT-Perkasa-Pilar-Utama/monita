@@ -72,7 +72,7 @@ docker volume create monita-data
 docker run --rm -it -v monita-data:/data -e MONITA_ENV=dev ghcr.io/pt-perkasa-pilar-utama/monita:1 admin create --email you@company.co.id
 ```
 
-The last command asks for a password of at least 12 characters. Then start Monita and open
+The last command asks for a password of at least 8 characters. Then start Monita and open
 `http://localhost:7466`:
 
 ```sh

@@ -67,7 +67,7 @@ export function Password(): ReactElement {
         <SettingsSection
           id="password"
           title="Change your password"
-          description="Use at least 12 characters. Every other session of yours signs out; this one stays."
+          description="Use at least 8 characters. Your other sessions sign out."
           footer={
             <Button type="submit" disabled={busy || !current || !next || !repeat}>
               {busy && <Spinner data-icon="inline-start" />}

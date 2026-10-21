@@ -69,7 +69,7 @@ Open the avatar menu and select **User settings**. **Profile** opens. Select **C
 
 ## Your password
 
-Open the avatar menu, select **User settings**, then **Password**. Enter your current password and the new one twice, then select **Change password**. The new password needs 12 characters or more. Your other sessions sign out; this one stays. An account gets 10 tries in each 15-minute window.
+Open the avatar menu, select **User settings**, then **Password**. Enter your current password and the new one twice, then select **Change password**. The new password needs 8 characters or more. Your other sessions sign out; this one stays. An account gets 10 tries in each 15-minute window.
 
 ## Two-factor sign-in
 

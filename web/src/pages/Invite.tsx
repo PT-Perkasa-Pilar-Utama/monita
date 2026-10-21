@@ -56,7 +56,7 @@ export function Invite(): ReactElement {
           <CardTitle>
             <h1 className="text-xl">Set your password</h1>
           </CardTitle>
-          <CardDescription>Use at least 12 characters. You sign in with your email and this password.</CardDescription>
+          <CardDescription>Use at least 8 characters. You sign in with your email and this password.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-6">

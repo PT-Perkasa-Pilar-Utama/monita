@@ -18,7 +18,7 @@ pub enum SettingsError {
     NoCurrent,
     #[error("This is not your current password.")]
     WrongPassword,
-    #[error("Use at least 12 characters.")]
+    #[error("Use at least 8 characters.")]
     TooShort,
     #[error("Too many tries. Wait {0} seconds, then try again.")]
     TooMany(i64),

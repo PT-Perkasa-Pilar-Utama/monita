@@ -91,7 +91,7 @@ volumes:
   monita-data:
 ```
 
-Create the first super admin with `docker compose run --rm monita admin create --email you@company.co.id` before the first `docker compose up -d`. It asks for the password, at least 12 characters. If Monita is already running, run `docker compose stop` first: the running server holds the database, and `admin create` fails with "File is locked by another process". Then start it again with `docker compose up -d`. Each variable is in [Configuration](configuration.md). To upgrade, pull the new tag and recreate the container; Monita migrates the database when it starts. `monita service` does not apply in a container: Docker restarts it.
+Create the first super admin with `docker compose run --rm monita admin create --email you@company.co.id` before the first `docker compose up -d`. It asks for the password, at least 8 characters. If Monita is already running, run `docker compose stop` first: the running server holds the database, and `admin create` fails with "File is locked by another process". Then start it again with `docker compose up -d`. Each variable is in [Configuration](configuration.md). To upgrade, pull the new tag and recreate the container; Monita migrates the database when it starts. `monita service` does not apply in a container: Docker restarts it.
 
 ### From source
 
