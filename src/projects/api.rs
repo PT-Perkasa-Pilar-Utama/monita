@@ -29,6 +29,9 @@ pub struct ProjectView {
     pub name: String,
     pub slug: String,
     pub owner_email: String,
+    /// For the owner's picture at `/users/{owner_id}/avatar`.
+    pub owner_id: i64,
+    pub owner_avatar_at: Option<i64>,
     pub description: Option<String>,
     /// Versioned by `icon_at`, so a new icon is a new URL. `None` shows the first letter.
     pub icon_url: Option<String>,
@@ -44,6 +47,8 @@ impl From<&Project> for ProjectView {
             name: p.name.clone(),
             slug: p.slug.clone(),
             owner_email: p.owner_email.clone(),
+            owner_id: p.owner_id,
+            owner_avatar_at: p.owner_avatar_at,
             description: p.description.clone(),
             icon_url: p
                 .icon_at

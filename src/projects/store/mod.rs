@@ -14,6 +14,8 @@ pub struct Project {
     pub owner_id: i64,
     pub owner_email: String,
     pub owner_active: bool,
+    /// When the owner's picture last changed; `None` without one. Read with the owner's email.
+    pub owner_avatar_at: Option<i64>,
     pub name: String,
     pub slug: String,
     pub ip_allowlist: Option<String>,
@@ -36,7 +38,7 @@ pub struct ApiKeyRow {
     pub created_at: i64,
 }
 
-const COLS: &str = "p.id, p.owner_id, u.email, p.name, p.slug, p.ip_allowlist, p.created_at, u.disabled_at IS NULL, p.description, p.icon_at, p.show_known_issues, p.show_report, p.show_incidents, p.homepage_url, p.show_changelog";
+const COLS: &str = "p.id, p.owner_id, u.email, p.name, p.slug, p.ip_allowlist, p.created_at, u.disabled_at IS NULL, p.description, p.icon_at, p.show_known_issues, p.show_report, p.show_incidents, p.homepage_url, p.show_changelog, u.avatar_at";
 
 fn row(r: &turso::Row) -> turso::Result<Project> {
     Ok(Project {
@@ -57,6 +59,7 @@ fn row(r: &turso::Row) -> turso::Result<Project> {
             changelog: r.get::<i64>(14)? == 1,
         },
         homepage_url: r.get(13)?,
+        owner_avatar_at: r.get(15)?,
     })
 }
 

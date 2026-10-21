@@ -23,9 +23,9 @@ export function StateIcon({ kind, label = STATE_WORD[kind], className }: { kind:
 }
 
 /** A bar per day, oldest on the left. */
-export function DayBars({ days }: { days: UptimeDay[] }): ReactElement {
+export function DayBars({ days, className }: { days: UptimeDay[]; className?: string }): ReactElement {
   return (
-    <div className="flex h-9 gap-px sm:gap-[2px]" data-uptime-bars>
+    <div className={cn("flex h-9 gap-px sm:gap-[2px]", className)} data-uptime-bars>
       {days.map((d) => {
         const tone = barTone(d);
         return (

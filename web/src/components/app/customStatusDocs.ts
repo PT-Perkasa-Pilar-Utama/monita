@@ -70,7 +70,7 @@ export function endpointDocs(origin: string, slug: string, name: string): Endpoi
         { label: "Bars", text: "days[] runs oldest first. uptime is null for a day before the system existed." },
         { label: "Incidents", text: "updates[] runs newest first. label is investigating, identified, monitoring or resolved. With the Incidents tab off, incidents is empty." },
         { label: "Maintenance", text: "The active windows that cover a public system, with title, message, starts_at, ends_at and items." },
-        { label: "Shown", text: "Only systems marked public. Times are Unix seconds." },
+        { label: "Shown", text: "Only systems marked public, while they are not paused. Times are Unix seconds." },
         { label: "Limits", text: "60 calls a minute for each visitor address by default. An answer can be up to 30 seconds old." },
         { label: "Errors", text: ERRORS },
       ],

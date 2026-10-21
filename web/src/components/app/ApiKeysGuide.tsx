@@ -25,7 +25,9 @@ function Part({ title, children }: { title: string; children: ReactNode }): Reac
 export function ApiKeysGuide(): ReactElement {
   const { project: p } = useProject();
   const { base_url: origin } = useMe();
-  const docs = endpointDocs(origin, p.slug, p.name).filter((d) => FLOW.includes(d.tab));
+  const docs = endpointDocs(origin, p.slug, p.name)
+    .filter((d) => FLOW.includes(d.tab))
+    .sort((a, b) => FLOW.indexOf(a.tab) - FLOW.indexOf(b.tab));
   return (
     <Sheet>
       <SheetTrigger asChild>

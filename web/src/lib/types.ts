@@ -4,6 +4,9 @@ export type Project = {
   name: string;
   slug: string;
   owner_email: string;
+  /** For the owner's picture at `/users/{owner_id}/avatar`. */
+  owner_id: number;
+  owner_avatar_at: number | null;
   description: string | null;
   icon_url: string | null;
   ip_allowlist: string | null;
@@ -66,7 +69,11 @@ export type Overview = {
   triage: number;
   incidents: IncidentRow[];
   active_keys: number;
+  timeline: { monitors: Lane[]; heartbeats: Lane[] };
 };
+
+/** One monitor or heartbeat on the Overview's timeline: a bar an hour for the last day. */
+export type Lane = { id: number; name: string; state: StateKind; uptime: number | null; hours: UptimeDay[] };
 
 export type ApiKey = {
   id: number;

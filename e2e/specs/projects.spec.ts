@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { apiProject } from "../lib/api";
+import { apiHeartbeat, apiProject } from "../lib/api";
 import { createProject } from "../lib/project";
 import { authFile } from "../lib/roles";
 
@@ -78,4 +78,15 @@ test("outside a project, the header leads back to the project opened last", asyn
   await page.goto("/incidents");
   await page.getByRole("link", { name: `Back to ${name}` }).click();
   await expect(page).toHaveURL(new RegExp(`/projects/${slug}$`));
+});
+
+test("the overview draws the last day of each heartbeat, and a row opens it", async ({ page }) => {
+  const slug = await apiProject(page, "Timeline");
+  await apiHeartbeat(page, slug, "nightly-export");
+  await page.goto(`/projects/${slug}`);
+  const beats = page.getByRole("region", { name: "Heartbeats" });
+  await expect(beats.getByText("nightly-export")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Monitors" }).getByText("No monitor yet.", { exact: false })).toBeVisible();
+  await beats.getByRole("link", { name: "nightly-export, open its page" }).click();
+  await expect(page.getByRole("heading", { name: "nightly-export" })).toBeVisible();
 });

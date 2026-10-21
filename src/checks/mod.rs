@@ -78,62 +78,70 @@ pub async fn counts(db: &Db, project_id: i64) -> anyhow::Result<(i64, i64)> {
     ))
 }
 
+/// One monitor or heartbeat as the Overview's timeline and the project list's bars need it.
+#[derive(Clone, Debug)]
+pub struct Brief {
+    pub id: i64,
+    pub name: String,
+    /// `item_state`'s kind: `up`, `down`, `issue`, `maintenance`, `paused` or `unknown`.
+    pub state: &'static str,
+    /// When it was watched: from when it was added until it was paused, or open-ended.
+    pub watched: (i64, i64),
+}
+
 /// One project-wide line for the Overview: how many there are, the worst state, and a sentence.
 #[derive(serde::Serialize)]
 pub struct Summary {
     pub total: usize,
     pub kind: &'static str,
     pub text: String,
-    /// When each one was watched, from when it was added until it was paused, for the project
-    /// list's hourly bars.
+    /// Each one, for the timeline and the hourly bars.
     #[serde(skip)]
-    pub since: Vec<(i64, i64)>,
+    pub sources: Vec<Brief>,
 }
 
-/// The Overview's monitor and heartbeat cards, in that order.
+/// The Overview's monitor and heartbeat lines, in that order.
 pub async fn summaries(db: &Db, project_id: i64) -> anyhow::Result<[Summary; 2]> {
     use crate::incidents::SourceKind;
     let states = crate::incidents::team_states_for(db, project_id).await?;
     let state = |kind, id| states.get(&(kind, id)).copied();
-    let monitors = list_monitors(db, project_id).await?;
     let watched = |from: i64, paused: Option<i64>| (from, paused.unwrap_or(i64::MAX));
-    let monitor_since: Vec<(i64, i64)> = monitors
-        .iter()
-        .map(|m| watched(m.created_at, m.paused_at))
-        .collect();
-    let monitors: Vec<_> = monitors
-        .iter()
-        .map(|m| {
-            item_state(
+    let monitors: Vec<Brief> = list_monitors(db, project_id)
+        .await?
+        .into_iter()
+        .map(|m| Brief {
+            state: item_state(
                 m.last.is_some(),
                 m.paused_at.is_some(),
                 state(SourceKind::Monitor, m.id),
             )
-            .0
+            .0,
+            watched: watched(m.created_at, m.paused_at),
+            id: m.id,
+            name: m.name,
         })
         .collect();
-    let beats = heartbeat::list(db, project_id).await?;
-    let beat_since: Vec<(i64, i64)> = beats
-        .iter()
-        .map(|h| watched(h.created_at, h.paused_at))
+    let beats: Vec<Brief> = heartbeat::list(db, project_id)
+        .await?
+        .into_iter()
+        .map(|h| Brief {
+            state: h.state(state(SourceKind::Heartbeat, h.id)).0,
+            watched: watched(h.created_at, h.paused_at),
+            id: h.id,
+            name: h.name,
+        })
         .collect();
-    let beats: Vec<_> = beats
-        .iter()
-        .map(|h| h.state(state(SourceKind::Heartbeat, h.id)).0)
-        .collect();
-    let line = |states: &[&str], noun, since| {
-        let (kind, text) = overview::summary(states, noun);
+    let line = |sources: Vec<Brief>, noun| {
+        let states: Vec<&str> = sources.iter().map(|b| b.state).collect();
+        let (kind, text) = overview::summary(&states, noun);
         Summary {
-            total: states.len(),
+            total: sources.len(),
             kind,
             text,
-            since,
+            sources,
         }
     };
-    Ok([
-        line(&monitors, "monitor", monitor_since),
-        line(&beats, "heartbeat", beat_since),
-    ])
+    Ok([line(monitors, "monitor"), line(beats, "heartbeat")])
 }
 
 pub async fn public_items(db: &Db, project_id: i64) -> anyhow::Result<Vec<PublicItem>> {

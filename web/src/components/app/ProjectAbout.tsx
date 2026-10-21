@@ -1,8 +1,9 @@
+import { UserAvatar } from "@/components/app/UserAvatar";
 import { useState } from "react";
 import type { ReactElement, ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { IconPicker } from "@/components/app/IconPicker";
-import { Activity, AlertTriangle, Bell, ExternalLink, Folder, Globe, Heartbeat, Key, Shield, Ticket, Users } from "@/components/icons";
+import { Activity, AlertTriangle, Bell, ExternalLink, Folder, Globe, Heartbeat, Key, Shield, Ticket } from "@/components/icons";
 import type { AppIcon } from "@/components/icons";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -181,7 +182,10 @@ export function ProjectAbout({
             </a>
           </Fact>
         )}
-        <Fact icon={Users}>Owned by {p.owner_email}</Fact>
+        <li className="flex items-center gap-2.5 text-sm">
+          <UserAvatar id={p.owner_id} email={p.owner_email} avatarAt={p.owner_avatar_at} className="size-6 text-[11px]" />
+          <span className="min-w-0 break-all">Owned by {p.owner_email}</span>
+        </li>
         <Fact icon={Folder}>Created {stamp(p.created_at)}</Fact>
         <Fact icon={Key}>
           <Link to={`${base}/settings/keys`} className="text-link hover:underline">

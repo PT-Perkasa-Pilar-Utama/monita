@@ -59,6 +59,21 @@ pub fn hours(intervals: &[(i64, i64)], watched: &[(i64, i64)], now: i64, off: i6
         .collect()
 }
 
+/// The share of `[lo, hi)` that a source was watched and not down, in percent; `None` when it
+/// was not watched in that time.
+pub fn share_up(intervals: &[(i64, i64)], watched: (i64, i64), lo: i64, hi: i64) -> Option<f64> {
+    let (lo, hi) = (lo.max(watched.0), hi.min(watched.1));
+    let span = hi - lo;
+    if span <= 0 {
+        return None;
+    }
+    let down: i64 = intervals
+        .iter()
+        .map(|&(s, e)| (e.min(hi) - s.max(lo)).max(0))
+        .sum();
+    Some((10_000.0 * (1.0 - down.min(span) as f64 / span as f64)).round() / 100.0)
+}
+
 fn worse(a: &'static str, b: &'static str) -> &'static str {
     let rank = |k| match k {
         "down" => 4,
@@ -85,7 +100,12 @@ pub async fn pulse(db: &Db, project_id: i64) -> anyhow::Result<Pulse> {
         kind: worse(monitors.kind, heartbeats.kind),
         hours: hours(
             &spans,
-            &[&monitors.since[..], &heartbeats.since[..]].concat(),
+            &monitors
+                .sources
+                .iter()
+                .chain(&heartbeats.sources)
+                .map(|b| b.watched)
+                .collect::<Vec<_>>(),
             t,
             off,
         ),
@@ -131,6 +151,32 @@ mod tests {
             hours(&[], &[always], now, 420)[23].day,
             "19:00",
             "hours read in the offset"
+        );
+    }
+
+    #[test]
+    fn a_source_is_up_for_the_share_of_its_watched_time_not_down() {
+        let day = (NOON - 86_400, NOON);
+        assert_eq!(share_up(&[], (0, i64::MAX), day.0, day.1), Some(100.0));
+        assert_eq!(
+            share_up(
+                &[(NOON - 3600, NOON)],
+                (NOON - 7200, i64::MAX),
+                day.0,
+                day.1
+            ),
+            Some(50.0),
+            "added two hours ago, down for the last one"
+        );
+        assert_eq!(
+            share_up(&[], (NOON + 1, i64::MAX), day.0, day.1),
+            None,
+            "added later"
+        );
+        assert_eq!(
+            share_up(&[], (0, day.0), day.0, day.1),
+            None,
+            "paused before"
         );
     }
 
