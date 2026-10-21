@@ -8,9 +8,9 @@ use super::{INTERVALS_S, probe};
 #[derive(Clone, Debug, Default)]
 pub struct MonitorInput {
     pub name: String,
-    /// `http`, `tcp` or `dns` (v1.1 Q16); empty reads as http.
+    /// `http`, `tcp`, `dns` (v1.1 Q16) or `ping` (Q24); empty reads as http.
     pub kind: String,
-    /// The URL for `http`, `host:port` for `tcp`, the host name for `dns`.
+    /// The URL for `http`, `host:port` for `tcp`, the host name for `dns` and `ping`.
     pub url: String,
     /// `dns` only: the check passes only when one A or AAAA answer equals this address.
     pub expected_address: Option<String>,
@@ -110,8 +110,18 @@ impl MonitorInput {
                     );
                 }
             }
+            "ping" => {
+                if cfg!(windows) {
+                    e.insert("kind", super::probe::icmp::NO_WINDOWS);
+                } else if !valid_host(url) {
+                    e.insert(
+                        "url",
+                        "Enter a host name or an address, such as db.internal or 10.0.0.5.",
+                    );
+                }
+            }
             _ => {
-                e.insert("kind", "Pick HTTP, TCP or DNS.");
+                e.insert("kind", "Pick HTTP, TCP, DNS or ping.");
             }
         }
         e

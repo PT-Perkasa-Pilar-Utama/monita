@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { certWords, envName, headerText, parseHeaderLines, signInWords, targetField, watchesCert, whenItFails } from "@/lib/checks";
+import { certWords, envName, kindTag, headerText, parseHeaderLines, signInWords, targetField, watchesCert, whenItFails } from "@/lib/checks";
 
 test("each pair of failure boxes has its own sentence", () => {
   expect(whenItFails(true, true)).toBe("Sends alerts and opens an incident");
@@ -52,4 +52,10 @@ test("a certificate's expiry reads as a date and the days left", () => {
   expect(certWords(exp, exp - 86_400, 0)).toBe("2026-11-29, in 1 day");
   expect(certWords(exp, exp - 60, 0)).toBe("2026-11-29, today");
   expect(certWords(exp, exp + 1, 0)).toBe("Expired on 2026-11-29");
+});
+
+test("a non-HTTP monitor's target carries a short tag", () => {
+  expect(kindTag("tcp")).toBe("TCP");
+  expect(kindTag("dns")).toBe("DNS");
+  expect(kindTag("ping")).toBe("Ping");
 });

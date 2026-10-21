@@ -1,12 +1,12 @@
 # Monitors
 
-A monitor checks one thing on a fixed interval: a URL over HTTP, a TCP port, or a DNS name.
+A monitor checks one thing on a fixed interval: a URL over HTTP, a TCP port, a DNS name, or a host that answers ping.
 
 ## Create one
 
 1. In a project, open **Monitors** and select **New monitor**. The form opens beside the list.
 2. Enter a **Name**.
-3. Under **What it checks**, pick **HTTP**, **TCP port** or **DNS name**.
+3. Under **What it checks**, pick **HTTP**, **TCP port**, **DNS name** or **Ping**.
 4. Fill in the **Check** section. For HTTP, also fill in **Authentication** and **Headers** as you need.
 5. Set what a passing check is under **A check passes when**.
 6. Set what a failure does under **Alerts and status page**.
@@ -14,14 +14,17 @@ A monitor checks one thing on a fixed interval: a URL over HTTP, a TCP port, or 
 
 Select **How monitors work** at the top of the page for a short guide with examples.
 
-## TCP and DNS checks
+## TCP, DNS and ping checks
 
 | Kind | Target | Passes when |
 | --- | --- | --- |
 | TCP port | `host:port`, such as `db.internal:5432`, or `[2001:db8::1]:443` | A connection opens within the timeout. |
 | DNS name | A host name, such as `api.example.com` | The name resolves. If you set **The name resolves to**, one A or AAAA answer must equal that address. |
+| Ping | A host name or an address, such as `10.0.0.5` | The host answers one ICMP echo request within the timeout. The response time is the round trip. |
 
-The interval, the timeout, the failure count, severity and the status page work as for HTTP. A DNS check asks the resolver of the server that runs Monita, so it sees `/etc/hosts` and the server's DNS settings. **Details** shows the same check as a command: `nc -vz` for a port and `getent ahosts` for a name. ICMP ping and DNS record types other than A and AAAA are not checked.
+The interval, the timeout, the failure count, severity and the status page work as for HTTP. A DNS check asks the resolver of the server that runs Monita, so it sees `/etc/hosts` and the server's DNS settings. **Details** shows the same check as a command: `nc -vz` for a port, `getent ahosts` for a name and `ping -c 1` for a host. DNS record types other than A and AAAA are not checked.
+
+A ping check uses an ICMP socket that needs no root and no extra capability. Linux allows it when the sysctl `net.ipv4.ping_group_range` covers Monita's group. systemd 243 and later, and Docker, set it to `0 2147483647`, which covers every group. If the server refuses, the check fails with an error that names this setting. Windows has no such socket, so a Monita on Windows does not offer ping. Use a TCP check there, or for a host that blocks ICMP.
 
 ## Certificate warning
 

@@ -92,7 +92,7 @@ export type AlertRoute = {
 export type LastCheck = { checked_at: number; ok: boolean; summary: string };
 
 /** What a monitor checks (v1.1 Q16). */
-export type CheckKind = "http" | "tcp" | "dns";
+export type CheckKind = "http" | "tcp" | "dns" | "ping";
 
 export type MonitorView = {
   id: number;

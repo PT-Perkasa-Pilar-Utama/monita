@@ -8,12 +8,19 @@ export const CHECK_KINDS: { value: CheckKind; label: string }[] = [
   { value: "http", label: "HTTP" },
   { value: "tcp", label: "TCP port" },
   { value: "dns", label: "DNS name" },
+  { value: "ping", label: "Ping" },
 ];
+
+/** The short tag before a non-HTTP monitor's target, as `TCP db.internal:5432`. */
+export function kindTag(kind: CheckKind): string {
+  return kind === "ping" ? "Ping" : kind.toUpperCase();
+}
 
 /** The target field of the monitor form for each kind: its label and its example. */
 export function targetField(kind: CheckKind): { label: string; placeholder: string } {
   if (kind === "tcp") return { label: "Host and port", placeholder: "db.internal:5432" };
   if (kind === "dns") return { label: "Host name", placeholder: "api.example.com" };
+  if (kind === "ping") return { label: "Host", placeholder: "db.internal or 10.0.0.5" };
   return { label: "URL", placeholder: "https://api.example.com/healthz" };
 }
 

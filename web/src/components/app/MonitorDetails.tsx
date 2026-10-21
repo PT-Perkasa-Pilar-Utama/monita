@@ -34,12 +34,19 @@ export function MonitorDetails({ m }: { m: MonitorView }): ReactElement {
   );
 }
 
-/** A TCP or DNS check: its target, a command to try it, and what a pass means. */
+/** What each non-HTTP kind calls its target, how its command tries it, and what a pass means. */
+const PLAIN = {
+  tcp: { title: "TCP port", tries: "This command opens a connection to the same port." },
+  dns: { title: "DNS name", tries: "This command asks the server's resolver, as the check does." },
+  ping: { title: "Ping", tries: "This command sends one echo request, as the check does." },
+} as const;
+
+/** A TCP, DNS or ping check: its target, a command to try it, and what a pass means. */
 function PlainParts({ m }: { m: MonitorView }): ReactElement {
-  const tcp = m.kind === "tcp";
+  const plain = PLAIN[m.kind === "http" ? "tcp" : m.kind];
   return (
     <>
-      <DetailPart title={tcp ? "TCP port" : "DNS name"}>
+      <DetailPart title={plain.title}>
         <CopyField id="monitor-url" value={m.url} />
         <Facts
           rows={[
@@ -49,15 +56,17 @@ function PlainParts({ m }: { m: MonitorView }): ReactElement {
         />
       </DetailPart>
       <DetailPart title="Try it yourself">
-        <p className="text-muted-foreground">{tcp ? "This command opens a connection to the same port." : "This command asks the server's resolver, as the check does."}</p>
+        <p className="text-muted-foreground">{plain.tries}</p>
         <CodeCopy id="monitor-curl" title="Same check as Monita" code={monitorCommand(m)} />
       </DetailPart>
       <DetailPart title="A check passes when">
         <Facts
           rows={
-            tcp
+            m.kind === "tcp"
               ? [["The port", "Accepts a connection"]]
-              : [["The name resolves to", m.expected_address ? <span className="font-mono">{m.expected_address}</span> : "Any address"]]
+              : m.kind === "ping"
+                ? [["The host", "Answers one echo request within the timeout"]]
+                : [["The name resolves to", m.expected_address ? <span className="font-mono">{m.expected_address}</span> : "Any address"]]
           }
         />
       </DetailPart>

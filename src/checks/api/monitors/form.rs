@@ -10,7 +10,7 @@ use crate::checks::MonitorInput;
 #[serde(default)]
 pub(super) struct MonitorForm {
     name: String,
-    /// `http`, `tcp` or `dns`; missing means http, as every monitor was before.
+    /// `http`, `tcp`, `dns` or `ping`; missing means http, as every monitor was before.
     kind: String,
     url: String,
     /// `dns` only.

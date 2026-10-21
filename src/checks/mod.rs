@@ -193,6 +193,7 @@ pub const SECRET_GONE: &str =
 pub async fn run_check(db: &Db, clients: &Clients, m: &Monitor) -> anyhow::Result<CheckResult> {
     match m.kind.as_str() {
         "tcp" => return Ok(probe::probe_tcp(&m.url, m.timeout_ms).await),
+        "ping" => return Ok(probe::icmp::probe_ping(&m.url, m.timeout_ms).await),
         "dns" => {
             let expected = m.expected_address.as_deref();
             return Ok(probe::probe_dns(&m.url, expected, m.timeout_ms).await);

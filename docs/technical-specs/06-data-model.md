@@ -184,7 +184,7 @@ One row per project. Ticket alerts are apart from the severities (migration 0007
 | auth_secret_id | INTEGER | yes | | FK project_secrets ON DELETE SET NULL | Must belong to the monitor's project. A deleted secret fails the check with a fixed sentence. |
 | auth_user | TEXT | yes | | | The user name for `basic`. No colon. |
 | auth_header | TEXT | yes | | | The header name for `header`. A header row may not repeat it. |
-| kind | TEXT | no | `'http'` | | `http`, `tcp` or `dns` (migration 0024, v1.1 Q16). A TCP check keeps `host:port` in `url`, a DNS check the host name. |
+| kind | TEXT | no | `'http'` | `IN ('http','tcp','dns','ping')` | `http`, `tcp` or `dns` (migration 0024, v1.1 Q16), or `ping` (migration 0029 rebuilt the table to widen the CHECK, v1.1 Q24). A TCP check keeps `host:port` in `url`; a DNS or ping check keeps the host. |
 | expected_address | TEXT | yes | | | `dns` only: the check passes only when one A or AAAA answer equals it (migration 0024). |
 | cert_warn_days | INTEGER | yes | | `IN (7, 14, 30)` | HTTPS only: warn this many days before the certificate expires (migration 0028, v1.1 Q25). |
 | cert_expires_at | INTEGER | yes | | | The `notAfter` of the leaf certificate the last HTTPS check saw. |

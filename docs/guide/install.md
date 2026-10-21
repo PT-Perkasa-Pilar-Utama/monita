@@ -14,6 +14,7 @@ Monita runs as one systemd service on a Linux VM. These steps assume Ubuntu or D
 - The release binary is static. It needs no other libraries, no database server and no runtime.
 - The disk holds the database and 7 backups. Each backup is a full copy of the database, so plan for 8 times its size.
 - The database keeps 7 days of check results. At 500 monitors on a 60 s interval, that is about 5 million rows. The design target is under 2 GB ([NFR-09](../technical-specs/08-non-functional-requirements.md)).
+- A ping check needs the sysctl `net.ipv4.ping_group_range` to cover Monita's group. Most systemd distributions and Docker set `0 2147483647` already. Check with `sysctl net.ipv4.ping_group_range`.
 - Monita needs outbound access to the sites it checks, to the mail server, and to each webhook address. Users reach it through a reverse proxy that handles HTTPS.
 
 Measured load (2026-10-20): the 1.0.1 release image ran in Docker Desktop on an Apple M1 (arm64, a VM with 2 vCPU) and checked 500 URLs on a 60 s interval against a local nginx. It used 17.6 MiB of memory idle, and 21.2 MiB (median) to 24.2 MiB (peak) under load, with 0.8 % of one core on average. The nginx received 498 requests a minute, so every check ran. After 10 minutes the data folder held 2.7 MB. Checks of real sites over HTTPS cost more CPU and memory. The design target for memory is under 100 MB at this load ([NFR-06](../technical-specs/08-non-functional-requirements.md)).

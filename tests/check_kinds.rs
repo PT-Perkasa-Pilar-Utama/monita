@@ -195,7 +195,7 @@ async fn the_form_checks_each_kind_and_keeps_no_http_fields_on_the_others() {
     let mut bad = form("dns", "Bad address", "x.co");
     bad["expected_address"] = json!("not-an-ip");
     assert_eq!(field(bad).await, ["expected_address"]);
-    assert_eq!(field(form("ping", "Unknown", "x.co")).await, ["kind"]);
+    assert_eq!(field(form("icmp", "Unknown", "x.co")).await, ["kind"]);
 
     let mut tcp = form("tcp", "Database", "[::1]:5432");
     tcp["headers"] = json!("X-Env: prod");

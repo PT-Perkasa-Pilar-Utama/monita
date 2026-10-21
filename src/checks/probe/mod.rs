@@ -2,6 +2,7 @@
 //! becomes a `CheckResult` with `ok = false`.
 
 pub mod cert;
+pub mod icmp;
 
 use std::time::{Duration, Instant};
 

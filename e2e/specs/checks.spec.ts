@@ -90,6 +90,24 @@ test("a TCP monitor needs a port, hides the HTTP fields, and Details tries it wi
   await expect(page.locator("#monitor-curl")).toContainText("nc -vz -w 10 '127.0.0.1' 18080");
 });
 
+test("a ping monitor takes a host, and Details tries it with one ping", async ({ page }) => {
+  const slug = await apiProject(page, "Pings");
+  await page.goto(`/projects/${slug}/monitors/new`);
+  await page.locator("#m-name").fill("Gateway");
+  await page.getByRole("radio", { name: "Ping" }).click();
+  await expect(page.locator('label[for="m-url"]')).toContainText("Host");
+  await expect(page.locator("#m-method")).toHaveCount(0);
+  await page.locator("#m-url").fill("127.0.0.1:80");
+  await page.getByRole("button", { name: "Save monitor" }).click();
+  await expect(page.getByText("Enter a host name or an address")).toBeVisible();
+  await page.locator("#m-url").fill("127.0.0.1");
+  await page.getByRole("button", { name: "Save monitor" }).click();
+  await expect(page.getByText("Ping 127.0.0.1")).toBeVisible();
+
+  await page.getByRole("button", { name: "Details" }).click();
+  await expect(page.locator("#monitor-curl")).toContainText("ping -c 1 '127.0.0.1'");
+});
+
 test("an https monitor offers a certificate warning, and Details shows it", async ({ page }) => {
   const slug = await apiProject(page, "Certs");
   await page.goto(`/projects/${slug}/monitors/new`);

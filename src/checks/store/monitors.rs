@@ -10,7 +10,7 @@ pub struct Monitor {
     pub id: i64,
     pub project_id: i64,
     pub name: String,
-    /// `http`, `tcp` or `dns`.
+    /// `http`, `tcp`, `dns` or `ping`.
     pub kind: String,
     pub url: String,
     /// `dns` only.

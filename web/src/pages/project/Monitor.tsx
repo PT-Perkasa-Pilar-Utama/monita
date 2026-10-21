@@ -1,5 +1,6 @@
 import { RefreshButton } from "@/components/app/RefreshButton";
 import { Writable } from "@/lib/session";
+import { kindTag } from "@/lib/checks";
 import type { ReactElement } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { HistoryPager } from "@/components/app/History";
@@ -51,7 +52,7 @@ export function Monitor({ editing = false }: { editing?: boolean }): ReactElemen
                   </a>
                 ) : (
                   <span className="min-w-0 truncate font-mono text-sm text-muted-foreground">
-                    {m.kind === "tcp" ? "TCP" : "DNS"} {m.url}
+                    {kindTag(m.kind)} {m.url}
                   </span>
                 )}
                 <SeverityBadge severity={m.severity} />

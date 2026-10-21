@@ -48,7 +48,7 @@ pub fn router() -> Router<AppState> {
 struct MonitorView {
     id: i64,
     name: String,
-    /// `http`, `tcp` or `dns`.
+    /// `http`, `tcp`, `dns` or `ping`.
     kind: String,
     /// The URL, `host:port` for TCP, or the host name for DNS.
     url: String,
