@@ -137,6 +137,15 @@ Enter **Send it to** (it starts as your own address) and select **Send test emai
 
 A badge reads **Sending** or **Log only**. The section shows the mail server, the time of the last send, and three counts: **Sent in N days**, **Waiting or retrying** and **Gave up**. After a failure it shows the last error.
 
+## Telegram
+
+**Admin**, **Telegram** sets Monita's own bot. Projects then pick **Telegram with Monita's bot** and connect a chat with a link, with no token of their own.
+
+1. In Telegram, message @BotFather, send `/newbot`, and copy the token.
+2. Paste it in **Bot token** and select **Save token**. Monita checks the token with Telegram first.
+
+Use a bot for Monita alone: Monita reads the bot's messages to find connect links, so a bot that sends its messages to a webhook is refused. **Remove bot** stops every alert that uses it until a bot is set again. Pages never show the token; a supervisor sees the bot's name only.
+
 ## Time zone
 
 **Admin**, **Time zone** sets the offset every page uses to show times. Pick it under **Show times in**, for example `UTC+7: Jakarta (WIB), Bangkok, Hanoi`, and select **Save changes**. The page reloads.

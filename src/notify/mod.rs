@@ -11,6 +11,7 @@ mod format;
 mod mailer;
 mod preview;
 mod store;
+mod telegram;
 mod tickets;
 
 use turso::Connection;
@@ -66,13 +67,15 @@ pub enum RouteError {
         crate::platform::caps::EMAILS_PER_ROUTE
     )]
     TooManyEmails,
-    #[error("Pick JSON, Discord, Telegram, ntfy or PagerDuty.")]
+    #[error("Pick JSON, Discord, Telegram, Telegram with Monita's bot, ntfy or PagerDuty.")]
     BadFormat,
     #[error("Enter the topic URL, such as https://ntfy.sh/team-alerts.")]
     NtfyTopic,
     /// The chat ID or routing key the format needs, with what to enter.
     #[error("{0}")]
     BadKey(&'static str),
+    #[error("Ask a super admin to set Monita's Telegram bot first, or use your own bot.")]
+    NoBot,
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 }
@@ -121,6 +124,12 @@ pub async fn save_route(
         .filter(|f| !f.is_empty())
         .unwrap_or("json");
     let (url, key) = format::check(webhook_format, form.webhook_url, form.webhook_key)?;
+    if webhook_format == "telegram_bot"
+        && form.use_webhook
+        && telegram::bot_name(db).await?.is_none()
+    {
+        return Err(RouteError::NoBot);
+    }
     let saved = store::Route {
         severity: severity.to_string(),
         emails,
@@ -219,7 +228,13 @@ async fn queue_webhook(
     };
     let key = route.webhook_key.as_deref();
     let (target, body) = format::webhook(&route.webhook_format, url, key, slug, msg);
-    store::queue(c, "webhook", &target, None, &body.to_string(), at).await?;
+    // Monita's bot: the row names the chat; delivery adds the token.
+    let channel = if route.webhook_format == "telegram_bot" {
+        "telegram"
+    } else {
+        "webhook"
+    };
+    store::queue(c, channel, &target, None, &body.to_string(), at).await?;
     Ok(true)
 }
 

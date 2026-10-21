@@ -35,6 +35,7 @@ pub fn router() -> Router<AppState> {
             "/api/ui/projects/{slug}/ticket-alerts/test",
             post(test_ticket_alerts),
         )
+        .merge(super::telegram::api::router())
 }
 
 fn severity_ok(s: &str) -> Result<(), UiError> {
@@ -106,7 +107,9 @@ async fn save(
         Err(e @ (RouteError::BadWebhook | RouteError::NtfyTopic)) => {
             Err(UiError::field("webhook_url", e.to_string()))
         }
-        Err(e @ RouteError::BadFormat) => Err(UiError::field("webhook_format", e.to_string())),
+        Err(e @ (RouteError::BadFormat | RouteError::NoBot)) => {
+            Err(UiError::field("webhook_format", e.to_string()))
+        }
         Err(e @ RouteError::BadKey(_)) => Err(UiError::field("webhook_key", e.to_string())),
         Err(e) => Err(UiError::field("emails", e.to_string())),
     }

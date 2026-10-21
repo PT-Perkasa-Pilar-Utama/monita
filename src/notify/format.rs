@@ -5,10 +5,21 @@ use serde_json::{Value, json};
 
 use super::{RouteError, compose::Composed};
 
-pub(super) const FORMATS: [&str; 5] = ["json", "discord", "telegram", "ntfy", "pagerduty"];
+pub(super) const FORMATS: [&str; 6] = [
+    "json",
+    "discord",
+    "telegram",
+    "telegram_bot",
+    "ntfy",
+    "pagerduty",
+];
 
 /// PagerDuty's Events API v2. A route in this format posts here, whatever URL the form sent.
 pub(super) const PAGERDUTY_URL: &str = "https://events.pagerduty.com/v2/enqueue";
+
+/// What a `telegram_bot` route stores as its URL. Delivery adds Monita's bot token then, so no
+/// route or outbox row ever holds it (v1.1 Q33).
+pub(super) const TELEGRAM_BOT_URL: &str = "https://api.telegram.org/";
 
 /// A route's webhook as it is stored: the URL to post to and the key, checked for the format.
 /// An empty URL turns the webhook off, except for PagerDuty, whose URL is fixed.
@@ -23,13 +34,14 @@ pub(super) fn check(
     }
     let url = match format {
         "pagerduty" => Some(PAGERDUTY_URL.to_string()),
+        "telegram_bot" => Some(TELEGRAM_BOT_URL.to_string()),
         _ if url.is_empty() => None,
         _ if !crate::platform::valid_http_url(url) => return Err(RouteError::BadWebhook),
         "ntfy" if ntfy_topic(url).is_none() => return Err(RouteError::NtfyTopic),
         _ => Some(url.to_string()),
     };
     let key = match format {
-        "telegram" if !telegram_chat(key) => {
+        "telegram" | "telegram_bot" if !telegram_chat(key) => {
             return Err(RouteError::BadKey(
                 "Enter the chat ID, such as -1001234567890 or @team_alerts.",
             ));
@@ -43,7 +55,7 @@ pub(super) fn check(
                 "Enter the routing key of the PagerDuty integration.",
             ));
         }
-        "telegram" | "pagerduty" => Some(key.to_string()),
+        "telegram" | "telegram_bot" | "pagerduty" => Some(key.to_string()),
         _ => None,
     };
     Ok((url, key))
@@ -90,6 +102,11 @@ pub(super) fn webhook(
             url.to_string(),
             // No @everyone or role pings from text that a cause or a name may carry.
             json!({ "content": cut(&format!("{line}\n{}", msg.link), 2000), "allowed_mentions": { "parse": [] } }),
+        ),
+        // Monita's bot posts to the chat; delivery adds the token (`telegram::send_url`).
+        "telegram_bot" => (
+            key.unwrap_or_default().to_string(),
+            json!({ "chat_id": key.unwrap_or_default(), "text": cut(&format!("{line}\n{}", msg.link), 4096), "disable_web_page_preview": true }),
         ),
         "telegram" => (
             url.to_string(),

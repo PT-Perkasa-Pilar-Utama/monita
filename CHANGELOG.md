@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [1.1.0] - 2026-10-21
 
-More ways to check, alert and plan: TCP, DNS and ping monitors, certificate warnings, checks from more than one place, Discord, Telegram, ntfy and PagerDuty alerts, maintenance windows, and two-factor sign-in. Migrations 0024 to 0035 run on start; 0029 rebuilds the `monitors` table.
+More ways to check, alert and plan: TCP, DNS and ping monitors, certificate warnings, checks from more than one place, Discord, Telegram, ntfy and PagerDuty alerts, maintenance windows, and two-factor sign-in. Migrations 0024 to 0036 run on start; 0029 rebuilds the `monitors` table.
 
 ### Added
 
@@ -21,6 +21,7 @@ More ways to check, alert and plan: TCP, DNS and ping monitors, certificate warn
 - TCP port and DNS name monitors beside HTTP ([#9](https://github.com/PT-Perkasa-Pilar-Utama/monita/issues/9)). Migration 0024.
 - **User settings**, **Password**: change your own password with the current one. Your other sessions sign out.
 - **User settings**, **Profile**: a picture the top bar shows in place of your initial. Migration 0034.
+- Monita's own Telegram bot: a super admin sets it once in **Admin**, **Telegram**, and a project picks **Telegram with Monita's bot** and connects a chat with a link or QR code. `MONITA_TELEGRAM_API` points at a self-hosted Bot API server. Migration 0036.
 
 ### Changed
 

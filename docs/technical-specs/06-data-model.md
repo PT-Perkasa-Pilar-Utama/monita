@@ -146,7 +146,7 @@ The icon's bytes, apart from `projects` so a project list never reads them.
 | emails | TEXT | no | `''` | | Newline-separated. A new project's routes start with the owner's email (AC-15.02). Migration 0023 gave the owner's email to every route that had no email and no webhook in use. |
 | webhook_url | TEXT | yes | | | |
 | use_webhook | INTEGER | no | | | 0 for a new project's routes (v1.1 Q27; migration 0033 unticked routes with no URL) |
-| webhook_format | TEXT | no | `'json'` | | `json`, `discord`, `telegram`, `ntfy` or `pagerduty` (migration 0025, v1.1 Q17) |
+| webhook_format | TEXT | no | `'json'` | | `json`, `discord`, `telegram`, `telegram_bot`, `ntfy` or `pagerduty` (migration 0025, v1.1 Q17; `telegram_bot` from migration 0036, Q33, which rebuilt the table) |
 | webhook_key | TEXT | yes | | | Telegram's chat ID or PagerDuty's routing key. A supervisor never sees it, like the URL. |
 | enabled | INTEGER | no | 1 | | The route's on and off switch (migration 0008). Off keeps the emails and the webhook, and sends nothing. |
 
@@ -280,8 +280,8 @@ Uptime % for a day = `1 - downtime_s / 86400`. The status page computes the same
 | column | type | notes |
 | --- | --- | --- |
 | id | INTEGER | PK |
-| channel | TEXT | `email`, `webhook` |
-| recipient | TEXT | Email address or URL |
+| channel | TEXT | `email`, `webhook`, `telegram` (Monita's bot; migration 0036 rebuilt the table for it) |
+| recipient | TEXT | Email address, URL, or a Telegram chat ID. A `telegram` row never holds the bot token; delivery adds it. |
 | subject | TEXT NULL | Email only |
 | body | TEXT | Plain text, or JSON for webhooks |
 | attempts | INTEGER | default 0 |
@@ -289,6 +289,8 @@ Uptime % for a day = `1 - downtime_s / 86400`. The status page computes the same
 | sent_at, failed_at | INTEGER NULL | |
 | last_error | TEXT NULL | |
 | created_at | INTEGER | Rows older than 30 days are deleted |
+
+`telegram_links` (migration 0036, v1.1 Q33): `code_hash` TEXT PK (SHA-256 of a connect link's code), `project_id` FK projects ON DELETE CASCADE, `severity` (`critical` or `warning`), `expires_at` (10 minutes after the link), `chat_id` and `chat_title` (set when the bot hears the code). A new link deletes the severity's older links and every expired link. Monita's bot itself is three `settings` rows: `telegram_bot_token`, `telegram_bot_name` and `telegram_offset` (the next update to read).
 
 ### 6.3.13 ref_ids and tickets
 

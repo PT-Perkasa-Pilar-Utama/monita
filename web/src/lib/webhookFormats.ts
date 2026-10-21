@@ -1,11 +1,12 @@
 // The webhook formats an alert route can use (v1.1 Q17), and the fields each one needs.
 
-export type WebhookFormat = "json" | "discord" | "telegram" | "ntfy" | "pagerduty";
+export type WebhookFormat = "json" | "discord" | "telegram" | "telegram_bot" | "ntfy" | "pagerduty";
 
 export const WEBHOOK_FORMATS: { value: WebhookFormat; label: string }[] = [
   { value: "json", label: "JSON (Slack, Google Chat, any receiver)" },
   { value: "discord", label: "Discord" },
-  { value: "telegram", label: "Telegram" },
+  { value: "telegram_bot", label: "Telegram with Monita's bot" },
+  { value: "telegram", label: "Telegram with your own bot" },
   { value: "ntfy", label: "ntfy" },
   { value: "pagerduty", label: "PagerDuty" },
 ];
@@ -22,6 +23,8 @@ export function webhookFields(format: WebhookFormat): WebhookFields {
   switch (format) {
     case "discord":
       return { url: { label: "Discord webhook URL", placeholder: "https://discord.com/api/webhooks/…" }, key: null };
+    case "telegram_bot":
+      return { url: null, key: { label: "Chat", placeholder: "Connect a chat, or enter its ID" } };
     case "telegram":
       return { url: { label: "Bot URL", placeholder: "https://api.telegram.org/bot<token>/sendMessage" }, key: { label: "Chat ID", placeholder: "-1001234567890 or @team_alerts" } };
     case "ntfy":
@@ -31,4 +34,10 @@ export function webhookFields(format: WebhookFormat): WebhookFields {
     default:
       return { url: { label: "Webhook URL", placeholder: "https://hooks.slack.com/services/…" }, key: null };
   }
+}
+
+/** The formats the form offers: Monita's bot only once a super admin set one, unless the route
+ * already uses it. */
+export function formatsFor(bot: string | null, current: WebhookFormat): { value: WebhookFormat; label: string }[] {
+  return WEBHOOK_FORMATS.filter((f) => f.value !== "telegram_bot" || bot !== null || current === "telegram_bot");
 }

@@ -14,6 +14,7 @@ pub mod limits;
 pub mod mail_api;
 pub mod migrate;
 pub mod page;
+pub mod qr;
 pub mod rate_limit;
 pub mod reset_state;
 pub mod settings;

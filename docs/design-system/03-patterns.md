@@ -6,7 +6,7 @@
 | --- | --- | --- |
 | Signed in | `layouts/AppLayout.tsx` (inside `SignedInLayout`) | `TopBar` then `PageFrame`. Projects, Incidents, Tickets and Admin pages. `SignedInLayout` loads the session once, so moving between areas keeps the header. |
 | Project | `layouts/ProjectLayout.tsx` | `TopBar` (project crumb, `PageTabs`) then `PageFrame` then the page, then the primitive's footer illustration. The header stays up while the project loads. |
-| Admin | `layouts/AdminLayout.tsx` | `SidebarFrame` with `SideNav` (User management, Rate limits, Outgoing email, Time zone, System information). Someone who is not a super admin or supervisor gets the not-found page. |
+| Admin | `layouts/AdminLayout.tsx` | `SidebarFrame` with `SideNav` (User management, Rate limits, Outgoing email, Telegram, Time zone, System information). Someone who is not a super admin or supervisor gets the not-found page. |
 | Settings | `layouts/SettingsLayout.tsx` | `SidebarFrame` with `SideNav` (General, Status page, Alerts, API keys, Secrets, Allowlist) |
 | User settings | `layouts/AccountLayout.tsx` | `SidebarFrame` with `SideNav` (Profile, Password, Two-factor sign-in), for the signed-in user's own account. The avatar menu's **User settings** opens it. |
 | Public | `layouts/PublicLayout.tsx` | Sticky header (project name, homepage link, `ThemeToggle`, centred `PageTabs`), `PageFrame`, footer |
@@ -22,7 +22,7 @@ Under 768 px (`md`) a side navigation becomes one scrolling row. The tab bar scr
 | Account menu | Who is signed in and their role, Toggle theme, Sign out. On a phone Admin and Documentation move in here. |
 | Project tabs | Overview, Monitors, Heartbeats, Incidents, Tickets, Changelog, Settings. A Status page button sits at the right end and leaves the app for `/status/{slug}`. |
 | Settings side nav | General, Status page, Alerts, API keys, Secrets, Allowlist |
-| Admin side nav | User management, Rate limits, Outgoing email, Time zone, System information |
+| Admin side nav | User management, Rate limits, Outgoing email, Telegram, Time zone, System information |
 | Public tabs | Uptime (also Past uptime), Incidents (also History), Issues, Ticket, Changelog. A tab the project turned off is gone, and its URL answers 404. |
 
 Area links in the top bar:

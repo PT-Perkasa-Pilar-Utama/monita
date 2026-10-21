@@ -102,3 +102,11 @@ test("a location is added with its token shown once, a monitor checks from it, a
   await page.getByRole("button", { name: "Delete location" }).click();
   await expect(row).toHaveCount(0);
 });
+
+test("the Telegram page refuses a token that is not a bot token, before asking Telegram", async ({ page }) => {
+  await page.goto("/admin/telegram");
+  await expect(page.getByRole("heading", { name: "Telegram", level: 1 })).toBeVisible();
+  await page.getByLabel("Bot token").fill("not-a-token");
+  await page.getByRole("button", { name: "Save token" }).click();
+  await expect(page.getByText("Telegram refused this token. Copy it again from @BotFather.")).toBeVisible();
+});

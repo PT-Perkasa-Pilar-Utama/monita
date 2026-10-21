@@ -96,6 +96,7 @@ const MIGRATIONS: &[(i64, &str)] = &[
         35,
         include_str!("../../migrations/0035_totp_pending_expiry.sql"),
     ),
+    (36, include_str!("../../migrations/0036_telegram_bot.sql")),
 ];
 
 pub async fn run(db: &Db) -> anyhow::Result<()> {
@@ -319,5 +320,68 @@ mod tests {
                 (3, 1, String::new(), 0),
             ]
         );
+    }
+
+    #[tokio::test]
+    async fn migration_36_keeps_routes_and_outbox_rows_and_takes_the_bot() {
+        let dir = tempfile::tempdir().unwrap();
+        let db = Db::open(&dir.path().join("t.db")).await.unwrap();
+        db.write_without_fk(async |c| {
+            c.execute(
+                "CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY, applied_at INTEGER NOT NULL)",
+                (),
+            )
+            .await?;
+            for &(version, sql) in &MIGRATIONS[..35] {
+                c.execute_batch(sql).await?;
+                c.execute(
+                    "INSERT INTO schema_migrations (version, applied_at) VALUES (?1, 0)",
+                    [version],
+                )
+                .await?;
+            }
+            c.execute_batch(
+                "INSERT INTO users (id, email, role) VALUES (1, 'a@x.co', 'tl');
+                 INSERT INTO projects (id, owner_id, name, slug) VALUES (1, 1, 'P', 'p');
+                 INSERT INTO alert_routes (id, project_id, severity, emails, webhook_url, use_webhook, enabled, webhook_format, webhook_key)
+                   VALUES (7, 1, 'critical', 'a@x.co', 'https://api.telegram.org/bot1:x/sendMessage', 1, 0, 'telegram', '-100');
+                 INSERT INTO outbox (id, channel, recipient, body, next_attempt_at, sent_at) VALUES (9, 'webhook', 'https://hook', '{}', 5, 6);",
+            )
+            .await?;
+            Ok(())
+        })
+        .await
+        .unwrap();
+        run(&db).await.unwrap();
+        let conn = db.read().await.unwrap();
+        let route = crate::platform::db::query_all(
+            &conn,
+            "SELECT id, emails, use_webhook, enabled, webhook_format, webhook_key FROM alert_routes",
+            (),
+            |r| Ok((r.get::<i64>(0)?, r.get::<String>(1)?, r.get::<i64>(2)?, r.get::<i64>(3)?, r.get::<String>(4)?, r.get::<String>(5)?)),
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            route,
+            vec![(7, "a@x.co".into(), 1, 0, "telegram".into(), "-100".into())]
+        );
+        let sent =
+            crate::platform::db::query_i64(&conn, "SELECT sent_at FROM outbox WHERE id = 9", ())
+                .await
+                .unwrap();
+        assert_eq!(sent, Some(6));
+        drop(conn);
+        let bot = db
+            .write(async |c| {
+                c.execute_batch(
+                    "UPDATE alert_routes SET webhook_format = 'telegram_bot';
+                     INSERT INTO outbox (channel, recipient, body, next_attempt_at) VALUES ('telegram', '-100', '{}', 0);",
+                )
+                .await?;
+                Ok(())
+            })
+            .await;
+        assert!(bot.is_ok(), "{bot:?}");
     }
 }

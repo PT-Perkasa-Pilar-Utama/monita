@@ -3,6 +3,7 @@ import type { ReactElement } from "react";
 import { AlertsGuide } from "@/components/app/AlertsGuide";
 import { AlertSwitch } from "@/components/app/AlertSwitch";
 import { SettingsPage, SettingsSection } from "@/components/app/SettingsSection";
+import { TelegramConnect } from "@/components/app/TelegramConnect";
 import { TicketAlertsSection } from "@/components/app/TicketAlertsSection";
 import { Send } from "@/components/icons";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -16,9 +17,10 @@ import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { api, ApiError, dropField, errorText } from "@/lib/api";
 import { useProject } from "@/lib/project";
+import { Writable } from "@/lib/session";
 import type { AlertRoute, TicketAlerts } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
-import { WEBHOOK_FORMATS, webhookFields } from "@/lib/webhookFormats";
+import { formatsFor, webhookFields } from "@/lib/webhookFormats";
 import type { WebhookFormat } from "@/lib/webhookFormats";
 import { toast } from "sonner";
 
@@ -38,7 +40,7 @@ function testNotice(n: number): string {
   return n === 1 ? "Test sent to 1 recipient." : `Test sent to ${n} recipients.`;
 }
 
-function RouteSection({ slug, route }: { slug: string; route: AlertRoute }): ReactElement {
+function RouteSection({ slug, route, bot }: { slug: string; route: AlertRoute; bot: string | null }): ReactElement {
   const s = route.severity;
   const [saved, setSaved] = useState(route);
   const [emails, setEmails] = useState(route.emails.join("\n"));
@@ -46,6 +48,7 @@ function RouteSection({ slug, route }: { slug: string; route: AlertRoute }): Rea
   const [useWebhook, setUseWebhook] = useState(route.use_webhook);
   const [format, setFormat] = useState<WebhookFormat>(route.webhook_format);
   const [key, setKey] = useState(route.webhook_key ?? "");
+  const [connected, setConnected] = useState("");
   const fields = webhookFields(format);
   const [error, setError] = useState<ApiError | null>(null);
   const [busy, setBusy] = useState(false);
@@ -151,7 +154,7 @@ function RouteSection({ slug, route }: { slug: string; route: AlertRoute }): Rea
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
-                  {WEBHOOK_FORMATS.map((f) => (
+                  {formatsFor(bot, saved.webhook_format).map((f) => (
                     <SelectItem key={f.value} value={f.value}>
                       {f.label}
                     </SelectItem>
@@ -188,8 +191,19 @@ function RouteSection({ slug, route }: { slug: string; route: AlertRoute }): Rea
             </FieldLabel>
             <Input id={`key-${s}`} className="font-mono" placeholder={fields.key.placeholder} aria-invalid={error?.fields.webhook_key ? true : undefined} value={key} onChange={(e) => {
               setKey(e.target.value);
+              setConnected("");
               clear("webhook_key");
             }} />
+            {format === "telegram_bot" && bot && (
+              <Writable>
+                <TelegramConnect slug={slug} severity={s} bot={bot} onChat={(chat) => {
+                  setKey(chat.chat_id);
+                  setConnected(`Connected to ${chat.title}. Select Save changes.`);
+                  clear("webhook_key");
+                }} />
+              </Writable>
+            )}
+            {connected && <p role="status" className="text-sm text-muted-foreground">{connected}</p>}
             {error?.fields.webhook_key && <FieldError>{error.fields.webhook_key}</FieldError>}
           </Field>
         )}
@@ -205,6 +219,7 @@ export function Alerts(): ReactElement {
   const { project: p } = useProject();
   const routes = useApi<AlertRoute[]>(`/projects/${p.slug}/alerts`);
   const tickets = useApi<TicketAlerts>(`/projects/${p.slug}/ticket-alerts`);
+  const telegram = useApi<{ bot: string | null }>("/telegram");
   const [ticketHook, setTicketHook] = useState<TicketAlerts | null>(null);
   const t = ticketHook ?? tickets.data;
   const webhooks: Record<string, string | null> = {
@@ -226,13 +241,13 @@ export function Alerts(): ReactElement {
           <AlertDescription>{routes.error.message}</AlertDescription>
         </Alert>
       )}
-      {!routes.data ? (
+      {!routes.data || !telegram.data ? (
         <>
           <Skeleton className="h-72 rounded-xl" />
           <Skeleton className="h-72 rounded-xl" />
         </>
       ) : (
-        routes.data.map((r) => <RouteSection key={r.severity} slug={p.slug} route={r} />)
+        routes.data.map((r) => <RouteSection key={r.severity} slug={p.slug} route={r} bot={telegram.data?.bot ?? null} />)
       )}
       {tickets.data ? (
         <TicketAlertsSection slug={p.slug} owner={p.owner_email} initial={tickets.data} onSaved={setTicketHook} />

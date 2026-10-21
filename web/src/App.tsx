@@ -32,6 +32,7 @@ import { PastUptime } from "@/pages/public/PastUptime";
 import { Ticket } from "@/pages/public/Ticket";
 import { Status } from "@/pages/public/Status";
 import { Email } from "@/pages/admin/Email";
+import { Telegram } from "@/pages/admin/Telegram";
 import { RateLimits } from "@/pages/admin/RateLimits";
 import { System } from "@/pages/admin/System";
 import { Locations } from "@/pages/admin/Locations";
@@ -67,6 +68,7 @@ export default function App(): ReactElement {
             <Route path="/admin/users" element={<Users />} />
             <Route path="/admin/limits" element={<RateLimits />} />
             <Route path="/admin/email" element={<Email />} />
+            <Route path="/admin/telegram" element={<Telegram />} />
             <Route path="/admin/locations" element={<Locations />} />
             <Route path="/admin/time-zone" element={<TimeZone />} />
             <Route path="/admin/system" element={<System />} />

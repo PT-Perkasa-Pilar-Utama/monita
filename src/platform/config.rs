@@ -27,6 +27,8 @@ pub struct Config {
     pub smtp_url: Option<String>,
     pub mail_from: String,
     pub ping_url: Option<String>,
+    /// The Telegram Bot API server Monita's bot uses: Telegram's, or a self-hosted one (v1.1 Q33).
+    pub telegram_api: String,
     pub trust_proxy: bool,
     pub digest_utc_hour: u32,
     pub reset_token: Option<String>,
@@ -47,6 +49,7 @@ impl std::fmt::Debug for Config {
             .field("smtp_url", &set(&self.smtp_url))
             .field("mail_from", &self.mail_from)
             .field("ping_url", &self.ping_url)
+            .field("telegram_api", &self.telegram_api)
             .field("trust_proxy", &self.trust_proxy)
             .field("digest_utc_hour", &self.digest_utc_hour)
             .field("reset_token", &set(&self.reset_token))
@@ -144,6 +147,13 @@ impl Config {
         {
             bail!("MONITA_PING_URL must be an http:// or https:// URL");
         }
+        let telegram_api = var("MONITA_TELEGRAM_API")
+            .unwrap_or_else(|| "https://api.telegram.org".into())
+            .trim_end_matches('/')
+            .to_string();
+        if !super::valid_http_url(&telegram_api) {
+            bail!("MONITA_TELEGRAM_API must be an http:// or https:// URL");
+        }
         let log_filter = var("MONITA_LOG").unwrap_or_else(|| {
             if env == Env::Dev {
                 "info,monita=debug"
@@ -167,6 +177,7 @@ impl Config {
             smtp_url,
             mail_from,
             ping_url,
+            telegram_api,
             trust_proxy: flag(
                 var("MONITA_TRUST_PROXY"),
                 "MONITA_TRUST_PROXY",

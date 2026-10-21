@@ -78,19 +78,6 @@ pub struct Setup {
     pub qr: String,
 }
 
-/// The link as a QR code. A phone camera reads dark on light only, so the colours are fixed.
-fn qr_svg(link: &str) -> anyhow::Result<String> {
-    use qrcode::{QrCode, render::svg};
-    let code = QrCode::new(link.as_bytes())?;
-    Ok(code
-        .render::<svg::Color<'_>>()
-        // 4 px a module: whole pixels at the size the page shows it.
-        .module_dimensions(4, 4)
-        .dark_color(svg::Color("#000000"))
-        .light_color(svg::Color("#ffffff"))
-        .build())
-}
-
 /// A new secret and its `otpauth://` link, waiting for `confirm`.
 pub async fn start(db: &Db, user_id: i64, email: &str, now: i64) -> Result<Setup, TwoFactorError> {
     let secret = totp::new_secret();
@@ -103,7 +90,7 @@ pub async fn start(db: &Db, user_id: i64, email: &str, now: i64) -> Result<Setup
     })
     .await??;
     let link = totp::link(ISSUER, email, &secret);
-    let qr = qr_svg(&link)?;
+    let qr = crate::platform::qr::svg(&link)?;
     Ok(Setup { secret, link, qr })
 }
 

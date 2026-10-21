@@ -39,9 +39,20 @@ Each section has these fields:
 | --- | --- | --- | --- |
 | JSON | Any receiver, Slack or Google Chat incoming webhook | | The body under [What recipients get](#what-recipients-get) |
 | Discord | The channel's webhook URL | | `content` with the alert line and a link. Mentions such as `@everyone` in the text do not ping. |
-| Telegram | `https://api.telegram.org/bot<token>/sendMessage` | The chat ID, such as `-1001234567890` or `@team_alerts` | The alert line and a link |
+| Telegram with Monita's bot | None: Monita uses the bot a super admin set | A chat, connected with a link | The alert line and a link |
+| Telegram with your own bot | `https://api.telegram.org/bot<token>/sendMessage` | The chat ID, such as `-1001234567890` or `@team_alerts` | The alert line and a link |
 | ntfy | The topic URL, such as `https://ntfy.sh/team-alerts` | | A title, the message and a link; priority 5 for critical, 4 for warning, 3 when it resolves |
 | PagerDuty | Fixed: the Events API v2 | The routing key of an Events API v2 integration | A trigger when an incident opens or a source goes down, and a resolve with the same dedup key when it ends. **Send a test** sends a trigger and its resolve. |
+
+### Telegram with Monita's bot
+
+The format shows once a super admin sets the bot in **Admin**, **Telegram**.
+
+1. Pick **Telegram with Monita's bot** and select **Connect a chat**.
+2. Scan the QR code with your phone, or select **Open in Telegram**, then select **Start**. To alert a group, select **Add to a group** and pick the group.
+3. The dialog closes when the bot hears you. The chat fills in. Select **Save changes**.
+
+The link works for 10 minutes. A bot cannot send to a person by @username, so the link is how Monita learns the chat. A public channel can also be typed as `@channel`; add the bot to the channel as an admin first.
 
 Select **Save changes**. Then select **Send a test** to send a test alert to the saved recipients. A section with no saved recipient sends nothing and says so.
 
