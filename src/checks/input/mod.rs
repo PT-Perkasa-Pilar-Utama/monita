@@ -128,9 +128,7 @@ impl MonitorInput {
                 }
             }
             "ping" => {
-                if cfg!(windows) {
-                    e.insert("kind", super::probe::icmp::NO_WINDOWS);
-                } else if !valid_host(url) {
+                if !valid_host(url) {
                     e.insert(
                         "url",
                         "Enter a host name or an address, such as db.internal or 10.0.0.5.",

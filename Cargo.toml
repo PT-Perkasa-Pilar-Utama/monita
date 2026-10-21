@@ -32,7 +32,7 @@ sha2 = "0.11"
 # Already in the tree through tokio and hyper: the ICMP datagram socket of a ping check (v1.1 Q24).
 socket2 = "0.6"
 thiserror = "2.0"
-tokio = { version = "1.53", features = ["macros", "rt-multi-thread", "net", "signal", "sync", "time"] }
+tokio = { version = "1.53", features = ["macros", "rt-multi-thread", "net", "process", "signal", "sync", "time"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 turso = "=0.8.3"

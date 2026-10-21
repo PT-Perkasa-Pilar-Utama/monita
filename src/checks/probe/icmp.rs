@@ -1,7 +1,7 @@
 //! A ping check (v1.1 Q24): one ICMP echo request through an unprivileged datagram socket. No raw
 //! socket and no capability. Linux allows it when `net.ipv4.ping_group_range` covers Monita's
-//! group (systemd 243+ and Docker set `0 2147483647`); macOS allows it for any user; Windows has
-//! no such socket, so the form refuses ping there.
+//! group (systemd 243+ and Docker set `0 2147483647`); macOS allows it for any user. Where the
+//! socket is refused, and on Windows, which has no such socket, the system `ping` sends the echo.
 
 use std::net::IpAddr;
 use std::time::{Duration, Instant};
@@ -10,11 +10,8 @@ use super::failed;
 use crate::checks::CheckResult;
 use crate::platform::now;
 
-/// The check's error when the system refuses the socket. It names the fix.
+/// The check's error when the system refuses the socket and has no `ping` to run. It names the fix.
 pub const REFUSED: &str = "This server does not allow ping. Set the sysctl net.ipv4.ping_group_range to \"0 2147483647\", or use a TCP check.";
-
-/// The form's error on Windows, and the check's if one ever runs there.
-pub const NO_WINDOWS: &str = "Ping checks need Linux or macOS. Use a TCP check on Windows.";
 
 // ponytail: one echo per check; send 3 and pass on the first reply if single-packet loss proves noisy.
 pub async fn probe_ping(host: &str, timeout_ms: i64) -> CheckResult {
@@ -30,8 +27,16 @@ pub async fn probe_ping(host: &str, timeout_ms: i64) -> CheckResult {
         Err(_) => return failed(checked_at, start, format!("Timeout after {timeout_ms} ms")),
     };
     let left = limit.saturating_sub(start.elapsed());
-    match tokio::task::spawn_blocking(move || echo(ip, left, timeout_ms)).await {
-        Ok(Ok(rtt)) => CheckResult {
+    #[cfg(windows)]
+    let sent = system_ping(ip, left, timeout_ms).await;
+    #[cfg(not(windows))]
+    let sent = match tokio::task::spawn_blocking(move || echo(ip, left, timeout_ms)).await {
+        Ok(Err(e)) if e == REFUSED => system_ping(ip, left, timeout_ms).await,
+        Ok(r) => r,
+        Err(e) => Err(format!("Ping failed: {e}")),
+    };
+    match sent {
+        Ok(rtt) => CheckResult {
             checked_at,
             ok: true,
             status_code: None,
@@ -39,14 +44,65 @@ pub async fn probe_ping(host: &str, timeout_ms: i64) -> CheckResult {
             error: None,
             cert_expires_at: None,
         },
-        Ok(Err(e)) => failed(checked_at, start, e),
-        Err(e) => failed(checked_at, start, format!("Ping failed: {e}")),
+        Err(e) => failed(checked_at, start, e),
     }
 }
 
-#[cfg(windows)]
-fn echo(_ip: IpAddr, _limit: Duration, _timeout_ms: i64) -> Result<Duration, String> {
-    Err(NO_WINDOWS.into())
+/// One echo through the system `ping`, which may hold a privilege Monita lacks. A reply is a line
+/// with `TTL=`: Windows `ping` exits 0 on "Destination host unreachable" too. A missing `ping`
+/// reads as the refused socket.
+async fn system_ping(ip: IpAddr, limit: Duration, timeout_ms: i64) -> Result<Duration, String> {
+    let ms = limit.as_millis().max(1) as u64;
+    let mut cmd = tokio::process::Command::new("ping");
+    if cfg!(windows) {
+        cmd.args(["-n", "1", "-w", &ms.to_string()]);
+    } else {
+        // iputils and busybox take whole seconds.
+        cmd.args(["-n", "-c", "1", "-W", &ms.div_ceil(1000).to_string()]);
+        if ip.is_ipv6() {
+            cmd.arg("-6");
+        }
+    }
+    cmd.arg(ip.to_string()).kill_on_drop(true);
+    #[cfg(windows)]
+    cmd.creation_flags(0x0800_0000); // CREATE_NO_WINDOW: a service shows no console.
+    let sent = Instant::now();
+    let out = match tokio::time::timeout(limit + Duration::from_secs(1), cmd.output()).await {
+        Ok(Ok(out)) => out,
+        Ok(Err(_)) => return Err(REFUSED.into()),
+        Err(_) => return Err(format!("No reply within {timeout_ms} ms")),
+    };
+    if let Some(rtt) = reply_time(&String::from_utf8_lossy(&out.stdout)) {
+        return Ok(rtt.unwrap_or_else(|| sent.elapsed()));
+    }
+    let err = String::from_utf8_lossy(&out.stderr).to_ascii_lowercase();
+    if err.contains("permission") || err.contains("not permitted") {
+        return Err(REFUSED.into());
+    }
+    Err(format!("No reply within {timeout_ms} ms"))
+}
+
+/// The round trip in `ping`'s output: `None` without a reply, `Some(None)` for a reply whose time
+/// does not read. `time=12.3 ms` (Linux), `Zeit=12ms` and `time<1ms` (Windows, any language).
+fn reply_time(out: &str) -> Option<Option<Duration>> {
+    let line = out
+        .lines()
+        .find(|l| l.to_ascii_lowercase().contains("ttl="))?;
+    let ms = line.char_indices().find_map(|(i, ch)| {
+        if ch != '=' && ch != '<' {
+            return None;
+        }
+        let rest = &line[i + 1..];
+        let num: String = rest
+            .chars()
+            .take_while(|c| c.is_ascii_digit() || *c == '.')
+            .collect();
+        let after = rest[num.len()..].trim_start();
+        (!num.is_empty() && after.starts_with("ms"))
+            .then(|| num.parse::<f64>().ok())
+            .flatten()
+    });
+    Some(ms.map(|ms| Duration::from_micros((ms * 1000.0) as u64)))
 }
 
 /// Sends one echo request and waits up to `limit` for its reply. Returns the round trip.
@@ -154,6 +210,36 @@ fn is_reply(b: &[u8], reply: u8, token: u64) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_system_ping_reply_is_a_ttl_line_and_its_time_reads_in_any_language() {
+        let ms = |s: &str| reply_time(s).map(|t| t.map(|d| d.as_micros()));
+        let linux = "PING 1.1.1.1 (1.1.1.1) 56(84) bytes of data.\n64 bytes from 1.1.1.1: icmp_seq=1 ttl=57 time=12.3 ms\n";
+        assert_eq!(ms(linux), Some(Some(12_300)));
+        assert_eq!(
+            ms("Reply from 10.0.0.5: bytes=32 time<1ms TTL=128"),
+            Some(Some(1_000))
+        );
+        assert_eq!(
+            ms("Antwort von 10.0.0.5: Bytes=32 Zeit=14ms TTL=117"),
+            Some(Some(14_000))
+        );
+        assert_eq!(
+            ms("Respuesta desde 10.0.0.5: bytes=32 tiempo=7ms TTL=64"),
+            Some(Some(7_000))
+        );
+        assert_eq!(
+            ms("Reply from 10.0.0.1: Destination host unreachable."),
+            None,
+            "an unreachable answer is no reply"
+        );
+        assert_eq!(ms("Request timed out."), None);
+        assert_eq!(
+            ms("Reply from 10.0.0.5: TTL=64"),
+            Some(None),
+            "a reply without a time"
+        );
+    }
 
     #[test]
     fn an_echo_request_carries_its_token_and_a_valid_checksum() {
