@@ -18,6 +18,20 @@ function download(origin: string, slug: string): void {
   URL.revokeObjectURL(url);
 }
 
+/** Labelled rows under an endpoint: a label column and plain text, divided by thin lines. */
+export function EndpointRows({ rows }: { rows: { label: string; text: string }[] }): ReactElement {
+  return (
+    <dl className="divide-y rounded-lg border text-sm">
+      {rows.map((r) => (
+        <div key={r.label} className="grid gap-1 px-4 py-2.5 sm:grid-cols-[8rem_1fr] sm:gap-6">
+          <dt className="font-medium">{r.label}</dt>
+          <dd className="text-muted-foreground">{r.text}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
 /** How to build your own status page on Monita's public JSON: each endpoint with who may call
  * it, a request and a response, plus a template to start from. */
 export function CustomStatusSection(): ReactElement {
@@ -55,18 +69,10 @@ export function CustomStatusSection(): ReactElement {
                 </p>
                 <p className="text-sm">{d.purpose}</p>
               </div>
-              <dl className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-[8rem_1fr]">
-                <dt className="font-medium">Who can call it</dt>
-                <dd className="text-muted-foreground">{d.access}</dd>
-              </dl>
+              <EndpointRows rows={[{ label: "Who can call it", text: d.access }]} />
               <CodeCopy id={`custom-req-${n}`} title="Request" code={d.request} />
               <CodeCopy id={`custom-res-${n}`} title={d.responseTitle} code={d.response} lang="js" />
-              <ul className="flex list-disc flex-col gap-1 pl-5 text-sm text-muted-foreground">
-                {d.notes.map((t) => (
-                  <li key={t}>{t}</li>
-                ))}
-                <li>An error answers {'{"error": {"code": "...", "message": "..."}}'} with its HTTP status. A 429 carries Retry-After in seconds.</li>
-              </ul>
+              <EndpointRows rows={d.details} />
             </TabsContent>
           ))}
         </Tabs>

@@ -11,8 +11,12 @@ export type EndpointDoc = {
   /** A response as the endpoint sends it, with a sample of each field. */
   response: string;
   responseTitle: string;
-  notes: string[];
+  /** Rows under the example, each a label and one or two plain sentences. */
+  details: { label: string; text: string }[];
 };
+
+/** The error shape every endpoint shares. */
+const ERRORS = 'An error answers {"error": {"code": "...", "message": "..."}} with its HTTP status. A 429 carries Retry-After in seconds.';
 
 const json = (v: unknown): string => JSON.stringify(v, null, 2);
 
@@ -60,14 +64,15 @@ export function endpointDocs(origin: string, slug: string, name: string): Endpoi
           maintenance: [],
         },
       }),
-      notes: [
-        "days is optional: 1 to 90, default 90. It sets how many days of bars come back and how far back incidents go. Open incidents always come back.",
-        "overall is up, down, issue or maintenance. state is up, down, issue, maintenance or unknown (no data yet).",
-        "maintenance[] lists the active maintenance windows that cover a public system: title, message, starts_at, ends_at and items.",
-        "days[] runs oldest first. uptime is null for a day before the system existed.",
-        "Times are Unix seconds. updates[] runs newest first. label is investigating, identified, monitoring or resolved.",
-        "Only systems marked public appear. While the Incidents tab is off, incidents is empty.",
-        "Each visitor address may call 60 times a minute. An answer can be up to 30 seconds old.",
+      details: [
+        { label: "Query", text: "days is optional, 1 to 90, default 90. It sets the bars and how far back incidents go. Open incidents always come back." },
+        { label: "States", text: "overall is up, down, issue or maintenance. A system's state can also be unknown, before its first check." },
+        { label: "Bars", text: "days[] runs oldest first. uptime is null for a day before the system existed." },
+        { label: "Incidents", text: "updates[] runs newest first. label is investigating, identified, monitoring or resolved. With the Incidents tab off, incidents is empty." },
+        { label: "Maintenance", text: "The active windows that cover a public system, with title, message, starts_at, ends_at and items." },
+        { label: "Shown", text: "Only systems marked public. Times are Unix seconds." },
+        { label: "Limits", text: "60 calls a minute for each visitor address by default. An answer can be up to 30 seconds old." },
+        { label: "Errors", text: ERRORS },
       ],
     },
     {
@@ -81,10 +86,10 @@ export function endpointDocs(origin: string, slug: string, name: string): Endpoi
   -d '{"ref_id": "rf_5k2m9q7w3x8p1t6v4y0z2a8bcd", "title": "Export button does nothing", "description": "I click Export on the March report and nothing downloads.", "page_url": "https://app.example.com/reports/march"}'`,
       responseTitle: "Response 201",
       response: json({ data: { number: 17, stage: "triage", created_at: 1792137600 } }),
-      notes: [
-        "title: 3 to 120 characters. description: 1 to 10 000. page_url is optional.",
-        "422 ref_id_invalid: the ref ID is unknown, revoked or already used.",
-        "429 daily_cap_reached: 5 tickets a day for one ref ID, or 100 for the project.",
+      details: [
+        { label: "Body", text: "title takes 3 to 120 characters, description 1 to 10 000. page_url is optional." },
+        { label: "Limits", text: "5 tickets a day for one ref ID, and 100 for the project, by default. Past that: 429 daily_cap_reached." },
+        { label: "Errors", text: `422 ref_id_invalid when the ref ID is unknown, revoked or used. ${ERRORS}` },
       ],
     },
     {
@@ -101,9 +106,9 @@ export function endpointDocs(origin: string, slug: string, name: string): Endpoi
           { number: 17, title: "Export button does nothing", stage: "in_progress", close_reason: null, created_at: 1792137600, updated_at: 1792224000 },
         ],
       }),
-      notes: [
-        "stage is triage, backlog, in_progress or done. close_reason is fixed, wont_fix or duplicate once done.",
-        "The description never comes back. 422 ref_id_invalid for an unknown ref ID.",
+      details: [
+        { label: "Fields", text: "stage is triage, backlog, in_progress or done. close_reason is fixed, wont_fix or duplicate once done. The description never comes back." },
+        { label: "Errors", text: `422 ref_id_invalid for an unknown ref ID. ${ERRORS}` },
       ],
     },
     {
@@ -118,10 +123,10 @@ export function endpointDocs(origin: string, slug: string, name: string): Endpoi
   -d '{"single_use": false}'`,
       responseTitle: "Response 201",
       response: json({ data: { ref_id: "rf_5k2m9q7w3x8p1t6v4y0z2a8bcd", single_use: false, created_at: 1792137600 } }),
-      notes: [
-        "single_use is optional, default false. A single-use ref ID files one ticket.",
-        "Store the ref ID with your user. Monita shows it only in this answer.",
-        "401 unauthorized: the key is missing, unknown or revoked.",
+      details: [
+        { label: "Body", text: "single_use is optional, default false. A single-use ref ID files one ticket." },
+        { label: "Answer", text: "Store the ref ID with your user. Monita shows it only in this answer." },
+        { label: "Errors", text: `401 unauthorized when the key is missing, unknown or revoked. ${ERRORS}` },
       ],
     },
   ];
