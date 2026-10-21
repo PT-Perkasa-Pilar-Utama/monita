@@ -106,12 +106,21 @@ async function render(page: import("@playwright/test").Page, path: string): Prom
   await page.waitForLoadState("networkidle");
   await page.waitForFunction(() => !document.querySelector('[data-slot="skeleton"]'), null, { timeout: 10_000 });
   if (await page.getByRole("heading", { name: "Not found", exact: true }).count()) return null;
-  return page.evaluate(() => {
+  const html = await page.evaluate(() => {
     const root = document.documentElement.cloneNode(true) as HTMLElement;
     root.removeAttribute("class");
     for (const s of root.querySelectorAll('script[type="module"], [data-sonner-toaster]')) s.remove();
     return `<!doctype html>\n${root.outerHTML}`;
   });
+  // A route that opens a panel (a ticket, a new monitor) is saved with the panel open. Close it in
+  // the app to learn where closing goes; demo.js follows that link, since the snapshot has no app.
+  if (await page.locator('[role="dialog"][data-state="open"]').count()) {
+    await page.keyboard.press("Escape");
+    await page.waitForURL((u) => u.pathname !== path, { timeout: 3_000 }).catch(() => {});
+    const closed = new URL(page.url()).pathname;
+    if (closed !== path) return html.replace("</body>", `<a hidden data-demo-close href="${closed}"></a>\n</body>`);
+  }
+  return html;
 }
 
 /** Every page reachable by a link from START, as path -> rendered HTML. */

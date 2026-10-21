@@ -4,6 +4,19 @@
   const banner = document.querySelector(".demo-banner");
   if (!banner) return;
   const original = banner.innerHTML;
+  // A page saved with a panel open carries the page that closing it leads to (snapshot.ts).
+  // Its X, Cancel, the backdrop and Escape go there. `target` null means the Escape key.
+  const closePanel = (target) => {
+    const to = document.querySelector("a[data-demo-close]");
+    if (!to) return false;
+    if (target) {
+      const button = target.closest('[role="dialog"] button');
+      const text = button ? button.textContent.trim() : "";
+      if (!target.closest('[data-slot="sheet-overlay"], [data-slot="dialog-overlay"]') && text !== "Close" && text !== "Cancel") return false;
+    }
+    location.href = to.href;
+    return true;
+  };
   let timer;
   const flash = () => {
     banner.innerHTML =
@@ -28,10 +41,17 @@
       } catch {}
       return;
     }
+    if (closePanel(e.target)) {
+      e.preventDefault();
+      return;
+    }
     if (e.target.closest('a[href="#demo-off"], button')) {
       e.preventDefault();
       flash();
     }
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closePanel(null);
   });
   document.addEventListener("submit", (e) => {
     e.preventDefault();
