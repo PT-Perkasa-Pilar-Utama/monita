@@ -137,7 +137,7 @@ test.describe("as a new tech lead", () => {
     await me.getByRole("button", { name: "Save picture" }).click();
     await expect(me.getByText("Picture saved.")).toBeVisible();
     const avatar = me.getByRole("button", { name: /^Account:/ }).locator("img");
-    await expect(avatar).toHaveAttribute("src", /\/me\/avatar\?v=\d+/);
+    await expect(avatar).toHaveAttribute("src", /\/users\/\d+\/avatar\?v=\d+/);
     await me.getByRole("button", { name: "Remove picture" }).click();
     await expect(me.getByText("Picture removed.")).toBeVisible();
     await expect(avatar).toHaveCount(0);
