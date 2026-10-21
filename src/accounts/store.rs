@@ -96,6 +96,17 @@ pub async fn list_users(c: &Connection) -> anyhow::Result<Vec<UserRow>> {
     .await
 }
 
+/// Does an active user sign in with this address?
+pub async fn email_is_active_user(c: &Connection, email: &str) -> anyhow::Result<bool> {
+    let mut rows = c
+        .query(
+            "SELECT 1 FROM users WHERE email = ?1 AND disabled_at IS NULL",
+            [email],
+        )
+        .await?;
+    Ok(rows.next().await?.is_some())
+}
+
 pub async fn active_email(c: &Connection, user_id: i64) -> anyhow::Result<Option<String>> {
     let mut rows = c
         .query(

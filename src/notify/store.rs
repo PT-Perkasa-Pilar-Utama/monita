@@ -91,6 +91,12 @@ pub async fn claim_due(
     Ok(out)
 }
 
+/// Removes one row that will never be sent.
+pub async fn delete(c: &Connection, id: i64) -> anyhow::Result<()> {
+    c.execute("DELETE FROM outbox WHERE id = ?1", [id]).await?;
+    Ok(())
+}
+
 /// Deletes up to `limit` finished rows older than `cutoff`; returns how many it deleted.
 pub async fn purge_delivered(c: &Connection, cutoff: i64, limit: i64) -> anyhow::Result<u64> {
     Ok(c.execute(

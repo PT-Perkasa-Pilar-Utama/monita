@@ -90,8 +90,37 @@ pub async fn deliver_due(state: &AppState) -> anyhow::Result<usize> {
     Ok(sent)
 }
 
+/// Is `to` Monita's own sender address, which no user signs in with? Mail to it loops back to
+/// the mailbox that sent it, so it is dropped. A super admin who signs in with that address still
+/// gets their mail.
+async fn to_own_sender(state: &AppState, to: &str) -> anyhow::Result<bool> {
+    let c = state.db.read().await?;
+    let from = match crate::platform::settings::mail(&c).await? {
+        Some(m) => m.from,
+        None => state.config.mail_from.clone(),
+    };
+    let Ok(from) = from.parse::<lettre::message::Mailbox>() else {
+        return Ok(false);
+    };
+    if !from.email.to_string().eq_ignore_ascii_case(to.trim()) {
+        return Ok(false);
+    }
+    Ok(!crate::accounts::email_is_active_user(&c, to).await?)
+}
+
 /// Sends one row and records the outcome at once. Returns whether it was sent.
 async fn deliver_one(state: &AppState, row: store::OutboxRow) -> anyhow::Result<bool> {
+    if row.channel == "email" && to_own_sender(state, &row.recipient).await? {
+        tracing::info!(
+            outbox_id = row.id,
+            "email to Monita's own sender address dropped"
+        );
+        state
+            .db
+            .write(async |c| store::delete(c, row.id).await)
+            .await?;
+        return Ok(false);
+    }
     let send = async {
         match row.channel.as_str() {
             "email" => {

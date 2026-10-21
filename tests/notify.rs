@@ -356,3 +356,40 @@ async fn a_new_project_emails_its_owner() {
     assert_eq!(common::json_of(test).await["data"]["sent_to"], 1);
     assert_eq!(mailed(&app).await, ["rina@x.co"]);
 }
+
+/// Mail to Monita's own sender address loops back to the mailbox that sent it. It is dropped,
+/// unless a user signs in with that address.
+#[tokio::test]
+async fn mail_to_the_sender_address_is_dropped_unless_a_user_has_it() {
+    let app = TestApp::spawn_with("test", &[("MONITA_MAIL_FROM", "Monita <Alerts@x.co>")]).await;
+    let queue = async |to: &str| {
+        let to = to.to_string();
+        app.state
+            .db
+            .write(async |c| monita::notify::queue_email(c, &to, "s", "b", 0).await)
+            .await
+            .unwrap();
+    };
+    queue("alerts@x.co").await;
+    queue("rina@x.co").await;
+    monita::notify::deliver_due(&app.state).await.unwrap();
+    let to: Vec<String> = app.state.mailer.sent().into_iter().map(|m| m.to).collect();
+    assert_eq!(to, ["rina@x.co"]);
+    assert!(
+        mailed(&app).await.iter().all(|r| r != "alerts@x.co"),
+        "the row is gone"
+    );
+
+    app.tl("alerts@x.co").await;
+    clear_outbox(&app).await;
+    queue("alerts@x.co").await;
+    monita::notify::deliver_due(&app.state).await.unwrap();
+    assert!(
+        app.state
+            .mailer
+            .sent()
+            .iter()
+            .any(|m| m.to == "alerts@x.co"),
+        "a user with that address gets mail"
+    );
+}

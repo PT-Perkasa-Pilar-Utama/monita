@@ -319,6 +319,11 @@ pub async fn list_users(db: &Db) -> anyhow::Result<Vec<UserRow>> {
     store::list_users(&db.read().await?).await
 }
 
+/// Does an active user sign in with this address? Emails are stored lowercase.
+pub async fn email_is_active_user(c: &turso::Connection, email: &str) -> anyhow::Result<bool> {
+    store::email_is_active_user(c, &email.trim().to_lowercase()).await
+}
+
 /// The email of a user who is not disabled.
 pub async fn active_email(c: &turso::Connection, user_id: i64) -> anyhow::Result<Option<String>> {
     store::active_email(c, user_id).await
