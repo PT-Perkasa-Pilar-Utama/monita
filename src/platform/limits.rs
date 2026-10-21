@@ -248,7 +248,7 @@ async fn view(state: &AppState) -> anyhow::Result<SystemView> {
             used: None,
         },
         Cap {
-            label: "Alert cards in one project, besides the owner's two",
+            label: "Alert cards in each section of one project, besides the owner's",
             max: caps::ALERT_CARDS,
             used: None,
         },

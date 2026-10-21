@@ -1,3 +1,4 @@
+import { ApiKeysGuide } from "@/components/app/ApiKeysGuide";
 import { useState } from "react";
 import { Writable } from "@/lib/session";
 import type { FormEvent, ReactElement } from "react";
@@ -63,7 +64,7 @@ export function Keys(): ReactElement {
   });
   return (
     <>
-      <SettingsPage title="API keys">
+      <SettingsPage title="API keys" actions={<ApiKeysGuide />}>
       {newKey && (
         <Alert>
           <AlertTitle>Key created. Copy it now: Monita shows it only once.</AlertTitle>
