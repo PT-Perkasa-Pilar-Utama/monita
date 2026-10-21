@@ -89,6 +89,8 @@ pub enum AccountError {
     InviteInvalid,
     #[error("No super admin has this email.")]
     NoSuchAdmin,
+    #[error("No active user has this email.")]
+    NoSuchUser,
     #[error(
         "This Monita holds {} accounts, its limit.",
         crate::platform::caps::USERS
@@ -273,6 +275,26 @@ pub async fn reinvite(
         .await?
         .ok_or(PageError::NotFound)?;
     Ok((email, link))
+}
+
+/// The fail-safe for a user who lost both the authenticator and the recovery codes
+/// (`monita admin reset-sign-in`): Reset sign-in by email, for any active user. Returns the link
+/// the email carries, for the operator to pass on when mail does not work.
+pub async fn reset_sign_in_by_email(
+    db: &Db,
+    base_url: &str,
+    email: &str,
+) -> Result<String, AccountError> {
+    let email = email_key(email).ok_or(AccountError::NoSuchUser)?;
+    let user = match store::find_user_by_email(&db.read().await?, &email).await? {
+        Some(u) if u.disabled_at.is_none() => u,
+        _ => return Err(AccountError::NoSuchUser),
+    };
+    match reinvite(db, base_url, user.id).await {
+        Ok((_, link)) => Ok(link),
+        Err(PageError::Internal(e)) => Err(e.into()),
+        Err(_) => Err(AccountError::NoSuchUser),
+    }
 }
 
 async fn queue_invite_email(c: &turso::Connection, email: &str, link: &str) -> anyhow::Result<()> {

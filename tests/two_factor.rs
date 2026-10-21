@@ -312,6 +312,45 @@ async fn a_reset_sign_in_starts_over_without_two_factor() {
     assert_eq!(status["data"]["on"], false);
 }
 
+/// The fail-safe: `monita admin reset-sign-in` for a user who lost the app and the codes.
+#[tokio::test]
+async fn the_cli_reset_sign_in_turns_two_factor_off_and_emails_a_new_link() {
+    let app = TestApp::spawn("test").await;
+    let tl = app.tl("rina@x.co").await;
+    turn_on(&app, &tl).await;
+    let err =
+        monita::accounts::reset_sign_in_by_email(&app.state.db, common::BASE_URL, "nobody@x.co")
+            .await
+            .unwrap_err();
+    assert_eq!(err.to_string(), "No active user has this email.");
+    let link =
+        monita::accounts::reset_sign_in_by_email(&app.state.db, common::BASE_URL, " Rina@X.co ")
+            .await
+            .unwrap();
+    let old = app
+        .api_post(
+            "/api/ui/login",
+            json!({ "email": "rina@x.co", "password": PASSWORD }),
+            None,
+        )
+        .await;
+    assert_eq!(old.status(), 422, "the old password stops");
+    monita::notify::deliver_due(&app.state).await.unwrap();
+    assert!(
+        app.state
+            .mailer
+            .sent()
+            .iter()
+            .any(|m| m.to == "rina@x.co" && m.body.contains(&link)),
+        "the link goes by email"
+    );
+    let fresh = app
+        .accept(link.strip_prefix(common::BASE_URL).unwrap(), PASSWORD)
+        .await;
+    let status = json_of(app.api_get("/api/ui/me/two-factor", Some(&fresh)).await).await;
+    assert_eq!(status["data"]["on"], false);
+}
+
 #[tokio::test]
 async fn ten_wrong_codes_lock_the_account_s_codes_across_new_challenges() {
     let app = TestApp::spawn("test").await;

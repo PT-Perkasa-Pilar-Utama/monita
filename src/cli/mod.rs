@@ -99,6 +99,12 @@ enum AdminCmd {
         #[arg(long)]
         email: String,
     },
+    /// For any user who lost the authenticator and the recovery codes: turn two-factor off, stop
+    /// the old password, and email a link to set a new one. Prints the link too.
+    ResetSignIn {
+        #[arg(long)]
+        email: String,
+    },
 }
 
 #[derive(ValueEnum, Clone, Copy, PartialEq)]
@@ -184,6 +190,19 @@ pub async fn run(cli: Cli) -> anyhow::Result<()> {
             offline(&config, async |db| {
                 crate::accounts::reset_super_admin_password(db, &email, &password).await?;
                 println!("new password set for {email}; their sessions are signed out");
+                Ok(())
+            })
+            .await
+        }
+        Cmd::Admin {
+            cmd: AdminCmd::ResetSignIn { email },
+        } => {
+            let base_url = config.base_url.clone();
+            offline(&config, async |db| {
+                let link = crate::accounts::reset_sign_in_by_email(db, &base_url, &email).await?;
+                println!("Two-factor is off for {email} and the old password no longer works.");
+                println!("An email with this link goes out when Monita runs. It works once, for 72 hours:");
+                println!("{link}");
                 Ok(())
             })
             .await
