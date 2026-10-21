@@ -30,7 +30,7 @@ A ping check uses an ICMP socket that needs no root and no extra capability. Lin
 
 An HTTP monitor of an `https://` URL can warn before its certificate expires. Under **Alerts and status page**, set **Warn before the certificate expires** to 7, 14 or 30 days.
 
-- Each check reads the expiry date of the server's certificate. **Details** shows it under **Certificate**.
+- Each check reads the expiry date of the server's certificate. **Details** shows it under **Certificate**. When the URL redirects to another host, Monita cannot see the first host's certificate and keeps the last date it read; point the monitor at the address that answers.
 - When the date falls inside the window, Monita sends one alert through the warning route: email, and the webhook if it is on. No incident opens.
 - Each certificate warns once. A renewed certificate has a new date, so it warns again when its own time comes.
 - The monitor's alert switch off sends no warning.

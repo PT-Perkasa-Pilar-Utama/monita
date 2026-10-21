@@ -175,9 +175,10 @@ pub async fn probe(t: &Target<'_>, clients: &Clients) -> CheckResult {
         }
         Err(e) => return fail(None, start, root_cause(&e)),
     };
-    let cert = resp
-        .extensions()
-        .get::<reqwest::tls::TlsInfo>()
+    // After a redirect to another host, the certificate is that host's, not the monitored one.
+    let cert = same_host(t.url, resp.url())
+        .then(|| resp.extensions().get::<reqwest::tls::TlsInfo>())
+        .flatten()
         .and_then(reqwest::tls::TlsInfo::peer_certificate)
         .and_then(cert::not_after);
     CheckResult {
@@ -242,6 +243,14 @@ async fn judge(
         error: None,
         ..failed(checked_at, start, String::new())
     }
+}
+
+/// Whether the response came from the host and port the monitor names.
+fn same_host(monitored: &str, answered: &reqwest::Url) -> bool {
+    reqwest::Url::parse(monitored).is_ok_and(|u| {
+        u.host_str() == answered.host_str()
+            && u.port_or_known_default() == answered.port_or_known_default()
+    })
 }
 
 /// A failed result started at `checked_at`, `start` ago.
@@ -317,6 +326,27 @@ fn root_cause(e: &(dyn std::error::Error + 'static)) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_certificate_counts_only_from_the_monitored_host() {
+        let at = |s: &str| reqwest::Url::parse(s).unwrap();
+        assert!(same_host(
+            "https://Shop.example.com/health",
+            &at("https://shop.example.com/login")
+        ));
+        assert!(same_host(
+            "https://shop.example.com",
+            &at("https://shop.example.com:443/")
+        ));
+        assert!(!same_host(
+            "https://shop.example.com",
+            &at("https://www.vendor.net/")
+        ));
+        assert!(!same_host(
+            "https://shop.example.com",
+            &at("https://shop.example.com:8443/")
+        ));
+    }
 
     #[test]
     fn status_classes_and_lists_match() {
