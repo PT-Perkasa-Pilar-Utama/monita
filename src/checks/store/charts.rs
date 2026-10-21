@@ -76,7 +76,11 @@ pub async fn daily(
 }
 
 /// Checks per bucket for every monitor of a project, as (monitor id, bucket). One row per monitor
-/// and bucket, so at most `MONITORS_PER_PROJECT * buckets` rows.
+/// and bucket, so at most `MONITORS_PER_PROJECT * buckets` rows. Each monitor is read on its own
+/// through `check_results_monitor_at`: a single join let the planner pick the `checked_at`
+/// index, which scans every project's checks, and one project's page then paid for all of them.
+// ponytail: sums raw rows per view, 100 monitors at 30 s is 288k rows; upgrade to an hourly
+// rollup written with each check when a full project reads slowly in a release build.
 pub async fn project_buckets(
     c: &Connection,
     project_id: i64,
@@ -85,25 +89,33 @@ pub async fn project_buckets(
     buckets: usize,
 ) -> anyhow::Result<Vec<(i64, Bucket)>> {
     let until = from + step * buckets as i64;
-    let limit = crate::platform::caps::MONITORS_PER_PROJECT * buckets as i64;
-    crate::platform::db::query_all(
+    let ids = crate::platform::db::query_all(
         c,
-        "SELECT r.monitor_id, (r.checked_at - ?2) / ?3 AS b, count(*), sum(r.ok), CAST(avg(r.latency_ms) AS INTEGER)
-         FROM check_results r JOIN monitors m ON m.id = r.monitor_id
-         WHERE m.project_id = ?1 AND r.location_id IS NULL AND r.checked_at >= ?2 AND r.checked_at < ?4
-         GROUP BY r.monitor_id, b ORDER BY r.monitor_id, b LIMIT ?5",
-        (project_id, from, step, until, limit),
-        |r| {
-            Ok((
-                r.get(0)?,
-                Bucket {
-                    index: r.get::<i64>(1)? as usize,
-                    total: r.get(2)?,
-                    ok: r.get(3)?,
-                    avg_ms: r.get(4)?,
-                },
-            ))
-        },
+        "SELECT id FROM monitors WHERE project_id = ?1 ORDER BY id LIMIT ?2",
+        (project_id, crate::platform::caps::MONITORS_PER_PROJECT),
+        |r| r.get::<i64>(0),
     )
-    .await
+    .await?;
+    let mut out = Vec::new();
+    for id in ids {
+        let rows = crate::platform::db::query_all(
+            c,
+            "SELECT (checked_at - ?2) / ?3 AS b, count(*), sum(ok), CAST(avg(latency_ms) AS INTEGER)
+             FROM check_results
+             WHERE monitor_id = ?1 AND checked_at >= ?2 AND checked_at < ?4 AND location_id IS NULL
+             GROUP BY b ORDER BY b LIMIT ?5",
+            (id, from, step, until, buckets as i64),
+            |r| {
+                Ok(Bucket {
+                    index: r.get::<i64>(0)? as usize,
+                    total: r.get(1)?,
+                    ok: r.get(2)?,
+                    avg_ms: r.get(3)?,
+                })
+            },
+        )
+        .await?;
+        out.extend(rows.into_iter().map(|b| (id, b)));
+    }
+    Ok(out)
 }
