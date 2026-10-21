@@ -63,7 +63,7 @@ export function AllIncidents(): ReactElement {
                 <TableRow>
                   <TableHead>Incident</TableHead>
                   <TableHead className="max-md:hidden">Project</TableHead>
-                  <SortHead by="severity" label="Severity" sort={sort} onSort={onSort} />
+                  <SortHead by="severity" label="Alert level" sort={sort} onSort={onSort} />
                   <TableHead className="max-lg:hidden">Latest update</TableHead>
                   <SortHead by="started" label="Started" sort={sort} onSort={onSort} className="max-lg:hidden" />
                   <TableHead className="text-right">Duration</TableHead>

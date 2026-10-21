@@ -57,7 +57,7 @@ The source then starts over:
 Use **Report incident** for a problem no check catches, such as slow sign-in for some users. Report one too when a monitor with incidents off goes down and users should know.
 
 1. Open **Incidents** in a project and select **Report incident**. Select **When to report an incident** for a short guide.
-2. Enter a **Title** and pick a severity.
+2. Enter a **Title** and pick an **Alert level**.
 3. Tick the monitors and heartbeats it affects. **Find a monitor or heartbeat by name** narrows the list.
 4. Write the first **Message**.
 
@@ -93,15 +93,15 @@ A project has at most 20 windows scheduled or active. A window cannot be edited:
 
 ## The Incidents page
 
-A project's **Incidents** page lists its incidents with severity, latest update, start and duration. Filter by **Open**, **Resolved** or **All**. Search by title and filter by severity.
+A project's **Incidents** page lists its incidents with alert level, latest update, start and duration. Filter by **Open**, **Resolved** or **All**. Search by title and filter by severity.
 
 ### Across projects
 
 **Incidents** in the top menu lists the incidents of every project you can open. A tech lead sees the projects they own. A super admin and a supervisor see all.
 
 - The list shows open incidents first. Critical ones come first.
-- Use the state filter for **Open**, **Resolved** or **Open and resolved**. Use **Search incidents** and the severity filter to narrow the list.
-- Sort by **Severity** or **Started**.
+- Use the state filter for **Open**, **Resolved** or **Open and resolved**. Use **Search incidents** and the alert level filter to narrow the list.
+- Sort by **Alert level** or **Started**.
 - The list shows 25 a page. A count on the menu shows the open incidents.
 - A row opens the incident. The crumb **All incidents** returns to the same search and page.
 

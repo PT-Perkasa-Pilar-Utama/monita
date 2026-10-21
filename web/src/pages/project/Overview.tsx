@@ -140,7 +140,7 @@ export function Overview(): ReactElement {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Incident</TableHead>
-                      <TableHead>Severity</TableHead>
+                      <TableHead>Alert level</TableHead>
                       <TableHead className="max-sm:hidden">Latest update</TableHead>
                       <TableHead className="text-right">Duration</TableHead>
                     </TableRow>

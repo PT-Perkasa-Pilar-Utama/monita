@@ -40,7 +40,7 @@ File: `components/app/Tone.tsx`. A badge is the only place a state gets color.
 | Component | Input | Output |
 | --- | --- | --- |
 | `StateBadge` | `kind`: `up`, `down`, `issue`, `unknown`; optional `label` | Up, Down, Issue, No data yet |
-| `SeverityBadge` | `severity` | Grey `outline` with a bell: Critical (ringing, filled), Warning (plain). Severity is a setting, so it never takes a state colour. |
+| `SeverityBadge` | `severity` | Grey `outline` with a bell: Critical (ringing, filled), Warning (plain). Severity is a setting, so it never takes a state colour. Pages call it **Alert level**; code and JSON keep `severity`. |
 | `LabelBadge` | status update label | Investigating (`down`), Identified (`issue`), Monitoring (`neutral`), Resolved (`up`) |
 | `StageBadge` | `stage`, optional `ring` | Triage (`unknown`), Backlog (`neutral`), In progress (`issue`), Done (`up`) |
 | `ReasonBadge` | `reason` | Fixed (`up`), Won't fix (`neutral`), Duplicate (`unknown`) |
@@ -54,7 +54,7 @@ Use `Badge variant="outline"` for a neutral fact, such as "On the status page". 
 | `TableCard` | `app/TableCard.tsx` | A `Card` that holds a table. Its band shows `title` (the count, such as "2 of 4 monitors") on the left and `tools` (search, filters, an action) on the right. `onClear` shows Clear filters beside the count while a search or filter narrows the list. |
 | `FilterCount` | `app/TableCard.tsx` | The count with Clear filters. `TableCard` uses it. A page of cards without a table band, such as the project card view, uses it directly. |
 | `PageHeader filtered` | `layout/Page.tsx` | Shows a neutral Filtered badge after the page title while a search or filter narrows the list. Resolved or All counts as filtered on the incident lists. |
-| `ListFilters` | `app/ListFilters.tsx` | Search plus State and Severity selects for a `TableCard` band. A select applies at once. Props: `noun`, `filter`, `onChange`, `stateOptions`, and `selects={false}` for a list with search only. |
+| `ListFilters` | `app/ListFilters.tsx` | Search plus State and Alert level selects for a `TableCard` band. A select applies at once. Props: `noun`, `filter`, `onChange`, `stateOptions`, and `selects={false}` for a list with search only. |
 | `FilterMenu` | `list/FilterMenu.tsx` | One quiet filter or sort in a band: a ghost button that names the filter (Owner, Sort) and a menu of radio choices. A set filter shows its choice on the button. |
 | `SortHead` | `list/SortHead.tsx` | A column heading that sorts. It is a button with an arrow for the order, and the head carries `aria-sort`. Pure rules in `lib/sort.ts`. Monitors, heartbeats, incidents and keys sort in the browser, with `?sort=&dir=`. The project list view, the cross-project Incidents and Tickets lists and the Changelog list sort on the server. |
 | `LinkRow` | `app/LinkRow.tsx` | A table row that opens its page from a click anywhere on it. The first cell still holds a real link (`ROW_LINK`) for the keyboard. A click on a control inside the row keeps its own action. Cmd or Ctrl opens a new tab. |

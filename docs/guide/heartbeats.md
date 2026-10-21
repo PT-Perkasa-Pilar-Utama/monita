@@ -8,7 +8,7 @@ A heartbeat watches a job that runs on a schedule. The job calls a URL when it f
 2. Enter a **Name**, for example `nightly-backup`.
 3. Set **Runs every** to the job's schedule: 1, 5, 10, 15 or 30 minutes, 1, 2, 6 or 12 hours, 1, 7 or 30 days.
 4. Set **Can be late by** to how late the job may finish: None, 1, 5, 15 or 30 minutes, 1, 2 or 6 hours, or 1 day.
-5. Pick the severity and what a failure does. These fields work as on a [monitor](monitors.md#when-it-fails), but a heartbeat has no failed-check count.
+5. Pick the alert level and what a failure does. These fields work as on a [monitor](monitors.md#when-it-fails), but a heartbeat has no failed-check count.
 6. Save, then copy the ping URL.
 
 The deadline is the last ping plus **Runs every** plus **Can be late by**. Example: a job runs every 1 day, can be late by 1 hour, and pings at 01:00. The next deadline is 02:00 the next day.
@@ -17,7 +17,7 @@ The first deadline counts from the moment you save. A heartbeat that never pings
 
 ## The lists
 
-The **Heartbeats** page lists each heartbeat with its state, **Next ping due**, **Every**, severity and **Last ping**. A heartbeat with no ping yet reads **No data yet**.
+The **Heartbeats** page lists each heartbeat with its state, **Next ping due**, **Every**, **Alert level** and **Last ping**. A heartbeat with no ping yet reads **No data yet**.
 
 ## Ping on success
 

@@ -99,7 +99,7 @@ export function Incidents({ creating = false }: { creating?: boolean }): ReactEl
             <TableHeader>
               <TableRow>
                 <SortHead by="title" label="Incident" sort={sort} onSort={onSort} />
-                <SortHead by="severity" label="Severity" sort={sort} onSort={onSort} />
+                <SortHead by="severity" label="Alert level" sort={sort} onSort={onSort} />
                 <SortHead by="update" label="Latest update" sort={sort} onSort={onSort} className="max-md:hidden" />
                 <SortHead by="started" label="Started" sort={sort} onSort={onSort} className="max-lg:hidden" />
                 <SortHead by="duration" label="Duration" sort={sort} onSort={onSort} className="text-right" />

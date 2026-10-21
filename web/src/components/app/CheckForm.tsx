@@ -10,7 +10,7 @@ export function SeverityField({ value, onChange }: { value: Severity; onChange: 
   return (
     <ChoiceCards
       id="sev"
-      legend="Severity"
+      legend="Alert level"
       value={value}
       onChange={onChange}
       choices={[

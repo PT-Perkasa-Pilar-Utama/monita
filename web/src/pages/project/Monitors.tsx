@@ -89,7 +89,7 @@ export function Monitors({ creating = false }: { creating?: boolean }): ReactEle
                     <SortHead by="state" label="State" sort={sort} onSort={onSort} />
                     <TableHead className="max-lg:hidden">Last 24 hours</TableHead>
                     <SortHead by="every" label="Every" sort={sort} onSort={onSort} className="max-md:hidden" />
-                    <SortHead by="severity" label="Severity" sort={sort} onSort={onSort} className="max-md:hidden" />
+                    <SortHead by="severity" label="Alert level" sort={sort} onSort={onSort} className="max-md:hidden" />
                     <SortHead by="last" label="Last check" sort={sort} onSort={onSort} className="text-right max-sm:hidden" />
                   </TableRow>
                 </TableHeader>

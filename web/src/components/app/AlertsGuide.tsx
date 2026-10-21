@@ -32,11 +32,11 @@ function Part({ title, children }: { title: string; children: ReactNode }): Reac
 function Severities(): ReactElement {
   return (
     <Part title="Critical and warning">
-      <p className="text-muted-foreground">You choose critical or warning on each monitor and heartbeat. Its incidents alert that severity's recipients.</p>
+      <p className="text-muted-foreground">You choose critical or warning on each monitor and heartbeat. Its incidents alert that level's recipients.</p>
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Severity</TableHead>
+            <TableHead>Alert level</TableHead>
             <TableHead>Use it for</TableHead>
             <TableHead>Sends by default</TableHead>
           </TableRow>

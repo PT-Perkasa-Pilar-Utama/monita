@@ -38,12 +38,12 @@ export const STATE_OPTIONS: Option[] = [
 ];
 
 export const SEVERITY_OPTIONS: Option[] = [
-  { value: "", label: "Any severity" },
+  { value: "", label: "Any alert level" },
   { value: "critical", label: "Critical" },
   { value: "warning", label: "Warning" },
 ];
 
-/** A table band's search and its State and Severity selects. A select applies at once. */
+/** A table band's search and its State and Alert level selects. A select applies at once. */
 export function ListFilters({
   noun,
   filter,
@@ -72,7 +72,7 @@ export function ListFilters({
         />
       </div>
       {selects && <FilterSelect label="State" value={filter.state} options={stateOptions} onChange={(state) => onChange({ state })} />}
-      {selects && <FilterSelect label="Severity" value={filter.severity} options={SEVERITY_OPTIONS} onChange={(severity) => onChange({ severity })} />}
+      {selects && <FilterSelect label="Alert level" value={filter.severity} options={SEVERITY_OPTIONS} onChange={(severity) => onChange({ severity })} />}
     </>
   );
 }

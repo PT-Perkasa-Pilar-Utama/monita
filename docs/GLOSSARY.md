@@ -18,6 +18,7 @@ Monita's docs, pages and code use each of these words with one meaning. Say "tec
 | Two-factor sign-in | A 6-digit code from an authenticator app that Monita asks for after the password, when the user turned it on. |
 | Recovery code | One of ten codes shown once when two-factor sign-in is turned on. Each signs in once without the phone. |
 | Alert | An email or a webhook that Monita sends when an incident opens or closes. |
+| Alert level | Critical or warning, set on each monitor, heartbeat and incident. It picks which alert setup sends the alerts. It is a setting, not a state. The JSON field is `severity`. |
 | Webhook | A message that Monita posts to a URL, for example a Slack or Teams channel. |
 | Status page | The public page of a project. Anyone with the link can read it. |
 | Ticket | A bug report from a user. It moves through triage, backlog, in progress and done. |

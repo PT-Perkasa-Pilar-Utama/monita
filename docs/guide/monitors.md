@@ -22,7 +22,7 @@ Select **How monitors work** at the top of the page for a short guide with examp
 | DNS name | A host name, such as `api.example.com` | The name resolves. If you set **The name resolves to**, one A or AAAA answer must equal that address. |
 | Ping | A host name or an address, such as `10.0.0.5` | The host answers one ICMP echo request within the timeout. The response time is the round trip. |
 
-The interval, the timeout, the failure count, severity and the status page work as for HTTP. A DNS check asks the resolver of the server that runs Monita, so it sees `/etc/hosts` and the server's DNS settings. **Details** shows the same check as a command: `nc -vz` for a port, `getent ahosts` for a name and `ping -c 1` for a host. DNS record types other than A and AAAA are not checked.
+The interval, the timeout, the failure count, the alert level and the status page work as for HTTP. A DNS check asks the resolver of the server that runs Monita, so it sees `/etc/hosts` and the server's DNS settings. **Details** shows the same check as a command: `nc -vz` for a port, `getent ahosts` for a name and `ping -c 1` for a host. DNS record types other than A and AAAA are not checked.
 
 A ping check uses an ICMP socket that needs no root and no extra capability. Linux allows it when the sysctl `net.ipv4.ping_group_range` covers Monita's group. systemd 243 and later, and Docker, set it to `0 2147483647`, which covers every group. If the server refuses, the check fails with an error that names this setting. Windows has no such socket, so a Monita on Windows does not offer ping. Use a TCP check there, or for a host that blocks ICMP.
 
@@ -89,7 +89,7 @@ A check fails on a timeout, a connection error, a status outside the expected li
 
 | Setting | Means |
 | --- | --- |
-| Severity | Which alert setup the monitor uses: critical or warning. Each has its own emails and webhook. Default: warning. |
+| Alert level | Which alert setup the monitor uses: critical or warning. Each has its own emails and webhook. Default: warning. |
 | It counts as down after | The number of failed checks in a row, from 1 to 99. Default: 2. |
 | Send alerts to the people in Alerts settings | Off means Monita sends nothing for this monitor. |
 | Open an incident | Off means no incident and nothing on the status page. |

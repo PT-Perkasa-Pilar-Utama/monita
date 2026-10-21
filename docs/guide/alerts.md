@@ -16,14 +16,14 @@ Each section has an **On** or **Off** switch in its header. The switch saves at 
 
 ## Critical and warning
 
-You pick critical or warning on each monitor and heartbeat. Its incidents alert that severity's recipients.
+You pick an **Alert level**, critical or warning, on each monitor and heartbeat. Its incidents alert that level's recipients.
 
-| Severity | Use it for | Sends by default |
+| Alert level | Use it for | Sends by default |
 | --- | --- | --- |
 | Critical | An outage that needs someone now | Email |
 | Warning | A problem that can wait for working hours | Email |
 
-Neither severity calls a webhook until you tick **Also send to a webhook** and set its URL.
+Neither level calls a webhook until you tick **Also send to a webhook** and set its URL.
 
 Each section has these fields:
 

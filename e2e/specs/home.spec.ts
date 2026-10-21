@@ -16,10 +16,10 @@ test("All incidents searches, filters, keeps the query, and the incident leads b
   await expect(row).toHaveCount(1);
   await expect(page).toHaveURL(/[?&]q=/);
 
-  await page.getByRole("combobox", { name: "Severity" }).click();
+  await page.getByRole("combobox", { name: "Alert level" }).click();
   await page.getByRole("option", { name: "Warning" }).click();
   await expect(page.getByText("No incidents match these filters.")).toBeVisible();
-  await page.getByRole("combobox", { name: "Severity" }).click();
+  await page.getByRole("combobox", { name: "Alert level" }).click();
   await page.getByRole("option", { name: "Critical" }).click();
 
   await row.click();

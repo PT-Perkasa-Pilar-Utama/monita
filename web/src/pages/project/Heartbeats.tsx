@@ -89,7 +89,7 @@ export function Heartbeats({ creating = false }: { creating?: boolean }): ReactE
                     <SortHead by="state" label="State" sort={sort} onSort={onSort} />
                     <SortHead by="deadline" label="Next ping due" sort={sort} onSort={onSort} className="max-lg:hidden" />
                     <SortHead by="every" label="Every" sort={sort} onSort={onSort} className="max-md:hidden" />
-                    <SortHead by="severity" label="Severity" sort={sort} onSort={onSort} className="max-md:hidden" />
+                    <SortHead by="severity" label="Alert level" sort={sort} onSort={onSort} className="max-md:hidden" />
                     <SortHead by="last" label="Last ping" sort={sort} onSort={onSort} className="text-right max-sm:hidden" />
                   </TableRow>
                 </TableHeader>
