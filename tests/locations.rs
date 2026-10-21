@@ -595,3 +595,41 @@ async fn a_slow_probe_keeps_both_results_and_a_stale_claim_takes_none() {
         json!({ "stored": 0, "skipped": 1 })
     );
 }
+
+#[tokio::test]
+async fn claims_a_probe_never_answered_do_not_credit_a_later_result() {
+    let app = TestApp::spawn("test").await;
+    let (admin, tl) = setup(&app).await;
+    let (loc, token) = location(&app, &admin, "Jakarta").await;
+    let res = app
+        .api_post(
+            MONITORS,
+            monitor("https://pay.example.com", &[loc], "1"),
+            Some(&tl),
+        )
+        .await;
+    assert_eq!(res.status(), 201);
+    sql(&app, "UPDATE monitors SET next_check_at = 9999999999").await;
+    assert_eq!(claim(&app, &token).await, 1);
+    assert_eq!(claim(&app, &token).await, 1);
+    // The probe went away; both claims are now older than 155 s (60 s interval, 5 s timeout).
+    sql(
+        &app,
+        &format!("UPDATE monitor_locations SET claimed_at = {}", now() - 300),
+    )
+    .await;
+    assert_eq!(claim(&app, &token).await, 1);
+    let two = json!({ "results": [result(1, true), result(1, true)] });
+    let res = probe(
+        &app,
+        Method::POST,
+        "/api/v1/probe/results",
+        Some(&token),
+        two,
+    )
+    .await;
+    assert_eq!(
+        json_of(res).await["data"],
+        json!({ "stored": 1, "skipped": 1 })
+    );
+}

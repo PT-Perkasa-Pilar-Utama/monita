@@ -187,7 +187,7 @@ pub async fn insert_ping(
 /// A fresh deadline from `at`, as if the job had pinged then, without counting a ping.
 pub async fn rearm(c: &Connection, id: i64, at: i64) -> anyhow::Result<()> {
     c.execute(
-        "UPDATE heartbeats SET deadline_at = ?1 + period_s + grace_s WHERE id = ?2",
+        "UPDATE heartbeats SET deadline_at = ?1 + period_s + grace_s, held_cause = NULL WHERE id = ?2",
         (at, id),
     )
     .await?;
@@ -195,8 +195,8 @@ pub async fn rearm(c: &Connection, id: i64, at: i64) -> anyhow::Result<()> {
 }
 
 /// A failure reported in a maintenance window: the sweep looks again at `at` and, once the window
-/// is over, opens the incident with `cause`. A heartbeat already past its deadline (its miss is
-/// being dealt with) is left alone.
+/// is over, opens the incident with `cause`. A heartbeat with no deadline is left alone: its miss
+/// was already reported and it is down, so the failure adds nothing.
 pub async fn hold_failure(c: &Connection, id: i64, at: i64, cause: &str) -> anyhow::Result<()> {
     c.execute(
         "UPDATE heartbeats SET deadline_at = ?1, held_cause = ?2 WHERE id = ?3 AND deadline_at IS NOT NULL",

@@ -368,3 +368,28 @@ async fn the_form_names_every_bad_field() {
     fields.sort();
     assert_eq!(fields, ["ends_at", "items", "starts_at", "title"]);
 }
+
+#[tokio::test]
+async fn resolving_by_hand_forgets_a_held_failure() {
+    let app = TestApp::spawn("test").await;
+    setup(&app, 2).await;
+    let input = heartbeat::HeartbeatInput {
+        name: "backup".into(),
+        ..heartbeat::HeartbeatInput::default()
+    };
+    heartbeat::create(&app.state.db, 1, &input).await.unwrap();
+    sql(&app, "UPDATE heartbeats SET held_cause = 'disk full'").await;
+    app.state
+        .db
+        .write(async |c| checks::rearm_heartbeat(c, 1, now()).await)
+        .await
+        .unwrap();
+    assert_eq!(
+        count(
+            &app,
+            "SELECT count(*) FROM heartbeats WHERE held_cause IS NULL"
+        )
+        .await,
+        1
+    );
+}

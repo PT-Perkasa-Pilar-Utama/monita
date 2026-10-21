@@ -277,9 +277,12 @@ pub async fn claim_for_location(
     .await?;
     for m in &due {
         c.execute(
-            "UPDATE monitor_locations SET next_check_at = ?1, claimed_at = ?2, open_claims = min(open_claims + 1, 2)
+            // Claims the probe never answered expire with their newest one: a stale count starts
+            // over at 1, so it cannot credit a result to a check that was never handed out.
+            "UPDATE monitor_locations SET next_check_at = ?1, claimed_at = ?2,
+               open_claims = CASE WHEN claimed_at IS NULL OR claimed_at < ?2 - ?5 THEN 1 ELSE min(open_claims + 1, 2) END
              WHERE monitor_id = ?3 AND location_id = ?4",
-            (at + m.interval_s, at, m.id, location_id),
+            (at + m.interval_s, at, m.id, location_id, 2 * m.interval_s + m.timeout_ms / 1000 + 30),
         )
         .await?;
     }
