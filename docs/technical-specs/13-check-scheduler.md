@@ -15,7 +15,7 @@ One loop drives every timed job in Monita: monitor checks, heartbeat deadlines, 
 | Interval edit | `next_check_at = now + 5 + rand(0..interval_s - 5)` | Same spreading |
 | Heartbeat due | `deadline_at <= now`. The loop sends `HeartbeatMissed`, then sets `deadline_at = NULL`. | One miss signal per outage |
 | Ping | `deadline_at = now + period_s + grace_s` | Q7 |
-| Hand resolve | A TL's Resolved on a heartbeat's incident sets `deadline_at = now + period_s + grace_s` (`checks::rearm_heartbeat`) | Without it nothing watches the heartbeat until its next ping. Migration 0012 repaired heartbeats left without a deadline. |
+| Hand resolve | A TL's Resolved on a heartbeat's incident sets `deadline_at = now + period_s + grace_s` and forgets a held `/fail` text (`checks::rearm_heartbeat`) | Without it nothing watches the heartbeat until its next ping. Migration 0012 repaired heartbeats left without a deadline. |
 | New heartbeat | `deadline_at = created_at + period_s + grace_s` | A job that never pings still alerts. |
 | Daily jobs | Run when the UTC hour has passed and `settings.last_<job>_day` is not today. A failed job waits 10 minutes, then runs again. A rerun is safe: the digest moves its ticket watermark in the same transaction that queues its emails, so a rerun after a failed day marker sends nothing new; a backup only overwrites that day's file; a prune failure is logged and does not fail the backup. | One loop, no cron crate |
 | Liveness | An `AtomicI64` holds the last tick time. `/healthz` reads it. | T5 |

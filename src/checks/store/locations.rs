@@ -4,6 +4,11 @@ use turso::Connection;
 
 use crate::platform::{caps, db::query_all, db::query_i64};
 
+/// Seconds after its newest claim when a location's claim on a monitor is stale: two intervals,
+/// the timeout and 30 s (technical-specs 14.6). One SQL fragment for every statement that asks,
+/// so claiming and answering agree. It reads the row's monitor through `monitor_locations`.
+pub const STALE_AFTER: &str = "(SELECT 2 * interval_s + timeout_ms / 1000 + 30 FROM monitors WHERE id = monitor_locations.monitor_id)";
+
 #[derive(serde::Serialize)]
 pub struct LocationRow {
     pub id: i64,
@@ -149,9 +154,11 @@ pub async fn answer_claim(
     now: i64,
 ) -> anyhow::Result<bool> {
     Ok(c.execute(
-        "UPDATE monitor_locations SET open_claims = open_claims - 1
+        &format!(
+            "UPDATE monitor_locations SET open_claims = open_claims - 1
          WHERE monitor_id = ?1 AND location_id = ?2 AND open_claims > 0
-           AND claimed_at >= ?3 - (SELECT 2 * interval_s + timeout_ms / 1000 + 30 FROM monitors WHERE id = ?1)",
+           AND claimed_at >= ?3 - {STALE_AFTER}"
+        ),
         (monitor_id, location_id, now),
     )
     .await?

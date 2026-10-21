@@ -278,11 +278,17 @@ pub async fn claim_for_location(
     for m in &due {
         c.execute(
             // Claims the probe never answered expire with their newest one: a stale count starts
-            // over at 1, so it cannot credit a result to a check that was never handed out.
-            "UPDATE monitor_locations SET next_check_at = ?1, claimed_at = ?2,
-               open_claims = CASE WHEN claimed_at IS NULL OR claimed_at < ?2 - ?5 THEN 1 ELSE min(open_claims + 1, 2) END
-             WHERE monitor_id = ?3 AND location_id = ?4",
-            (at + m.interval_s, at, m.id, location_id, 2 * m.interval_s + m.timeout_ms / 1000 + 30),
+            // over at 1, so it cannot credit a result to a check that was never handed out. The
+            // CASE reads the old claimed_at: SQL evaluates every SET expression against the row
+            // as it was (claims_a_probe_never_answered_do_not_credit_a_later_result checks it).
+            &format!(
+                "UPDATE monitor_locations SET next_check_at = ?1, claimed_at = ?2,
+                   open_claims = CASE WHEN claimed_at IS NULL OR claimed_at < ?2 - {} THEN 1
+                     ELSE min(open_claims + 1, 2) END
+                 WHERE monitor_id = ?3 AND location_id = ?4",
+                super::locations::STALE_AFTER
+            ),
+            (at + m.interval_s, at, m.id, location_id),
         )
         .await?;
     }

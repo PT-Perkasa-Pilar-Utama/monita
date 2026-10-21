@@ -223,7 +223,7 @@ Tokens and passwords that monitors sign in with. A value is written once and nev
 
 State words on the team's pages: `Up`, `Down`, `Issue` and `No data yet`. A monitor never checked and a heartbeat never pinged read `No data yet` (was "Waiting"). Migration 0012 gave each heartbeat that a hand resolve left with no deadline, and that was not down, a new one.
 
-`held_cause` (TEXT NULL, migration 0032): the failure text of a `/fail` ping received in a maintenance window, kept until the window ends and the incident opens with it; a success ping clears it.
+`held_cause` (TEXT NULL, migration 0032): the failure text of a `/fail` ping received in a maintenance window, kept until the window ends and the incident opens with it; a success ping or a hand resolve (`rearm_heartbeat`) clears it.
 
 ### 6.3.9 check_results and pings
 
