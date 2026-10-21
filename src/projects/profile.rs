@@ -2,7 +2,12 @@
 
 use serde::Deserialize;
 
-use super::{Project, ProjectError, eligible_owners, icon::parse as parse_icon, store};
+use super::{Project, ProjectError, eligible_owners, store};
+use crate::platform::image;
+
+fn parse_icon(field: &str) -> Result<Option<image::Image>, ProjectError> {
+    image::parse(field).map_err(ProjectError::BadIcon)
+}
 use crate::{
     accounts::User,
     platform::{db::Db, now, token},

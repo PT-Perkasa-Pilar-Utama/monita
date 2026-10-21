@@ -1,5 +1,6 @@
 import type { ReactElement } from "react";
 import { Password } from "@/pages/account/Password";
+import { Profile } from "@/pages/account/Profile";
 import { TwoFactor } from "@/pages/account/TwoFactor";
 import { AccountLayout } from "@/layouts/AccountLayout";
 import { Navigate, Route, Routes } from "react-router-dom";
@@ -56,8 +57,9 @@ export default function App(): ReactElement {
           <Route path="/" element={<Projects />} />
           <Route path="/incidents" element={<AllIncidents />} />
           <Route path="/tickets" element={<AllTickets />} />
-          <Route path="/account" element={<Navigate to="/account/two-factor" replace />} />
+          <Route path="/account" element={<Navigate to="/account/profile" replace />} />
           <Route element={<AccountLayout />}>
+            <Route path="/account/profile" element={<Profile />} />
             <Route path="/account/password" element={<Password />} />
             <Route path="/account/two-factor" element={<TwoFactor />} />
           </Route>

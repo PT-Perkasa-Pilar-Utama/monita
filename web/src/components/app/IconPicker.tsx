@@ -7,19 +7,25 @@ import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { shrinkIcon } from "@/lib/icon";
 
 /**
- * The project icon field. The picture is cropped and scaled in the page, then sent as a data URL
- * in `value`; an empty value sends no icon. `current` is the stored icon, shown until replaced.
+ * A small picture field: a project icon, or a user's own picture. The picture is cropped and
+ * scaled in the page, then sent as a data URL in `value`; an empty value sends none. `current` is
+ * the stored picture, shown until replaced. `own` keeps the button for a supervisor, who may change
+ * their own account.
  */
 export function IconPicker({
   value,
   onChange,
   current,
   error,
+  label = "Icon",
+  own = false,
 }: {
   value: string;
   onChange: (dataUrl: string) => void;
   current?: string | null | undefined;
   error?: string | undefined;
+  label?: string;
+  own?: boolean;
 }): ReactElement {
   const id = useId();
   const [readError, setReadError] = useState("");
@@ -34,20 +40,21 @@ export function IconPicker({
     }
   };
   const message = readError || error;
+  const choose = (
+    <Button asChild variant="outline" size="sm">
+      <label htmlFor={id} className="cursor-pointer">
+        {shown ? "Replace picture" : "Choose a picture"}
+      </label>
+    </Button>
+  );
   return (
     <Field data-invalid={message ? true : undefined}>
-      <FieldLabel htmlFor={id}>Icon</FieldLabel>
+      <FieldLabel htmlFor={id}>{label}</FieldLabel>
       <div className="flex items-center gap-3">
         <span className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-lg border bg-muted">
           {shown ? <img src={shown} alt="" data-icon-preview className="size-full object-cover" /> : <Upload className="size-5 text-muted-foreground" />}
         </span>
-        <Writable>
-          <Button asChild variant="outline" size="sm">
-            <label htmlFor={id} className="cursor-pointer">
-              {shown ? "Replace picture" : "Choose a picture"}
-            </label>
-          </Button>
-        </Writable>
+        {own ? choose : <Writable>{choose}</Writable>}
         <input
           id={id}
           type="file"

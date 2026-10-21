@@ -63,6 +63,10 @@ Open the menu on a row for one user. Or tick the boxes on several rows. The titl
 
 You cannot act on your own account. A disabled user can only be enabled. A batch skips the users it does not fit and says how many. Each action asks you to confirm.
 
+## Your picture
+
+Open the avatar menu and select **User settings**. **Profile** opens. Select **Choose a picture**, pick a PNG, JPEG or WebP file, then select **Save picture**. Monita crops it to a square and the top bar shows it in place of your initial. **Remove picture** goes back to the initial.
+
 ## Your password
 
 Open the avatar menu, select **User settings**, then **Password**. Enter your current password and the new one twice, then select **Change password**. The new password needs 12 characters or more. Your other sessions sign out; this one stays. An account gets 10 tries in each 15-minute window.

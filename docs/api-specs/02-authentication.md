@@ -19,7 +19,7 @@ The pages `/login` and `/invite/{token}` are React pages; they call these JSON r
 | --- | --- | --- | --- | --- | --- |
 | POST | `/api/ui/login` | public, 60/min per IP (`login:` bucket) | `email`, `password` | Verify, create a session, set the cookie, 204. With two-factor on: no session yet; 200 `{two_factor: true, challenge}` and the page asks for the code (2.4). A wrong pair: 422 with one generic message and no field. | |
 | POST | `/api/ui/logout` | session | | Delete the session, clear the cookie, 204. | |
-| GET | `/api/ui/me` | session | | `email`, `role` (`super_admin`, `tl` or `supervisor`), `is_admin` (changes anything: a super admin), `sees_all` (sees every project and the admin pages: a super admin or a supervisor), `read_only` (a supervisor, 1.9) `utc_offset_min` (minutes east of UTC; the page shows times in it, 4.4) and `two_factor` (on for this user; pages note it while off, v1.1 Q29). 401 without a session. | |
+| GET | `/api/ui/me` | session | | `email`, `role` (`super_admin`, `tl` or `supervisor`), `is_admin` (changes anything: a super admin), `sees_all` (sees every project and the admin pages: a super admin or a supervisor), `read_only` (a supervisor, 1.9) `utc_offset_min` (minutes east of UTC; the page shows times in it, 4.4) `two_factor` (on for this user; pages note it while off, v1.1 Q29) and `avatar_at` (when the user's picture last changed, or null; v1.1 Q31). 401 without a session. | |
 | GET | `/api/ui/invites/{token}` | public | | 200 `{usable: true}` while the invite is unused and unexpired; 410 otherwise. | AC-03.01, AC-03.03, AC-02.02 |
 | POST | `/api/ui/invites/{token}` | public, 60/min per IP | `password`, `password_confirm` | Check the invite first: unknown, used, expired or disabled user is 410 before any hashing. A mismatch is 422 on `password_confirm`; a short password is 422 on `password`. Then hash, mark used, delete older sessions, create a session, set the cookie, 204. | AC-03.02, AC-04.01 |
 
@@ -57,8 +57,10 @@ Two-factor also turns off when a super admin turns it off for the user (2.3), wh
 
 ## 2.5 User settings
 
-The signed-in user's own account (v1.1 Q30). Every role may use these routes, a supervisor too (`AccountUser`).
+The signed-in user's own account (v1.1 Q30, Q31). Every role may use these routes, a supervisor too (`AccountUser`).
 
 | Method | Path | Access | Input | Behavior | AC |
 | --- | --- | --- | --- | --- | --- |
 | POST | `/api/ui/me/password` | session | `current`, `new` | Checks `current`, stores `new` (12 characters or more), and ends every other session of the user; this session stays. 204. Empty or wrong `current`: 422 on `current`. A short `new`: 422 on `new`. An account takes 10 tries per fixed 15-minute window, right or wrong; then 429 `too_many_tries`. | |
+| PUT | `/api/ui/me/avatar` | session | `avatar`: base64 of a PNG or WebP, with or without a `data:` prefix; empty removes the picture | The page crops and scales the picture to 128 px; the server checks the type and 32 KB, as for a project icon. Sets `avatar_at`. 204. SVG or any other type, bad base64, or over 32 KB: 422 on `avatar`. | |
+| GET | `/me/avatar` | session | `?v={avatar_at}` | The user's own picture with its type, `Cache-Control: private, max-age=31536000, immutable`. No picture: 404. No session: to `/login`. | |

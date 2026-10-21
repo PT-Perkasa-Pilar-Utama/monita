@@ -1,5 +1,5 @@
 import { createHmac } from "node:crypto";
-import { expect, test } from "@playwright/test";
+import { type Browser, type BrowserContext, expect, type Page, test } from "@playwright/test";
 import { apiSend } from "../lib/api";
 import { authFile } from "../lib/roles";
 
@@ -57,6 +57,8 @@ test.describe("as the super admin", () => {
     await expect(note).toContainText("Two-factor sign-in is off");
     await me.getByRole("button", { name: `Account: ${email}` }).click();
     await me.getByRole("menuitem", { name: "User settings" }).click();
+    await expect(me).toHaveURL(/\/account\/profile$/);
+    await me.getByRole("navigation", { name: "User settings" }).getByRole("link", { name: "Two-factor sign-in" }).click();
     await expect(me).toHaveURL(/\/account\/two-factor$/);
     await me.getByRole("button", { name: "Turn on" }).click();
     await expect(me.getByRole("img", { name: "QR code for your authenticator app" })).toBeVisible();
@@ -90,8 +92,9 @@ test.describe("as the super admin", () => {
 test.describe("as a new tech lead", () => {
   test.use({ storageState: authFile("admin") });
 
-  test("a user changes their password in User settings", async ({ page, browser }) => {
-    const email = `pw-${Date.now()}@monita.test`;
+  /** A new tech lead, signed in through their invite in a browser of their own. */
+  async function newUser(page: Page, browser: Browser, prefix: string): Promise<{ me: Page; ctx: BrowserContext; email: string }> {
+    const email = `${prefix}-${Date.now()}@monita.test`;
     const { link } = await apiSend<{ link: string }>(page, "POST", "/api/ui/admin/users", { email, role: "tl" }, 201);
     const ctx = await browser.newContext({ storageState: { cookies: [], origins: [] } });
     const me = await ctx.newPage();
@@ -100,6 +103,11 @@ test.describe("as a new tech lead", () => {
     await me.getByLabel("Repeat password").fill("a-long-enough-password");
     await me.getByRole("button", { name: "Save password" }).click();
     await expect(me.getByRole("heading", { name: "Projects", exact: true })).toBeVisible();
+    return { me, ctx, email };
+  }
+
+  test("a user changes their password in User settings", async ({ page, browser }) => {
+    const { me, ctx, email } = await newUser(page, browser, "pw");
 
     await me.goto("/account/password");
     await me.locator("#pw-current").fill("not-the-password");
@@ -117,6 +125,22 @@ test.describe("as a new tech lead", () => {
     await me.getByLabel("Password").fill("another-long-password");
     await me.getByRole("button", { name: "Sign in" }).click();
     await expect(me.getByRole("heading", { name: "Projects", exact: true })).toBeVisible();
+    await ctx.close();
+  });
+
+  test("a user sets and removes their picture in User settings", async ({ page, browser }) => {
+    const { me, ctx } = await newUser(page, browser, "pic");
+    await me.goto("/account");
+    await expect(me).toHaveURL(/\/account\/profile$/);
+    const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64");
+    await me.getByLabel("Picture").setInputFiles({ name: "me.png", mimeType: "image/png", buffer: png });
+    await me.getByRole("button", { name: "Save picture" }).click();
+    await expect(me.getByText("Picture saved.")).toBeVisible();
+    const avatar = me.getByRole("button", { name: /^Account:/ }).locator("img");
+    await expect(avatar).toHaveAttribute("src", /\/me\/avatar\?v=\d+/);
+    await me.getByRole("button", { name: "Remove picture" }).click();
+    await expect(me.getByText("Picture removed.")).toBeVisible();
+    await expect(avatar).toHaveCount(0);
     await ctx.close();
   });
 });

@@ -20,6 +20,8 @@ export type Me = {
   utc_offset_min: number;
   /** Two-factor sign-in is on. While it is off, the top bar notes it until the user closes the note. */
   two_factor: boolean;
+  /** When the user's picture last changed; null shows the initial. */
+  avatar_at: number | null;
 };
 
 export const ROLE_LABEL: Record<Role, string> = { super_admin: "Super admin", tl: "Tech lead", supervisor: "Supervisor" };

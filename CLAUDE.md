@@ -43,7 +43,7 @@ site/                 landing page and docs site builder    docs/guide/ user doc
 
 | Module | Owns tables | Interface others call |
 | --- | --- | --- |
-| accounts | users, invites, sessions, recovery_codes, sign_in_challenges | `CurrentUser` (refuses a supervisor's writes) and `AdminUser` (super admin, or a supervisor reading) extractors, `purge_expired` |
+| accounts | users, invites, sessions, recovery_codes, sign_in_challenges, user_avatars | `CurrentUser` (refuses a supervisor's writes) and `AdminUser` (super admin, or a supervisor reading) extractors, `purge_expired` |
 | projects | projects, project_icons, api_keys, project_secrets | `ApiProject` extractor, `find_for`, `can_view`, `owns_any` |
 | checks | monitors, heartbeats, check_results, pings, daily_summaries, locations, monitor_locations | `probe`, `Job`, `heartbeat::admit` and `record`, `scheduler::spawn`, `locations::record_at` |
 | incidents | incidents, incident_items, incident_sources, status_updates | `observe` (the only door for check results), `open_manual`, `post_update`, `states_for`, `source_deleted` |

@@ -8,6 +8,7 @@ pub mod config;
 pub mod db;
 pub mod headers;
 pub mod health;
+pub mod image;
 pub mod jobs;
 pub mod limits;
 pub mod mail_api;

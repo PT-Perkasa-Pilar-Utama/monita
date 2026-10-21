@@ -20,6 +20,7 @@
 erDiagram
   users ||--o{ invites : has
   users ||--o{ sessions : has
+  users ||--o| user_avatars : has
   users ||--o{ projects : owns
   projects ||--o{ api_keys : has
   projects ||--o| project_icons : has
@@ -62,8 +63,11 @@ erDiagram
 | totp_secret | TEXT | yes | | | Base32. Set while two-factor sign-in is on; stored as entered (SEC-27). Migration 0027. |
 | totp_pending | TEXT | yes | | | A secret shown but not yet confirmed with a code |
 | totp_step | INTEGER | yes | | | The last 30-second step a code was used for; only later steps pass |
+| avatar_at | INTEGER | yes | | | When the user's picture last changed; NULL without one. Versions `/me/avatar?v=`. Migration 0034. |
 
 `recovery_codes` (migration 0027): `id` PK, `user_id` FK users ON DELETE CASCADE, `code_hash` TEXT UNIQUE (SHA-256), `used_at` INTEGER NULL. Ten per user while two-factor is on.
+
+`user_avatars` (migration 0034, v1.1 Q31): `user_id` PK, FK users ON DELETE CASCADE; `mime` TEXT CHECK `image/png` or `image/webp`; `data` BLOB, at most 32 KB. Apart from `users` so a user list never reads the bytes, like `project_icons`.
 
 `sign_in_challenges` (migration 0027): `token_hash` TEXT PK (SHA-256), `user_id` FK users ON DELETE CASCADE, `expires_at` (5 minutes after a right password), `attempts` (wrong codes; the fifth deletes the row). Retention deletes expired rows.
 

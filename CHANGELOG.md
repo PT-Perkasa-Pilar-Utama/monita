@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [1.1.0] - 2026-10-21
 
-More ways to check, alert and plan: TCP, DNS and ping monitors, certificate warnings, checks from more than one place, Discord, Telegram, ntfy and PagerDuty alerts, maintenance windows, and two-factor sign-in. Migrations 0024 to 0033 run on start; 0029 rebuilds the `monitors` table.
+More ways to check, alert and plan: TCP, DNS and ping monitors, certificate warnings, checks from more than one place, Discord, Telegram, ntfy and PagerDuty alerts, maintenance windows, and two-factor sign-in. Migrations 0024 to 0034 run on start; 0029 rebuilds the `monitors` table.
 
 ### Added
 
@@ -28,6 +28,7 @@ More ways to check, alert and plan: TCP, DNS and ping monitors, certificate warn
 - Two-factor setup shows a QR code to scan. The key and the app link stay below it.
 - The avatar menu's **Two-factor sign-in** became **User settings**, an area with its own side menu. While two-factor is off, a note under the top bar says so until you close it in that browser.
 - **User settings**, **Password**: change your own password with the current one. Your other sessions sign out.
+- **User settings**, **Profile**: a picture the top bar shows in place of your initial. Migration 0034.
 
 ### Fixed
 

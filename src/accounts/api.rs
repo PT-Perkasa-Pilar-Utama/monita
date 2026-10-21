@@ -59,13 +59,17 @@ pub struct Me {
     pub utc_offset_min: i64,
     /// Two-factor sign-in is on for this user. Pages note when it is off.
     pub two_factor: bool,
+    /// When the user's picture last changed, for `/me/avatar?v=`; `None` shows the initial.
+    pub avatar_at: Option<i64>,
 }
 
 async fn me(State(state): State<AppState>, CurrentUser(user): CurrentUser) -> UiResult {
     let utc_offset_min = crate::platform::settings::utc_offset(&state.db.read().await?).await?;
     let two_factor = super::two_factor::status(&state.db, user.id).await?.on;
+    let avatar_at = super::settings::avatar_at(&state.db, user.id).await?;
     Ok(data(Me {
         two_factor,
+        avatar_at,
         utc_offset_min,
         is_admin: user.is_admin(),
         sees_all: user.sees_all(),

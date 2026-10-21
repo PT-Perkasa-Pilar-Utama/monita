@@ -3,7 +3,8 @@ import { Link, useLocation } from "react-router-dom";
 import { Mark } from "@/components/brand/Mark";
 import { ProjectBadge } from "@/components/app/ProjectBadge";
 import { AlertTriangle, BookOpen, Folder, LogOut, Moon, Settings, Sun, Ticket, Undo2, UserGear } from "@/components/icons";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { avatarUrl } from "@/lib/avatar";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -86,6 +87,7 @@ function AccountMenu(): ReactElement {
           className="rounded-full outline-none focus-visible:ring-[3px] focus-visible:ring-ring"
         >
           <Avatar className="size-8">
+            {me.avatar_at !== null && <AvatarImage src={avatarUrl(me.avatar_at) ?? undefined} alt="" />}
             <AvatarFallback className="bg-primary/15 font-semibold text-link">{initial}</AvatarFallback>
           </Avatar>
         </button>

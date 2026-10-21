@@ -3,9 +3,9 @@
 use axum::{
     Router,
     extract::State,
-    http::{HeaderMap, StatusCode},
-    response::IntoResponse,
-    routing::post,
+    http::{HeaderMap, StatusCode, header},
+    response::{IntoResponse, Response},
+    routing::{get, post, put},
 };
 use serde::Deserialize;
 
@@ -15,12 +15,16 @@ use crate::{
     app::AppState,
     platform::{
         now,
+        page::PageError,
         ui::{Body, UiError, UiResult},
     },
 };
 
 pub fn router() -> Router<AppState> {
-    Router::new().route("/api/ui/me/password", post(password))
+    Router::new()
+        .route("/api/ui/me/password", post(password))
+        .route("/api/ui/me/avatar", put(set_avatar))
+        .route("/me/avatar", get(avatar))
 }
 
 impl From<SettingsError> for UiError {
@@ -30,6 +34,7 @@ impl From<SettingsError> for UiError {
                 UiError::field("current", e.to_string())
             }
             SettingsError::TooShort => UiError::field("new", e.to_string()),
+            SettingsError::BadPicture(m) => UiError::field("avatar", m),
             SettingsError::TooMany(_) => UiError::TooMany(e.to_string()),
             SettingsError::Other(e) => UiError::Internal(e),
         }
@@ -62,4 +67,39 @@ async fn password(
     )
     .await?;
     Ok(StatusCode::NO_CONTENT.into_response())
+}
+
+#[derive(Deserialize, Default)]
+#[serde(default)]
+struct AvatarForm {
+    /// Base64 of a PNG or WebP, with or without a `data:` prefix; empty removes the picture.
+    avatar: String,
+}
+
+/// 204. The page reads `avatar_at` from `/api/ui/me` for the new URL.
+async fn set_avatar(
+    State(state): State<AppState>,
+    AccountUser(user): AccountUser,
+    Body(f): Body<AvatarForm>,
+) -> UiResult {
+    super::set_avatar(&state.db, user.id, &f.avatar, now()).await?;
+    Ok(StatusCode::NO_CONTENT.into_response())
+}
+
+/// The user's own picture. Its URL carries `?v={avatar_at}`, so a new picture is a new URL.
+async fn avatar(
+    State(state): State<AppState>,
+    AccountUser(user): AccountUser,
+) -> Result<Response, PageError> {
+    let (mime, data) = super::avatar(&state.db, user.id)
+        .await?
+        .ok_or(PageError::NotFound)?;
+    let headers = [
+        (header::CONTENT_TYPE, mime),
+        (
+            header::CACHE_CONTROL,
+            "private, max-age=31536000, immutable".to_string(),
+        ),
+    ];
+    Ok((headers, data).into_response())
 }

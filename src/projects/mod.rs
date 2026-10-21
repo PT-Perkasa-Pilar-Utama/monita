@@ -4,7 +4,6 @@
 mod allowlist;
 pub mod api;
 mod api_key;
-mod icon;
 mod overview;
 mod profile;
 mod pulse;

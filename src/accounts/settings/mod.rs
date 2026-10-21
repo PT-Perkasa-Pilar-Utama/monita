@@ -1,5 +1,5 @@
-//! The signed-in user's own settings: their password. Any role may change its own, a supervisor
-//! too (`AccountUser`). Contract: docs/api-specs/02-authentication.md section 2.5.
+//! The signed-in user's own settings: their password and picture. Any role may change its own, a
+//! supervisor too (`AccountUser`). Contract: docs/api-specs/02-authentication.md section 2.5.
 
 pub mod api;
 mod store;
@@ -7,6 +7,7 @@ mod store;
 use super::{AccountError, MIN_PASSWORD, password};
 use crate::platform::{
     db::Db,
+    image,
     rate_limit::{Limiter, Verdict},
     token,
 };
@@ -21,6 +22,8 @@ pub enum SettingsError {
     TooShort,
     #[error("Too many tries. Wait {0} seconds, then try again.")]
     TooMany(i64),
+    #[error("{0}")]
+    BadPicture(&'static str),
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 }
@@ -73,4 +76,25 @@ pub async fn change_password(
         return Err(SettingsError::WrongPassword);
     }
     Ok(())
+}
+
+/// Stores the picture from the form field, or removes it for an empty field.
+pub async fn set_avatar(db: &Db, user_id: i64, field: &str, at: i64) -> Result<(), SettingsError> {
+    let picture = image::parse(field).map_err(SettingsError::BadPicture)?;
+    db.write(async |c| match picture {
+        Some(p) => store::set_avatar(c, user_id, p.mime, p.data, at).await,
+        None => store::remove_avatar(c, user_id, at).await,
+    })
+    .await?;
+    Ok(())
+}
+
+/// The picture's type and bytes, for its own route.
+pub async fn avatar(db: &Db, user_id: i64) -> anyhow::Result<Option<(String, Vec<u8>)>> {
+    store::avatar(&db.read().await?, user_id).await
+}
+
+/// When the picture last changed, for its URL; `None` without one.
+pub async fn avatar_at(db: &Db, user_id: i64) -> anyhow::Result<Option<i64>> {
+    store::avatar_at(&db.read().await?, user_id).await
 }

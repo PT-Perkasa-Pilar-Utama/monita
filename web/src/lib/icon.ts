@@ -1,5 +1,5 @@
 // A picked picture becomes a 128 px square WebP (PNG where the browser cannot write WebP) as a
-// data URL. The server stores at most 32 KB and never resizes (src/projects/icon.rs).
+// data URL. The server stores at most 32 KB and never resizes (src/platform/image.rs).
 
 export const ICON_PX = 128;
 export const ICON_MAX = 32 * 1024;
