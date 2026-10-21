@@ -22,6 +22,7 @@ More ways to check, alert and plan: TCP, DNS and ping monitors, certificate warn
 - **User settings**, **Password**: change your own password with the current one. Your other sessions sign out.
 - **User settings**, **Profile**: a picture the top bar shows in place of your initial. Migration 0034.
 - Monita's own Telegram bot: a super admin sets it once in **Admin**, **Telegram**, and a project picks **Telegram with Monita's bot** and connects a chat with a link or QR code. `MONITA_TELEGRAM_API` points at a self-hosted Bot API server. Migration 0036.
+- Discord and Telegram alerts are laid out for reading: a coloured title that links to Monita, the project, and the cause or how long it was down. Discord posts them as Monita.
 
 ### Changed
 

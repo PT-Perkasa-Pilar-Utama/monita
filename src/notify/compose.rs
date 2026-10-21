@@ -1,6 +1,7 @@
 //! What an alert says: the email subject and text, and the JSON body, built once per event and
 //! then shaped per webhook format by `format`.
 
+use super::card::{Card, Tone};
 use crate::{
     incidents::{Ended, Event},
     platform::{now, time},
@@ -16,6 +17,24 @@ pub(super) struct Composed {
     pub(super) dedup: String,
     /// True when the alert ends something: an incident closed, or a source back up.
     pub(super) resolves: bool,
+    /// The same alert laid out for Discord and Telegram.
+    pub(super) card: Card,
+}
+
+/// "Critical" or "Warning".
+pub(super) fn severity_word(severity: &str) -> &'static str {
+    if severity == "critical" {
+        "Critical"
+    } else {
+        "Warning"
+    }
+}
+
+fn open_source(kind: crate::incidents::SourceKind) -> &'static str {
+    match kind {
+        crate::incidents::SourceKind::Monitor => "Open the monitor",
+        crate::incidents::SourceKind::Heartbeat => "Open the heartbeat",
+    }
 }
 
 pub(super) fn compose(
@@ -39,6 +58,14 @@ pub(super) fn compose(
             (
                 severity.clone(),
                 Composed {
+                    card: Card {
+                        tone: Tone::of(severity),
+                        label: severity_word(severity),
+                        title: title.clone(),
+                        project: name.clone(),
+                        facts: vec![("Cause", cause.clone())],
+                        link_label: "Open the incident",
+                    },
                     link: url.clone(),
                     dedup: format!("incident-{incident_id}"),
                     resolves: false,
@@ -72,6 +99,14 @@ pub(super) fn compose(
             (
                 severity.clone(),
                 Composed {
+                    card: Card {
+                        tone: Tone::Good,
+                        label: "Resolved",
+                        title: format!("{source_name} {how}"),
+                        project: name.clone(),
+                        facts: vec![("Down for", time::duration(*duration_s))],
+                        link_label: "Open the incident",
+                    },
                     link: url.clone(),
                     dedup: format!("incident-{incident_id}"),
                     resolves: true,
@@ -98,6 +133,14 @@ pub(super) fn compose(
             (
                 severity.clone(),
                 Composed {
+                    card: Card {
+                        tone: Tone::of(severity),
+                        label: "Down",
+                        title: title.clone(),
+                        project: name.clone(),
+                        facts: vec![("Cause", cause.clone()), ("Incident", "None opened".into())],
+                        link_label: open_source(*kind),
+                    },
                     link: url.clone(),
                     dedup: format!("{}-{source_id}", kind_word(*kind)),
                     resolves: false,
@@ -128,6 +171,14 @@ pub(super) fn compose(
             (
                 severity.clone(),
                 Composed {
+                    card: Card {
+                        tone: Tone::Good,
+                        label: "Up",
+                        title: format!("{source_name} is up"),
+                        project: name.clone(),
+                        facts: vec![("Down for", time::duration(*duration_s))],
+                        link_label: open_source(*kind),
+                    },
                     link: url.clone(),
                     dedup: format!("{}-{source_id}", kind_word(*kind)),
                     resolves: true,
@@ -170,6 +221,14 @@ pub(super) fn cert_warning(
     };
     let text = format!("[CERT] {name} / {}: the certificate {when}", w.monitor_name);
     Composed {
+        card: Card {
+            tone: Tone::Warning,
+            label: "Certificate",
+            title: format!("{}: the certificate {when}", w.monitor_name),
+            project: name.clone(),
+            facts: Vec::new(),
+            link_label: "Open the monitor",
+        },
         link: url.clone(),
         dedup: format!("cert:{}:{}", w.monitor_id, w.expires_at),
         resolves: false,

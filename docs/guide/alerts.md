@@ -38,9 +38,9 @@ Each section has these fields:
 | Format | URL | Also needs | What Monita posts |
 | --- | --- | --- | --- |
 | JSON | Any receiver, Slack or Google Chat incoming webhook | | The body under [What recipients get](#what-recipients-get) |
-| Discord | The channel's webhook URL | | `content` with the alert line and a link. Mentions such as `@everyone` in the text do not ping. |
-| Telegram with Monita's bot | None: Monita uses the bot a super admin set | A chat, connected with a link | The alert line and a link |
-| Telegram with your own bot | `https://api.telegram.org/bot<token>/sendMessage` | The chat ID, such as `-1001234567890` or `@team_alerts` | The alert line and a link |
+| Discord | The channel's webhook URL | | An embed, posted as Monita: a coloured title that links to Monita (red critical, orange warning, green resolved or up, blue test), the project, and the cause or how long it was down. Mentions such as `@everyone` in the text do not ping. |
+| Telegram with Monita's bot | None: Monita uses the bot a super admin set | A chat, connected with a link | A bold title with the same coloured mark, the project, the cause or how long it was down, and a named link to Monita |
+| Telegram with your own bot | `https://api.telegram.org/bot<token>/sendMessage` | The chat ID, such as `-1001234567890` or `@team_alerts` | The same as with Monita's bot |
 | ntfy | The topic URL, such as `https://ntfy.sh/team-alerts` | | A title, the message and a link; priority 5 for critical, 4 for warning, 3 when it resolves |
 | PagerDuty | Fixed: the Events API v2 | The routing key of an Events API v2 integration | A trigger when an incident opens or a source goes down, and a resolve with the same dedup key when it ends. **Send a test** sends a trigger and its resolve. |
 

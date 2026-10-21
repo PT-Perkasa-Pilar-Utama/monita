@@ -38,7 +38,7 @@ async fn webhooks(app: &TestApp) -> Vec<(String, Value)> {
 }
 
 #[tokio::test]
-async fn a_failing_job_alerts_discord_in_its_own_shape() {
+async fn a_failing_job_alerts_discord_as_an_embed() {
     let app = TestApp::spawn("test").await;
     let tl = setup(&app).await;
     let route = json!({ "emails": "", "webhook_url": "https://discord.com/api/webhooks/1/abc",
@@ -67,18 +67,24 @@ async fn a_failing_job_alerts_discord_in_its_own_shape() {
     assert_eq!(sent.len(), 1, "{sent:?}");
     let (to, body) = &sent[0];
     assert_eq!(to, "https://discord.com/api/webhooks/1/abc");
+    let embed = &body["embeds"][0];
     assert!(
-        body["content"]
+        embed["title"]
             .as_str()
             .unwrap()
-            .starts_with("[WARNING] Payments / nightly"),
+            .starts_with("🟠 Warning: nightly"),
         "{body}"
     );
     assert!(
-        body["content"]
+        embed["url"]
             .as_str()
             .unwrap()
             .contains("/projects/payments/incidents/")
+    );
+    assert_eq!(embed["fields"][0]["value"], "Payments");
+    assert_eq!(
+        embed["fields"][1]["value"], "disk full",
+        "the job's own words"
     );
 }
 

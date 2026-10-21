@@ -4,6 +4,7 @@
 //! so a slow SMTP server or webhook never blocks a check or a request.
 
 pub mod api;
+mod card;
 mod compose;
 mod delivery;
 mod digest;
@@ -263,6 +264,17 @@ pub async fn send_test(
             n += 1;
         }
         let mut msg = compose::Composed {
+            card: card::Card {
+                tone: card::Tone::Info,
+                label: "Test",
+                title: format!(
+                    "{} alerts reach this chat",
+                    compose::severity_word(severity)
+                ),
+                project: name.clone(),
+                facts: Vec::new(),
+                link_label: "Open the alert settings",
+            },
             subject: text,
             text: body,
             json,

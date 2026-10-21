@@ -3,7 +3,7 @@
 
 use serde_json::{Value, json};
 
-use super::{RouteError, compose::Composed};
+use super::{RouteError, card, compose::Composed};
 
 pub(super) const FORMATS: [&str; 6] = [
     "json",
@@ -98,19 +98,15 @@ pub(super) fn webhook(
     let line = msg.json["text"].as_str().unwrap_or(&msg.subject);
     let critical = msg.json["severity"] == "critical";
     match format {
-        "discord" => (
-            url.to_string(),
-            // No @everyone or role pings from text that a cause or a name may carry.
-            json!({ "content": cut(&format!("{line}\n{}", msg.link), 2000), "allowed_mentions": { "parse": [] } }),
-        ),
+        "discord" => (url.to_string(), card::discord(&msg.card, &msg.link)),
         // Monita's bot posts to the chat; delivery adds the token (`telegram::send_url`).
         "telegram_bot" => (
             key.unwrap_or_default().to_string(),
-            json!({ "chat_id": key.unwrap_or_default(), "text": cut(&format!("{line}\n{}", msg.link), 4096), "disable_web_page_preview": true }),
+            card::telegram(&msg.card, &msg.link, key.unwrap_or_default()),
         ),
         "telegram" => (
             url.to_string(),
-            json!({ "chat_id": key.unwrap_or_default(), "text": cut(&format!("{line}\n{}", msg.link), 4096), "disable_web_page_preview": true }),
+            card::telegram(&msg.card, &msg.link, key.unwrap_or_default()),
         ),
         "ntfy" => {
             let (root, topic) = ntfy_topic(url).unwrap_or_else(|| (url.to_string(), String::new()));
@@ -154,6 +150,14 @@ mod tests {
             link: "https://m.co/projects/pay/incidents/7".into(),
             dedup: "incident-7".into(),
             resolves,
+            card: card::Card {
+                tone: card::Tone::Critical,
+                label: "Critical",
+                title: "API is down".into(),
+                project: "Pay".into(),
+                facts: vec![("Cause", "HTTP 503".into())],
+                link_label: "Open the incident",
+            },
         }
     }
 
@@ -205,7 +209,7 @@ mod tests {
     }
 
     #[test]
-    fn chat_formats_carry_the_alert_line_and_the_link() {
+    fn chat_formats_carry_the_card_and_the_link() {
         let (to, body) = webhook(
             "discord",
             "https://discord.com/api/webhooks/1/x",
@@ -214,9 +218,10 @@ mod tests {
             &msg(false),
         );
         assert_eq!(to, "https://discord.com/api/webhooks/1/x");
+        assert_eq!(body["embeds"][0]["title"], "🔴 Critical: API is down");
         assert_eq!(
-            body["content"],
-            "[CRITICAL] Pay / API is down: HTTP 503\nhttps://m.co/projects/pay/incidents/7"
+            body["embeds"][0]["url"],
+            "https://m.co/projects/pay/incidents/7"
         );
         assert_eq!(
             body["allowed_mentions"]["parse"],
@@ -231,6 +236,21 @@ mod tests {
             &msg(false),
         );
         assert_eq!(body["chat_id"], "-100");
+        assert_eq!(body["parse_mode"], "HTML");
+        let (to, body) = webhook(
+            "telegram_bot",
+            super::TELEGRAM_BOT_URL,
+            Some("4242"),
+            "pay",
+            &msg(false),
+        );
+        assert_eq!(to, "4242", "Monita's bot queues the chat, not a URL");
+        assert!(
+            body["text"]
+                .as_str()
+                .unwrap()
+                .starts_with("🔴 <b>Critical: API is down</b>")
+        );
         let (to, body) = webhook(
             "ntfy",
             "https://ntfy.sh/team-alerts",
