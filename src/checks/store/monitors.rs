@@ -46,36 +46,6 @@ pub struct Monitor {
 }
 
 impl Monitor {
-    pub fn input(&self) -> MonitorInput {
-        MonitorInput {
-            name: self.name.clone(),
-            kind: self.kind.clone(),
-            url: self.url.clone(),
-            expected_address: self.expected_address.clone(),
-            interval_s: self.interval_s,
-            timeout_ms: self.timeout_ms,
-            expected_status: self.expected_status.clone(),
-            keyword: self.keyword.clone(),
-            skip_tls_verify: self.skip_tls_verify,
-            severity: self.severity.clone(),
-            is_public: self.is_public,
-            alert: self.alert,
-            auto_incident: self.auto_incident,
-            fails_to_open: self.fails_to_open,
-            method: self.method.clone(),
-            headers: self.headers.clone().unwrap_or_default(),
-            body: self.body.clone(),
-            auth_kind: self.auth_kind.clone(),
-            auth_secret_id: self.auth_secret_id,
-            auth_user: self.auth_user.clone(),
-            auth_header: self.auth_header.clone(),
-            cert_warn_days: self.cert_warn_days,
-            quorum: self.quorum,
-            // The form reads them from monitor_locations.
-            location_ids: Vec::new(),
-        }
-    }
-
     pub fn source(&self) -> crate::incidents::Source {
         crate::incidents::Source {
             kind: crate::incidents::SourceKind::Monitor,

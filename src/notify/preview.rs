@@ -2,14 +2,17 @@
 
 use serde::Serialize;
 
-use super::{compose, test_message, ticket_json, tickets::Moved, tickets::ticket_moved_json};
+use super::{
+    CertWarning, cert_warning, compose, test_message, ticket_json, tickets::Moved,
+    tickets::ticket_moved_json,
+};
 use crate::incidents::Event;
 
 /// One kind of alert as its recipients get it.
 #[derive(Serialize)]
 pub struct Preview {
-    /// The webhook `event` field: `incident.opened`, `incident.resolved`, `ticket.created`,
-    /// `ticket.moved`, `test`.
+    /// The webhook `event` field: `incident.opened`, `incident.resolved`,
+    /// `certificate.expiring`, `ticket.created`, `ticket.moved`, `test`.
     pub event: &'static str,
     pub label: &'static str,
     /// The settings that send it: `critical`, `warning` or `ticket`.
@@ -63,6 +66,27 @@ pub fn previews(name: &str, slug: &str, base_url: &str, at: i64) -> Vec<Preview>
             webhook,
         });
     }
+    let cert = cert_warning(
+        &CertWarning {
+            project_id: 0,
+            monitor_id: 7,
+            monitor_name: "Storefront",
+            expires_at: at + 12 * 86_400 + 3600,
+        },
+        &project,
+        base_url,
+        at,
+    );
+    out.push(Preview {
+        event: "certificate.expiring",
+        label: "Certificate expiring",
+        route: "warning",
+        email: Some(EmailPreview {
+            subject: cert.subject,
+            body: cert.text,
+        }),
+        webhook: cert.json,
+    });
     out.push(Preview {
         event: "ticket.created",
         label: "New ticket",
@@ -113,6 +137,7 @@ mod tests {
             [
                 "incident.opened",
                 "incident.resolved",
+                "certificate.expiring",
                 "ticket.created",
                 "ticket.moved",
                 "test"
@@ -130,14 +155,19 @@ mod tests {
             opened.email.as_ref().unwrap().subject,
             "[CRITICAL] Payments / Checkout API is down"
         );
-        assert!(all[2].email.is_none(), "a ticket sends no email");
-        assert_eq!(all[2].route, "ticket");
+        assert_eq!(all[2].route, "warning");
         assert_eq!(
-            all[3].webhook["text"],
+            all[2].email.as_ref().unwrap().subject,
+            "[CERT] Payments / Storefront: the certificate expires in 12 days, on 1970-01-13"
+        );
+        assert!(all[3].email.is_none(), "a ticket sends no email");
+        assert_eq!(all[3].route, "ticket");
+        assert_eq!(
+            all[4].webhook["text"],
             "[TICKET] Payments #17 moved from In progress to Done (Fixed): Export to Excel drops the last row"
         );
         assert!(
-            all[4]
+            all[5]
                 .email
                 .as_ref()
                 .unwrap()

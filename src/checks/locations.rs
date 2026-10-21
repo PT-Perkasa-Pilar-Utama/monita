@@ -179,8 +179,8 @@ pub async fn record_at(
     .await
 }
 
-/// What the new result means for the monitor. A monitor with no locations reads it directly, as
-/// before 1.1, without a query.
+/// What the new result means for the monitor. A monitor with no locations reads the result
+/// directly, as before 1.1, after one lookup of its locations.
 async fn signal(
     c: &turso::Connection,
     monitor: &Monitor,
