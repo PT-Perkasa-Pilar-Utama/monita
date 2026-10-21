@@ -135,7 +135,8 @@ test("a maintenance window holds back the incident until the tech lead ends it",
   await row.getByRole("button", { name: "End now" }).click();
   await page.getByRole("alertdialog").getByRole("button", { name: "End now" }).click();
   await expect(row.getByText("Ended")).toBeVisible();
-  expect((await page.request.post(`${pingUrl}/fail`, { data: "real trouble" })).status()).toBe(200);
+  // `/fail` takes one ping a second; the first may still hold this second.
+  await expect.poll(async () => (await page.request.post(`${pingUrl}/fail`, { data: "real trouble" })).status(), { intervals: [1100] }).toBe(200);
   await page.goto(`/projects/${slug}/incidents`);
   await expect(page.getByRole("link", { name: "nightly-settlement reported a failure" })).toBeVisible();
 });
