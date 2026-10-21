@@ -32,18 +32,21 @@ function CodeForm({ id, action, danger = false, onCode }: { id: string; action: 
     }
   };
   return (
-    <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-3 sm:flex-row sm:items-start">
-      <Field data-invalid={error ? true : undefined} className="sm:max-w-72">
+    <form onSubmit={(e) => void submit(e)}>
+      {/* The error sits under the whole row, so it uses the full width instead of the input's. */}
+      <Field data-invalid={error ? true : undefined}>
         <FieldLabel htmlFor={id} className="sr-only">
           Code
         </FieldLabel>
-        <Input id={id} autoComplete="one-time-code" className="font-mono" placeholder="Code from your app" aria-invalid={error ? true : undefined} value={code} onChange={(e) => setCode(e.target.value)} />
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <Input id={id} autoComplete="one-time-code" className="font-mono sm:max-w-72" placeholder="Code from your app" aria-invalid={error ? true : undefined} value={code} onChange={(e) => setCode(e.target.value)} />
+          <Button type="submit" variant={danger ? "danger" : "default"} disabled={busy} className="sm:w-fit">
+            {busy && <Spinner data-icon="inline-start" />}
+            {action}
+          </Button>
+        </div>
         {error && <FieldError>{error}</FieldError>}
       </Field>
-      <Button type="submit" variant={danger ? "danger" : "default"} disabled={busy}>
-        {busy && <Spinner data-icon="inline-start" />}
-        {action}
-      </Button>
     </form>
   );
 }
@@ -83,21 +86,23 @@ export function TwoFactor(): ReactElement {
         <Skeleton className="h-56 rounded-xl" />
       ) : codes ? (
         <SettingsSection id="codes" title="Save your recovery codes" description="Each code signs you in once when your phone is not at hand. Monita shows them only now.">
-          <Alert>
-            <AlertDescription>Store them in your password manager before you leave this page.</AlertDescription>
-          </Alert>
-          <ol id="recovery-codes" className="grid grid-cols-2 gap-2 font-mono text-sm sm:grid-cols-5">
-            {codes.map((c) => (
-              <li key={c} className="rounded-md border bg-paper px-2 py-1.5 text-center">
-                {c}
-              </li>
-            ))}
-          </ol>
-          <div className="flex gap-2">
-            <CopyButton value={codes.join("\n")} targetId="recovery-codes" label="Copy codes" />
-            <Button type="button" onClick={() => setCodes(null)}>
-              I saved them
-            </Button>
+          <div className="flex flex-col gap-5">
+            <Alert>
+              <AlertDescription>Store them in your password manager before you leave this page.</AlertDescription>
+            </Alert>
+            <ol id="recovery-codes" className="grid grid-cols-2 gap-2 font-mono text-sm sm:grid-cols-5">
+              {codes.map((c) => (
+                <li key={c} className="rounded-md border bg-paper px-2 py-1.5 text-center">
+                  {c}
+                </li>
+              ))}
+            </ol>
+            <div className="flex gap-2">
+              <CopyButton value={codes.join("\n")} targetId="recovery-codes" label="Copy codes" />
+              <Button type="button" size="sm" onClick={() => setCodes(null)}>
+                I saved them
+              </Button>
+            </div>
           </div>
         </SettingsSection>
       ) : s.on ? (
