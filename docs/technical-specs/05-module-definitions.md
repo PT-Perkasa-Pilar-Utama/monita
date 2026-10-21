@@ -11,7 +11,8 @@ Each module owns its tables (see [06](06-data-model.md)). Other modules use only
 | Item | Contract |
 | --- | --- |
 | `CurrentUser` extractor | Reads the `monita_session` cookie, looks up the hash in `sessions`, rejects expired or disabled users. Returns 401 under `/api/`; any other path redirects to `/login`. A supervisor gets 403 on any method but `GET` and `HEAD`. Every signed-in route that changes data takes this extractor, so this one check keeps the role read-only. |
-| `AccountUser` extractor | Like `CurrentUser` but lets a supervisor write. Only the user's own two-factor routes take it. |
+| `AccountUser` extractor | Like `CurrentUser` but lets a supervisor write. Only the user's own routes take it: two-factor and User settings. |
+| `settings::change_password(db, limiter, user_id, session, current, new, at)` | Checks the current password, stores the new one only if the hash did not change in between, and deletes the user's other sessions. 10 tries per account per fixed 15 minutes (`password:{user}`), counted before the check. |
 | `login(db, email, password) -> SignIn` | `Session(raw)` for the cookie, or `Code(raw challenge)` when two-factor is on. `login_code(db, challenge, code)` is the second step. `totp` holds the pure RFC 6238 code and `two_factor` the state machine (off, pending, on). |
 | `turn_off_two_factor(db, actor, user_id)` | A super admin turns another user's two-factor off. Never your own account. |
 | `AdminUser` extractor | `CurrentUser` that sees every project: a super admin, or a supervisor reading. Others get 403. A supervisor's writes never get this far. |

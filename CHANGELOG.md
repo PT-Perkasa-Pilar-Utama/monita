@@ -27,6 +27,7 @@ More ways to check, alert and plan: TCP, DNS and ping monitors, certificate warn
 - A new project's status page shows the Changelog tab. Existing projects keep their setting.
 - Two-factor setup shows a QR code to scan. The key and the app link stay below it.
 - The avatar menu's **Two-factor sign-in** became **User settings**, an area with its own side menu. While two-factor is off, a note under the top bar says so until you close it in that browser.
+- **User settings**, **Password**: change your own password with the current one. Your other sessions sign out.
 
 ### Fixed
 

@@ -55,3 +55,10 @@ v1.1 decision Q19. Codes follow RFC 6238: HMAC-SHA-1, 6 digits, 30-second steps,
 
 Two-factor also turns off when a super admin turns it off for the user (2.3), when a super admin sends the user a new invite (2.3), and for a super admin with `monita admin reset-password` (2.1).
 
+## 2.5 User settings
+
+The signed-in user's own account (v1.1 Q30). Every role may use these routes, a supervisor too (`AccountUser`).
+
+| Method | Path | Access | Input | Behavior | AC |
+| --- | --- | --- | --- | --- | --- |
+| POST | `/api/ui/me/password` | session | `current`, `new` | Checks `current`, stores `new` (12 characters or more), and ends every other session of the user; this session stays. 204. Empty or wrong `current`: 422 on `current`. A short `new`: 422 on `new`. An account takes 10 tries per fixed 15-minute window, right or wrong; then 429 `too_many_tries`. | |

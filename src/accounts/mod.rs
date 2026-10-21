@@ -6,6 +6,7 @@ pub mod admin_api;
 pub mod api;
 mod auth;
 mod password;
+mod settings;
 mod store;
 pub mod totp;
 mod two_factor;

@@ -63,6 +63,10 @@ Open the menu on a row for one user. Or tick the boxes on several rows. The titl
 
 You cannot act on your own account. A disabled user can only be enabled. A batch skips the users it does not fit and says how many. Each action asks you to confirm.
 
+## Your password
+
+Open the avatar menu, select **User settings**, then **Password**. Enter your current password and the new one twice, then select **Change password**. The new password needs 12 characters or more. Your other sessions sign out; this one stays. An account gets 10 tries in each 15-minute window.
+
 ## Two-factor sign-in
 
 Each user can ask for a code after the password. Open the avatar menu, select **User settings**, then **Two-factor sign-in**. While it is off, a note under the top bar says so. Close the note with its X; this browser then stops showing it for your account.

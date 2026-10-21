@@ -1,5 +1,6 @@
 import { createHmac } from "node:crypto";
 import { expect, test } from "@playwright/test";
+import { apiSend } from "../lib/api";
 import { authFile } from "../lib/roles";
 
 /** The RFC 6238 code an authenticator app shows for `secret` at Unix second `at`. */
@@ -82,6 +83,40 @@ test.describe("as the super admin", () => {
 
     await page.reload();
     await expect(page.getByRole("row", { name: new RegExp(email) }).getByText("Two-factor")).toBeVisible();
+    await ctx.close();
+  });
+});
+
+test.describe("as a new tech lead", () => {
+  test.use({ storageState: authFile("admin") });
+
+  test("a user changes their password in User settings", async ({ page, browser }) => {
+    const email = `pw-${Date.now()}@monita.test`;
+    const { link } = await apiSend<{ link: string }>(page, "POST", "/api/ui/admin/users", { email, role: "tl" }, 201);
+    const ctx = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+    const me = await ctx.newPage();
+    await me.goto(link);
+    await me.getByLabel("New password").fill("a-long-enough-password");
+    await me.getByLabel("Repeat password").fill("a-long-enough-password");
+    await me.getByRole("button", { name: "Save password" }).click();
+    await expect(me.getByRole("heading", { name: "Projects", exact: true })).toBeVisible();
+
+    await me.goto("/account/password");
+    await me.locator("#pw-current").fill("not-the-password");
+    await me.locator("#pw-new").fill("another-long-password");
+    await me.locator("#pw-repeat").fill("another-long-password");
+    await me.getByRole("button", { name: "Change password" }).click();
+    await expect(me.getByText("This is not your current password.")).toBeVisible();
+    await me.locator("#pw-current").fill("a-long-enough-password");
+    await me.getByRole("button", { name: "Change password" }).click();
+    await expect(me.getByText("Password changed.")).toBeVisible();
+
+    await ctx.clearCookies();
+    await me.goto("/login");
+    await me.getByLabel("Email").fill(email);
+    await me.getByLabel("Password").fill("another-long-password");
+    await me.getByRole("button", { name: "Sign in" }).click();
+    await expect(me.getByRole("heading", { name: "Projects", exact: true })).toBeVisible();
     await ctx.close();
   });
 });

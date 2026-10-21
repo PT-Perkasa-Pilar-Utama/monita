@@ -23,6 +23,7 @@ pub fn router() -> Router<AppState> {
         .route("/api/ui/me", get(me))
         .route("/api/ui/invites/{token}", get(invite).post(accept))
         .merge(super::two_factor::api::router())
+        .merge(super::settings::api::router())
 }
 
 fn secure(state: &AppState) -> bool {
