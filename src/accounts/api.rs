@@ -56,11 +56,15 @@ pub struct Me {
     pub base_url: String,
     /// Minutes east of UTC that pages show times in.
     pub utc_offset_min: i64,
+    /// Two-factor sign-in is on for this user. Pages note when it is off.
+    pub two_factor: bool,
 }
 
 async fn me(State(state): State<AppState>, CurrentUser(user): CurrentUser) -> UiResult {
     let utc_offset_min = crate::platform::settings::utc_offset(&state.db.read().await?).await?;
+    let two_factor = super::two_factor::status(&state.db, user.id).await?.on;
     Ok(data(Me {
+        two_factor,
         utc_offset_min,
         is_admin: user.is_admin(),
         sees_all: user.sees_all(),

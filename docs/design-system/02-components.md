@@ -131,6 +131,7 @@ Charts are SVG. The server lays out the geometry in `checks::chart`. React draws
 | Component | File | Use |
 | --- | --- | --- |
 | `TopBar` | `layout/TopBar.tsx` | Sticky band in the card color: the mark, the place (the open project, or a way back to the last one), the area links, the account menu. Takes `crumb` and `tabs`. |
+| `TwoFactorNote` | `layout/TwoFactorNote.tsx` | One row under the `TopBar`, outside the sticky band, while the user's two-factor sign-in is off: a shield, one sentence, a Turn it on link and a close X. `role="note"`, muted fill, never a state colour. Closing stores `monita.2fa-note-closed:{email}` in this browser (`lib/twoFactorNote.ts`). Hidden on the two-factor page itself. |
 | `PageTabs` | `layout/PageTabs.tsx` | The tab bar. The URL is the open tab. The open tab has a brand underline. A count shows beside a tab when above zero. `alarm` makes the count red, for something broken. A count without `alarm` is neutral. `center` puts the tabs in the middle, as on the public pages. `end` holds a link that leaves the area. It scrolls sideways on a phone. |
 | `SideNav`, `SidebarFrame` | `layout/SideNav.tsx` | Left navigation for Settings and Admin. The open item is a raised card with a 2 px brand bar. A scrolling row on a phone. |
 | `PageFrame`, `Crumbs`, `PageHeader` | `layout/Page.tsx` | Content column, breadcrumbs, and the title row (`lead`, `title`, `filtered`, `meta`, `actions`). |

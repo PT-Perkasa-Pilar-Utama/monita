@@ -1,5 +1,6 @@
 import type { ReactElement } from "react";
-import { Account } from "@/pages/Account";
+import { TwoFactor } from "@/pages/account/TwoFactor";
+import { AccountLayout } from "@/layouts/AccountLayout";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AdminLayout } from "@/layouts/AdminLayout";
 import { AppLayout, SignedInLayout } from "@/layouts/AppLayout";
@@ -54,7 +55,10 @@ export default function App(): ReactElement {
           <Route path="/" element={<Projects />} />
           <Route path="/incidents" element={<AllIncidents />} />
           <Route path="/tickets" element={<AllTickets />} />
-          <Route path="/account" element={<Account />} />
+          <Route path="/account" element={<Navigate to="/account/two-factor" replace />} />
+          <Route element={<AccountLayout />}>
+            <Route path="/account/two-factor" element={<TwoFactor />} />
+          </Route>
           <Route element={<AdminLayout />}>
             <Route path="/admin/users" element={<Users />} />
             <Route path="/admin/limits" element={<RateLimits />} />

@@ -8,6 +8,7 @@
 | Project | `layouts/ProjectLayout.tsx` | `TopBar` (project crumb, `PageTabs`) then `PageFrame` then the page, then the primitive's footer illustration. The header stays up while the project loads. |
 | Admin | `layouts/AdminLayout.tsx` | `SidebarFrame` with `SideNav` (User management, Rate limits, Outgoing email, Time zone, System information). Someone who is not a super admin or supervisor gets the not-found page. |
 | Settings | `layouts/SettingsLayout.tsx` | `SidebarFrame` with `SideNav` (General, Status page, Alerts, API keys, Secrets, Allowlist) |
+| User settings | `layouts/AccountLayout.tsx` | `SidebarFrame` with `SideNav` (Two-factor sign-in), for the signed-in user's own account. The avatar menu's **User settings** opens it. |
 | Public | `layouts/PublicLayout.tsx` | Sticky header (project name, homepage link, `ThemeToggle`, centred `PageTabs`), `PageFrame`, footer |
 | Bare | `layouts/BareLayout.tsx` | Sign-in and invite: the brand, one card (max 420 px), a footer, `ThemeToggle`, and an optional scene along the bottom |
 

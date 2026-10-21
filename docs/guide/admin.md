@@ -65,7 +65,7 @@ You cannot act on your own account. A disabled user can only be enabled. A batch
 
 ## Two-factor sign-in
 
-Each user can ask for a code after the password. Open the avatar menu and select **Two-factor sign-in**.
+Each user can ask for a code after the password. Open the avatar menu, select **User settings**, then **Two-factor sign-in**. While it is off, a note under the top bar says so. Close the note with its X; this browser then stops showing it for your account.
 
 1. Select **Turn on**.
 2. Scan the QR code with the authenticator app on your phone. If you cannot scan it, type the key into the app, or select **Open in authenticator app** on the phone itself. Any app that reads time-based codes works, such as 1Password, Google Authenticator or Authy.

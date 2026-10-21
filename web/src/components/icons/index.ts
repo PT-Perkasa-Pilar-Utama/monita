@@ -223,6 +223,7 @@ export {
   UserCheck,
   UserPlus,
   UserCircle as UserRound,
+  UserGear,
   UserMinus as UserX,
   Users,
   Function as Variable,

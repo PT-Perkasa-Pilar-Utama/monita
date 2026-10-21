@@ -18,18 +18,30 @@ export type Me = {
    * not the address this browser happened to use. */
   base_url: string;
   utc_offset_min: number;
+  /** Two-factor sign-in is on. While it is off, the top bar notes it until the user closes the note. */
+  two_factor: boolean;
 };
 
 export const ROLE_LABEL: Record<Role, string> = { super_admin: "Super admin", tl: "Tech lead", supervisor: "Supervisor" };
 
 const SessionContext = createContext<Me | null>(null);
+const ReloadContext = createContext<() => void>(() => {});
 
 /** Loads the signed-in user; renders nothing until it is known. A 401 has already moved to /login. */
 export function SessionProvider({ children }: { children: ReactNode }): ReactElement | null {
   const me = useApi<Me>("/me");
   if (!me.data) return null;
   setOffset(me.data.utc_offset_min);
-  return <SessionContext.Provider value={me.data}>{children}</SessionContext.Provider>;
+  return (
+    <ReloadContext.Provider value={me.reload}>
+      <SessionContext.Provider value={me.data}>{children}</SessionContext.Provider>
+    </ReloadContext.Provider>
+  );
+}
+
+/** Reads the signed-in user again, after a page changes something the header shows. */
+export function useReloadMe(): () => void {
+  return useContext(ReloadContext);
 }
 
 export function useMe(): Me {

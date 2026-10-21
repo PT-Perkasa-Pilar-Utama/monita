@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { api, ApiError, errorText } from "@/lib/api";
 import type { TwoFactorSetup, TwoFactorStatus } from "@/lib/types";
+import { useReloadMe } from "@/lib/session";
 import { useApi } from "@/lib/useApi";
 import { toast } from "sonner";
 
@@ -47,9 +48,10 @@ function CodeForm({ id, action, danger = false, onCode }: { id: string; action: 
   );
 }
 
-/** Account, Two-factor sign-in: a code from an authenticator app after the password. */
-export function Account(): ReactElement {
+/** User settings, Two-factor sign-in: a code from an authenticator app after the password. */
+export function TwoFactor(): ReactElement {
   const status = useApi<TwoFactorStatus>("/me/two-factor");
+  const reloadMe = useReloadMe();
   const [setup, setSetup] = useState<TwoFactorSetup | null>(null);
   const [codes, setCodes] = useState<string[] | null>(null);
   const s = status.data;
@@ -66,11 +68,13 @@ export function Account(): ReactElement {
     setSetup(null);
     setCodes(r.recovery_codes);
     status.reload();
+    reloadMe();
   };
   const turnOff = async (code: string): Promise<void> => {
     await api("/me/two-factor/off", "POST", { code });
     toast.success("Two-factor sign-in is off.");
     status.reload();
+    reloadMe();
   };
 
   return (

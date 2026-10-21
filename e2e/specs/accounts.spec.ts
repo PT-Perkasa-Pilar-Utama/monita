@@ -52,8 +52,11 @@ test.describe("as the super admin", () => {
     await me.getByLabel("New password").fill("a-long-enough-password");
     await me.getByLabel("Repeat password").fill("a-long-enough-password");
     await me.getByRole("button", { name: "Save password" }).click();
+    const note = me.getByRole("note", { name: "Two-factor sign-in" });
+    await expect(note).toContainText("Two-factor sign-in is off");
     await me.getByRole("button", { name: `Account: ${email}` }).click();
-    await me.getByRole("menuitem", { name: "Two-factor sign-in" }).click();
+    await me.getByRole("menuitem", { name: "User settings" }).click();
+    await expect(me).toHaveURL(/\/account\/two-factor$/);
     await me.getByRole("button", { name: "Turn on" }).click();
     await expect(me.getByRole("img", { name: "QR code for your authenticator app" })).toBeVisible();
     const secret = (await me.locator("#totp-secret").textContent())!.trim();
@@ -63,6 +66,8 @@ test.describe("as the super admin", () => {
     await expect(me.locator("#recovery-codes li")).toHaveCount(10);
     await me.getByRole("button", { name: "I saved them" }).click();
     await expect(me.getByText("Two-factor sign-in is on")).toBeVisible();
+    await me.goto("/");
+    await expect(note, "the note goes once two-factor is on").toHaveCount(0);
     await ctx.clearCookies();
 
     await me.goto("/login");
@@ -78,6 +83,21 @@ test.describe("as the super admin", () => {
     await page.reload();
     await expect(page.getByRole("row", { name: new RegExp(email) }).getByText("Two-factor")).toBeVisible();
     await ctx.close();
+  });
+});
+
+test.describe("as a tech lead", () => {
+  test.use({ storageState: authFile("tl") });
+
+  test("the two-factor note stays closed in this browser once closed", async ({ page }) => {
+    await page.goto("/");
+    const note = page.getByRole("note", { name: "Two-factor sign-in" });
+    await expect(note).toBeVisible();
+    await page.getByRole("button", { name: "Close the two-factor note" }).click();
+    await expect(note).toHaveCount(0);
+    await page.reload();
+    await expect(page.getByRole("heading", { name: "Projects", exact: true })).toBeVisible();
+    await expect(note).toHaveCount(0);
   });
 });
 

@@ -2,7 +2,7 @@ import type { ReactElement, ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Mark } from "@/components/brand/Mark";
 import { ProjectBadge } from "@/components/app/ProjectBadge";
-import { AlertTriangle, BookOpen, Folder, LogOut, Moon, Settings, ShieldCheck, Sun, Ticket, Undo2 } from "@/components/icons";
+import { AlertTriangle, BookOpen, Folder, LogOut, Moon, Settings, Sun, Ticket, Undo2, UserGear } from "@/components/icons";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useTheme } from "@/components/layout/ThemeProvider";
+import { TwoFactorNote } from "@/components/layout/TwoFactorNote";
 import { api } from "@/lib/api";
 import { lastAdminPage } from "@/lib/adminPage";
 import { lastProject } from "@/lib/lastProject";
@@ -112,8 +113,8 @@ function AccountMenu(): ReactElement {
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
             <Link to="/account">
-              <ShieldCheck />
-              Two-factor sign-in
+              <UserGear />
+              User settings
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => setTheme(resolved === "dark" ? "light" : "dark")}>
@@ -156,28 +157,32 @@ export function TopBar({ crumb, tabs }: { crumb?: ReactNode; tabs?: ReactNode })
       </Link>
     ));
   return (
-    <header className="sticky top-0 z-40 border-b bg-card shadow-xs" data-has-tabs={tabs ? "" : undefined}>
-      <div className="px-4 sm:px-8 lg:px-12">
-        <div className="mx-auto flex h-14 max-w-app items-center gap-3">
-          <Link to="/" className="flex shrink-0 items-center gap-2 text-xl font-semibold tracking-tight" aria-label="Monita, all projects">
-            <Mark className="size-[26px] text-primary" />
-            <span className="hidden sm:inline">Monita</span>
-          </Link>
-          {place && (
-            <>
-              <span aria-hidden="true" className="hidden text-xl font-light text-input sm:inline">
-                /
-              </span>
-              {place}
-            </>
-          )}
-          <nav aria-label="Areas" className="ml-auto flex items-center gap-1">
-            <AreaLinks />
-          </nav>
-          <AccountMenu />
+    <>
+      <header className="sticky top-0 z-40 border-b bg-card shadow-xs" data-has-tabs={tabs ? "" : undefined}>
+        <div className="px-4 sm:px-8 lg:px-12">
+          <div className="mx-auto flex h-14 max-w-app items-center gap-3">
+            <Link to="/" className="flex shrink-0 items-center gap-2 text-xl font-semibold tracking-tight" aria-label="Monita, all projects">
+              <Mark className="size-[26px] text-primary" />
+              <span className="hidden sm:inline">Monita</span>
+            </Link>
+            {place && (
+              <>
+                <span aria-hidden="true" className="hidden text-xl font-light text-input sm:inline">
+                  /
+                </span>
+                {place}
+              </>
+            )}
+            <nav aria-label="Areas" className="ml-auto flex items-center gap-1">
+              <AreaLinks />
+            </nav>
+            <AccountMenu />
+          </div>
         </div>
-      </div>
-      {tabs}
-    </header>
+        {tabs}
+      </header>
+      {/* Outside the sticky band, so it scrolls away instead of taking height on every page. */}
+      <TwoFactorNote />
+    </>
   );
 }

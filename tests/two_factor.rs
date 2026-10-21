@@ -87,7 +87,12 @@ async fn code_step(app: &TestApp, challenge: &str, code: &str) -> reqwest::Respo
 async fn with_two_factor_on_sign_in_needs_a_code_that_works_once() {
     let app = TestApp::spawn("test").await;
     let tl = app.tl("rina@x.co").await;
+    let me = async || {
+        json_of(app.get("/api/ui/me", Some(&tl)).await).await["data"]["two_factor"].clone()
+    };
+    assert_eq!(me().await, false, "pages note two-factor while it is off");
     let (secret, codes, at) = turn_on(&app, &tl).await;
+    assert_eq!(me().await, true);
     assert_eq!(codes.len(), 10);
     let status = json_of(app.api_get("/api/ui/me/two-factor", Some(&tl)).await).await;
     assert_eq!(status["data"], json!({ "on": true, "codes_left": 10 }));
