@@ -200,7 +200,10 @@ async fn signal(
             }
         }
     } else {
-        let newest = store::locations::newest_by_place(c, monitor.id).await?;
+        let ids: Vec<Option<i64>> = std::iter::once(None)
+            .chain(located.iter().map(|(id, _)| Some(*id)))
+            .collect();
+        let newest = store::locations::newest_by_place(c, monitor.id, &ids).await?;
         let find = |id: Option<i64>| {
             newest
                 .iter()
@@ -240,7 +243,10 @@ pub async fn places(db: &Db, monitor_id: i64) -> anyhow::Result<(Vec<i64>, Vec<P
     if located.is_empty() {
         return Ok((Vec::new(), Vec::new()));
     }
-    let newest = store::locations::newest_by_place(&c, monitor_id).await?;
+    let ids: Vec<Option<i64>> = std::iter::once(None)
+        .chain(located.iter().map(|(id, _)| Some(*id)))
+        .collect();
+    let newest = store::locations::newest_by_place(&c, monitor_id, &ids).await?;
     let last = |id: Option<i64>| {
         newest
             .iter()

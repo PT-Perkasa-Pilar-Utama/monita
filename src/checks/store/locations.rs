@@ -178,18 +178,25 @@ pub async fn set_for_monitor(
     Ok(())
 }
 
-/// The newest result of each place that has checked the monitor: `(location_id, checked_at, ok,
-/// error)`, None for this server. One row per place, so at most `LOCATIONS + 1` rows.
+/// The newest result, by time, of each place: `(location_id, checked_at, ok, error)`, None for
+/// this server. One indexed lookup per place, so at most `LOCATIONS + 1`; a place with no result
+/// is left out.
 pub async fn newest_by_place(
     c: &Connection,
     monitor_id: i64,
+    places: &[Option<i64>],
 ) -> anyhow::Result<Vec<(Option<i64>, i64, bool, Option<String>)>> {
-    query_all(
-        c,
-        "SELECT location_id, checked_at, ok, error FROM check_results WHERE id IN (
-           SELECT max(id) FROM check_results WHERE monitor_id = ?1 GROUP BY location_id)",
-        [monitor_id],
-        |r| Ok((r.get(0)?, r.get(1)?, r.get::<i64>(2)? == 1, r.get(3)?)),
-    )
-    .await
+    let mut out = Vec::new();
+    for &place in places {
+        let row = query_all(
+            c,
+            "SELECT checked_at, ok, error FROM check_results WHERE monitor_id = ?1 AND location_id IS ?2
+             ORDER BY checked_at DESC, id DESC LIMIT 1",
+            (monitor_id, place),
+            |r| Ok((place, r.get(0)?, r.get::<i64>(1)? == 1, r.get(2)?)),
+        )
+        .await?;
+        out.extend(row);
+    }
+    Ok(out)
 }

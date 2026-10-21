@@ -462,3 +462,44 @@ async fn the_probe_command_runs_a_location_check_and_reports_it() {
         "the probe checked /healthz from its location and reported a pass"
     );
 }
+
+#[tokio::test]
+async fn a_place_newest_result_is_the_latest_by_time_not_the_last_stored() {
+    let app = TestApp::spawn("test").await;
+    let (admin, tl) = setup(&app).await;
+    let (loc, _) = location(&app, &admin, "Jakarta").await;
+    assert_eq!(
+        app.api_post(
+            MONITORS,
+            monitor("https://pay.example.com", &[loc], "1"),
+            Some(&tl)
+        )
+        .await
+        .status(),
+        201
+    );
+    sql(&app, "UPDATE monitors SET next_check_at = 9999999999").await;
+    let m = checks::find_monitor(&app.state.db, 1, 1)
+        .await
+        .unwrap()
+        .unwrap();
+    let at = |checked_at, ok| CheckResult {
+        checked_at,
+        ok,
+        status_code: Some(if ok { 200 } else { 503 }),
+        latency_ms: 10,
+        error: (!ok).then(|| "HTTP 503".into()),
+        cert_expires_at: None,
+    };
+    let t = now();
+    checks::record_check(&app.state.db, BASE_URL, &m, &at(t, true))
+        .await
+        .unwrap();
+    // Stored after the pass, but checked a minute before it: the pass is still the newest.
+    checks::record_check(&app.state.db, BASE_URL, &m, &at(t - 60, false))
+        .await
+        .unwrap();
+    assert_eq!(count(&app, "SELECT count(*) FROM incidents").await, 0);
+    let detail = json_of(app.api_get(&format!("{MONITORS}/1"), Some(&tl)).await).await;
+    assert_eq!(detail["data"]["places"][0]["last"][1], true);
+}
