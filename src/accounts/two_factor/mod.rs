@@ -67,8 +67,30 @@ pub async fn status(db: &Db, user_id: i64) -> anyhow::Result<Status> {
     })
 }
 
+/// What the setup step shows: the secret to type, its `otpauth://` link, and that link as a QR code.
+#[derive(serde::Serialize)]
+pub struct Setup {
+    pub secret: String,
+    pub link: String,
+    /// An SVG document, dark modules on white, for an `<img>`.
+    pub qr: String,
+}
+
+/// The link as a QR code. A phone camera reads dark on light only, so the colours are fixed.
+fn qr_svg(link: &str) -> anyhow::Result<String> {
+    use qrcode::{QrCode, render::svg};
+    let code = QrCode::new(link.as_bytes())?;
+    Ok(code
+        .render::<svg::Color<'_>>()
+        // 4 px a module: whole pixels at the size the page shows it.
+        .module_dimensions(4, 4)
+        .dark_color(svg::Color("#000000"))
+        .light_color(svg::Color("#ffffff"))
+        .build())
+}
+
 /// A new secret and its `otpauth://` link, waiting for `confirm`.
-pub async fn start(db: &Db, user_id: i64, email: &str) -> Result<(String, String), TwoFactorError> {
+pub async fn start(db: &Db, user_id: i64, email: &str) -> Result<Setup, TwoFactorError> {
     let secret = totp::new_secret();
     db.write(async |c| {
         if matches!(store::secrets(c, user_id).await?, Some((Some(_), _, _))) {
@@ -79,7 +101,8 @@ pub async fn start(db: &Db, user_id: i64, email: &str) -> Result<(String, String
     })
     .await??;
     let link = totp::link(ISSUER, email, &secret);
-    Ok((secret, link))
+    let qr = qr_svg(&link)?;
+    Ok(Setup { secret, link, qr })
 }
 
 /// A recovery code as typed, without case, spaces or dashes; None when it cannot be one.

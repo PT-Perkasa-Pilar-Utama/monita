@@ -55,6 +55,7 @@ test.describe("as the super admin", () => {
     await me.getByRole("button", { name: `Account: ${email}` }).click();
     await me.getByRole("menuitem", { name: "Two-factor sign-in" }).click();
     await me.getByRole("button", { name: "Turn on" }).click();
+    await expect(me.getByRole("img", { name: "QR code for your authenticator app" })).toBeVisible();
     const secret = (await me.locator("#totp-secret").textContent())!.trim();
     const at = Date.now() / 1000;
     await me.getByPlaceholder("Code from your app").fill(totp(secret, at));

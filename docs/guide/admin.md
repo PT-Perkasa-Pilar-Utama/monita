@@ -68,7 +68,7 @@ You cannot act on your own account. A disabled user can only be enabled. A batch
 Each user can ask for a code after the password. Open the avatar menu and select **Two-factor sign-in**.
 
 1. Select **Turn on**.
-2. Select **Open in authenticator app** on your phone, or type the key into the app. Any app that reads time-based codes works, such as 1Password, Google Authenticator or Authy.
+2. Scan the QR code with the authenticator app on your phone. If you cannot scan it, type the key into the app, or select **Open in authenticator app** on the phone itself. Any app that reads time-based codes works, such as 1Password, Google Authenticator or Authy.
 3. Enter the 6-digit code the app shows and select **Turn on**.
 4. Save the 10 recovery codes. Monita shows them only once. Each code signs you in once without the phone.
 

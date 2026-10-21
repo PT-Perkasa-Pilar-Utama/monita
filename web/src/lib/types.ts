@@ -378,6 +378,8 @@ export type AdminUserRow = { id: number; email: string; role: "super_admin" | "t
 
 /** The signed-in user's two-factor sign-in. */
 export type TwoFactorStatus = { on: boolean; codes_left: number };
+/** The setup step: the key to type, its `otpauth://` link, and the link as an SVG QR code. */
+export type TwoFactorSetup = { secret: string; link: string; qr: string };
 
 export type Invited = { email: string; link: string };
 

@@ -23,6 +23,11 @@ async fn turn_on(app: &TestApp, cookie: &str) -> (String, Vec<String>, i64) {
             .starts_with("otpauth://totp/Monita:"),
         "{started}"
     );
+    let qr = started["data"]["qr"].as_str().unwrap();
+    assert!(
+        qr.contains("<svg") && qr.contains("<path"),
+        "the setup step draws the link as a QR code"
+    );
     let wrong = app
         .api_post(
             "/api/ui/me/two-factor/confirm",

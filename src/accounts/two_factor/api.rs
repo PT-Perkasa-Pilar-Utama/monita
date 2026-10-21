@@ -59,10 +59,9 @@ async fn status(State(state): State<AppState>, AccountUser(user): AccountUser) -
     Ok(data(super::status(&state.db, user.id).await?))
 }
 
-/// The secret and its `otpauth://` link. Nothing changes until `confirm`.
+/// The secret, its `otpauth://` link and the link as a QR code. Nothing changes until `confirm`.
 async fn start(State(state): State<AppState>, AccountUser(user): AccountUser) -> UiResult {
-    let (secret, link) = super::start(&state.db, user.id, &user.email).await?;
-    Ok(data(serde_json::json!({ "secret": secret, "link": link })))
+    Ok(data(super::start(&state.db, user.id, &user.email).await?))
 }
 
 #[derive(Deserialize, Default)]

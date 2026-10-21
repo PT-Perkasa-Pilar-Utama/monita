@@ -21,6 +21,8 @@ base64 = "0.23"
 clap = { version = "4.6", features = ["derive"] }
 reqwest = { version = "0.13", default-features = false, features = ["rustls", "http2", "charset"] }
 getrandom = "0.4"
+# SVG only: the default features pull in `image`. The two-factor setup QR (v1.1).
+qrcode = { version = "0.14", default-features = false, features = ["svg"] }
 lettre = { version = "0.11", default-features = false, features = ["builder", "smtp-transport", "pool", "hostname", "tokio1", "tokio1-rustls", "aws-lc-rs", "rustls-platform-verifier"] }
 rust-embed = { version = "8.13", features = ["mime-guess"] }
 serde = { version = "1.0", features = ["derive"] }

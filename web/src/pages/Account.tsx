@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { api, ApiError, errorText } from "@/lib/api";
-import type { TwoFactorStatus } from "@/lib/types";
+import type { TwoFactorSetup, TwoFactorStatus } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 import { toast } from "sonner";
 
@@ -50,13 +50,13 @@ function CodeForm({ id, action, danger = false, onCode }: { id: string; action: 
 /** Account, Two-factor sign-in: a code from an authenticator app after the password. */
 export function Account(): ReactElement {
   const status = useApi<TwoFactorStatus>("/me/two-factor");
-  const [setup, setSetup] = useState<{ secret: string; link: string } | null>(null);
+  const [setup, setSetup] = useState<TwoFactorSetup | null>(null);
   const [codes, setCodes] = useState<string[] | null>(null);
   const s = status.data;
 
   const start = async (): Promise<void> => {
     try {
-      setSetup(await api<{ secret: string; link: string }>("/me/two-factor", "POST"));
+      setSetup(await api<TwoFactorSetup>("/me/two-factor", "POST"));
     } catch (err) {
       toast.error(errorText(err));
     }
@@ -104,12 +104,14 @@ export function Account(): ReactElement {
           </FieldGroup>
         </SettingsSection>
       ) : setup ? (
-        <SettingsSection id="setup" title="Add Monita to your authenticator app" description="Open the link on your phone, or type the key into the app by hand. Then enter the code it shows.">
+        <SettingsSection id="setup" title="Add Monita to your authenticator app" description="Scan the code with your phone. Then enter the 6 digits the app shows.">
           <FieldGroup className="gap-4">
+            <img id="totp-qr" src={`data:image/svg+xml;utf8,${encodeURIComponent(setup.qr)}`} alt="QR code for your authenticator app" className="w-fit rounded-md border" />
+            <p className="text-sm text-muted-foreground">Cannot scan it? Type this key into the app, or open the link on the phone itself.</p>
+            <CopyField id="totp-secret" value={setup.secret} />
             <Button asChild variant="outline" className="w-fit">
               <a href={setup.link}>Open in authenticator app</a>
             </Button>
-            <CopyField id="totp-secret" value={setup.secret} />
             <CodeForm id="confirm-code" action="Turn on" onCode={confirm} />
           </FieldGroup>
         </SettingsSection>
