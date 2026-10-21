@@ -26,6 +26,7 @@ The header shows the project name, a link to the project's **Homepage** and the 
 - Each system is a card with its name, a state icon, 90 daily bars, and "90 days ago", the uptime and "Today". A line under the bars says **Normal**, **Down**, **Has an issue**, **Under maintenance** or **No data yet**.
 - Each active maintenance window shows under the headline with its title, times, the systems it covers and its message. See [Maintenance windows](incidents.md#maintenance-windows).
 - A green bar had no downtime. A yellow bar had under 1% downtime. A red bar had more. A grey bar is a day before the system existed.
+- A paused system does not show, on the page or in its JSON, until a tech lead resumes it.
 - Systems with a problem come first, then systems in maintenance. A project with many systems shows bars for the problems and the first 12. The rest fold into a list, "N more systems".
 - The tab reads itself every 60 seconds while the browser tab is visible. It has no **Refresh** button.
 
@@ -55,7 +56,7 @@ On a phone the columns stack.
 **Settings**, **Status page** also holds **Custom status page**. It explains how to build your own page from the same data.
 
 - **Download template** saves one HTML file, `status-<slug>.html`. It shows your systems and incidents and reloads every minute. Open it, or host it anywhere.
-- Four tabs document the public endpoints: **Status**, **File a ticket**, **Reporter's tickets** and **Issue a ref ID**. Each tab shows the method and path, who can call it, a `curl` request, an example response and its rules.
+- Four tabs document the public endpoints: **Status**, **File a ticket**, **Reporter's tickets** and **Issue a ref ID**. Each tab shows the method and path, a `curl` request and an example response. The notes sit in labelled rows, such as Query, States, Bars, Incidents, Maintenance, Shown, Limits and Errors. The limits are defaults: a super admin changes them in **Admin**, **Rate limits**.
 
 Only **Issue a ref ID** needs an API key, and your server must send it. The others are public. Never put an API key in a browser page.
 
@@ -94,8 +95,8 @@ curl -s https://monita.example.com/api/v1/public/status/payments?days=30
 
 | Field | Values |
 | --- | --- |
-| `state` | `up`, `down`, `issue` (an open manual incident), `unknown` (no data yet) |
-| `overall` | `down` if any item is down, else `issue` if any has an issue, else `up` |
+| `state` | `up`, `down`, `issue` (an open manual incident), `maintenance`, `unknown` (no data yet) |
+| `overall` | `down` if any item is down, else `issue` if any has an issue, else `maintenance` if any is in maintenance, else `up` |
 | `days[].uptime` | `null` for a day before the item existed |
 | `incidents` | Empty while the Incidents tab is off |
 

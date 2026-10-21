@@ -67,11 +67,10 @@ A manual incident marks its items as **Issue**, not down. It never counts as dow
 
 Plan a window before planned work, so the work neither alerts the team nor shows as an outage.
 
-1. Open **Incidents** in a project and select **Maintenance**.
-2. Select **Plan maintenance**.
-3. Enter a **Title**, then pick when it **Starts** and **Ends**. Times are in the time zone a super admin set. A start in the past starts now. A window lasts 30 days at most.
-4. Tick the monitors and heartbeats it covers.
-5. Optional: write a **Message on the status page**.
+1. Open **Incidents** in a project and select **Maintenance**, then **Plan maintenance**. Or select **Plan maintenance** on a monitor or heartbeat page. The form opens with that system already ticked.
+2. Enter a **Title**, then pick when it **Starts** and **Ends**. Times are in the time zone a super admin set. A start in the past starts now. A window lasts 30 days at most.
+3. Tick the monitors and heartbeats it covers.
+4. Optional: write a **Message on the status page**.
 
 While a window is active:
 

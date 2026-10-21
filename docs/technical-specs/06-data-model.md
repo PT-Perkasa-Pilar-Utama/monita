@@ -63,7 +63,7 @@ erDiagram
 | totp_pending | TEXT | yes | | | A secret shown but not yet confirmed with a code |
 | totp_pending_expires_at | INTEGER | yes | | | 10 minutes after the secret was shown (v1.1 Q32). Confirm refuses it after; retention clears both columns. Migration 0035. |
 | totp_step | INTEGER | yes | | | The last 30-second step a code was used for; only later steps pass |
-| avatar_at | INTEGER | yes | | | When the user's picture last changed; NULL without one. Versions `/me/avatar?v=`. Migration 0034. |
+| avatar_at | INTEGER | yes | | | When the user's picture last changed; NULL without one. Versions `/users/{id}/avatar?v=`. Migration 0034. |
 
 `recovery_codes` (migration 0027): `id` PK, `user_id` FK users ON DELETE CASCADE, `code_hash` TEXT UNIQUE (SHA-256), `used_at` INTEGER NULL. Ten per user while two-factor is on.
 
@@ -185,11 +185,12 @@ Migration 0039 (v1.1 Q37) rebuilt the table, because SQLite cannot change a CHEC
 | auth_secret_id | INTEGER | yes | | FK project_secrets ON DELETE SET NULL | Must belong to the monitor's project. A deleted secret fails the check with a fixed sentence. |
 | auth_user | TEXT | yes | | | The user name for `basic`. No colon. |
 | auth_header | TEXT | yes | | | The header name for `header`. A header row may not repeat it. |
-| kind | TEXT | no | `'http'` | `IN ('http','tcp','dns','ping')` | `http`, `tcp` or `dns` (migration 0024, v1.1 Q16), or `ping` (migration 0029 rebuilt the table to widen the CHECK, v1.1 Q24). A TCP check keeps `host:port` in `url`; a DNS or ping check keeps the host. |
+| kind | TEXT | no | `'http'` | `IN ('http','tcp','dns','ping')` | `http`, `tcp` or `dns` (migration 0024, v1.1 Q16), or `ping` (migration 0029 rebuilt the table to widen the CHECK, v1.1 Q24). A TCP check keeps `host:port` in `url`; a DNS or ping check keeps the host. A ping check runs on every system, Windows too (v1.1 Q40). |
 | expected_address | TEXT | yes | | | `dns` only: the check passes only when one A or AAAA answer equals it (migration 0024). |
 | cert_warn_days | INTEGER | yes | | `IN (7, 14, 30)` | HTTPS only: warn this many days before the certificate expires (migration 0028, v1.1 Q25). |
 | cert_expires_at | INTEGER | yes | | | The `notAfter` of the leaf certificate the last HTTPS check saw. |
 | cert_warned_for | INTEGER | yes | | | The `notAfter` the last warning was about, so each certificate warns once. |
+| paused_at | INTEGER | yes | | | Set while a tech lead has paused the monitor (migration 0040, v1.1 Q38). Null while it runs. See 6.3.8. |
 | created_at, updated_at | INTEGER | no | | | |
 
 ### 6.3.7a project_secrets
@@ -220,9 +221,12 @@ Tokens and passwords that monitors sign in with. A value is written once and nev
 | deadline_at | INTEGER | yes | | INDEX | NULL after a miss is reported, until the next ping. A hand resolve sets it to `now + period_s + grace_s` ([12](12-incident-engine.md)). |
 | alert | INTEGER | no | 1 | | As for monitors (migration 0009) |
 | auto_incident | INTEGER | no | 1 | | As for monitors |
+| paused_at | INTEGER | yes | | | Set while a tech lead has paused the heartbeat (migration 0040, v1.1 Q38). Null while it runs. |
 | created_at, updated_at | INTEGER | no | | | |
 
-State words on the team's pages: `Up`, `Down`, `Issue` and `No data yet`. A monitor never checked and a heartbeat never pinged read `No data yet` (was "Waiting"). Migration 0012 gave each heartbeat that a hand resolve left with no deadline, and that was not down, a new one.
+State words on the team's pages: `Up`, `Down`, `Issue`, `Maintenance`, `Paused` and `No data yet`. `Paused` wins over every other state. A monitor never checked and a heartbeat never pinged read `No data yet` (was "Waiting"). Migration 0012 gave each heartbeat that a hand resolve left with no deadline, and that was not down, a new one.
+
+`paused_at` (migration 0040, v1.1 Q38) on `monitors` and `heartbeats` holds the Unix second of the pause, or null. While it is set: the scheduler and the location probes skip a monitor, the missed-heartbeat sweep skips a heartbeat, and no incident opens and no alert goes out. A ping to a paused heartbeat is stored and answered 200 but opens and closes nothing. Pausing closes the source's open automatic incident without a resolved alert (update message "Paused by a tech lead.") and resets its failure streak. Resuming makes a monitor due at once. A resumed heartbeat's `deadline_at` becomes now + `period_s` + `grace_s`. The project list's hourly bars count a source from `created_at` until `paused_at`, so an hour before it existed or while it was paused has no data. The status page hides a paused source. A maintenance window differs: checks keep running in a window.
 
 `held_cause` (TEXT NULL, migration 0032): the failure text of a `/fail` ping received in a maintenance window, kept until the window ends and the incident opens with it; a success ping or a hand resolve (`rearm_heartbeat`) clears it.
 
@@ -385,6 +389,7 @@ Rule: migrations are numbered files in `migrations/`, embedded at compile time w
 | `monita setup` | Writes the env file and creates the first super admin ([api-specs 10.2](../api-specs/10-cli.md#102-monita-setup)). |
 | `monita admin create --email` | Creates a super admin. Reads the password from stdin. |
 | `monita admin reset-password --email` | Sets a new password for an existing super admin and signs them out. A TL resets through a new invite. |
+| `monita admin reset-sign-in --email` | For any active user who lost the authenticator and the recovery codes. Turns two-factor off, ends sessions, stops the old password, and queues an invite email. |
 | `POST /admin/reset-state {"seed":"dev"}` | Dev and test only. Wipes, migrates, loads `seeds/dev.sql` or `seeds/qa.sql`. |
 
 Forbidden: running a `.sql` file by an absolute path outside the runner, and creating tables in application code.

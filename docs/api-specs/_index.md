@@ -28,6 +28,7 @@ Legend: `OK` implemented and tested, `WIP` in progress, `TODO` not started, `SCA
 | `POST /admin/reset-state` | [09](09-system.md#92-post-adminreset-state) | OK (header token in dev and test; the session option is not built) |
 | `monita setup`, `service`, `whereis`, `--env-file` | [10](10-cli.md) | OK |
 | `monita probe` | [10](10-cli.md#105-monita-probe) | OK |
+| `monita admin reset-sign-in` | [10](10-cli.md#106-monita-admin-reset-sign-in) | OK |
 | Admin locations: list, add, delete | [04](04-checks.md#45-locations-v11-q26) | OK |
 
 ### Frontend routes (`/api/ui/`)
@@ -43,6 +44,7 @@ Legend: `OK` implemented and tested, `WIP` in progress, `TODO` not started, `SCA
 | API keys, allowlist, public pages (`public-pages`) | [03](03-projects.md#31-frontend-routes) | OK |
 | Secrets: list, create, replace, delete | [03](03-projects.md#33-secrets) | OK |
 | Check options, monitors (method, headers, body, `fails_to_open`, `auth_*`), heartbeats (`last`, `alert`, `auto_incident`) | [04](04-checks.md#43-frontend-routes) | OK |
+| Pause and resume a monitor or heartbeat (`PUT .../paused`, `paused_at`, state `paused`) | [04](04-checks.md#43a-pause-v11-q38) | OK |
 | System page, mail server and its tests, limits, time zone | [04](04-checks.md#44-system-page) | OK |
 | Project incidents, incident items, updates | [05](05-incidents.md#51-frontend-routes) | OK |
 | Incidents across projects (`/api/ui/incidents`) | [05](05-incidents.md#52-incidents-across-projects) | OK |
@@ -69,7 +71,7 @@ Legend: `OK` implemented and tested, `WIP` in progress, `TODO` not started, `SCA
 | [07-status.md](07-status.md) | Public status JSON and page routes |
 | [08-tickets.md](08-tickets.md) | Ref IDs, tickets, the board, the cross-project list |
 | [09-system.md](09-system.md) | Health, reset-state |
-| [10-cli.md](10-cli.md) | The `monita` command line: setup, service, whereis, the env file |
+| [10-cli.md](10-cli.md) | The `monita` command line: setup, service, whereis, probe, reset-sign-in, the env file |
 | [11-changelog.md](11-changelog.md) | Release notes per project: team routes and the public tab |
 
 ## Companion Documents

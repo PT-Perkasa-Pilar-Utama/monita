@@ -39,7 +39,7 @@ File: `components/app/Tone.tsx`. A badge is the only place a state gets color.
 
 | Component | Input | Output |
 | --- | --- | --- |
-| `StateBadge` | `kind`: `up`, `down`, `issue`, `unknown`; optional `label` | Up, Down, Issue, No data yet |
+| `StateBadge` | `kind`: `up`, `down`, `issue`, `maintenance`, `paused`, `unknown`; optional `label` | Up, Down, Issue, Maintenance, Paused (the grey `unknown` badge), No data yet |
 | `SeverityBadge` | `severity` | Grey `outline` with a bell: Critical (ringing, filled), Warning (plain). Severity is a setting, so it never takes a state colour. Pages call it **Alert level**; code and JSON keep `severity`. |
 | `LabelBadge` | status update label | Investigating (`down`), Identified (`issue`), Monitoring (`neutral`), Resolved (`up`) |
 | `StageBadge` | `stage`, optional `ring` | Triage (`unknown`), Backlog (`neutral`), In progress (`issue`), Done (`up`) |
@@ -65,6 +65,7 @@ Use `Badge variant="outline"` for a neutral fact, such as "On the status page". 
 | `PageSearch` | `list/PageSearch.tsx` | Search beside a page title, for a page of cards rather than one table. |
 | `ViewToggle` | `list/ViewToggle.tsx` | Card or list view of one page, as a two-icon `ToggleGroup`. A click on the open view keeps it. `useViewMode` remembers the choice per browser. |
 | `ProjectCard`, `ProjectTable` | `app/ProjectTile.tsx` | A project as a card or a table row. The card shows the icon, name, owner, a state badge, a bar per hour of the last day with the mean uptime, four counts (Monitors, Heartbeats, Incidents, Tickets) and a foot with the description and a Status page link. Down and Issue counts take red or yellow, and open incidents take red. The whole card opens the project. Cards lift on hover. `ProjectCardSkeletons` hold the place while loading. |
+| `SourceActions` | `app/SourceActions.tsx` | The header actions of a monitor or heartbeat page, for writers only: **Plan maintenance** (a link to the maintenance form with `?item=monitor:3`) and **Pause**, which opens a `ConfirmDialog`, or **Resume**. |
 | `HistoryPager` | `app/History.tsx` | "Newest" and "Older" links under a history table. |
 | `Pager` | `list/Pager.tsx` | Under a list the server reads by page: "Showing 21 to 31 of 31 projects.", Previous, "Page 2 of 2", Next. Hidden when every row fits on one page. Rules in `lib/page.ts`. |
 | `RefreshButton` | `app/RefreshButton.tsx` | An outline button that reads the page again now, with a spinner while it runs and no skeleton flash. Live pages (the project list, monitor and heartbeat lists and details) also read again every 30 seconds and skip it while the browser tab is hidden. |

@@ -85,6 +85,10 @@ N is the source's `fails_to_open`. With N = 1 the first failed check opens the i
 | open | CheckFailed, HeartbeatMissed, FailPing | unchanged | yes | none |
 | open | CheckOk, Ping | 0 | no | Resolve |
 
+## 12.3b Pause
+
+A pause (v1.1 Q38) is not a window. `checks::set_paused` calls `source_paused`, which closes the source's open automatic incident without an event and forgets its streak. While `paused_at` is set, the scheduler, the location claim and the missed-heartbeat sweep skip the source, and a ping to a paused heartbeat is stored but never reaches `observe`. So `step` sees no input from a paused source.
+
 ## 12.3a Maintenance windows
 
 `step` stays pure and does not know about windows (v1.1 decision Q18). `observe` applies one rule after it: when `step` returns Open and `maintenance::covers` finds an active window over the source, `observe` keeps the new streak, leaves the source closed, sets no down time, and returns no event. So no incident opens and no Opened or Down alert goes out.

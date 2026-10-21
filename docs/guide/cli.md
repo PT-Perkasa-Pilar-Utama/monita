@@ -12,6 +12,7 @@ The `monita` binary serves the app and manages a host.
 | `monita whereis [env\|data\|backups\|bin\|service\|logs]` | Prints where things are |
 | `monita admin create --email` | Creates a super admin |
 | `monita admin reset-password --email` | Sets a new password for a super admin, turns their two-factor sign-in off, and signs them out |
+| `monita admin reset-sign-in --email` | For any active user who lost the authenticator and the recovery codes. Turns two-factor off, stops the old password, and sends a link to set a new one |
 | `monita probe --server <url>` | Runs checks for one location of another Monita and reports them. Reads the token from `MONITA_PROBE_TOKEN`; no env file, no database. See [Locations](locations.md). |
 | `monita --version` | Prints the version |
 

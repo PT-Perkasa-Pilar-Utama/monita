@@ -33,6 +33,7 @@ that your team controls.
   Telegram, ntfy or PagerDuty if you add a webhook.
 - Locations check from other machines too, and an incident opens only when enough places agree.
 - Maintenance windows keep planned work from opening incidents or sending alerts.
+- A tech lead can pause a monitor or heartbeat, so it opens no incident and sends no alert until it resumes.
 - Each project has a public status page. The page shows 90 days of uptime and the updates your team
   writes during an incident.
 - Users can report a bug from the status page, and the tech lead sorts the reports on the ticket board.

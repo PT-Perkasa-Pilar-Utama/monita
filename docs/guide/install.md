@@ -14,7 +14,7 @@ Monita runs as one systemd service on a Linux VM. These steps assume Ubuntu or D
 - The release binary is static. It needs no other libraries, no database server and no runtime.
 - The disk holds the database and 7 backups. Each backup is a full copy of the database, so plan for 8 times its size.
 - The database keeps 7 days of check results. At 500 monitors on a 60 s interval, that is about 5 million rows. The design target is under 2 GB ([NFR-09](../technical-specs/08-non-functional-requirements.md)).
-- A ping check needs the sysctl `net.ipv4.ping_group_range` to cover Monita's group. Most systemd distributions and Docker set `0 2147483647` already. Check with `sysctl net.ipv4.ping_group_range`.
+- A ping check uses an ICMP socket first. On Linux that needs the sysctl `net.ipv4.ping_group_range` to cover Monita's group. Most systemd distributions and Docker set `0 2147483647` already. Check with `sysctl net.ipv4.ping_group_range`. Where the socket is refused, and on Windows, Monita runs the system `ping` command. The Docker image has no `ping` command, but Docker sets the sysctl, so it works.
 - Monita needs outbound access to the sites it checks, to the mail server, and to each webhook address. Users reach it through a reverse proxy that handles HTTPS.
 
 Measured load (2026-10-20): the 1.0.1 release image ran in Docker Desktop on an Apple M1 (arm64, a VM with 2 vCPU) and checked 500 URLs on a 60 s interval against a local nginx. It used 17.6 MiB of memory idle, and 21.2 MiB (median) to 24.2 MiB (peak) under load, with 0.8 % of one core on average. The nginx received 498 requests a minute, so every check ran. After 10 minutes the data folder held 2.7 MB. Checks of real sites over HTTPS cost more CPU and memory. The design target for memory is under 100 MB at this load ([NFR-06](../technical-specs/08-non-functional-requirements.md)).
@@ -91,7 +91,19 @@ volumes:
   monita-data:
 ```
 
-Create the first super admin with `docker compose run --rm monita admin create --email you@company.co.id` before the first `docker compose up -d`. It asks for the password, at least 8 characters. If Monita is already running, run `docker compose stop` first: the running server holds the database, and `admin create` fails with "File is locked by another process". Then start it again with `docker compose up -d`. Each variable is in [Configuration](configuration.md). To upgrade, pull the new tag and recreate the container; Monita migrates the database when it starts. `monita service` does not apply in a container: Docker restarts it.
+Create the first super admin with `docker compose run --rm monita admin create --email you@company.co.id` before the first `docker compose up -d`. It asks for the password, at least 8 characters. If Monita is already running, run `docker compose stop` first: the running server holds the database, and `admin create` fails with "File is locked by another process". Then start it again with `docker compose up -d`. Each variable is in [Configuration](configuration.md). `monita service` does not apply in a container: Docker restarts it.
+
+#### Upgrade from v1.0
+
+The Compose file above pins `ghcr.io/pt-perkasa-pilar-utama/monita:1`. The release job moves the `1` tag to the newest 1.x release. So this upgrades a v1.0 install:
+
+```sh
+docker compose pull && docker compose up -d
+```
+
+Monita migrates the database when it starts (migrations 0024 to 0040). Back up the data volume first. The image does not turn on Monita's daily backups: set `MONITA_BACKUP_DIR` if you want them.
+
+A v1.0.1 database was upgraded this way in a test. It held a project, a monitor, a heartbeat, a critical route with two emails and a webhook, ticket alerts with a webhook, and an API key. The migration finished cleanly and `integrity_check` returned ok. Each route became alert cards: an owner card, an Email card with both addresses, and a JSON webhook card. The ticket alerts became ticket cards.
 
 ### From source
 

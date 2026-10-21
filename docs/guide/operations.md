@@ -48,11 +48,31 @@ sudo monita admin reset-password --email you@company.co.id
 systemctl start monita
 ```
 
-The command asks for the new password without echo (or reads stdin in a script) and signs the admin out everywhere. A tech lead gets a new invite from a super admin instead.
+The command asks for the new password without echo (or reads stdin in a script) and signs the admin out everywhere. A tech lead or supervisor who lost the password gets a new invite from a super admin. If nobody can sign in at all, use `reset-sign-in` below.
+
+## Lost authenticator and recovery codes
+
+Any user who lost both can get back in. No super admin has to be signed in.
+
+```sh
+systemctl stop monita        # the running service locks the database file
+sudo monita admin reset-sign-in --email you@company.co.id
+systemctl start monita
+```
+
+In Docker:
+
+```sh
+docker compose stop
+docker compose run --rm monita admin reset-sign-in --email you@company.co.id
+docker compose up -d
+```
+
+The command turns two-factor off and stops the old password. It queues an email with a link to set a new password and prints the link too. Monita sends the email when it runs. The link works once and lasts 72 hours. An unknown or disabled user gets the error `No active user has this email.`
 
 ## Upgrade
 
-Take a backup, install the new binary over the old one, and restart. Migrations run at start.
+Take a backup, install the new binary over the old one, and restart. Migrations run at start. On Docker Compose, back up the data volume, then run `docker compose pull && docker compose up -d` (see [Install](install.md#upgrade-from-v10)).
 
 ```sh
 systemctl stop monita && cp /var/lib/monita/monita.db /var/backups/monita/pre-upgrade.db

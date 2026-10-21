@@ -41,11 +41,13 @@ The React pages under `/projects/{slug}/monitors` and `/projects/{slug}/heartbea
 | POST | `/api/ui/projects/{slug}/monitors` | owner, super_admin | the monitor form (below) | Validate; 422 on each bad field. A project with 100 monitors is 422 on `name`. A `auth_secret_id` that is not a secret of this project is 422 on `auth_secret_id`. `next_check_at = now + 5 + rand(0..interval_s - 5)`. 201 `{id}`. | AC-09.01, AC-11.01 |
 | GET | `/api/ui/projects/{slug}/monitors/{id}` | owner, super_admin, supervisor | `?range=hour\|day\|week\|month` (anything else is a day); `?before=<checked_at>.<id>`, the cursor from `older` | `monitor` (also `auth_secret_name`, the name of the secret it signs in with, never its value); `stats`: four cards `{label, value, sub, tone}` (up or down for how long, the last check, the mean response time, incidents in 30 days). `insight`: the response-time chart for the range as geometry in a 960 x 240 view box (hour, day and week from the raw checks, month from the daily rollup and today), `total`, `ok`, `mean_ms`, and `periods`, the availability for today, 7, 30 and 365 days and all time (`availability`, `downtime_s`, `incidents`, `longest_s`, `average_s`), from automatic incidents. `checks`: the last 7 days, 25 per page, each `{id, checked_at, ok, status_code, latency_ms, error}`; `older` is the next cursor or null. | AC-10.01 |
 | PUT | `/api/ui/projects/{slug}/monitors/{id}` | owner, super_admin | same as create | Validate and update, 204. An unknown id is 404. A changed interval draws a new first-check offset. | |
+| PUT | `/api/ui/projects/{slug}/monitors/{id}/paused` | owner, super_admin | `paused` (boolean) | Pause or resume the monitor (v1.1 Q38, 4.3a), 204. An unknown id, or one in another project, is 404. Pausing twice changes nothing. | |
 | DELETE | `/api/ui/projects/{slug}/monitors/{id}` | owner, super_admin | | Delete with its results; an open incident on it closes. 204. | |
 | GET | `/api/ui/projects/{slug}/heartbeats` | owner, super_admin, supervisor | | `heartbeats`: each a heartbeat (below). `summary` as for monitors. | |
 | POST | `/api/ui/projects/{slug}/heartbeats` | owner, super_admin | `name`, `period_s`, `grace_s`, `severity`, `is_public`, `alert`, `auto_incident` | Create the token. `deadline_at = now + period_s + grace_s`. 201 `{id}`; a project with 100 heartbeats is 422 on `name`. | AC-12.01, AC-12.02 |
 | GET | `/api/ui/projects/{slug}/heartbeats/{id}` | owner, super_admin, supervisor | `?range=` as the monitor page; `?before=<received_at>.<id>` | `heartbeat`; `ping_url`, the address a job calls (`null` for a supervisor); the same `stats` shape with four cards (up or down for how long, next ping due, last ping, incidents); `insight` with pings per bucket; then `pings` of the last 7 days, 25 per page, each `{id, received_at, kind, source_ip, cause}`, and `older`. `cause` is what a fail ping reported, the first 1 KB. A fail ping counts as heard. | AC-12.02 |
 | PUT | `/api/ui/projects/{slug}/heartbeats/{id}` | owner, super_admin | same as create | Validate and update, 204. A pending deadline is recomputed from the last ping with the new period and grace. | |
+| PUT | `/api/ui/projects/{slug}/heartbeats/{id}/paused` | owner, super_admin | `paused` (boolean) | Pause or resume the heartbeat (v1.1 Q38, 4.3a), 204. An unknown id, or one in another project, is 404. Pausing twice changes nothing. | |
 | DELETE | `/api/ui/projects/{slug}/heartbeats/{id}` | owner, super_admin | | Delete with its pings; its URL answers 404 from then on. An open incident on it closes. 204. | |
 
 ### Monitor
@@ -55,7 +57,7 @@ The monitor form sends these fields. The view returns the same fields, plus thos
 | Field | Type | Rule |
 | --- | --- | --- |
 | `name` | string | 1 to 80 characters |
-| `kind` | string | `http`, `tcp`, `dns` or `ping` (v1.1 Q24); blank or missing is `http`. On a Windows server, `ping` is 422 on `kind`. A TCP, DNS or ping monitor stores none of the HTTP fields (`method`, `headers`, `body`, `auth_*`, `keyword`, `expected_status`, `skip_tls_verify`); they come back as their defaults. (v1.1 Q16) |
+| `kind` | string | `http`, `tcp`, `dns` or `ping` (v1.1 Q24); blank or missing is `http`. A ping check runs on every system (v1.1 Q40, 4.3b). A TCP, DNS or ping monitor stores none of the HTTP fields (`method`, `headers`, `body`, `auth_*`, `keyword`, `expected_status`, `skip_tls_verify`); they come back as their defaults. (v1.1 Q16) |
 | `url` | string | `http`: starts with `http://` or `https://`, with no user name or password in it (use `auth_kind`). `tcp`: `host:port` or `[ipv6]:port`, port 1 to 65535. `dns` and `ping`: a host name or an IP address, without a port |
 | `expected_address` | string | `dns` only: an IPv4 or IPv6 address; blank means any answer passes. Ignored for other kinds |
 | `method` | string | `GET`, `HEAD`, `POST` or `PUT`; blank is `GET` |
@@ -77,13 +79,32 @@ The monitor form sends these fields. The view returns the same fields, plus thos
 | `auth_header` | string | The header name for `header`, such as `X-Api-Key` |
 | `cert_warn_days` | string | `7`, `14` or `30`: warn that many days before the certificate expires; blank or missing is off. Only `http` with an `https://` URL; otherwise 422 on `cert_warn_days`. Other kinds drop it. (v1.1 Q25) |
 
-View fields: `id`, `every` (the interval in words: `30 seconds`, `1 minute`, `3 minutes`, `5 minutes`), `timeout_s`, `created_at`, `next_check_at`, `state` (`up`, `down`, `issue`, or `unknown` before the first check), `cert_warn_days` (number or null), `cert_expires_at` (the `notAfter` the last HTTPS check saw, or null) and `last` (`{checked_at, ok, summary}`, a summary such as `200 in 182ms`, or null). `bearer` sends `Authorization: Bearer <secret>`; `basic` sends the user name and the secret as the password; `header` sends the secret in the named header. Header values, the body and the secret never reach a check error, a log or the status page. When a monitor's secret is deleted, its check fails with a fixed sentence, and the monitor's form asks for a new one. A secret in use cannot be deleted (3.1).
+View fields: `id`, `every` (the interval in words: `30 seconds`, `1 minute`, `3 minutes`, `5 minutes`), `timeout_s`, `created_at`, `next_check_at`, `state` (`up`, `down`, `issue`, `maintenance`, `paused`, or `unknown` before the first check), `paused_at` (Unix seconds, or null while it runs), `cert_warn_days` (number or null), `cert_expires_at` (the `notAfter` the last HTTPS check saw, or null) and `last` (`{checked_at, ok, summary}`, a summary such as `200 in 182ms`, or null). `bearer` sends `Authorization: Bearer <secret>`; `basic` sends the user name and the secret as the password; `header` sends the secret in the named header. Header values, the body and the secret never reach a check error, a log or the status page. When a monitor's secret is deleted, its check fails with a fixed sentence, and the monitor's form asks for a new one. A secret in use cannot be deleted (3.1).
 
 ### Heartbeat
 
 The form sends `name` (1 to 80 characters), `period_s`, `grace_s` (both from the lists in `check-options`), `severity`, `is_public`, `alert` and `auto_incident` (as for a monitor). The page words `grace_s` as "Can be late by"; the field name and the 422 key stay `grace_s`, and its error reads "Pick how late the job can be from the list."
 
-View fields: `id`, `every` and `grace` (in words, such as `1 day`, `30 minutes`), `created_at`, `last_ping_at`, `deadline_at`, `state`, `due` (`{used, late, text}`: how much of the wait has passed, and a sentence) and `last` (`{ok, cause, at}`, the newest ping of either kind, or null).
+View fields: `id`, `every` and `grace` (in words, such as `1 day`, `30 minutes`), `created_at`, `last_ping_at`, `deadline_at`, `state` (as for a monitor), `paused_at` (Unix seconds, or null while it runs), `due` (`{used, late, text}`: how much of the wait has passed, and a sentence) and `last` (`{ok, cause, at}`, the newest ping of either kind, or null).
+
+### 4.3a Pause (v1.1 Q38)
+
+`PUT .../paused` takes `{paused: true}` or `{paused: false}`. A supervisor gets 403 like every write. While paused:
+
+| Part | Rule |
+| --- | --- |
+| Monitor | The scheduler and the location probes skip it. |
+| Heartbeat | The missed-ping sweep skips it. A ping (4.1, 4.2) is still accepted with 200 and stored, but it opens and closes nothing and sends no alert. |
+| Incidents and alerts | None open or send. Pausing closes the source's open automatic incident without a resolved alert. Its update message is "Paused by a tech lead." The failure streak starts over. |
+| Resume | A monitor's next check is due at once. A heartbeat's deadline becomes now + `period_s` + `grace_s`. |
+| State | `paused` ("Paused", grey) in the team's lists, detail pages and the overview. |
+| Status page | A paused source is hidden from the page and its JSON until it resumes (07). |
+
+A maintenance window is different: checks keep running during a window (05, 5.3).
+
+### 4.3b Ping checks (v1.1 Q24, Q40)
+
+A ping check first sends one echo over the unprivileged ICMP datagram socket. macOS always allows it. Linux allows it when `net.ipv4.ping_group_range` covers Monita's group; systemd 243 and later and Docker set `0 2147483647`. Where the socket is refused (permission denied), and always on Windows, Monita runs the system `ping` once. Linux and busybox: `ping -n -c 1 -W <secs> [-6] <ip>`. Windows: `ping -n 1 -w <ms> <ip>`, with no console window. A reply is an output line with `TTL=`; the exit code is not used, because Windows `ping` exits 0 on "Destination host unreachable". The time comes from `time=12.3 ms`, `time<1ms` or a local form such as `Zeit=14ms`; otherwise it is the measured wall time. If `ping` is missing, or it is refused too (a permission error on stderr), the check fails with the message that names the sysctl.
 
 ## 4.4 System page
 

@@ -42,6 +42,8 @@ Monita emails a sign-up link. The link works once and expires in 72 hours. The p
 
 ### Find and filter
 
+Each row shows the user's picture, or their initial when they have none.
+
 - **Search by email** narrows the list.
 - The **Role** filter has **Any role**, **Super admin**, **Supervisor** and **Tech lead**.
 - The **Status** filter has **Any status**, **Active**, **Invited** and **Disabled**.
@@ -65,7 +67,7 @@ You cannot act on your own account. A disabled user can only be enabled. A batch
 
 ## Your picture
 
-Open the avatar menu and select **User settings**. **Profile** opens. Select **Choose a picture**, pick a PNG, JPEG or WebP file, then select **Save picture**. Monita crops it to a square and the top bar shows it in place of your initial. **Remove picture** goes back to the initial.
+Open the avatar menu and select **User settings**. **Profile** opens. Select **Choose a picture**, pick a PNG, JPEG or WebP file, then select **Save picture**. Monita crops it to a square. The top bar shows it in place of your initial, and other signed-in users see it in the user list and as the owner of your projects. **Remove picture** goes back to the initial.
 
 ## Your password
 
@@ -82,7 +84,7 @@ Each user can ask for a code after the password. Open the avatar menu, select **
 
 Sign-in then asks for the code after the password. Five wrong codes or five minutes send you back to the password. A code works once. An account takes 10 wrong codes in each 15-minute window (the windows start at :00, :15, :30 and :45), across sign-ins and the turn-off form; after that every code waits until the window ends.
 
-To turn it off, enter a code or a recovery code on the same page. A super admin can turn it off for another user (see [Act on users](#act-on-users)). A super admin who lost the phone and the codes runs `monita admin reset-password` on the server. A supervisor can turn it on for their own account.
+To turn it off, enter a code or a recovery code on the same page. A super admin can turn it off for another user (see [Act on users](#act-on-users)). If nobody can sign in to turn it off, run `monita admin reset-sign-in --email <address>` on the server. See [Lost authenticator and recovery codes](operations.md#lost-authenticator-and-recovery-codes). A super admin can also run `monita admin reset-password`. A supervisor can turn it on for their own account.
 
 ## Rate limits
 
@@ -131,7 +133,11 @@ Monita stores the password as you enter it, because it must send it to the serve
 
 ### Send a test email
 
-Enter **Send it to** (it starts as your own address) and select **Send test email**. Monita sends it now and shows the result on the page: "Sent to ...", the error, or a note that no server is set and the email went to the log. Check the inbox and the spam folder.
+Enter **Send it to** (it starts as your own address) and select **Send test email**. Monita sends it now and shows the result on the page: "Sent to ...", the error, or a note that no server is set and the email went to the log. Check the inbox and the spam folder. The test email goes straight to the server, so the rule below does not apply to it.
+
+### Mail to Monita's own address
+
+Monita drops an email addressed to its own sender address, the **From** of the saved server or else `MONITA_MAIL_FROM`. That mail would only return to the mailbox that sent it. The comparison ignores case. Monita sends it anyway when an active user signs in with that address. The rule covers every email that goes through the queue: alerts, digests, invites and card tests. It does not cover **Send test email**.
 
 ### Email delivery
 
@@ -141,8 +147,11 @@ A badge reads **Sending** or **Log only**. The section shows the mail server, th
 
 **Admin**, **Telegram** sets the global Telegram bot. Projects then pick **Global Telegram** and connect a chat with a link, with no token of their own.
 
-1. In Telegram, message @BotFather, send `/newbot`, and copy the token.
-2. Paste it in **Bot token** and select **Save token**. Monita checks the token with Telegram first.
+With no bot, the page shows **Not set** and three steps from BotFather above the token field. With a bot, it shows **Set up**, the bot's @name and **Open in Telegram**. **Replace token** shows the token field again. **Remove bot** deletes the bot.
+
+1. In Telegram, open @BotFather and send `/newbot`.
+2. Pick a name and a username for the bot.
+3. Copy the token BotFather sends. Paste it in **Bot token** and select **Save token**. Monita checks the token with Telegram first.
 
 Use a bot for Monita alone: Monita reads the bot's messages to find connect links, so a bot that sends its messages to a webhook is refused. **Remove bot** stops every alert that uses it until a bot is set again. Pages never show the token; a supervisor sees the bot's name only.
 

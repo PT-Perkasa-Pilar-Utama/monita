@@ -17,6 +17,8 @@
 
 These numbers are the targets that [12](12-incident-engine.md) and [13](13-check-scheduler.md) refer to.
 
+Measured against NFR-05 on a release build with 290 000 check rows: a project's Monitors list took 6 ms for one monitor and 169 ms for a full project of 100. The hourly buckets read each monitor through the `check_results(monitor_id, checked_at)` index. An earlier single join let the query planner scan every project's results: 1.8 s for one monitor on a debug build.
+
 ## 8.2 Limits
 
 No list is unbounded. No page renders every row of a list that can grow: it reads one page and paginates. A capped list is refused at insert past its cap (422 with a plain message), and its read uses the same number as its `LIMIT`. Projects have no cap. Source: `src/platform/caps.rs`; tests: `tests/limits.rs` and `tests/projects.rs`.

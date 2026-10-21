@@ -87,6 +87,19 @@ except Exception:
 
 A supervisor does not see the ping URL.
 
+## Pause a heartbeat
+
+Select **Pause** on the heartbeat page and confirm. While it is paused:
+
+- Monita still accepts its pings and stores them, but a ping opens and closes nothing.
+- Monita watches no deadline, so a missed ping opens no incident and sends no alert.
+- The state reads **Paused** in grey, and the page says **Paused since** and the time.
+- The status page hides it.
+
+Pausing closes the heartbeat's open automatic incident without a resolved alert. Its last update reads "Paused by a tech lead." Select **Resume** and the deadline starts over: now plus **Runs every** plus **Can be late by**.
+
+For planned work that should not alert, you can also [plan maintenance](incidents.md#maintenance-windows) from the heartbeat page.
+
 ## Resolve by hand
 
 A tech lead can post **Resolved** on a heartbeat's incident, for example when the job is retired. The heartbeat gets a new deadline: now plus **Runs every** plus **Can be late by**. A silent job opens a new incident at that time. See [Incidents](incidents.md#resolve-an-automatic-incident-by-hand).

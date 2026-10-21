@@ -24,7 +24,7 @@ Select **How monitors work** at the top of the page for a short guide with examp
 
 The interval, the timeout, the failure count, the alert level and the status page work as for HTTP. A DNS check asks the resolver of the server that runs Monita, so it sees `/etc/hosts` and the server's DNS settings. **Details** shows the same check as a command: `nc -vz` for a port, `getent ahosts` for a name and `ping -c 1` for a host. DNS record types other than A and AAAA are not checked.
 
-A ping check uses an ICMP socket that needs no root and no extra capability. Linux allows it when the sysctl `net.ipv4.ping_group_range` covers Monita's group. systemd 243 and later, and Docker, set it to `0 2147483647`, which covers every group. If the server refuses, the check fails with an error that names this setting. Windows has no such socket, so a Monita on Windows does not offer ping. Use a TCP check there, or for a host that blocks ICMP.
+A ping check first uses an ICMP socket that needs no root and no extra capability. macOS always allows it. Linux allows it when the sysctl `net.ipv4.ping_group_range` covers Monita's group. systemd 243 and later, and Docker, set it to `0 2147483647`, which covers every group. Where the system refuses the socket, and always on Windows, Monita runs the system `ping` command once instead. If that is missing or refused too, the check fails with an error that names the sysctl. Use a TCP check for a host that blocks ICMP.
 
 ## Certificate warning
 
@@ -108,7 +108,22 @@ A tech lead can also open an incident by hand. See [Incidents](incidents.md).
 | Up | The last check passed |
 | Down | The monitor is past its failed-check count |
 | Issue | An open manual incident names it |
+| Maintenance | An active maintenance window covers it |
+| Paused | A tech lead paused it |
 | No data yet | No check has run |
+
+## Pause a monitor
+
+Select **Pause** on the monitor page and confirm. Use it when you take a system out of service and want to keep its history. While a monitor is paused:
+
+- Monita runs no check on it, from this server or from a location.
+- No incident opens and no alert goes out.
+- The state reads **Paused** in grey, and the page says **Paused since** and the time.
+- The status page hides it.
+
+Pausing closes the monitor's open automatic incident without a resolved alert. The incident's last update reads "Paused by a tech lead." The count of failed checks in a row starts over. Select **Resume** and the next check runs at once.
+
+A maintenance window is different. During a window the checks keep running. See [Maintenance windows](incidents.md#maintenance-windows).
 
 ## The monitor page
 

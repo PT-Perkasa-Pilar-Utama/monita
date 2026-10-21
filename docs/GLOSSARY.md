@@ -14,6 +14,7 @@ Monita's docs, pages and code use each of these words with one meaning. Say "tec
 | Heartbeat | A URL that a cron job calls when it runs. Monita expects the call before a deadline. |
 | Ping | One call from a cron job to its heartbeat URL. Not the same as a ping check. |
 | Incident | A record that something is down. Monita opens an automatic incident itself. A tech lead or a super admin opens a manual incident by hand. |
+| Paused | A monitor or heartbeat a tech lead stopped for a while. Nothing checks it, nothing opens and no alert goes out until it resumes. Not a maintenance window. |
 | Maintenance window | A planned time when a project's chosen monitors and heartbeats open no incident and send no alert. The status page shows them as Maintenance. |
 | Two-factor sign-in | A 6-digit code from an authenticator app that Monita asks for after the password, when the user turned it on. |
 | Recovery code | One of ten codes shown once when two-factor sign-in is turned on. Each signs in once without the phone. |

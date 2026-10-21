@@ -7,6 +7,7 @@ A project groups the monitors, heartbeats, incidents and tickets of one system. 
 **Projects** is the first page after sign-in. It lists your projects 20 at a time. A super admin and a supervisor see every project. A tech lead sees the projects they own.
 
 - Switch between the card view and the list view. Monita remembers your choice. Both show the project's state, open incidents and open tickets. The card also shows the owner, the creation date and a link to the status page.
+- Each project draws a bar for each of the last 24 hours. An hour before any monitor or heartbeat existed, or while all of them were paused, has no data and shows grey, not green.
 - **Search projects** runs on the server.
 - Filter by **Owner** (only when more than one owner exists). Sort by **Newest first** (the default), **Oldest first** or **Name**.
 - Monita reopens your last search and page when you return to the list.
@@ -29,6 +30,12 @@ The form names every bad field at once.
 ## The project tabs
 
 A project has these tabs: **Overview**, **Monitors**, **Heartbeats**, **Incidents**, **Tickets**, **Changelog** and **Settings**. A count on a tab shows what needs you: monitors and heartbeats down, open incidents, and tickets in Triage.
+
+### Overview
+
+**Overview** opens with a **Last 24 hours** card. It has one row for each monitor and heartbeat, up to 10 of each. A row shows the name, the state, 24 bars (one for each hour) and the uptime for the 24 hours. Hover a bar to read that hour. Select a row to open its page. A bar is grey for an hour when Monita did not watch the system, as on the project list.
+
+The rows that need you come first: down, issue, maintenance, no data yet, up, then paused. Rows in the same state sort by the lowest uptime, then by name. With more than 10 of a kind, the card says "10 of N, those that need you first" and links to **All monitors** or **All heartbeats**. The page reads again every 30 seconds, and **Refresh** reads it now. The About column shows the owner's picture, the owner and the number of tickets in Triage.
 
 ## Settings
 
@@ -59,6 +66,8 @@ An API key lets your backend call the Monita API, for example to issue ref IDs. 
 1. Select **New API key**.
 2. Name it after the program that uses it, up to 60 characters.
 3. Copy the key. Monita shows it only once.
+
+Select **How API keys work** for a guide. It says what a key is for: your own server issues ref IDs. A key cannot read or change monitors, incidents or settings. It shows the three steps of the ticket flow, and how to send a key: `Authorization: Bearer mk_…`, from your server only. A key is shown once. A revoked key gets 401. A key has 120 calls a minute by default. Tabs show the calls to **Issue a ref ID**, **File a ticket** and **Reporter's tickets**.
 
 The table lists each key's name, a short form of the key, **Last used** and **Status**. Select **Revoke** to stop a key. A revoked key gets 401 on every call. This cannot be undone. A project holds 20 live keys.
 

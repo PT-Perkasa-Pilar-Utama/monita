@@ -11,6 +11,7 @@ A project as every route shows it (`project`):
 | Field | Value |
 | --- | --- |
 | `name`, `slug`, `owner_email` | strings |
+| `owner_id`, `owner_avatar_at` | the owner's id and when their picture last changed, or null. The picture is at `/users/{owner_id}/avatar?v={owner_avatar_at}` (2.5). |
 | `description` | text up to 280 characters, or null |
 | `homepage_url` | `http` or `https` address with no user name or password, or null for a project made before it was required |
 | `icon_url` | `/projects/{slug}/icon?v={icon_at}`, or null |
@@ -24,7 +25,7 @@ A project as every route shows it (`project`):
 | POST | `/api/ui/projects` | session | `name` (up to 80 chars), `homepage_url` (required), `description` (optional, up to 280 chars), `icon` (optional base64 PNG or WebP, up to 32 KB, scaled by the page), `owner_email` (super admin only; blank is the caller) | Create, 201 with the `project`. No project cap. A TL always owns what they create. Every bad field comes back at once in `error.fields`: `name`, `homepage_url`, `description`, `icon`; a super admin naming an unknown owner gets `owner_email`. `homepage_url` must start with `http://` or `https://` and hold at most 2 000 characters. The slug is made from the name plus 6 random characters; a taken draw is drawn again. Seeds two `alert_routes` rows. | AC-06.01, AC-06.02 |
 | GET | `/api/ui/projects/{slug}` | owner, super_admin, supervisor | | `project` and `counts` for the tab bar: `monitors`, `heartbeats` (totals), `monitors_down`, `heartbeats_down`, `incidents` (open), `tickets` (not done) and `triage`. The tabs show a number only for what needs a look: down, open and Triage. | |
 | DELETE | `/api/ui/projects/{slug}` | super_admin | `confirm` (the project's name, typed again) | Delete the project and everything in it: checks, incidents, tickets, keys, secrets, alert settings and releases. A `confirm` that is not the name is 422 on `confirm`. 204. A TL gets 403, whoever owns the project. | |
-| GET | `/api/ui/projects/{slug}/overview` | owner, super_admin, supervisor | | `monitors` and `heartbeats` (`total`, worst `kind`, a sentence), `triage` (tickets in Triage), `incidents` (the newest 5 open), `active_keys`. | |
+| GET | `/api/ui/projects/{slug}/overview` | owner, super_admin, supervisor | | `monitors` and `heartbeats` (`total`, worst `kind`, a sentence), `triage` (tickets in Triage), `incidents` (the newest 5 open), `active_keys`, and `timeline` (v1.1 Q39, below). | |
 | PUT | `/api/ui/projects/{slug}/profile` | owner, super_admin | `description`, `homepage_url` (required), `icon`, `remove_icon` (`on`) | Saves the description and the homepage. A new icon replaces the old one; `remove_icon` without a new icon removes it. 204, or 422 with every bad field in `error.fields`. | AC-06.04 |
 | GET | `/projects/{slug}/icon` | owner, super_admin, supervisor | `?v={icon_at}` | The icon with its stored type and `Cache-Control: private, max-age=31536000, immutable`. 404 when there is none. | AC-06.04 |
 | GET | `/api/ui/projects/{slug}/owners` | super_admin | | Who may own the project: the acting super admin first, then every active TL (email, role). A supervisor is never listed. | AC-05.01 |
@@ -35,14 +36,16 @@ A project as every route shows it (`project`):
 | PUT | `/api/ui/projects/{slug}/allowlist` | owner, super_admin | `cidrs` (one per line; empty turns it off) | Validate each CIDR. Save, 204, or 422 on `cidrs`. | AC-08.01, AC-08.02 |
 | PUT | `/api/ui/projects/{slug}/public-pages` | owner, super_admin | `incidents`, `known_issues`, `report`, `changelog` (booleans) | Choose the public tabs besides Uptime, which always shows. A missing field means on, as for a new project (v1.1 Q28). 204. A tab off answers 404 on its public routes (7.2, 8.5, 11.2). `report` switches both the Report a bug form and the reporter's own tickets. | |
 
+`timeline` holds `monitors` and `heartbeats`, each a list of lanes, at most 10 each. A lane is `{id, name, state, uptime, hours}`. `state` is `up`, `down`, `issue`, `maintenance`, `paused` or `unknown`. `uptime` is the share of the last 24 hours the source was watched and not down, or null when it was not watched. `hours` holds 24 entries `{day, uptime, downtime_s}`, oldest first, where `day` is the hour such as `14:00` in the server's time zone. They are the same hourly buckets as a project's `pulse`: downtime comes from automatic incidents, and an hour when the source was not watched (not yet created, or paused) has null `uptime`. Lanes sort by state (down, issue, maintenance, no data yet, up, paused), then the lowest `uptime`, then the name without regard to case.
+
 `pulse` on a list row is the project at a glance:
 
 | Field | Value |
 | --- | --- |
-| `kind` | `up`, `down`, `issue` or `unknown`: the worse of the monitors' and heartbeats' |
+| `kind` | `up`, `down`, `issue`, `maintenance`, `paused` (every one paused) or `unknown`: the worse of the monitors' and heartbeats' |
 | `monitors`, `heartbeats` | `{total, kind, text}`: the count, the worst state and one sentence |
 | `incidents`, `tickets` | open incidents; tickets not done |
-| `hours` | 24 hourly bars ending with the current hour, oldest first: `day` (`14:00`, the hour's start in the admin's time zone), `uptime` (percent, or null with no systems) and `downtime_s`. Only automatic incidents count as downtime. |
+| `hours` | 24 hourly bars ending with the current hour, oldest first: `day` (`14:00`, the hour's start in the admin's time zone), `uptime` (percent, or null when no monitor or heartbeat was watched that hour) and `downtime_s`. A source counts from when it was created until it was paused, so an hour before any existed, or while all are paused, has no data. Only automatic incidents count as downtime. |
 
 ## 3.2 API key rule for every JSON call
 

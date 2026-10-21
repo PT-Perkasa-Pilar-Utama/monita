@@ -11,6 +11,7 @@ The `monita` binary. `admin create` is in [02-authentication.md section 2.1](02-
 | `monita whereis [env\|data\|backups\|bin\|service\|logs]` | Prints where things are (10.4). |
 | `monita admin create --email` | Creates a super admin (2.1). |
 | `monita admin reset-password --email` | Sets a new password for a super admin, turns their two-factor sign-in off, and signs them out everywhere. |
+| `monita admin reset-sign-in --email` | For any active user who lost the authenticator and the recovery codes: turns two-factor off, stops the old password, and queues an invite email (10.6). |
 | `monita --version` | Prints the version. |
 
 Every error prints `Error: <message>` to stderr and exits 1. A usage error exits 2.
@@ -64,3 +65,16 @@ Runs checks for one location of another Monita (technical-specs 14). It reads no
 | `--concurrency <n>` | | Checks at once, 1 to 50, default 20 |
 
 Each second it asks for as many jobs as it has free slots, runs them, and posts each finished batch. A server it cannot reach is logged and tried again 5 seconds later. A 401 means the token was deleted: it logs that and exits with status 1. It stops on Ctrl-C or SIGTERM after the checks in flight.
+
+## 10.6 `monita admin reset-sign-in`
+
+The fail-safe for a user who lost the authenticator and the recovery codes. It works for any active user: super admin, tech lead or supervisor. It runs offline like the other `admin` commands, so the server must be stopped.
+
+| Part | Contract |
+| --- | --- |
+| Input | `--email <address>`. |
+| Behavior | Does what a super admin's new invite does (2.3): deletes the user's sessions and older invites, turns two-factor off, and makes the old password stop working. Then it queues an invite email and prints its link. |
+| Output | `Two-factor is off for <email> and the old password no longer works.` Then the link. The email goes out when Monita runs. The link works once and lasts 72 hours. |
+| Errors | An unknown or disabled user: exit 1, `No active user has this email.` |
+
+`monita admin reset-password` stays the way to set a super admin's password directly.

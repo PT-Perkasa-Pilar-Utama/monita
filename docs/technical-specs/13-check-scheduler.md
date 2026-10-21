@@ -7,13 +7,13 @@ One loop drives every timed job in Monita: monitor checks, heartbeat deadlines, 
 | Concern | Decision | Rationale |
 | --- | --- | --- |
 | Driver | One tokio loop that ticks every 1 s and reads due work from the database | T3. Edits apply on the next tick. A restart resumes. |
-| Monitor due | `next_check_at <= now` | Indexed column |
+| Monitor due | `next_check_at <= now` and `paused_at IS NULL`. A location's claim skips a paused monitor too. Resume sets the monitor due at once. | Indexed column. Pause: v1.1 Q38. |
 | Claim | Set `next_check_at = now + interval_s` before the probe starts | A slow probe is never picked twice. |
 | Concurrency | `tokio::sync::Semaphore` with `settings.check_concurrency` permits (50), re-read every tick | Q10 |
 | Batch size | `LIMIT available_permits` | The loop never queues more than it can run. |
 | New monitor offset | `next_check_at = now + 5 + rand(0..interval_s - 5)` | Q10. Spreads load. |
 | Interval edit | `next_check_at = now + 5 + rand(0..interval_s - 5)` | Same spreading |
-| Heartbeat due | `deadline_at <= now`. The loop sends `HeartbeatMissed`, then sets `deadline_at = NULL`. | One miss signal per outage |
+| Heartbeat due | `deadline_at <= now` and `paused_at IS NULL`. The loop sends `HeartbeatMissed`, then sets `deadline_at = NULL`. Resume sets `deadline_at = now + period_s + grace_s`. | One miss signal per outage |
 | Ping | `deadline_at = now + period_s + grace_s` | Q7 |
 | Hand resolve | A TL's Resolved on a heartbeat's incident sets `deadline_at = now + period_s + grace_s` and forgets a held `/fail` text (`checks::rearm_heartbeat`) | Without it nothing watches the heartbeat until its next ping. Migration 0012 repaired heartbeats left without a deadline. |
 | New heartbeat | `deadline_at = created_at + period_s + grace_s` | A job that never pings still alerts. |
