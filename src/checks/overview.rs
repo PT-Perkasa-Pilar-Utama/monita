@@ -121,11 +121,16 @@ pub fn summary(states: &[&str], noun: &str) -> (&'static str, String) {
             "maintenance",
             format!("{m} of {n} {} {verb} in maintenance.", noun(n)),
         )
-    } else if count("unknown") == n {
+    } else if count("paused") == n {
+        ("paused", format!("All {n} {} are paused.", noun(n)))
+    } else if count("unknown") + count("paused") == n {
         (
             "unknown",
             format!("Waiting for the first check of {n} {}.", noun(n)),
         )
+    } else if count("paused") > 0 {
+        let paused = count("paused");
+        ("up", format!("{} up and {paused} paused.", n - paused))
     } else {
         ("up", format!("All {n} {} are up.", noun(n)))
     }
@@ -255,6 +260,15 @@ mod tests {
             summary(&["unknown"], "heartbeat").1,
             "Waiting for the first check of 1 heartbeat."
         );
+        assert_eq!(
+            summary(&["paused", "paused"], "monitor"),
+            ("paused", "All 2 monitors are paused.".to_string())
+        );
+        assert_eq!(
+            summary(&["up", "paused", "up"], "monitor").1,
+            "2 up and 1 paused."
+        );
+        assert_eq!(summary(&["unknown", "paused"], "monitor").0, "unknown");
     }
 
     fn hb(last: Option<i64>, deadline: Option<i64>) -> Heartbeat {
