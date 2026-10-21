@@ -80,6 +80,9 @@ pub struct Summary {
     pub total: usize,
     pub kind: &'static str,
     pub text: String,
+    /// When each one was added, for the project list's hourly bars.
+    #[serde(skip)]
+    pub since: Vec<i64>,
 }
 
 /// The Overview's monitor and heartbeat cards, in that order.
@@ -88,24 +91,30 @@ pub async fn summaries(db: &Db, project_id: i64) -> anyhow::Result<[Summary; 2]>
     let states = crate::incidents::team_states_for(db, project_id).await?;
     let state = |kind, id| states.get(&(kind, id)).copied();
     let monitors = list_monitors(db, project_id).await?;
+    let monitor_since: Vec<i64> = monitors.iter().map(|m| m.created_at).collect();
     let monitors: Vec<_> = monitors
         .iter()
         .map(|m| item_state(m.last.is_some(), state(SourceKind::Monitor, m.id)).0)
         .collect();
     let beats = heartbeat::list(db, project_id).await?;
+    let beat_since: Vec<i64> = beats.iter().map(|h| h.created_at).collect();
     let beats: Vec<_> = beats
         .iter()
         .map(|h| h.state(state(SourceKind::Heartbeat, h.id)).0)
         .collect();
-    let line = |states: &[&str], noun| {
+    let line = |states: &[&str], noun, since| {
         let (kind, text) = overview::summary(states, noun);
         Summary {
             total: states.len(),
             kind,
             text,
+            since,
         }
     };
-    Ok([line(&monitors, "monitor"), line(&beats, "heartbeat")])
+    Ok([
+        line(&monitors, "monitor", monitor_since),
+        line(&beats, "heartbeat", beat_since),
+    ])
 }
 
 pub async fn public_items(db: &Db, project_id: i64) -> anyhow::Result<Vec<PublicItem>> {

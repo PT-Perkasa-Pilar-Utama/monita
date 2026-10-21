@@ -6,7 +6,7 @@ use serde::Serialize;
 use crate::platform::{db::Db, now};
 
 /// One hour of the project's last day. `uptime` is the share of its systems' time that was not
-/// down; null when the project has no monitor or heartbeat.
+/// down; null when no monitor or heartbeat existed in that hour.
 #[derive(Debug, PartialEq, Serialize)]
 pub struct Hour {
     /// `14:00`, the hour's start in the admin's offset. Named `day` so the page draws it with
@@ -30,8 +30,9 @@ pub struct Pulse {
 const HOURS: i64 = 24;
 
 /// 24 hours ending with the current one. Down seconds of every system add up, so two systems
-/// down for the whole hour read 0% when the project has two, 50% when it has four.
-pub fn hours(intervals: &[(i64, i64)], items: usize, now: i64, off: i64) -> Vec<Hour> {
+/// down for the whole hour read 0% when the project has two, 50% when it has four. A system
+/// counts from `since`, when it was added: an hour before every system has no data.
+pub fn hours(intervals: &[(i64, i64)], since: &[i64], now: i64, off: i64) -> Vec<Hour> {
     let local = now + off * 60;
     let current = local - local.rem_euclid(3600) - off * 60;
     (0..HOURS)
@@ -42,10 +43,10 @@ pub fn hours(intervals: &[(i64, i64)], items: usize, now: i64, off: i64) -> Vec<
                 .iter()
                 .map(|&(s, e)| (e.min(hi) - s.max(lo)).max(0))
                 .sum();
-            let span = (hi - lo).max(1) * items as i64;
+            let span: i64 = since.iter().map(|&s| (hi - s.max(lo)).max(0)).sum();
             Hour {
                 day: crate::platform::time::local(lo, off)[11..16].to_string(),
-                uptime: (items > 0).then(|| {
+                uptime: (span > 0).then(|| {
                     (10_000.0 * (1.0 - down.min(span) as f64 / span as f64)).round() / 100.0
                 }),
                 downtime_s: down,
@@ -78,7 +79,12 @@ pub async fn pulse(db: &Db, project_id: i64) -> anyhow::Result<Pulse> {
             .collect();
     Ok(Pulse {
         kind: worse(monitors.kind, heartbeats.kind),
-        hours: hours(&spans, monitors.total + heartbeats.total, t, off),
+        hours: hours(
+            &spans,
+            &[&monitors.since[..], &heartbeats.since[..]].concat(),
+            t,
+            off,
+        ),
         incidents: crate::incidents::open_count(db, project_id).await?,
         tickets: crate::tickets::open_count(db, project_id).await?,
         monitors,
@@ -96,7 +102,8 @@ mod tests {
     fn each_hour_counts_the_share_of_system_time_that_was_down() {
         let now = NOON + 1800;
         // One of two systems down from 11:00 to 11:30: a quarter of that hour.
-        let h = hours(&[(NOON - 3600, NOON - 1800)], 2, now, 0);
+        let old = NOON - 2 * 86_400;
+        let h = hours(&[(NOON - 3600, NOON - 1800)], &[old, old], now, 0);
         assert_eq!(h.len(), 24);
         assert_eq!(h[23].day, "12:00", "the current hour is last");
         assert_eq!(h[22].day, "11:00");
@@ -104,11 +111,15 @@ mod tests {
         assert_eq!(h[23].uptime, Some(100.0));
         assert_eq!(h[0].day, "13:00", "the day before");
         assert!(
-            hours(&[], 0, now, 0).iter().all(|h| h.uptime.is_none()),
+            hours(&[], &[], now, 0).iter().all(|h| h.uptime.is_none()),
             "no systems, no data"
         );
+        // Added at 10:30: no data before 10:00, a full bar from 10:00 on.
+        let young = hours(&[], &[NOON - 5400], now, 0);
+        assert_eq!(young[20].uptime, None, "09:00");
+        assert_eq!(young[21].uptime, Some(100.0), "10:00");
         assert_eq!(
-            hours(&[], 1, now, 420)[23].day,
+            hours(&[], &[old], now, 420)[23].day,
             "19:00",
             "hours read in the offset"
         );
