@@ -1,3 +1,5 @@
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { SourceActions } from "@/components/app/SourceActions";
 import { RefreshButton } from "@/components/app/RefreshButton";
 import { Writable } from "@/lib/session";
 import type { ReactElement } from "react";
@@ -60,6 +62,7 @@ export function Heartbeat({ editing = false }: { editing?: boolean }): ReactElem
               <>
                 <RefreshButton onClick={res.refresh} busy={res.refreshing} />
                 {d.ping_url && <HeartbeatDetails h={h} pingUrl={d.ping_url} />}
+                <SourceActions slug={p.slug} kind="heartbeat" id={h.id} path={`${base}/${h.id}`} paused={h.paused_at !== null} onChange={res.reload} />
                 <Writable>
                   <Button asChild variant="secondary">
                     <Link to={`${base}/${h.id}/edit`}>
@@ -72,6 +75,11 @@ export function Heartbeat({ editing = false }: { editing?: boolean }): ReactElem
             }
           />
           <div className="flex flex-col gap-6">
+            {h.paused_at !== null && (
+              <Alert>
+                <AlertDescription>Paused since {stamp(h.paused_at)}. Monita keeps its pings but watches no deadline and sends no alert.</AlertDescription>
+              </Alert>
+            )}
             {fresh && d.ping_url && (
               <Card>
                 <CardHeader>

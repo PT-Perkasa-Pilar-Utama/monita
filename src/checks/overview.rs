@@ -272,6 +272,7 @@ mod tests {
             last_ping_at: last,
             deadline_at: deadline,
             created_at: 0,
+            paused_at: None,
         }
     }
 

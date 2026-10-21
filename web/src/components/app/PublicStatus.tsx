@@ -6,11 +6,11 @@ import { stamp } from "@/lib/time";
 import type { PublicIncident, PublicItem, PublicMaintenance, StateKind, UptimeDay } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-const STATE_WORD = { up: "Up", down: "Down", issue: "Issue", maintenance: "Maintenance", unknown: "No data yet" } as const;
+const STATE_WORD = { up: "Up", down: "Down", issue: "Issue", maintenance: "Maintenance", paused: "Paused", unknown: "No data yet" } as const;
 
 export const uptimeText = (i: PublicItem): string => (i.uptime_90d === null ? "no data yet" : `${i.uptime_90d.toFixed(2)}% uptime`);
 
-const STATE_LINE = { up: "Normal", down: "Down", issue: "Has an issue", maintenance: "Under maintenance", unknown: "No data yet" } as const;
+const STATE_LINE = { up: "Normal", down: "Down", issue: "Has an issue", maintenance: "Under maintenance", paused: "Paused", unknown: "No data yet" } as const;
 
 /** A check, a warning or a cross in the state's colour; a dash before the first check. */
 export function StateIcon({ kind, label = STATE_WORD[kind], className }: { kind: StateKind; label?: string; className?: string }): ReactElement {

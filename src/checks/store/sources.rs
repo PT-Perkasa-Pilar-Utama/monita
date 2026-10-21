@@ -19,10 +19,10 @@ pub async fn public_items(
     crate::platform::db::query_all(
         c,
         "SELECT 'monitor', m.id, m.name, m.created_at, EXISTS (SELECT 1 FROM check_results WHERE monitor_id = m.id), 0
-         FROM monitors m WHERE m.project_id = ?1 AND m.is_public = 1
+         FROM monitors m WHERE m.project_id = ?1 AND m.is_public = 1 AND m.paused_at IS NULL
          UNION ALL
          SELECT 'heartbeat', h.id, h.name, h.created_at, h.last_ping_at IS NOT NULL, 1
-         FROM heartbeats h WHERE h.project_id = ?1 AND h.is_public = 1
+         FROM heartbeats h WHERE h.project_id = ?1 AND h.is_public = 1 AND h.paused_at IS NULL
          ORDER BY 6, 3 LIMIT ?2",
         (project_id, caps::SOURCES_PER_PROJECT),
         |r| {

@@ -164,3 +164,23 @@ test("a tech lead resolves an incident Monita opened, and it closes at once", as
   await expect(page.locator("#state")).toContainText("Resolved");
   await expect(page.locator('[data-update="tech-lead"]')).toHaveText("The disk was cleaned up by hand.");
 });
+
+test("a tech lead pauses a heartbeat, plans maintenance from its page, and resumes it", async ({ page }) => {
+  const { slug, pingUrl } = await projectWithHeartbeat(page);
+  await page.goto(`/projects/${slug}/heartbeats`);
+  await page.getByRole("link", { name: "nightly-settlement" }).click();
+  await page.getByRole("button", { name: "Pause" }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Pause" }).click();
+  await expect(page.locator("#state")).toHaveText("Paused");
+  await expect(page.getByText("Paused since")).toBeVisible();
+  expect((await page.request.post(`${pingUrl}/fail`, { data: "while paused" })).status()).toBe(200);
+  await page.goto(`/projects/${slug}/incidents`);
+  await expect(page.getByText("Every system is up")).toBeVisible();
+
+  await page.goBack();
+  await page.getByRole("link", { name: "Plan maintenance" }).click();
+  await expect(page.getByLabel("nightly-settlement")).toBeChecked();
+  await page.goBack();
+  await page.getByRole("button", { name: "Resume" }).click();
+  await expect(page.locator("#state")).not.toHaveText("Paused");
+});

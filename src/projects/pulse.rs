@@ -31,8 +31,9 @@ const HOURS: i64 = 24;
 
 /// 24 hours ending with the current one. Down seconds of every system add up, so two systems
 /// down for the whole hour read 0% when the project has two, 50% when it has four. A system
-/// counts from `since`, when it was added: an hour before every system has no data.
-pub fn hours(intervals: &[(i64, i64)], since: &[i64], now: i64, off: i64) -> Vec<Hour> {
+/// counts while it was watched, from when it was added until it was paused: an hour when no
+/// system was watched has no data.
+pub fn hours(intervals: &[(i64, i64)], watched: &[(i64, i64)], now: i64, off: i64) -> Vec<Hour> {
     let local = now + off * 60;
     let current = local - local.rem_euclid(3600) - off * 60;
     (0..HOURS)
@@ -43,7 +44,10 @@ pub fn hours(intervals: &[(i64, i64)], since: &[i64], now: i64, off: i64) -> Vec
                 .iter()
                 .map(|&(s, e)| (e.min(hi) - s.max(lo)).max(0))
                 .sum();
-            let span: i64 = since.iter().map(|&s| (hi - s.max(lo)).max(0)).sum();
+            let span: i64 = watched
+                .iter()
+                .map(|&(s, e)| (hi.min(e) - lo.max(s)).max(0))
+                .sum();
             Hour {
                 day: crate::platform::time::local(lo, off)[11..16].to_string(),
                 uptime: (span > 0).then(|| {
@@ -103,7 +107,8 @@ mod tests {
         let now = NOON + 1800;
         // One of two systems down from 11:00 to 11:30: a quarter of that hour.
         let old = NOON - 2 * 86_400;
-        let h = hours(&[(NOON - 3600, NOON - 1800)], &[old, old], now, 0);
+        let always = (old, i64::MAX);
+        let h = hours(&[(NOON - 3600, NOON - 1800)], &[always, always], now, 0);
         assert_eq!(h.len(), 24);
         assert_eq!(h[23].day, "12:00", "the current hour is last");
         assert_eq!(h[22].day, "11:00");
@@ -115,11 +120,15 @@ mod tests {
             "no systems, no data"
         );
         // Added at 10:30: no data before 10:00, a full bar from 10:00 on.
-        let young = hours(&[], &[NOON - 5400], now, 0);
+        let young = hours(&[], &[(NOON - 5400, i64::MAX)], now, 0);
         assert_eq!(young[20].uptime, None, "09:00");
         assert_eq!(young[21].uptime, Some(100.0), "10:00");
+        // Paused at 11:00: no data from then on.
+        let paused = hours(&[], &[(old, NOON - 3600)], now, 0);
+        assert_eq!(paused[21].uptime, Some(100.0), "10:00");
+        assert_eq!(paused[22].uptime, None, "11:00");
         assert_eq!(
-            hours(&[], &[old], now, 420)[23].day,
+            hours(&[], &[always], now, 420)[23].day,
             "19:00",
             "hours read in the offset"
         );

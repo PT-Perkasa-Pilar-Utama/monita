@@ -43,7 +43,7 @@ export type ProjectHead = { project: Project; counts: TabCounts };
 /** The worst state among a project's monitors or heartbeats, and a sentence. */
 export type Summary = { total: number; kind: StateKind; text: string };
 
-export type StateKind = "up" | "down" | "issue" | "maintenance" | "unknown";
+export type StateKind = "up" | "down" | "issue" | "maintenance" | "paused" | "unknown";
 
 export type Severity = "critical" | "warning";
 
@@ -148,6 +148,8 @@ export type MonitorView = {
   created_at: number;
   next_check_at: number;
   state: StateKind;
+  /** When a tech lead paused it; null while it runs (v1.1 Q38). */
+  paused_at: number | null;
   last: LastCheck | null;
 };
 
@@ -250,6 +252,8 @@ export type HeartbeatView = {
   deadline_at: number | null;
   created_at: number;
   state: StateKind;
+  /** When a tech lead paused it; null while it runs (v1.1 Q38). */
+  paused_at: number | null;
   due: Due;
 };
 

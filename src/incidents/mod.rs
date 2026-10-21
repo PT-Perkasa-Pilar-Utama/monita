@@ -19,7 +19,7 @@ use turso::Connection;
 use crate::platform::{caps, db::Db};
 
 pub use manual::{NewIncident, open_manual};
-pub use observe::{observe, source_deleted};
+pub use observe::{observe, source_deleted, source_paused};
 pub use store::{IncidentRow, ItemRef, UpdateRow};
 pub use updates::{allowed_labels, post_update};
 

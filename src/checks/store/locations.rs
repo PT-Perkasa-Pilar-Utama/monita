@@ -114,7 +114,8 @@ pub async fn touch(c: &Connection, id: i64, at: i64) -> anyhow::Result<()> {
 pub async fn any_due(c: &Connection, location_id: i64, at: i64) -> anyhow::Result<bool> {
     Ok(query_i64(
         c,
-        "SELECT EXISTS (SELECT 1 FROM monitor_locations WHERE location_id = ?1 AND next_check_at <= ?2)",
+        "SELECT EXISTS (SELECT 1 FROM monitor_locations ml JOIN monitors m ON m.id = ml.monitor_id
+         WHERE ml.location_id = ?1 AND ml.next_check_at <= ?2 AND m.paused_at IS NULL)",
         (location_id, at),
     )
     .await?

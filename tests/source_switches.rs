@@ -229,3 +229,77 @@ async fn a_monitor_set_to_one_failure_opens_at_once_and_two_waits() {
     assert_eq!(res.status(), 422);
     assert!(json_of(res).await["error"]["fields"]["fails_to_open"].is_string());
 }
+
+async fn set_paused(app: &TestApp, cookie: &str, path: &str, paused: bool) -> u16 {
+    app.api_send(
+        reqwest::Method::PUT,
+        &format!("/api/ui/projects/payments/{path}/paused"),
+        serde_json::json!({ "paused": paused }),
+        Some(cookie),
+    )
+    .await
+    .status()
+    .as_u16()
+}
+
+/// v1.1 Q38: a paused monitor is not checked, its open incident closes without an alert, it
+/// leaves the status page, and it checks again at once when resumed.
+#[tokio::test]
+async fn a_paused_monitor_runs_no_check_closes_its_incident_quietly_and_resumes() {
+    let app = TestApp::spawn("test").await;
+    let (tl, up) = setup(&app, true, true).await;
+    up.store(false, Ordering::SeqCst);
+    check_once(&app).await;
+    check_once(&app).await;
+    assert_eq!(subjects(&app).await.len(), 1, "the incident opened");
+
+    assert_eq!(set_paused(&app, &tl, "monitors/1", true).await, 204);
+    assert_eq!(
+        count(
+            &app,
+            "SELECT count(*) FROM incidents WHERE resolved_at IS NULL"
+        )
+        .await,
+        0,
+        "pausing closes it"
+    );
+    assert_eq!(subjects(&app).await.len(), 1, "with no alert");
+    let results = count(&app, "SELECT count(*) FROM check_results").await;
+    app.state
+        .db
+        .write(async |c| {
+            c.execute("UPDATE monitors SET next_check_at = 0", ())
+                .await?;
+            Ok(())
+        })
+        .await
+        .unwrap();
+    tokio::time::sleep(Duration::from_millis(1500)).await;
+    assert_eq!(
+        count(&app, "SELECT count(*) FROM check_results").await,
+        results,
+        "no check runs"
+    );
+    let team = json_of(
+        app.api_get("/api/ui/projects/payments/monitors", Some(&tl))
+            .await,
+    )
+    .await;
+    assert_eq!(team["data"]["monitors"][0]["state"], "paused");
+    let public = json_of(app.get("/api/ui/public/payments/status", None).await).await;
+    assert!(
+        !public.to_string().contains("API health"),
+        "a paused system leaves the status page"
+    );
+    assert_eq!(set_paused(&app, &tl, "monitors/99", true).await, 404);
+
+    assert_eq!(set_paused(&app, &tl, "monitors/1", false).await, 204);
+    up.store(true, Ordering::SeqCst);
+    check_once(&app).await;
+    let team = json_of(
+        app.api_get("/api/ui/projects/payments/monitors", Some(&tl))
+            .await,
+    )
+    .await;
+    assert_eq!(team["data"]["monitors"][0]["state"], "up");
+}

@@ -166,6 +166,7 @@ export {
   PencilRuler,
   PushPin as Pin,
   PushPinSlash as PinOff,
+  Pause,
   Play,
   PlayCircle,
   Plus,

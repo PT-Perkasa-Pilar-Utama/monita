@@ -113,6 +113,16 @@ pub async fn observe(
     Ok(event.filter(|_| source.alert))
 }
 
+/// A paused monitor or heartbeat closes its open automatic incident without an alert, and its
+/// streak starts over when it resumes (v1.1 Q38).
+pub async fn source_paused(c: &Connection, source: &Source, now: i64) -> anyhow::Result<()> {
+    let (_, open_id, _) = store::load_source(c, source.kind, source.id).await?;
+    if let Some(id) = open_id {
+        store::resolve_auto(c, id, Some("Paused by a tech lead."), now).await?;
+    }
+    store::forget_source(c, source.kind, source.id).await
+}
+
 /// A deleted monitor or heartbeat closes its open automatic incident, so nothing stays open forever.
 /// Returns the resolved event for the open incident, so whoever got "opened" also hears the end.
 pub async fn source_deleted(

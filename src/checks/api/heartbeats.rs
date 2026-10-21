@@ -33,6 +33,10 @@ pub fn router() -> Router<AppState> {
             "/api/ui/projects/{slug}/heartbeats/{id}",
             get(detail).put(update).delete(delete),
         )
+        .route(
+            "/api/ui/projects/{slug}/heartbeats/{id}/paused",
+            axum::routing::put(paused),
+        )
 }
 
 #[derive(Serialize)]
@@ -53,8 +57,10 @@ struct HeartbeatView {
     last: Option<LastPing>,
     deadline_at: Option<i64>,
     created_at: i64,
-    /// `up`, `down`, `issue` or `unknown` (waiting for the first ping).
+    /// `up`, `down`, `issue`, `maintenance`, `paused` or `unknown` (waiting for the first ping).
     state: &'static str,
+    /// When a tech lead paused it; null while it runs.
+    paused_at: Option<i64>,
     /// How much of the wait before the deadline has passed.
     due: Due,
 }
@@ -75,6 +81,7 @@ fn view(h: Heartbeat, last: Option<LastPing>, state: &'static str, now: i64) -> 
         last,
         deadline_at: h.deadline_at,
         created_at: h.created_at,
+        paused_at: h.paused_at,
         state,
         name: h.name,
     }
@@ -247,6 +254,20 @@ async fn update(
     }
     if !heartbeat::update(&state.db, p.id, id, &input).await? {
         return Err(UiError::NotFound);
+    }
+    Ok(StatusCode::NO_CONTENT.into_response())
+}
+
+/// `{paused}`: pause or resume (v1.1 Q38). 204, or 404 for a heartbeat of another project.
+async fn paused(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path((slug, id)): Path<(String, i64)>,
+    crate::platform::ui::Body(f): crate::platform::ui::Body<super::PausedInput>,
+) -> UiResult {
+    let p = projects::find_for(&state.db, &user, &slug).await?;
+    if !crate::checks::set_paused(&state.db, p.id, SourceKind::Heartbeat, id, f.paused).await? {
+        return Err(crate::platform::ui::UiError::NotFound);
     }
     Ok(StatusCode::NO_CONTENT.into_response())
 }

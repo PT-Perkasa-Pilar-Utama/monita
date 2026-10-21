@@ -107,3 +107,9 @@ async fn options(State(state): State<AppState>, CurrentUser(_): CurrentUser) -> 
         },
     })))
 }
+
+/// The pause switch of a monitor or heartbeat.
+#[derive(serde::Deserialize)]
+pub struct PausedInput {
+    pub paused: bool,
+}

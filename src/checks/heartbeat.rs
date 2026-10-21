@@ -62,11 +62,17 @@ pub struct Heartbeat {
     pub last_ping_at: Option<i64>,
     pub deadline_at: Option<i64>,
     pub created_at: i64,
+    /// Set while a tech lead has it paused: pings are kept, but nothing opens or alerts.
+    pub paused_at: Option<i64>,
 }
 
 impl Heartbeat {
     pub fn state(&self, incident: Option<incidents::ItemState>) -> (&'static str, &'static str) {
-        super::item_state(self.last_ping_at.is_some(), incident)
+        super::item_state(
+            self.last_ping_at.is_some(),
+            self.paused_at.is_some(),
+            incident,
+        )
     }
 
     pub fn source(&self) -> Source {
@@ -330,6 +336,10 @@ pub async fn record(
             return Ok(false);
         };
         store::insert_ping(c, hb.id, kind, source_ip.as_deref(), cause.as_deref(), t).await?;
+        // Paused (v1.1 Q38): the ping is kept, but it opens and closes nothing.
+        if hb.paused_at.is_some() {
+            return Ok(true);
+        }
         if let Some(ev) = incidents::observe(c, &hb.source(), &signal, t).await? {
             notify::send(c, &ev, base_url).await?;
         }

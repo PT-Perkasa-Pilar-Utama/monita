@@ -32,8 +32,12 @@ pub const INTERVALS_S: [i64; 4] = [30, 60, 180, 300];
 /// missed ping open one); with none open, an item never checked or pinged is waiting.
 pub fn item_state(
     seen: bool,
+    paused: bool,
     incident: Option<crate::incidents::ItemState>,
 ) -> (&'static str, &'static str) {
+    if paused {
+        return ("paused", "Paused");
+    }
     match incident {
         Some(crate::incidents::ItemState::Down) => ("down", "Down"),
         Some(crate::incidents::ItemState::Issue) => ("issue", "Issue"),
@@ -80,9 +84,10 @@ pub struct Summary {
     pub total: usize,
     pub kind: &'static str,
     pub text: String,
-    /// When each one was added, for the project list's hourly bars.
+    /// When each one was watched, from when it was added until it was paused, for the project
+    /// list's hourly bars.
     #[serde(skip)]
-    pub since: Vec<i64>,
+    pub since: Vec<(i64, i64)>,
 }
 
 /// The Overview's monitor and heartbeat cards, in that order.
@@ -91,13 +96,27 @@ pub async fn summaries(db: &Db, project_id: i64) -> anyhow::Result<[Summary; 2]>
     let states = crate::incidents::team_states_for(db, project_id).await?;
     let state = |kind, id| states.get(&(kind, id)).copied();
     let monitors = list_monitors(db, project_id).await?;
-    let monitor_since: Vec<i64> = monitors.iter().map(|m| m.created_at).collect();
+    let watched = |from: i64, paused: Option<i64>| (from, paused.unwrap_or(i64::MAX));
+    let monitor_since: Vec<(i64, i64)> = monitors
+        .iter()
+        .map(|m| watched(m.created_at, m.paused_at))
+        .collect();
     let monitors: Vec<_> = monitors
         .iter()
-        .map(|m| item_state(m.last.is_some(), state(SourceKind::Monitor, m.id)).0)
+        .map(|m| {
+            item_state(
+                m.last.is_some(),
+                m.paused_at.is_some(),
+                state(SourceKind::Monitor, m.id),
+            )
+            .0
+        })
         .collect();
     let beats = heartbeat::list(db, project_id).await?;
-    let beat_since: Vec<i64> = beats.iter().map(|h| h.created_at).collect();
+    let beat_since: Vec<(i64, i64)> = beats
+        .iter()
+        .map(|h| watched(h.created_at, h.paused_at))
+        .collect();
     let beats: Vec<_> = beats
         .iter()
         .map(|h| h.state(state(SourceKind::Heartbeat, h.id)).0)
@@ -229,6 +248,44 @@ pub async fn run_check(db: &Db, clients: &Clients, m: &Monitor) -> anyhow::Resul
         None
     };
     Ok(Job::new(m, secret).run(clients).await)
+}
+
+/// Pauses or resumes a monitor or heartbeat (v1.1 Q38). A pause closes its open automatic
+/// incident without an alert. A resumed monitor checks at once; a resumed heartbeat's deadline
+/// starts over from now. False when it is not in the project; pausing twice changes nothing.
+pub async fn set_paused(
+    db: &Db,
+    project_id: i64,
+    kind: crate::incidents::SourceKind,
+    id: i64,
+    paused: bool,
+) -> anyhow::Result<bool> {
+    use crate::incidents::SourceKind;
+    db.write(async |c| {
+        let t = now();
+        let (source, was) = match kind {
+            SourceKind::Monitor => match store::find_monitor(c, project_id, id).await? {
+                Some(m) => (m.source(), m.paused_at.is_some()),
+                None => return Ok(false),
+            },
+            SourceKind::Heartbeat => match store::heartbeats::find(c, project_id, id).await? {
+                Some(h) => (h.source(), h.paused_at.is_some()),
+                None => return Ok(false),
+            },
+        };
+        if was == paused {
+            return Ok(true);
+        }
+        if paused {
+            crate::incidents::source_paused(c, &source, t).await?;
+        }
+        match kind {
+            SourceKind::Monitor => store::set_monitor_paused(c, id, paused, t).await?,
+            SourceKind::Heartbeat => store::heartbeats::set_paused(c, id, paused, t).await?,
+        }
+        Ok(true)
+    })
+    .await
 }
 
 /// Also closes the monitor's open incident and alerts that it ended.

@@ -1,4 +1,6 @@
 import { RefreshButton } from "@/components/app/RefreshButton";
+import { SourceActions } from "@/components/app/SourceActions";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Writable } from "@/lib/session";
 import { PlacesCard } from "@/components/app/PlacesCard";
 import { kindTag } from "@/lib/checks";
@@ -64,6 +66,7 @@ export function Monitor({ editing = false }: { editing?: boolean }): ReactElemen
               <>
                 <RefreshButton onClick={res.refresh} busy={res.refreshing} />
                 <MonitorDetails m={m} />
+                <SourceActions slug={p.slug} kind="monitor" id={m.id} path={`${base}/${m.id}`} paused={m.paused_at !== null} onChange={res.reload} />
                 <Writable>
                   <Button asChild variant="secondary">
                     <Link to={`${base}/${m.id}/edit`}>
@@ -76,6 +79,11 @@ export function Monitor({ editing = false }: { editing?: boolean }): ReactElemen
             }
           />
           <div className="flex flex-col gap-6">
+            {m.paused_at !== null && (
+              <Alert>
+                <AlertDescription>Paused since {stamp(m.paused_at)}. Monita does not check it and sends no alert.</AlertDescription>
+              </Alert>
+            )}
             <StatCards stats={d.stats} />
             <ChartCard insight={d.insight} />
             <AvailabilityCard insight={d.insight} />

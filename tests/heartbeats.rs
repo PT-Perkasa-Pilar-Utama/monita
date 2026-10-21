@@ -650,3 +650,54 @@ async fn a_fail_uses_the_heartbeat_as_it_is_when_stored() {
         "the severity edited during the upload"
     );
 }
+
+/// v1.1 Q38: a paused heartbeat keeps its pings but opens nothing, misses no deadline, and
+/// starts a fresh deadline when resumed.
+#[tokio::test]
+async fn a_paused_heartbeat_keeps_pings_opens_nothing_and_resumes_with_a_fresh_deadline() {
+    let app = TestApp::spawn("test").await;
+    let (tl, token) = setup(&app).await;
+    let pause = async |paused: bool| {
+        app.api_send(
+            reqwest::Method::PUT,
+            "/api/ui/projects/payments/heartbeats/1/paused",
+            json!({ "paused": paused }),
+            Some(&tl),
+        )
+        .await
+        .status()
+    };
+    assert_eq!(pause(true).await, 204);
+    assert_eq!(state_label(&app, &tl).await, "paused");
+    let res = ping(&app, reqwest::Method::POST, &format!("/ping/{token}/fail")).await;
+    assert_eq!(res.status(), 200);
+    assert_eq!(count(&app, "SELECT count(*) FROM pings").await, 1, "kept");
+    assert_eq!(count(&app, "SELECT count(*) FROM incidents").await, 0);
+    let read = app.state.db.read().await.unwrap();
+    heartbeat::sweep_missed(
+        &app.state.db,
+        &read,
+        BASE_URL,
+        monita::platform::now() + 10 * 86_400,
+    )
+    .await
+    .unwrap();
+    drop(read);
+    assert_eq!(
+        count(&app, "SELECT count(*) FROM incidents").await,
+        0,
+        "no deadline is missed"
+    );
+
+    assert_eq!(pause(false).await, 204);
+    let deadline = count(
+        &app,
+        "SELECT deadline_at - period_s - grace_s FROM heartbeats",
+    )
+    .await;
+    assert!(
+        (deadline - monita::platform::now()).abs() <= 2,
+        "the deadline starts from now"
+    );
+    assert_ne!(state_label(&app, &tl).await, "paused");
+}

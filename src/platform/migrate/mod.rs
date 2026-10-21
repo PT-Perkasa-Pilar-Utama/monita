@@ -130,6 +130,7 @@ const MIGRATIONS: &[(i64, &str)] = &[
         39,
         include_str!("../../../migrations/0039_ticket_cards.sql"),
     ),
+    (40, include_str!("../../../migrations/0040_pause.sql")),
 ];
 
 pub async fn run(db: &Db) -> anyhow::Result<()> {

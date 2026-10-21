@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { FormEvent, ReactElement } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Link } from "react-router-dom";
 import { ConfirmDialog } from "@/components/app/ConfirmDialog";
 import { FormSheet, FormSheetBody } from "@/components/app/FormSheet";
@@ -64,7 +64,9 @@ function WindowForm({ base, onClose, onSaved }: { base: string; onClose: () => v
   const [title, setTitle] = useState("");
   const [starts, setStarts] = useState(() => inputValue(nowSecs()));
   const [ends, setEnds] = useState(() => inputValue(nowSecs() + 3600));
-  const [items, setItems] = useState<string[]>([]);
+  // "Plan maintenance" on a monitor or heartbeat opens the form with it picked: ?item=monitor:3.
+  const [params] = useSearchParams();
+  const [items, setItems] = useState<string[]>(() => params.getAll("item"));
   const [message, setMessage] = useState("");
   const [error, setError] = useState<ApiError | null>(null);
   const [busy, setBusy] = useState(false);

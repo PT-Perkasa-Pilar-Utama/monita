@@ -5,7 +5,7 @@ use turso::Connection;
 use crate::checks::heartbeat::{Heartbeat, HeartbeatInput, LastPing, PingKind, PingRow};
 use crate::platform::caps;
 
-const COLS: &str = "h.id, h.project_id, h.name, h.token, h.period_s, h.grace_s, h.severity, h.is_public, h.last_ping_at, h.deadline_at, h.created_at, h.alert, h.auto_incident";
+const COLS: &str = "h.id, h.project_id, h.name, h.token, h.period_s, h.grace_s, h.severity, h.is_public, h.last_ping_at, h.deadline_at, h.created_at, h.alert, h.auto_incident, h.paused_at";
 
 fn row(r: &turso::Row) -> turso::Result<Heartbeat> {
     Ok(Heartbeat {
@@ -22,6 +22,7 @@ fn row(r: &turso::Row) -> turso::Result<Heartbeat> {
         last_ping_at: r.get(8)?,
         deadline_at: r.get(9)?,
         created_at: r.get(10)?,
+        paused_at: r.get(13)?,
     })
 }
 
@@ -185,6 +186,21 @@ pub async fn insert_ping(
 }
 
 /// A fresh deadline from `at`, as if the job had pinged then, without counting a ping.
+/// Pauses, or resumes with a fresh deadline from `at`.
+pub async fn set_paused(c: &Connection, id: i64, paused: bool, at: i64) -> anyhow::Result<()> {
+    if paused {
+        c.execute(
+            "UPDATE heartbeats SET paused_at = ?1 WHERE id = ?2",
+            (at, id),
+        )
+        .await?;
+        return Ok(());
+    }
+    c.execute("UPDATE heartbeats SET paused_at = NULL WHERE id = ?1", [id])
+        .await?;
+    rearm(c, id, at).await
+}
+
 pub async fn rearm(c: &Connection, id: i64, at: i64) -> anyhow::Result<()> {
     c.execute(
         "UPDATE heartbeats SET deadline_at = ?1 + period_s + grace_s, held_cause = NULL WHERE id = ?2",
@@ -239,7 +255,7 @@ pub async fn hold(c: &Connection, id: i64, at: i64) -> anyhow::Result<()> {
 pub async fn any_missed(c: &Connection, at: i64) -> anyhow::Result<bool> {
     let n = crate::platform::db::query_i64(
         c,
-        "SELECT EXISTS (SELECT 1 FROM heartbeats WHERE deadline_at <= ?1)",
+        "SELECT EXISTS (SELECT 1 FROM heartbeats WHERE deadline_at <= ?1 AND paused_at IS NULL)",
         [at],
     )
     .await?;
@@ -251,7 +267,7 @@ pub async fn any_missed(c: &Connection, at: i64) -> anyhow::Result<bool> {
 pub async fn take_missed(c: &Connection, at: i64, limit: i64) -> anyhow::Result<Vec<Heartbeat>> {
     let missed = many(
         c,
-        format!("SELECT {COLS} FROM heartbeats h WHERE h.deadline_at <= ?1 ORDER BY h.deadline_at, h.id LIMIT ?2"),
+        format!("SELECT {COLS} FROM heartbeats h WHERE h.deadline_at <= ?1 AND h.paused_at IS NULL ORDER BY h.deadline_at, h.id LIMIT ?2"),
         (at, limit),
     )
     .await?;

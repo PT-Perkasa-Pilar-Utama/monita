@@ -41,6 +41,10 @@ pub fn router() -> Router<AppState> {
             "/api/ui/projects/{slug}/monitors/{id}",
             get(detail).put(update).delete(delete),
         )
+        .route(
+            "/api/ui/projects/{slug}/monitors/{id}/paused",
+            axum::routing::put(paused),
+        )
 }
 
 /// A monitor as its rows and pages show it.
@@ -85,8 +89,10 @@ struct MonitorView {
     auth_header: Option<String>,
     created_at: i64,
     next_check_at: i64,
-    /// `up`, `down`, `issue` or `unknown` (waiting for the first check).
+    /// `up`, `down`, `issue`, `maintenance`, `paused` or `unknown` (waiting for the first check).
     state: &'static str,
+    /// When a tech lead paused it; null while it runs.
+    paused_at: Option<i64>,
     last: Option<LastCheck>,
 }
 
@@ -155,6 +161,7 @@ fn view(m: Monitor, state: &'static str, read_only: bool) -> MonitorView {
         auth_header: m.auth_header,
         created_at: m.created_at,
         next_check_at: m.next_check_at,
+        paused_at: m.paused_at,
         state,
         last: m.last.as_ref().map(|c: &CheckRow| LastCheck {
             checked_at: c.checked_at,
@@ -203,6 +210,7 @@ async fn list(
     let state_of = |m: &Monitor| {
         checks::item_state(
             m.last.is_some(),
+            m.paused_at.is_some(),
             states.get(&(SourceKind::Monitor, m.id)).copied(),
         )
         .0
@@ -223,6 +231,20 @@ async fn list(
         monitors: rows,
         summary: Summary { kind, text },
     }))
+}
+
+/// `{paused}`: pause or resume (v1.1 Q38). 204, or 404 for a monitor of another project.
+async fn paused(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path((slug, id)): Path<(String, i64)>,
+    crate::platform::ui::Body(f): crate::platform::ui::Body<super::super::api::PausedInput>,
+) -> UiResult {
+    let p = projects::find_for(&state.db, &user, &slug).await?;
+    if !checks::set_paused(&state.db, p.id, SourceKind::Monitor, id, f.paused).await? {
+        return Err(UiError::NotFound);
+    }
+    Ok(axum::http::StatusCode::NO_CONTENT.into_response())
 }
 
 #[derive(Serialize)]
@@ -258,7 +280,7 @@ async fn detail(
         .await?
         .get(&(SourceKind::Monitor, id))
         .copied();
-    let s = checks::item_state(m.last.is_some(), incident).0;
+    let s = checks::item_state(m.last.is_some(), m.paused_at.is_some(), incident).0;
     let off = crate::platform::settings::utc_offset(&state.db.read().await?).await?;
     let insight = Insight::monitor(&state.db, &m, paging.range(), now(), off).await?;
     let last = match &m.last {

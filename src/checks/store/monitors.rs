@@ -42,6 +42,8 @@ pub struct Monitor {
     pub quorum: i64,
     /// How many locations also check it; 0 means this server alone.
     pub located: i64,
+    /// Set while a tech lead has it paused: no checks, no incident, no alert.
+    pub paused_at: Option<i64>,
     pub next_check_at: i64,
     pub last: Option<CheckRow>,
     pub created_at: i64,
@@ -62,7 +64,7 @@ impl Monitor {
     }
 }
 
-const COLS: &str = "m.id, m.project_id, m.name, m.url, m.interval_s, m.timeout_ms, m.expected_status, m.keyword, m.skip_tls_verify, m.severity, m.is_public, m.next_check_at, c.checked_at, c.ok, c.status_code, c.latency_ms, c.error, m.created_at, c.id, m.alert, m.auto_incident, m.method, m.headers, m.body, m.fails_to_open, m.auth_kind, m.auth_secret_id, m.auth_user, m.auth_header, m.kind, m.expected_address, m.cert_warn_days, m.cert_expires_at, m.cert_warned_for, m.quorum, (SELECT count(*) FROM monitor_locations WHERE monitor_id = m.id)";
+const COLS: &str = "m.id, m.project_id, m.name, m.url, m.interval_s, m.timeout_ms, m.expected_status, m.keyword, m.skip_tls_verify, m.severity, m.is_public, m.next_check_at, c.checked_at, c.ok, c.status_code, c.latency_ms, c.error, m.created_at, c.id, m.alert, m.auto_incident, m.method, m.headers, m.body, m.fails_to_open, m.auth_kind, m.auth_secret_id, m.auth_user, m.auth_header, m.kind, m.expected_address, m.cert_warn_days, m.cert_expires_at, m.cert_warned_for, m.quorum, (SELECT count(*) FROM monitor_locations WHERE monitor_id = m.id), m.paused_at";
 const FROM: &str = "FROM monitors m LEFT JOIN check_results c ON c.id = (SELECT id FROM check_results WHERE monitor_id = m.id AND location_id IS NULL ORDER BY checked_at DESC, id DESC LIMIT 1)";
 
 fn monitor(r: &turso::Row) -> turso::Result<Monitor> {
@@ -107,6 +109,7 @@ fn monitor(r: &turso::Row) -> turso::Result<Monitor> {
         cert_warned_for: r.get(33)?,
         quorum: r.get(34)?,
         located: r.get(35)?,
+        paused_at: r.get(36)?,
         next_check_at: r.get(11)?,
         last,
         created_at: r.get(17)?,
@@ -270,7 +273,8 @@ pub async fn claim_for_location(
         c,
         format!(
             "SELECT {COLS} {FROM} JOIN monitor_locations ml ON ml.monitor_id = m.id
-             WHERE ml.location_id = ?1 AND ml.next_check_at <= ?2 ORDER BY ml.next_check_at LIMIT ?3"
+             WHERE ml.location_id = ?1 AND ml.next_check_at <= ?2 AND m.paused_at IS NULL
+             ORDER BY ml.next_check_at LIMIT ?3"
         ),
         (location_id, at, limit),
     )
@@ -309,11 +313,31 @@ pub async fn find_monitor(
     .pop())
 }
 
+/// Pauses, or resumes with a check due at once.
+pub async fn set_monitor_paused(
+    c: &Connection,
+    id: i64,
+    paused: bool,
+    at: i64,
+) -> anyhow::Result<()> {
+    if paused {
+        c.execute("UPDATE monitors SET paused_at = ?1 WHERE id = ?2", (at, id))
+            .await?;
+    } else {
+        c.execute(
+            "UPDATE monitors SET paused_at = NULL, next_check_at = ?1 WHERE id = ?2",
+            (at, id),
+        )
+        .await?;
+    }
+    Ok(())
+}
+
 /// A read-only probe, so an idle tick never waits for the writer.
 pub async fn any_due(c: &Connection, at: i64) -> anyhow::Result<bool> {
     let n = crate::platform::db::query_i64(
         c,
-        "SELECT EXISTS (SELECT 1 FROM monitors WHERE next_check_at <= ?1)",
+        "SELECT EXISTS (SELECT 1 FROM monitors WHERE next_check_at <= ?1 AND paused_at IS NULL)",
         [at],
     )
     .await?;
@@ -325,7 +349,8 @@ pub async fn claim_due(c: &Connection, at: i64, limit: i64) -> anyhow::Result<Ve
     let due = many(
         c,
         format!(
-            "SELECT {COLS} {FROM} WHERE m.next_check_at <= ?1 ORDER BY m.next_check_at LIMIT ?2"
+            "SELECT {COLS} {FROM} WHERE m.next_check_at <= ?1 AND m.paused_at IS NULL
+             ORDER BY m.next_check_at LIMIT ?2"
         ),
         (at, limit),
     )
