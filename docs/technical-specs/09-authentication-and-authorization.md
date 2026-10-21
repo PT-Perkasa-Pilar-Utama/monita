@@ -25,7 +25,7 @@ reset:          super admin -> new invite -> old invites and sessions deleted, t
 
 ## 9.3 Role matrix
 
-Roles: `super_admin`, `tl` and `supervisor`. A supervisor sees every project and the admin pages, and changes nothing. `CurrentUser` answers 403 to a supervisor on any method but `GET` and `HEAD` (SEC-22). The one exception is the user's own two-factor sign-in: those routes take `AccountUser`, which lets a supervisor write.
+Roles: `super_admin`, `tl` and `supervisor`. A supervisor sees every project and the admin pages, and changes nothing. `CurrentUser` answers 403 to a supervisor on any method but `GET` and `HEAD` (SEC-22). The one exception is the user's own account: two-factor sign-in and User settings (password, picture). Those routes take `AccountUser`, which lets a supervisor write.
 
 | Action | Super admin | Supervisor | TL (owner) | TL (not owner) | API key | Public |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -35,6 +35,7 @@ Roles: `super_admin`, `tl` and `supervisor`. A supervisor sees every project and
 | View users and the admin pages | yes | yes | no | no | no | no |
 | Turn another user's two-factor off | yes (never your own account) | no | no | no | no | no |
 | Turn your own two-factor on or off | yes | yes | yes | yes | no | no |
+| Change your own password or picture (User settings) | yes | yes | yes | yes | no | no |
 | Create project | yes | no | yes | yes | no | no |
 | View a project and its pages | yes (all) | yes (all) | yes | no (404) | no | no |
 | Manage monitors, heartbeats, alert routes, ticket alerts, keys, allowlist, secrets, status page tabs | yes | no | yes | no | no | no |

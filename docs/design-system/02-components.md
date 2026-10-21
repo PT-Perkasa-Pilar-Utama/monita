@@ -88,7 +88,7 @@ A table row's first cell holds the item's link and a mono second line. Secondary
 | `CopyButton` | `app/CopyField.tsx` | A secondary small button that copies a value and says Copied for 2 seconds. If the clipboard is blocked it selects the element named by `targetId`. `CopyField` and `CodeCopy` use it. |
 | `CopyField` | `app/CopyField.tsx` | A mono value with a Copy button, for a new API key or a ping URL. Needs an `id`. |
 | `ProjectBadge` | `app/ProjectBadge.tsx` | The project's icon, or its first letter on the brand color. |
-| `IconPicker`, `UserPicker` | `app/` | Project icon upload and owner search in project forms and General. |
+| `IconPicker`, `UserPicker` | `app/` | Picture upload (a project icon; with `label` and `own`, the user's picture on Profile, kept for a supervisor) and owner search in project forms and General. |
 
 Charts are SVG. The server lays out the geometry in `checks::chart`. React draws it in `ChartSvg` (`app/Insight.tsx`). It reads the `Chart` type in `lib/types.ts`. `lib/chart.ts` (`readout`) finds the bucket under the pointer. No chart library is allowed.
 

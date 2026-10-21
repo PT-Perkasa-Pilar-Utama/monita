@@ -19,6 +19,8 @@ More ways to check, alert and plan: TCP, DNS and ping monitors, certificate warn
 - Maintenance windows: a tech lead plans one over chosen monitors and heartbeats. During it, failures open no incident and send no alert, and the status page shows Maintenance with the team's message ([#11](https://github.com/PT-Perkasa-Pilar-Utama/monita/issues/11)). Migration 0026.
 - Discord, Telegram, ntfy and PagerDuty as webhook formats for each severity ([#10](https://github.com/PT-Perkasa-Pilar-Utama/monita/issues/10)). Migration 0025.
 - TCP port and DNS name monitors beside HTTP ([#9](https://github.com/PT-Perkasa-Pilar-Utama/monita/issues/9)). Migration 0024.
+- **User settings**, **Password**: change your own password with the current one. Your other sessions sign out.
+- **User settings**, **Profile**: a picture the top bar shows in place of your initial. Migration 0034.
 
 ### Changed
 
@@ -27,8 +29,6 @@ More ways to check, alert and plan: TCP, DNS and ping monitors, certificate warn
 - A new project's status page shows the Changelog tab. Existing projects keep their setting.
 - Two-factor setup shows a QR code to scan. The key and the app link stay below it.
 - The avatar menu's **Two-factor sign-in** became **User settings**, an area with its own side menu. While two-factor is off, a note under the top bar says so until you close it in that browser.
-- **User settings**, **Password**: change your own password with the current one. Your other sessions sign out.
-- **User settings**, **Profile**: a picture the top bar shows in place of your initial. Migration 0034.
 
 ### Fixed
 
