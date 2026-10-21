@@ -111,7 +111,7 @@ To build the static Linux binary that a release ships, run these commands on 64-
 ```sh
 git clone https://github.com/PT-Perkasa-Pilar-Utama/monita.git
 cd monita
-git checkout v1.0.1                       # or stay on main for unreleased work
+git checkout v1.1.0                       # or stay on main for unreleased work
 sudo apt-get install -y musl-tools
 rustup target add x86_64-unknown-linux-musl
 make release

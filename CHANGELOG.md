@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-21
+
+More ways to check, alert and plan: TCP, DNS and ping monitors, certificate warnings, checks from more than one place, Discord, Telegram, ntfy and PagerDuty alerts, maintenance windows, and two-factor sign-in. Migrations 0024 to 0030 run on start; 0029 rebuilds the `monitors` table.
+
 ### Added
 
 - Locations: checks from more than one place. A super admin adds a location and runs `monita probe` on another machine with its token. A monitor checks from this server and any locations, and counts a check as failed only when a chosen number of places agree ([#6](https://github.com/PT-Perkasa-Pilar-Utama/monita/issues/6)). Migration 0030. Design: `docs/technical-specs/14-locations.md`.
@@ -20,6 +24,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Signing in at `http://127.0.0.1:7466` no longer fails with "wrong origin" when Monita's address is the default `http://localhost:7466`. The start-up log names the address to open.
 - The install steps put `admin create` last in its block, so a pasted block no longer types the next command into the password prompt.
+- The online demo's side panels (a ticket, a new or edited monitor) close with their X, Cancel, the backdrop or Escape.
 
 ## [1.0.1] - 2026-10-19
 
@@ -73,7 +78,8 @@ The first stable release. See the [release notes](https://github.com/PT-Perkasa-
 
 The first release: HTTP monitors, heartbeats, automatic and manual incidents, email and webhook alerts through an outbox, public status pages with a status JSON, bug tickets with ref IDs, and the `monita` command line for setup and the systemd service.
 
-[Unreleased]: https://github.com/PT-Perkasa-Pilar-Utama/monita/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/PT-Perkasa-Pilar-Utama/monita/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/PT-Perkasa-Pilar-Utama/monita/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/PT-Perkasa-Pilar-Utama/monita/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/PT-Perkasa-Pilar-Utama/monita/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/PT-Perkasa-Pilar-Utama/monita/releases/tag/v0.1.0
