@@ -40,6 +40,7 @@ struct UserView {
     status: &'static str,
     created_at: i64,
     two_factor: bool,
+    avatar_at: Option<i64>,
 }
 
 impl From<UserRow> for UserView {
@@ -56,6 +57,7 @@ impl From<UserRow> for UserView {
             status,
             created_at: u.created_at,
             two_factor: u.two_factor,
+            avatar_at: u.avatar_at,
         }
     }
 }

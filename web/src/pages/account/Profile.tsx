@@ -16,7 +16,7 @@ export function Profile(): ReactElement {
   const [value, setValue] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const current = avatarUrl(me.avatar_at);
+  const current = avatarUrl(me.id, me.avatar_at);
 
   const send = async (avatar: string, done: string): Promise<void> => {
     setBusy(true);

@@ -15,6 +15,8 @@ pub struct UserRow {
     pub created_at: i64,
     /// Two-factor sign-in is on.
     pub two_factor: bool,
+    /// When the picture last changed; `None` without one.
+    pub avatar_at: Option<i64>,
 }
 
 pub struct Invite {
@@ -25,7 +27,7 @@ pub struct Invite {
 }
 
 const USER_COLS: &str =
-    "id, email, role, password_hash, disabled_at, created_at, totp_secret IS NOT NULL";
+    "id, email, role, password_hash, disabled_at, created_at, totp_secret IS NOT NULL, avatar_at";
 
 fn user_row(r: &turso::Row) -> turso::Result<UserRow> {
     Ok(UserRow {
@@ -36,6 +38,7 @@ fn user_row(r: &turso::Row) -> turso::Result<UserRow> {
         disabled_at: r.get(4)?,
         created_at: r.get(5)?,
         two_factor: r.get::<i64>(6)? != 0,
+        avatar_at: r.get(7)?,
     })
 }
 
@@ -291,7 +294,8 @@ pub async fn find_session_user(
 ) -> anyhow::Result<Option<UserRow>> {
     let mut rows = c
         .query(
-            "SELECT u.id, u.email, u.role, u.password_hash, u.disabled_at, u.created_at, u.totp_secret IS NOT NULL
+            "SELECT u.id, u.email, u.role, u.password_hash, u.disabled_at, u.created_at, u.totp_secret IS NOT NULL,
+                    u.avatar_at
              FROM sessions s JOIN users u ON u.id = s.user_id
              WHERE s.token_hash = ?1 AND s.expires_at > ?2 AND u.disabled_at IS NULL",
             (token_hash, at),

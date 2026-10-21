@@ -1,3 +1,4 @@
+import { UserAvatar } from "@/components/app/UserAvatar";
 import type { ReactElement } from "react";
 import { StateBadge } from "@/components/app/Tone";
 import { MoreHorizontal, Shield } from "@/components/icons";
@@ -115,9 +116,7 @@ export function UsersTable({
               <TableCell>{!self && canEdit && <Checkbox aria-label={`Select ${u.email}`} checked={selected.has(u.id)} onCheckedChange={() => onToggle(u.id)} />}</TableCell>
               <TableCell className="max-w-72">
                 <div className="flex items-center gap-3">
-                  <span aria-hidden="true" className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-[13px] font-semibold text-muted-foreground">
-                    {u.email[0]?.toUpperCase()}
-                  </span>
+                  <UserAvatar id={u.id} email={u.email} avatarAt={u.avatar_at} className="shrink-0" />
                   <span className="truncate font-medium">{u.email}</span>
                   {self && <Badge variant="outline">You</Badge>}
                   {u.two_factor && <Badge variant="outline">Two-factor</Badge>}

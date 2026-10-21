@@ -22,6 +22,7 @@ export type Me = {
   two_factor: boolean;
   /** When the user's picture last changed; null shows the initial. */
   avatar_at: number | null;
+  id: number;
 };
 
 export const ROLE_LABEL: Record<Role, string> = { super_admin: "Super admin", tl: "Tech lead", supervisor: "Supervisor" };

@@ -3,8 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { Mark } from "@/components/brand/Mark";
 import { ProjectBadge } from "@/components/app/ProjectBadge";
 import { AlertTriangle, BookOpen, Folder, LogOut, Moon, Settings, Sun, Ticket, Undo2, UserGear } from "@/components/icons";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { avatarUrl } from "@/lib/avatar";
+import { UserAvatar } from "@/components/app/UserAvatar";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -60,7 +59,6 @@ function AccountMenu(): ReactElement {
   const me = useMe();
   const { pathname } = useLocation();
   const { resolved, setTheme } = useTheme();
-  const initial = me.email.charAt(0).toUpperCase();
   const signOut = async (): Promise<void> => {
     await api("/logout", "POST");
     window.location.assign("/login");
@@ -74,10 +72,7 @@ function AccountMenu(): ReactElement {
           title={me.email}
           className="rounded-full outline-none focus-visible:ring-[3px] focus-visible:ring-ring"
         >
-          <Avatar className="size-8">
-            {me.avatar_at !== null && <AvatarImage src={avatarUrl(me.avatar_at) ?? undefined} alt="" />}
-            <AvatarFallback className="bg-primary/15 font-semibold text-link">{initial}</AvatarFallback>
-          </Avatar>
+          <UserAvatar id={me.id} email={me.email} avatarAt={me.avatar_at} />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64">

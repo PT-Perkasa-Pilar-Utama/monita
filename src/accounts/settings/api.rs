@@ -2,7 +2,7 @@
 
 use axum::{
     Router,
-    extract::State,
+    extract::{Path, State},
     http::{HeaderMap, StatusCode, header},
     response::{IntoResponse, Response},
     routing::{get, post, put},
@@ -24,7 +24,7 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/api/ui/me/password", post(password))
         .route("/api/ui/me/avatar", put(set_avatar))
-        .route("/me/avatar", get(avatar))
+        .route("/users/{id}/avatar", get(avatar))
 }
 
 impl From<SettingsError> for UiError {
@@ -87,11 +87,13 @@ async fn set_avatar(
 }
 
 /// The user's own picture. Its URL carries `?v={avatar_at}`, so a new picture is a new URL.
+/// Any signed-in user sees the team's pictures: the top bar, the user list, a project's owner.
 async fn avatar(
     State(state): State<AppState>,
-    AccountUser(user): AccountUser,
+    AccountUser(_): AccountUser,
+    Path(id): Path<i64>,
 ) -> Result<Response, PageError> {
-    let (mime, data) = super::avatar(&state.db, user.id)
+    let (mime, data) = super::avatar(&state.db, id)
         .await?
         .ok_or(PageError::NotFound)?;
     let headers = [

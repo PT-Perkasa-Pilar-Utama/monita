@@ -125,11 +125,14 @@ async fn avatar_at(app: &TestApp, cookie: &str) -> serde_json::Value {
 }
 
 #[tokio::test]
-async fn a_picture_is_stored_served_to_its_owner_and_removed() {
+async fn a_picture_is_stored_served_to_the_team_and_removed() {
     let app = TestApp::spawn("test").await;
     let tl = app.tl("rina@x.co").await;
+    let other = app.tl("budi@x.co").await;
+    let me = json_of(app.api_get("/api/ui/me", Some(&tl)).await).await["data"]["id"].clone();
+    let path = format!("/users/{me}/avatar");
     assert!(avatar_at(&app, &tl).await.is_null());
-    assert_eq!(app.get("/me/avatar", Some(&tl)).await.status(), 404);
+    assert_eq!(app.get(&path, Some(&tl)).await.status(), 404);
 
     let svg = "PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnLz4=";
     assert_eq!(
@@ -140,19 +143,24 @@ async fn a_picture_is_stored_served_to_its_owner_and_removed() {
     let png = format!("data:image/png;base64,{PNG_1X1}");
     assert_eq!(set_avatar(&app, &tl, &png).await.status(), 204);
     assert!(avatar_at(&app, &tl).await.is_i64());
-    let res = app.get("/me/avatar", Some(&tl)).await;
+    let res = app.get(&path, Some(&tl)).await;
     assert_eq!(res.status(), 200);
     assert_eq!(res.headers()["content-type"], "image/png");
     assert_eq!(res.bytes().await.unwrap().len(), 70);
     assert_eq!(
-        app.get("/me/avatar", None).await.status(),
+        app.get(&path, Some(&other)).await.status(),
+        200,
+        "another user sees it"
+    );
+    assert_eq!(
+        app.get(&path, None).await.status(),
         303,
         "no session goes to sign-in"
     );
 
     assert_eq!(set_avatar(&app, &tl, "").await.status(), 204);
     assert!(avatar_at(&app, &tl).await.is_null());
-    assert_eq!(app.get("/me/avatar", Some(&tl)).await.status(), 404);
+    assert_eq!(app.get(&path, Some(&tl)).await.status(), 404);
 }
 
 #[tokio::test]

@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { appliesTo, availableActions, planAction } from "@/lib/users";
 import type { AdminUserRow } from "@/lib/types";
 
-const u = (email: string, role: AdminUserRow["role"], status: AdminUserRow["status"], two_factor = false): AdminUserRow => ({ id: email.length, email, role, status, created_at: 0, two_factor });
+const u = (email: string, role: AdminUserRow["role"], status: AdminUserRow["status"], two_factor = false): AdminUserRow => ({ id: email.length, email, role, status, created_at: 0, two_factor, avatar_at: null });
 const me = "admin@x.co";
 const self = u(me, "super_admin", "active");
 const tl = u("rina@x.co", "tl", "active");
