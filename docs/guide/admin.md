@@ -56,7 +56,7 @@ Open the menu on a row for one user. Or tick the boxes on several rows. The titl
 | Make super admin | The user manages every project, the users and the system settings. |
 | Make tech lead | The user keeps the projects they own and loses the admin pages from their next click. |
 | Make supervisor | The user sees everything and changes nothing. A user who owns a project cannot become one. |
-| Send a new invite | Monita emails a new sign-up link. The password, sessions and two-factor sign-in stop working until the user follows it. |
+| Send a new invite | Monita emails a new sign-up link. The password, sessions and two-factor sign-in stop working at once; the user sets a new password through the link. |
 | Turn off two-factor | For a user who lost the phone and the recovery codes. The user signs in with the password alone and can turn two-factor on again. The row shows **Two-factor** while it is on. |
 | Disable | Monita signs the user out now and blocks sign-in. Their projects stay. |
 | Enable | The user signs in with the old password. A user who never set one needs a new invite. |
@@ -72,7 +72,7 @@ Each user can ask for a code after the password. Open the avatar menu and select
 3. Enter the 6-digit code the app shows and select **Turn on**.
 4. Save the 10 recovery codes. Monita shows them only once. Each code signs you in once without the phone.
 
-Sign-in then asks for the code after the password. Five wrong codes or five minutes send you back to the password. A code works once.
+Sign-in then asks for the code after the password. Five wrong codes or five minutes send you back to the password. A code works once. An account takes 10 wrong codes in 15 minutes, across sign-ins and the turn-off form; after that every code waits until the 15 minutes end.
 
 To turn it off, enter a code or a recovery code on the same page. A super admin can turn it off for another user (see [Act on users](#act-on-users)). A super admin who lost the phone and the codes runs `monita admin reset-password` on the server. A supervisor can turn it on for their own account.
 

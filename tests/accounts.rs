@@ -182,6 +182,18 @@ async fn new_invite_replaces_the_password_and_kills_old_links_and_sessions() {
         "old session must end"
     );
     assert_eq!(app.get(&api_invite(&old_path), None).await.status(), 410);
+    let before = app
+        .api_post(
+            "/api/ui/login",
+            json!({ "email": "rina@x.co", "password": PASSWORD }),
+            None,
+        )
+        .await;
+    assert_eq!(
+        before.status(),
+        422,
+        "the old password stops at once, not when the link is used"
+    );
     app.accept(&new_path, "a-brand-new-password").await;
     let old_pw = app
         .api_post(

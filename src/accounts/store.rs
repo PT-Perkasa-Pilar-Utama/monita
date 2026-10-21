@@ -187,6 +187,13 @@ pub async fn replace_invite(
         .await?;
     c.execute("DELETE FROM sessions WHERE user_id = ?1", [user_id])
         .await?;
+    // The old password stops at once (US-04): a reset that clears two-factor must not leave a
+    // leaked password working until the new link is used.
+    c.execute(
+        "UPDATE users SET password_hash = NULL WHERE id = ?1",
+        [user_id],
+    )
+    .await?;
     c.execute(
         "INSERT INTO invites (user_id, token_hash, expires_at) VALUES (?1, ?2, ?3)",
         (user_id, token_hash, expires_at),

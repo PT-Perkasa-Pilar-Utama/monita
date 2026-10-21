@@ -301,3 +301,42 @@ async fn a_reset_sign_in_starts_over_without_two_factor() {
     let status = json_of(app.api_get("/api/ui/me/two-factor", Some(&fresh)).await).await;
     assert_eq!(status["data"]["on"], false);
 }
+
+#[tokio::test]
+async fn ten_wrong_codes_lock_the_account_s_codes_across_new_challenges() {
+    let app = TestApp::spawn("test").await;
+    let tl = app.tl("rina@x.co").await;
+    let (secret, _, at) = turn_on(&app, &tl).await;
+    // The budget's window is a fixed 15 minutes; start well inside one, so the test cannot
+    // straddle a reset.
+    let into = now().rem_euclid(900);
+    if into > 885 {
+        tokio::time::sleep(std::time::Duration::from_secs((901 - into) as u64)).await;
+    }
+    // The password makes a new challenge each time; the budget still counts per account.
+    for _ in 0..2 {
+        let challenge = password_step(&app, "rina@x.co").await;
+        for _ in 0..4 {
+            assert_eq!(code_step(&app, &challenge, "000000").await.status(), 422);
+        }
+        assert_eq!(code_step(&app, &challenge, "000000").await.status(), 410);
+    }
+    let challenge = password_step(&app, "rina@x.co").await;
+    let right = code_at(&secret, at + 30);
+    let refused = code_step(&app, &challenge, &right).await;
+    assert_eq!(refused.status(), 429, "even the right code waits");
+    assert!(
+        json_of(refused).await["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("Too many wrong codes")
+    );
+    let off = app
+        .api_post(
+            "/api/ui/me/two-factor/off",
+            json!({ "code": right }),
+            Some(&tl),
+        )
+        .await;
+    assert_eq!(off.status(), 429, "the account page shares the budget");
+}

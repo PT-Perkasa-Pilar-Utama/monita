@@ -19,7 +19,11 @@ mod store;
 use turso::Connection;
 
 use super::totp;
-use crate::platform::{db::Db, token};
+use crate::platform::{
+    db::Db,
+    rate_limit::{Limiter, Verdict},
+    token,
+};
 
 pub use store::{clear, purge_challenges};
 
@@ -40,6 +44,9 @@ pub enum TwoFactorError {
     NotPending,
     #[error("This sign-in has expired. Sign in again.")]
     ChallengeGone,
+    /// Seconds until the account's wrong-code budget resets.
+    #[error("Too many wrong codes for this account. Wait {} minutes and try again.", (.0 + 59) / 60)]
+    TooMany(i64),
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 }
@@ -139,14 +146,49 @@ async fn spend_code(
     }
 }
 
+/// Wrong codes one account may give in `WRONG_WINDOW_S`, across sign-in challenges and the
+/// account page. A right password makes a new challenge each time, so the per-challenge cap
+/// alone does not bound the guesses: each guess has 3 right answers in a million (one step of
+/// drift either way).
+const WRONG_CODES: u32 = 10;
+const WRONG_WINDOW_S: i64 = 900;
+
+fn budget_key(user_id: i64) -> String {
+    format!("2fa:{user_id}")
+}
+
+/// Refuses even a right code while the account's wrong-code budget is spent.
+fn spent(limiter: &Limiter, user_id: i64, now: i64) -> Option<TwoFactorError> {
+    match limiter.over(&budget_key(user_id), WRONG_CODES, WRONG_WINDOW_S, now) {
+        Verdict::Deny(retry) => Some(TwoFactorError::TooMany(retry)),
+        Verdict::Allow => None,
+    }
+}
+
+fn count_wrong(limiter: &Limiter, user_id: i64, now: i64) {
+    limiter.hit(&budget_key(user_id), WRONG_CODES, WRONG_WINDOW_S, now);
+}
+
 /// The user turns two-factor off, with a code.
-pub async fn turn_off(db: &Db, user_id: i64, code: &str, now: i64) -> Result<(), TwoFactorError> {
+pub async fn turn_off(
+    db: &Db,
+    limiter: &Limiter,
+    user_id: i64,
+    code: &str,
+    now: i64,
+) -> Result<(), TwoFactorError> {
+    if let Some(e) = spent(limiter, user_id, now) {
+        return Err(e);
+    }
     db.write(async |c| match spend_code(c, user_id, code, now).await {
         Ok(true) => {
             store::clear(c, user_id).await?;
             Ok(Ok(()))
         }
-        Ok(false) => Ok(Err(TwoFactorError::WrongCode)),
+        Ok(false) => {
+            count_wrong(limiter, user_id, now);
+            Ok(Err(TwoFactorError::WrongCode))
+        }
         // `?` would turn NotOn into a 500.
         Err(e) => Ok(Err(e)),
     })
@@ -174,6 +216,7 @@ pub async fn challenge(db: &Db, user_id: i64, now: i64) -> anyhow::Result<String
 /// and the fifth ends the challenge.
 pub async fn finish(
     db: &Db,
+    limiter: &Limiter,
     raw_challenge: &str,
     code: &str,
     now: i64,
@@ -183,16 +226,21 @@ pub async fn finish(
         let Some((user_id, attempts)) = store::find_challenge(c, &hash, now).await? else {
             return Ok(Err(TwoFactorError::ChallengeGone));
         };
+        if let Some(e) = spent(limiter, user_id, now) {
+            return Ok(Err(e));
+        }
         match spend_code(c, user_id, code, now).await {
             Ok(true) => {
                 store::delete_challenge(c, &hash).await?;
                 Ok(Ok(user_id))
             }
             Ok(false) if attempts + 1 >= MAX_ATTEMPTS => {
+                count_wrong(limiter, user_id, now);
                 store::delete_challenge(c, &hash).await?;
                 Ok(Err(TwoFactorError::ChallengeGone))
             }
             Ok(false) => {
+                count_wrong(limiter, user_id, now);
                 store::count_attempt(c, &hash).await?;
                 Ok(Err(TwoFactorError::WrongCode))
             }

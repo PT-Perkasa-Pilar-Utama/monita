@@ -193,8 +193,13 @@ pub async fn login(db: &Db, email: &str, password: &str) -> Result<SignIn, Accou
 }
 
 /// The code step of a two-factor sign-in. Returns the raw session token.
-pub async fn login_code(db: &Db, challenge: &str, code: &str) -> Result<String, TwoFactorError> {
-    let user_id = two_factor::finish(db, challenge, code, now()).await?;
+pub async fn login_code(
+    db: &Db,
+    limiter: &crate::platform::rate_limit::Limiter,
+    challenge: &str,
+    code: &str,
+) -> Result<String, TwoFactorError> {
+    let user_id = two_factor::finish(db, limiter, challenge, code, now()).await?;
     new_session(db, user_id)
         .await
         .map_err(|e| TwoFactorError::Other(e.into()))

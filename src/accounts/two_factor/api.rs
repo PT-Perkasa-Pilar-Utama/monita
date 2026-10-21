@@ -33,6 +33,7 @@ impl From<TwoFactorError> for UiError {
         match e {
             TwoFactorError::WrongCode => UiError::field("code", e.to_string()),
             TwoFactorError::ChallengeGone => UiError::Gone(e.to_string()),
+            TwoFactorError::TooMany(_) => UiError::TooMany(e.to_string()),
             TwoFactorError::Other(e) => UiError::Internal(e),
             TwoFactorError::AlreadyOn | TwoFactorError::NotOn | TwoFactorError::NotPending => {
                 UiError::invalid(e.to_string())
@@ -50,7 +51,7 @@ struct CodeStep {
 
 /// 204 with the session cookie; 422 on `code` for a wrong code; 410 once the challenge is gone.
 async fn login_code(State(state): State<AppState>, Body(f): Body<CodeStep>) -> UiResult {
-    let raw = crate::accounts::login_code(&state.db, &f.challenge, &f.code).await?;
+    let raw = crate::accounts::login_code(&state.db, &state.limiter, &f.challenge, &f.code).await?;
     Ok(crate::accounts::api::signed_in(&state, &raw))
 }
 
@@ -85,6 +86,6 @@ async fn off(
     AccountUser(user): AccountUser,
     Body(f): Body<Code>,
 ) -> UiResult {
-    super::turn_off(&state.db, user.id, &f.code, now()).await?;
+    super::turn_off(&state.db, &state.limiter, user.id, &f.code, now()).await?;
     Ok(StatusCode::NO_CONTENT.into_response())
 }

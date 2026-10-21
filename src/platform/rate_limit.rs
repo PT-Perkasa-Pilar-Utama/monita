@@ -2,9 +2,6 @@
 
 use std::{collections::HashMap, sync::Mutex};
 
-/// The longest window any caller uses. Older windows can never deny again.
-const LONGEST_WINDOW_S: i64 = 60;
-
 #[derive(Default)]
 pub struct Limiter {
     windows: Mutex<Windows>,
@@ -12,7 +9,8 @@ pub struct Limiter {
 
 #[derive(Default)]
 struct Windows {
-    by_key: HashMap<String, (i64, u32)>,
+    /// Per key: the window's start, its count, and its end, after which it can never deny again.
+    by_key: HashMap<String, (i64, u32, i64)>,
     swept_at: i64,
 }
 
@@ -27,15 +25,18 @@ impl Limiter {
     pub fn hit(&self, key: &str, limit: u32, window_s: i64, now: i64) -> Verdict {
         let window_start = now - now.rem_euclid(window_s);
         let mut w = self.windows.lock().expect("rate limit lock");
-        // Once a second at most, so the map stays bounded by the keys seen in the last minute.
+        // Once a second at most, so the map stays bounded by the keys of windows still open.
         if now > w.swept_at {
             w.swept_at = now;
-            w.by_key
-                .retain(|_, (start, _)| *start >= now - LONGEST_WINDOW_S);
+            w.by_key.retain(|_, (_, _, end)| *end > now);
         }
-        let entry = w.by_key.entry(key.to_string()).or_insert((window_start, 0));
+        let end = window_start + window_s;
+        let entry = w
+            .by_key
+            .entry(key.to_string())
+            .or_insert((window_start, 0, end));
         if entry.0 != window_start {
-            *entry = (window_start, 0);
+            *entry = (window_start, 0, end);
         }
         if entry.1 >= limit {
             return Verdict::Deny((window_start + window_s - now).max(1));
@@ -49,7 +50,7 @@ impl Limiter {
         let window_start = now - now.rem_euclid(window_s);
         let w = self.windows.lock().expect("rate limit lock");
         match w.by_key.get(key) {
-            Some(&(start, n)) if start == window_start && n >= limit => {
+            Some(&(start, n, _)) if start == window_start && n >= limit => {
                 Verdict::Deny((window_start + window_s - now).max(1))
             }
             _ => Verdict::Allow,
@@ -181,6 +182,22 @@ mod tests {
         }
         l.hit("ip:new", 60, 60, 181);
         assert_eq!(l.windows.lock().unwrap().by_key.len(), 1);
+    }
+
+    #[test]
+    fn a_long_window_outlives_the_sweep_of_short_ones() {
+        let l = Limiter::default();
+        for _ in 0..3 {
+            l.hit("2fa:1", 3, 900, 1);
+        }
+        l.hit("ip:a", 60, 60, 1);
+        l.hit("ip:b", 60, 60, 500);
+        assert_eq!(
+            l.windows.lock().unwrap().by_key.len(),
+            2,
+            "ip:a's minute is over"
+        );
+        assert!(matches!(l.over("2fa:1", 3, 900, 500), Verdict::Deny(400)));
     }
 
     #[test]

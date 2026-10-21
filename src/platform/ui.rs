@@ -28,6 +28,8 @@ pub enum UiError {
     TooLarge,
     /// 429: a daily cap is reached (SEC-13).
     DailyCap(String),
+    /// 429: a budget of tries is spent, such as wrong two-factor codes.
+    TooMany(String),
     Internal(anyhow::Error),
 }
 
@@ -109,6 +111,12 @@ impl IntoResponse for UiError {
             UiError::DailyCap(m) => (
                 StatusCode::TOO_MANY_REQUESTS,
                 "daily_cap_reached",
+                m,
+                BTreeMap::new(),
+            ),
+            UiError::TooMany(m) => (
+                StatusCode::TOO_MANY_REQUESTS,
+                "too_many_tries",
                 m,
                 BTreeMap::new(),
             ),
