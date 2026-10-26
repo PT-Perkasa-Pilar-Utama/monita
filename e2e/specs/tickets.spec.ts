@@ -1,9 +1,22 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Locator, type Page, test } from "@playwright/test";
 import { apiProject, apiSend } from "../lib/api";
 import { createProject } from "../lib/project";
 import { authFile } from "../lib/roles";
 
 test.use({ storageState: authFile("tl") });
+
+
+/** Drags in small mouse steps, as a person does: a one-jump drag can end before the board has
+ * taken the drag start. */
+async function drag(page: Page, from: Locator, to: Locator): Promise<void> {
+  const a = (await from.boundingBox())!;
+  const b = (await to.boundingBox())!;
+  await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(a.x + a.width / 2 + 10, a.y + a.height / 2, { steps: 5 });
+  await page.mouse.move(b.x + b.width / 2, b.y + 120, { steps: 15 });
+  await page.mouse.up();
+}
 
 test("@US-23 @US-24 @US-25 @US-26 @US-28 @US-29 a reported bug goes public only after the TL triages it", async ({ page, browser }) => {
   const slug = await createProject(page, "Shop");
@@ -82,14 +95,16 @@ test("the team files a ticket, issues a ref ID, drags it across to Done, and Don
   await page.getByRole("dialog").getByRole("button", { name: "Issue ref ID" }).click();
   await expect(page.locator("#issued-ref-id")).toHaveText(/^rf_[a-z2-7]{26}$/);
   await page.keyboard.press("Escape");
+  // The dialog's overlay takes the pointer until it has faded out, so a drag waits for it.
+  await expect(page.getByRole("dialog")).toBeHidden();
 
   // A team-filed ticket starts in Backlog.
   const column = (stage: string) => page.locator(`section[aria-labelledby='col-${stage}']`);
   const card = page.getByRole("link", { name: /Export button stays grey/ });
   await expect(column("backlog").getByText("Export button stays grey")).toBeVisible();
-  await card.dragTo(column("in_progress"));
+  await drag(page, card, column("in_progress"));
   await expect(page.getByText("Moved #1 to In progress.")).toBeVisible();
-  await card.dragTo(column("done"));
+  await drag(page, card, column("done"));
   const closing = page.getByRole("dialog", { name: "Move #1 to Done" });
   await expect(closing.getByRole("button", { name: "Move to Done" })).toBeDisabled();
   await closing.getByRole("radio", { name: "Fixed" }).click();

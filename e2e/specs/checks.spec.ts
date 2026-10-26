@@ -157,13 +157,14 @@ test("a list sorts by a heading click, keeps the order in the URL, and a row cli
   await apiMonitor(page, slug, { name: "Alpha" });
   await apiMonitor(page, slug, { name: "Bravo" });
   await page.goto(`/projects/${slug}/monitors`);
-  const names = page.locator("tbody tr td:first-child a");
+  // The first column holds the selection box; the name is the row's link.
+  const names = page.locator("tbody tr").getByRole("link");
   await page.getByRole("button", { name: "Monitor", exact: true }).click();
   await expect(page).toHaveURL(/[?&]sort=name/);
   const first = await names.first().textContent();
   await page.getByRole("button", { name: "Monitor", exact: true }).click();
   await expect(names.first()).not.toHaveText(first!);
-  await page.locator("tbody tr").filter({ hasText: "Alpha" }).locator("td").nth(1).click();
+  await page.locator("tbody tr").filter({ hasText: "Alpha" }).locator("td").nth(2).click();
   await expect(page.getByRole("heading", { name: "Alpha" })).toBeVisible();
 });
 

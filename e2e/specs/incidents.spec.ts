@@ -84,8 +84,8 @@ test("@US-14 @US-17 @US-18 @US-19 a failing job opens an incident, the TL update
   await expect(page.locator("#state")).toContainText("Resolved");
   // AC-18.02: the facts name the start, the end and how long it lasted.
   for (const fact of ["Started", "Ended", "Lasted"]) await expect(page.locator("dt", { hasText: fact })).toBeVisible();
-  // admin.spec.ts may hold another offset for a moment on a shared server.
-  await expect(page.locator("dt", { hasText: "Ended" }).locator("+ dd")).toHaveText(/UTC([+-][\d:]+)?$/);
+  // Team pages show the viewer's own clock, with no zone name.
+  await expect(page.locator("dt", { hasText: "Ended" }).locator("+ dd")).toHaveText(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/);
 });
 
 test("@US-20 TL reports an incident by hand and resolves it", async ({ page }) => {
@@ -165,22 +165,25 @@ test("a tech lead resolves an incident Monita opened, and it closes at once", as
   await expect(page.locator('[data-update="tech-lead"]')).toHaveText("The disk was cleaned up by hand.");
 });
 
-test("a tech lead pauses a heartbeat, plans maintenance from its page, and resumes it", async ({ page }) => {
+test("a tech lead pauses a heartbeat, plans maintenance from its row menu, and resumes it", async ({ page }) => {
   const { slug, pingUrl } = await projectWithHeartbeat(page);
   await page.goto(`/projects/${slug}/heartbeats`);
   await page.getByRole("link", { name: "nightly-settlement" }).click();
   await page.getByRole("button", { name: "Pause" }).click();
   await page.getByRole("alertdialog").getByRole("button", { name: "Pause" }).click();
   await expect(page.locator("#state")).toHaveText("Paused");
-  await expect(page.getByText("Paused since")).toBeVisible();
+  await expect(page.getByRole("status").getByText(/^Paused .+, so Monita keeps its pings/)).toBeVisible();
   expect((await page.request.post(`${pingUrl}/fail`, { data: "while paused" })).status()).toBe(200);
   await page.goto(`/projects/${slug}/incidents`);
   await expect(page.getByText("Every system is up")).toBeVisible();
 
+  // Plan maintenance lives in the row menu of the list.
+  await page.goto(`/projects/${slug}/heartbeats`);
+  await page.getByRole("button", { name: "Actions for nightly-settlement" }).click();
+  await page.getByRole("menuitem", { name: "Plan maintenance" }).click();
+  await expect(page.getByRole("dialog").getByLabel("nightly-settlement")).toBeChecked();
   await page.goBack();
-  await page.getByRole("link", { name: "Plan maintenance" }).click();
-  await expect(page.getByLabel("nightly-settlement")).toBeChecked();
-  await page.goBack();
+  await page.getByRole("link", { name: "nightly-settlement" }).click();
   await page.getByRole("button", { name: "Resume" }).click();
   await expect(page.locator("#state")).not.toHaveText("Paused");
 });

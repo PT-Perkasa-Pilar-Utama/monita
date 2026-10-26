@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { DragEvent, ReactElement, ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -53,17 +53,20 @@ export function TicketBoard<T extends { number: number; stage: Stage }>({
   footer?: (stage: Stage, shown: number, total: number) => ReactNode;
   onMove?: ((t: T, to: Stage) => void) | undefined;
 }): ReactElement {
-  // dataTransfer is unreadable during dragover, so the dragged card lives here.
+  // dataTransfer is unreadable during dragover, so the dragged card lives here. The ref answers
+  // the first dragover, which a quick drag can fire before the state has rendered.
   const [dragging, setDragging] = useState<T | null>(null);
+  const held = useRef<T | null>(null);
   const [over, setOver] = useState<Stage | null>(null);
   const end = (): void => {
+    held.current = null;
     setDragging(null);
     setOver(null);
   };
   const target = (s: Stage) =>
     onMove && {
       onDragOver: (e: DragEvent) => {
-        if (!dragging) return;
+        if (!held.current) return;
         e.preventDefault();
         e.dataTransfer.dropEffect = "move";
         if (over !== s) setOver(s);
@@ -73,7 +76,7 @@ export function TicketBoard<T extends { number: number; stage: Stage }>({
       },
       onDrop: (e: DragEvent) => {
         e.preventDefault();
-        if (dragging) onMove(dragging, s);
+        if (held.current) onMove(held.current, s);
         end();
       },
     };
@@ -123,6 +126,7 @@ export function TicketBoard<T extends { number: number; stage: Stage }>({
                       // The card itself follows the pointer, held where it was grabbed, not a link preview.
                       const box = e.currentTarget.getBoundingClientRect();
                       e.dataTransfer.setDragImage(e.currentTarget, e.clientX - box.left, e.clientY - box.top);
+                      held.current = t;
                       setDragging(t);
                     })
                   }
