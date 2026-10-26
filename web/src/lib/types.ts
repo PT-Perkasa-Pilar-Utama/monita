@@ -313,7 +313,8 @@ export type CheckOptions = {
   locations: { id: number; name: string }[];
 };
 
-export type UpdateRow = { label: UpdateLabel; message: string; author_email: string | null; created_at: number };
+/** `author_key` names the API key that wrote it; with neither author, the update is Monita's own. */
+export type UpdateRow = { label: UpdateLabel; message: string; author_email: string | null; author_key: string | null; created_at: number };
 
 export type IncidentDetail = { incident: IncidentRow; items: string[]; updates: UpdateRow[]; labels: UpdateLabel[] };
 

@@ -487,3 +487,44 @@ async fn the_uptime_calendar_shows_a_public_system_only_and_no_days_before_it_ex
         404
     );
 }
+
+#[tokio::test]
+async fn an_update_from_an_api_key_keeps_its_text_and_names_the_key_to_the_team() {
+    // v1.1 Q44: only Monita's own Investigating entry reads "Detected." in public.
+    let app = TestApp::spawn("test").await;
+    let tl = setup(&app).await;
+    let posted = monita::incidents::post_update(
+        &app.state.db,
+        common::BASE_URL,
+        1,
+        1,
+        "investigating",
+        "Our deploy bot is rolling back.",
+        &monita::incidents::Author::Key("deploy-bot".into()),
+        now(),
+    )
+    .await
+    .unwrap();
+    assert!(posted);
+    let body: Value = app
+        .get("/api/v1/public/status/payments", None)
+        .await
+        .json()
+        .await
+        .unwrap();
+    let updates = &body["data"]["incidents"][0]["updates"];
+    assert_eq!(updates[0]["message"], "Our deploy bot is rolling back.");
+    assert_eq!(updates[2]["message"], "Detected.");
+    assert!(
+        !body.to_string().contains("deploy-bot"),
+        "no author in public"
+    );
+    let team = common::json_of(
+        app.get("/api/ui/projects/payments/incidents/1", Some(&tl))
+            .await,
+    )
+    .await;
+    let first = &team["data"]["updates"][0];
+    assert_eq!(first["author_key"], "deploy-bot", "{team}");
+    assert!(first["author_email"].is_null());
+}

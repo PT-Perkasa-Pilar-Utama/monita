@@ -107,7 +107,10 @@ pub async fn public(
                 .unwrap_or_default()
                 .into_iter()
                 .map(|u| PublicUpdate {
-                    message: if u.author_email.is_none() && u.label == "investigating" {
+                    message: if u.author_email.is_none()
+                        && u.author_key.is_none()
+                        && u.label == "investigating"
+                    {
                         "Detected.".into()
                     } else {
                         u.message

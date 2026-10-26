@@ -9,7 +9,7 @@ pub struct NewIncident {
     pub items: Vec<String>,
     pub severity: String,
     pub message: String,
-    pub author: i64,
+    pub author: Author,
 }
 
 /// US-20. A manual incident starts with an Investigating update.

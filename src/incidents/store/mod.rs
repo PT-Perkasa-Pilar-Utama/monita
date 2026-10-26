@@ -37,6 +37,8 @@ pub struct UpdateRow {
     pub label: String,
     pub message: String,
     pub author_email: Option<String>,
+    /// The API key's name when a key wrote it (v1.1 Q44).
+    pub author_key: Option<String>,
     pub created_at: i64,
 }
 
@@ -188,17 +190,25 @@ pub async fn resolve_with(c: &Connection, id: i64, message: &str, now: i64) -> a
     insert_update(c, id, "resolved", message, None, now).await
 }
 
+/// `author` is `None` for Monita's own update.
 async fn insert_update(
     c: &Connection,
     incident_id: i64,
     label: &str,
     message: &str,
-    author: Option<i64>,
+    author: Option<&super::Author>,
     now: i64,
 ) -> anyhow::Result<()> {
     c.execute(
-        "INSERT INTO status_updates (incident_id, label, message, author_id, created_at) VALUES (?1, ?2, ?3, ?4, ?5)",
-        (incident_id, label, message, author, now),
+        "INSERT INTO status_updates (incident_id, label, message, author_id, author_key, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        (
+            incident_id,
+            label,
+            message,
+            author.and_then(|a| a.user_id()),
+            author.and_then(|a| a.key_name()),
+            now,
+        ),
     )
     .await?;
     Ok(())
@@ -230,7 +240,7 @@ pub async fn add_update(
     resolved_at: Option<i64>,
     label: &str,
     message: &str,
-    author: Option<i64>,
+    author: Option<&super::Author>,
     now: i64,
 ) -> anyhow::Result<()> {
     insert_update(c, incident_id, label, message, author, now).await?;
@@ -252,7 +262,7 @@ pub async fn open_manual(
 ) -> anyhow::Result<i64> {
     c.execute(
         "INSERT INTO incidents (project_id, origin, title, severity, started_at, created_by) VALUES (?1, 'manual', ?2, ?3, ?4, ?5)",
-        (n.project_id, n.title.trim(), n.severity.as_str(), now, n.author),
+        (n.project_id, n.title.trim(), n.severity.as_str(), now, n.author.user_id()),
     )
     .await?;
     let id = c.last_insert_rowid();
@@ -268,7 +278,7 @@ pub async fn open_manual(
         id,
         "investigating",
         n.message.trim(),
-        Some(n.author),
+        Some(&n.author),
         now,
     )
     .await?;

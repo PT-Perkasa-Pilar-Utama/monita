@@ -185,31 +185,34 @@ export function Incident(): ReactElement {
                 </Card>
               ) : (
                 <ol className="relative flex flex-col gap-4 before:absolute before:top-4 before:bottom-4 before:left-4 before:w-px before:bg-border">
-                  {d.updates.map((u, n) => (
+                  {d.updates.map((u, n) => {
+                    const who = u.author_email ?? (u.author_key ? `API key ${u.author_key}` : null);
+                    return (
                     <li key={n} className="relative flex gap-4">
                       <span
                         aria-hidden="true"
                         className={cn(
                           "z-10 mt-2 flex size-8 shrink-0 items-center justify-center rounded-full border bg-background text-xs font-semibold text-muted-foreground",
-                          !u.author_email && "bg-muted",
+                          !who && "bg-muted",
                         )}
                       >
-                        {(u.author_email ?? "M")[0]?.toUpperCase()}
+                        {(u.author_email ?? (u.author_key ? "K" : "M"))[0]?.toUpperCase()}
                       </span>
                       <article className="min-w-0 flex-1 overflow-hidden rounded-lg border bg-card">
                         <header className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b bg-paper px-4 py-2.5 text-[13px]">
                           <LabelBadge label={u.label} />
-                          <strong className="font-semibold">{u.author_email ?? "Monita"}</strong>
+                          <strong className="font-semibold">{who ?? "Monita"}</strong>
                           <span className="text-muted-foreground" title={stamp(u.created_at)}>
                             {ago(u.created_at)}
                           </span>
                         </header>
-                        <p className={cn("px-4 py-3 text-sm whitespace-pre-wrap break-words", !u.author_email && "text-muted-foreground")} data-update={u.author_email ? "tech-lead" : "monita"}>
+                        <p className={cn("px-4 py-3 text-sm whitespace-pre-wrap break-words", !who && "text-muted-foreground")} data-update={u.author_email ? "tech-lead" : u.author_key ? "api-key" : "monita"}>
                           {u.message}
                         </p>
                       </article>
                     </li>
-                  ))}
+                    );
+                  })}
                 </ol>
               )}
             </section>

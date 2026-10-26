@@ -23,6 +23,30 @@ pub use observe::{observe, source_deleted, source_paused};
 pub use store::{IncidentRow, ItemRef, UpdateRow};
 pub use updates::{allowed_labels, post_update};
 
+/// Who wrote a status update or opened a manual incident: a signed-in user, or a project API key
+/// by its name (v1.1 Q44). An update with no author is Monita's own.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Author {
+    User(i64),
+    Key(String),
+}
+
+impl Author {
+    fn user_id(&self) -> Option<i64> {
+        match self {
+            Author::User(id) => Some(*id),
+            Author::Key(_) => None,
+        }
+    }
+
+    fn key_name(&self) -> Option<&str> {
+        match self {
+            Author::User(_) => None,
+            Author::Key(name) => Some(name),
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum SourceKind {
     Monitor,

@@ -191,7 +191,7 @@ async fn an_incident_takes_50_updates_and_a_project_20_open_manual_incidents() {
         1,
         "identified",
         "found",
-        1,
+        &monita::incidents::Author::User(1),
         now(),
     )
     .await
@@ -206,7 +206,7 @@ async fn an_incident_takes_50_updates_and_a_project_20_open_manual_incidents() {
         items: vec!["monitor:1".into()],
         severity: "warning".into(),
         message: "Looking.".into(),
-        author: 1,
+        author: monita::incidents::Author::User(1),
     };
     let err = monita::incidents::open_manual(&app.state.db, &new, now())
         .await

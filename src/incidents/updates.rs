@@ -57,7 +57,7 @@ pub async fn post_update(
     incident_id: i64,
     label: &str,
     message: &str,
-    author: i64,
+    author: &super::Author,
     now: i64,
 ) -> Result<bool, UpdateError> {
     check_message(message)?;

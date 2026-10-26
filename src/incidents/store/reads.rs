@@ -65,7 +65,7 @@ pub async fn updates_of(
     let mut rows = c
         .query(
             format!(
-                "SELECT s.incident_id, s.label, s.message, u.email, s.created_at FROM (SELECT *, row_number() OVER (PARTITION BY incident_id ORDER BY created_at DESC, id DESC) AS rn
+                "SELECT s.incident_id, s.label, s.message, u.email, s.created_at, s.author_key FROM (SELECT *, row_number() OVER (PARTITION BY incident_id ORDER BY created_at DESC, id DESC) AS rn
                  FROM status_updates WHERE incident_id IN ({})) s LEFT JOIN users u ON u.id = s.author_id
                  WHERE s.rn <= ?1 ORDER BY s.created_at DESC, s.id DESC",
                 id_list(incident_ids.iter().copied())
@@ -79,6 +79,7 @@ pub async fn updates_of(
             label: r.get(1)?,
             message: r.get(2)?,
             author_email: r.get(3)?,
+            author_key: r.get(5)?,
             created_at: r.get(4)?,
         });
     }

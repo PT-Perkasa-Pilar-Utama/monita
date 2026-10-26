@@ -132,6 +132,10 @@ const MIGRATIONS: &[(i64, &str)] = &[
     ),
     (40, include_str!("../../../migrations/0040_pause.sql")),
     (41, include_str!("../../../migrations/0041_key_scope.sql")),
+    (
+        42,
+        include_str!("../../../migrations/0042_update_author_key.sql"),
+    ),
 ];
 
 pub async fn run(db: &Db) -> anyhow::Result<()> {

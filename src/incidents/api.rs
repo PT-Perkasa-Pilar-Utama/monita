@@ -174,7 +174,7 @@ async fn post_update(
         id,
         &f.label,
         &f.message,
-        user.id,
+        &super::Author::User(user.id),
         now(),
     )
     .await
@@ -208,7 +208,7 @@ async fn create(
         items: f.items,
         severity: f.severity,
         message: f.message,
-        author: user.id,
+        author: super::Author::User(user.id),
     };
     let id = super::open_manual(&state.db, &incident, now()).await?;
     Ok(created(serde_json::json!({ "id": id })))
