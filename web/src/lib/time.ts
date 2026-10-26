@@ -11,6 +11,11 @@ export function setOffset(min: number): void {
   offsetMin = min;
 }
 
+/** The offset every time on the page uses, in minutes east of UTC. */
+export function offset(): number {
+  return offsetMin;
+}
+
 /** `UTC`, `UTC+7`, `UTC+5:30`, `UTC-3`. */
 export function zone(off: number = offsetMin): string {
   if (off === 0) return "UTC";
@@ -79,4 +84,27 @@ export function nowSecs(): number {
 export function digestNote(hourUtc: number, off: number): string {
   const utc = `${pad(hourUtc)}:00 UTC`;
   return off === 0 ? `The daily ticket digest goes out at ${utc}.` : `The daily ticket digest stays at ${utc}, ${hhmm(hourUtc * 3600, off)} in ${zone(off)}.`;
+}
+
+/** Minutes east of UTC on this computer right now. */
+export function browserOffset(): number {
+  return -new Date().getTimezoneOffset();
+}
+
+/**
+ * One line under a window's start and end: when it starts and how long it lasts, so a time typed
+ * in the wrong zone shows before it is saved. When this computer's zone is not Monita's, it says
+ * so too.
+ */
+export function windowHint(starts: number | null, ends: number | null, now: number, off: number, browser: number): string {
+  let when = "";
+  if (starts !== null && ends !== null && ends > starts) {
+    const minutes = (secs: number): number => Math.round(secs / 60) * 60;
+    const start = starts <= now + 60 ? "It starts now" : `It starts in ${duration(minutes(starts - now))}`;
+    when = `${start} and lasts ${duration(minutes(ends - Math.max(starts, now)))}.`;
+  }
+  if (browser === off) return when;
+  const gap = Math.abs(browser - off);
+  const ahead = `${duration(gap * 60).replace(" 0m", "")} ${browser > off ? "behind" : "ahead of"} your computer`;
+  return `${when} Times here are in ${zone(off)}, Monita's time zone, which is ${ahead}.`.trim();
 }

@@ -22,7 +22,7 @@ import { api, ApiError, dropField, errorText } from "@/lib/api";
 import { useProject } from "@/lib/project";
 import { Writable } from "@/lib/session";
 import { between } from "@/lib/status";
-import { fromInputValue, inputValue, nowSecs } from "@/lib/time";
+import { browserOffset, fromInputValue, inputValue, nowSecs, offset, windowHint, zone } from "@/lib/time";
 import type { IncidentItem, MaintenancePage, MaintenanceWindow, WindowState } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 import { ItemPicker } from "@/pages/project/IncidentForm";
@@ -88,6 +88,7 @@ function WindowForm({ base, onClose, onSaved }: { base: string; onClose: () => v
     }
   };
   const formError = error && Object.keys(error.fields).length === 0 ? error.message : undefined;
+  const hint = windowHint(fromInputValue(starts), fromInputValue(ends), nowSecs(), offset(), browserOffset());
 
   return (
     <FormSheetBody
@@ -127,7 +128,7 @@ function WindowForm({ base, onClose, onSaved }: { base: string; onClose: () => v
           <div className="grid gap-5 sm:grid-cols-2">
             <Field data-invalid={err("starts_at") ? true : undefined}>
               <FieldLabel htmlFor="w-starts" required>
-                Starts
+                Starts, {zone()}
               </FieldLabel>
               <Input id="w-starts" type="datetime-local" aria-required aria-invalid={err("starts_at") ? true : undefined} value={starts} onChange={(e) => {
                 setStarts(e.target.value);
@@ -137,7 +138,7 @@ function WindowForm({ base, onClose, onSaved }: { base: string; onClose: () => v
             </Field>
             <Field data-invalid={err("ends_at") ? true : undefined}>
               <FieldLabel htmlFor="w-ends" required>
-                Ends
+                Ends, {zone()}
               </FieldLabel>
               <Input id="w-ends" type="datetime-local" aria-required aria-invalid={err("ends_at") ? true : undefined} value={ends} onChange={(e) => {
                 setEnds(e.target.value);
@@ -145,6 +146,7 @@ function WindowForm({ base, onClose, onSaved }: { base: string; onClose: () => v
               }} />
               {err("ends_at") && <FieldError>{err("ends_at")}</FieldError>}
             </Field>
+            {hint && <p className="text-sm text-muted-foreground sm:col-span-2">{hint}</p>}
           </div>
           <ItemPicker
             choices={choices.data}
