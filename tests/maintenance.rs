@@ -393,3 +393,73 @@ async fn resolving_by_hand_forgets_a_held_failure() {
         1
     );
 }
+
+#[tokio::test]
+async fn the_list_filters_by_state_and_title_and_sorts_by_start() {
+    let app = TestApp::spawn("test").await;
+    let tl = setup(&app, 2).await;
+    let t = now();
+    let window = async |title: &str, starts: i64, ends: i64| {
+        let res = app
+            .api_post(
+                LIST,
+                json!({ "title": title, "starts_at": starts, "ends_at": ends, "items": ["monitor:1"] }),
+                Some(&tl),
+            )
+            .await;
+        assert_eq!(res.status(), 201, "{title}");
+        json_of(res).await["data"]["id"].as_i64().unwrap()
+    };
+    let ended = window("Old network move", t - 60, t + 3600).await;
+    let res = app
+        .api_post(&format!("{LIST}/{ended}/end"), json!({}), Some(&tl))
+        .await;
+    assert!(res.status().is_success());
+    window("Database upgrade", t - 60, t + 3600).await;
+    window("Network cutover", t + 7200, t + 9000).await;
+    let titles = async |query: &str| -> (Vec<String>, i64) {
+        let body = json_of(app.api_get(&format!("{LIST}?{query}"), Some(&tl)).await).await;
+        let names = body["data"]["windows"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|w| w["title"].as_str().unwrap().to_string())
+            .collect();
+        (names, body["data"]["total"].as_i64().unwrap())
+    };
+    assert_eq!(
+        titles("").await,
+        (
+            vec![
+                "Network cutover".into(),
+                "Database upgrade".into(),
+                "Old network move".into()
+            ],
+            3
+        )
+    );
+    assert_eq!(
+        titles("state=scheduled").await,
+        (vec!["Network cutover".into()], 1)
+    );
+    assert_eq!(
+        titles("state=active").await,
+        (vec!["Database upgrade".into()], 1)
+    );
+    assert_eq!(
+        titles("state=ended").await,
+        (vec!["Old network move".into()], 1)
+    );
+    assert_eq!(
+        titles("q=NETWORK").await,
+        (vec!["Network cutover".into(), "Old network move".into()], 2),
+        "the search ignores case and the total follows it"
+    );
+    let (oldest, _) = titles("sort=oldest").await;
+    assert_eq!(oldest.last().unwrap(), "Network cutover");
+    assert_eq!(
+        titles("state=nonsense").await.1,
+        3,
+        "an unknown state lists every window"
+    );
+}

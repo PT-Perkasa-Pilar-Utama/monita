@@ -1,33 +1,38 @@
 import { MaintenanceGuide } from "@/components/app/Guides";
 import { PausedNow } from "@/components/app/PausedNow";
-import { useState } from "react";
-import type { FormEvent, ReactElement } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { Link } from "react-router-dom";
+import type { ReactElement } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { ConfirmDialog } from "@/components/app/ConfirmDialog";
-import { FormSheet, FormSheetBody } from "@/components/app/FormSheet";
+import { FormSheet } from "@/components/app/FormSheet";
+import { ListFilters, type Option } from "@/components/app/ListFilters";
 import { TableCard } from "@/components/app/TableCard";
 import { Plus, Trash2 } from "@/components/icons";
 import { PageHeader } from "@/components/layout/Page";
 import { Pager } from "@/components/list/Pager";
+import { SortHead } from "@/components/list/SortHead";
 import { TableEmpty } from "@/components/list/TableEmpty";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Textarea } from "@/components/ui/textarea";
-import { api, ApiError, dropField, errorText } from "@/lib/api";
+import { api } from "@/lib/api";
+import { dateHead, nextDate } from "@/lib/dateSort";
 import { useProject } from "@/lib/project";
 import { Writable } from "@/lib/session";
 import { between } from "@/lib/status";
-import { clockDiffers, fromLocalInputValue, localInputValue, nowSecs, windowHint } from "@/lib/time";
-import type { IncidentItem, MaintenancePage, MaintenanceWindow, WindowState } from "@/lib/types";
+import type { MaintenancePage, MaintenanceWindow, WindowState } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
-import { ItemPicker } from "@/pages/project/IncidentForm";
+import { useServerList } from "@/lib/useServerList";
+import { WindowForm } from "@/pages/project/MaintenanceForm";
 import { toast } from "sonner";
+
+// The server works out each window's state from its times.
+const STATES: Option[] = [
+  { value: "", label: "Any state" },
+  { value: "scheduled", label: "Scheduled" },
+  { value: "active", label: "Active" },
+  { value: "ended", label: "Ended" },
+];
 
 const STATE: Record<WindowState, [string, "outline" | "neutral" | "unknown"]> = {
   scheduled: ["Scheduled", "outline"],
@@ -59,142 +64,27 @@ function WindowAction({ w, base, onDone }: { w: MaintenanceWindow; base: string;
   );
 }
 
-/** Plan a window: a title, a start and an end on the user's own clock, the items, and a note for visitors. */
-function WindowForm({ base, onClose, onSaved }: { base: string; onClose: () => void; onSaved: () => void }): ReactElement {
-  const { project: p } = useProject();
-  const choices = useApi<IncidentItem[]>(`/projects/${p.slug}/incident-items`);
-  const [title, setTitle] = useState("");
-  // People type times on their own clock; the hint says how Monita's time zone shows them.
-  const [starts, setStarts] = useState(() => localInputValue(nowSecs()));
-  const [ends, setEnds] = useState(() => localInputValue(nowSecs() + 3600));
-  // "Plan maintenance" on a monitor or heartbeat opens the form with it picked: ?item=monitor:3.
-  const [params] = useSearchParams();
-  const [items, setItems] = useState<string[]>(() => params.getAll("item"));
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState<ApiError | null>(null);
-  const [busy, setBusy] = useState(false);
-  const err = (k: string): string | undefined => error?.fields[k];
-  const clear = (k: string): void => setError((e) => e && dropField(e, k));
-
-  const submit = async (_e: FormEvent): Promise<void> => {
-    setBusy(true);
-    setError(null);
-    try {
-      await api(base, "POST", { title, message, starts_at: fromLocalInputValue(starts), ends_at: fromLocalInputValue(ends), items });
-      toast.success("Maintenance planned.");
-      onSaved();
-    } catch (e) {
-      setError(e instanceof ApiError ? e : new ApiError(0, "error", errorText(e)));
-    } finally {
-      setBusy(false);
-    }
-  };
-  const formError = error && Object.keys(error.fields).length === 0 ? error.message : undefined;
-  const [from, to] = [fromLocalInputValue(starts), fromLocalInputValue(ends)];
-  const hint = windowHint(from, to, nowSecs(), from !== null && to !== null && clockDiffers(from) ? between(from, to) : null);
-
-  return (
-    <FormSheetBody
-      title="Plan maintenance"
-      onSubmit={(e) => void submit(e)}
-      footer={
-        <div className="ml-auto flex gap-2">
-          <Button type="button" variant="ghost" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button type="submit" disabled={busy}>
-            {busy && <Spinner data-icon="inline-start" />}
-            Plan maintenance
-          </Button>
-        </div>
-      }
-    >
-      {!choices.data ? (
-        <Skeleton className="h-[480px] rounded-xl" />
-      ) : (
-        <FieldGroup className="gap-5">
-          {formError && (
-            <p role="alert" className="text-sm text-destructive">
-              {formError}
-            </p>
-          )}
-          <Field data-invalid={err("title") ? true : undefined}>
-            <FieldLabel htmlFor="w-title" required>
-              Title
-            </FieldLabel>
-            <Input id="w-title" autoFocus maxLength={120} aria-required aria-invalid={err("title") ? true : undefined} placeholder="Database upgrade" value={title} onChange={(e) => {
-              setTitle(e.target.value);
-              clear("title");
-            }} />
-            {err("title") && <FieldError>{err("title")}</FieldError>}
-          </Field>
-          <div className="grid gap-5 sm:grid-cols-2">
-            <Field data-invalid={err("starts_at") ? true : undefined}>
-              <FieldLabel htmlFor="w-starts" required>
-                Starts
-              </FieldLabel>
-              <Input id="w-starts" type="datetime-local" aria-required aria-invalid={err("starts_at") ? true : undefined} value={starts} onChange={(e) => {
-                setStarts(e.target.value);
-                clear("starts_at");
-              }} />
-              {err("starts_at") && <FieldError>{err("starts_at")}</FieldError>}
-            </Field>
-            <Field data-invalid={err("ends_at") ? true : undefined}>
-              <FieldLabel htmlFor="w-ends" required>
-                Ends
-              </FieldLabel>
-              <Input id="w-ends" type="datetime-local" aria-required aria-invalid={err("ends_at") ? true : undefined} value={ends} onChange={(e) => {
-                setEnds(e.target.value);
-                clear("ends_at");
-              }} />
-              {err("ends_at") && <FieldError>{err("ends_at")}</FieldError>}
-            </Field>
-            {hint && <p className="text-sm text-muted-foreground sm:col-span-2">{hint}</p>}
-          </div>
-          <ItemPicker
-            choices={choices.data}
-            chosen={items}
-            onToggle={(value, on) => {
-              setItems((xs) => (on ? [...xs, value] : xs.filter((x) => x !== value)));
-              clear("items");
-            }}
-            error={err("items")}
-          />
-          <Field data-invalid={err("message") ? true : undefined}>
-            <FieldLabel htmlFor="w-message">Message on the status page</FieldLabel>
-            <Textarea id="w-message" rows={4} maxLength={1000} aria-invalid={err("message") ? true : undefined} placeholder="What visitors may notice, and when it is back." value={message} onChange={(e) => {
-              setMessage(e.target.value);
-              clear("message");
-            }} />
-            {err("message") && <FieldError>{err("message")}</FieldError>}
-          </Field>
-        </FieldGroup>
-      )}
-    </FormSheetBody>
-  );
-}
-
 /** Project, Maintenance: planned work, then everything paused. While a window is active its items
  * still get checked, but a failure opens no incident and sends no alert. */
 export function Maintenance({ creating = false }: { creating?: boolean }): ReactElement {
   const navigate = useNavigate();
   const { project: p } = useProject();
   const base = `/projects/${p.slug}/maintenance`;
-  const here = `/projects/${p.slug}/maintenance`;
-  const [page, setPage] = useState(1);
-  const list = useApi<MaintenancePage>(`${base}?page=${page}`);
+  const q = useServerList(`monita:maintenance:${p.slug}`, !creating);
+  const list = useApi<MaintenancePage>(`${base}${q.query}`);
   const d = list.data;
 
   return (
     <>
       <PageHeader
         title="Maintenance"
+        filtered={q.filtered}
         actions={
           <>
             <MaintenanceGuide />
             <Writable>
               <Button asChild>
-                <Link to={`${here}/new`}>
+                <Link to={`${base}/new`}>
                   <Plus data-icon="inline-start" />
                   Plan maintenance
                 </Link>
@@ -204,9 +94,23 @@ export function Maintenance({ creating = false }: { creating?: boolean }): React
         }
       />
       <div className="flex flex-col gap-6 pb-4">
-        <TableCard title={d ? `${d.total} ${d.total === 1 ? "window" : "windows"}` : "Windows"}>
+        <TableCard
+          title={d ? `${d.total} ${d.total === 1 ? "window" : "windows"}` : "Windows"}
+          onClear={q.filtered ? q.clear : undefined}
+          tools={
+            <ListFilters
+              noun="windows"
+              filter={{ q: q.draft, state: q.params.state, severity: "" }}
+              onChange={(c) => (c.q !== undefined ? q.setDraft(c.q) : c.state !== undefined && q.set({ state: c.state }))}
+              stateOptions={STATES}
+              severity={false}
+            />
+          }
+        >
           {!d ? (
             <Skeleton className="m-5 h-24" />
+          ) : d.windows.length === 0 && q.filtered ? (
+            <TableEmpty title="" filtered noun="windows" onClear={q.clear} />
           ) : d.windows.length === 0 ? (
             <TableEmpty
               title="Plan maintenance before planned work"
@@ -217,7 +121,7 @@ export function Maintenance({ creating = false }: { creating?: boolean }): React
               <TableHeader>
                 <TableRow>
                   <TableHead>Window</TableHead>
-                  <TableHead className="max-md:hidden">When</TableHead>
+                  <SortHead by="starts" label="When" sort={dateHead("starts", q.params.sort, true)} onSort={() => q.set({ sort: nextDate(q.params.sort, true) })} className="max-md:hidden" />
                   <TableHead>State</TableHead>
                   <TableHead className="text-right">
                     <span className="sr-only">Action</span>
@@ -244,16 +148,16 @@ export function Maintenance({ creating = false }: { creating?: boolean }): React
             </Table>
           )}
         </TableCard>
-        {d && <Pager page={page} pageSize={d.page_size} total={d.total} noun="window" onPage={setPage} disabled={list.loading} />}
+        {d && <Pager page={q.params.page} pageSize={d.page_size} total={d.total} noun="window" onPage={(page) => q.set({ page })} disabled={list.loading} />}
         <PausedNow slug={p.slug} />
       </div>
-      <FormSheet open={creating} onClose={() => navigate(here)}>
+      <FormSheet open={creating} onClose={() => navigate(base)}>
         <WindowForm
           base={base}
-          onClose={() => navigate(here)}
+          onClose={() => navigate(base)}
           onSaved={() => {
             list.reload();
-            navigate(here);
+            navigate(base);
           }}
         />
       </FormSheet>

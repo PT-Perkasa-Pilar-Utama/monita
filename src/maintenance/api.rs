@@ -75,6 +75,9 @@ struct WindowView {
 #[serde(default)]
 struct PageQuery {
     page: String,
+    q: String,
+    state: String,
+    sort: String,
 }
 
 async fn list(
@@ -85,9 +88,14 @@ async fn list(
 ) -> UiResult {
     let p = projects::find_for(&state.db, &user, &slug).await?;
     let page = q.page.trim().parse().unwrap_or(1).max(1);
-    let (windows, total) = super::page(&state.db, p.id, page).await?;
-    let names = crate::checks::source_names(&state.db.read().await?, p.id).await?;
     let t = now();
+    let filter = super::Filter {
+        q: q.q,
+        state: super::State::parse(&q.state),
+        oldest: q.sort == "oldest",
+    };
+    let (windows, total) = super::page(&state.db, p.id, page, &filter, t).await?;
+    let names = crate::checks::source_names(&state.db.read().await?, p.id).await?;
     let windows: Vec<WindowView> = windows
         .into_iter()
         .map(|w| WindowView {

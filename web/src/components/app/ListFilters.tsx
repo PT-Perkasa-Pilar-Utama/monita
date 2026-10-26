@@ -50,6 +50,7 @@ export function ListFilters({
   onChange,
   stateOptions = STATE_OPTIONS,
   selects = true,
+  severity = true,
 }: {
   noun: string;
   filter: ListFilter;
@@ -57,6 +58,8 @@ export function ListFilters({
   stateOptions?: Option[];
   /** False for a list with search only. */
   selects?: boolean;
+  /** False for a list without an alert level, such as maintenance windows. */
+  severity?: boolean;
 }): ReactElement {
   return (
     <>
@@ -72,7 +75,7 @@ export function ListFilters({
         />
       </div>
       {selects && <FilterSelect label="State" value={filter.state} options={stateOptions} onChange={(state) => onChange({ state })} />}
-      {selects && <FilterSelect label="Alert level" value={filter.severity} options={SEVERITY_OPTIONS} onChange={(severity) => onChange({ severity })} />}
+      {selects && severity && <FilterSelect label="Alert level" value={filter.severity} options={SEVERITY_OPTIONS} onChange={(severity) => onChange({ severity })} />}
     </>
   );
 }

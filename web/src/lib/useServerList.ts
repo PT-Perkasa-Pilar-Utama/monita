@@ -10,7 +10,7 @@ export type ServerListParams = { q: string; state: string; severity: string; sor
  * browser, so Back and a return visit land on the same rows. The search waits for a pause in
  * typing before it asks the server.
  */
-export function useServerList(key: string): {
+export function useServerList(key: string, active = true): {
   params: ServerListParams;
   query: string;
   draft: string;
@@ -19,7 +19,7 @@ export function useServerList(key: string): {
   clear: () => void;
   filtered: boolean;
 } {
-  const [search, setSearch] = useRememberedQuery(key);
+  const [search, setSearch] = useRememberedQuery(key, active);
   const u = new URLSearchParams(search);
   const params: ServerListParams = {
     q: u.get("q") ?? "",

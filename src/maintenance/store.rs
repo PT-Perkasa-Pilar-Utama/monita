@@ -102,11 +102,17 @@ pub async fn set_end(c: &Connection, id: i64, at: i64) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub async fn count(c: &Connection, project_id: i64) -> anyhow::Result<i64> {
+pub async fn count(
+    c: &Connection,
+    project_id: i64,
+    q: &str,
+    state: &str,
+    now: i64,
+) -> anyhow::Result<i64> {
     Ok(query_i64(
         c,
-        "SELECT count(*) FROM maintenance_windows WHERE project_id = ?1",
-        (project_id,),
+        &format!("SELECT count(*) FROM maintenance_windows WHERE {MATCHES}"),
+        (project_id, search(q), state, now),
     )
     .await?
     .unwrap_or(0))
@@ -143,17 +149,38 @@ async fn with_items(c: &Connection, mut windows: Vec<Window>) -> anyhow::Result<
     Ok(windows)
 }
 
-/// Latest start first.
+/// The windows a page lists: `?2` a title search, `?3` a state (`''` for all), `?4` the time
+/// that decides the state, the same rule as `maintenance::state`.
+const MATCHES: &str = "project_id = ?1 AND (?2 = '' OR instr(lower(title), ?2) > 0) \
+    AND (?3 = '' OR (?3 = 'scheduled' AND starts_at > ?4) \
+         OR (?3 = 'active' AND starts_at <= ?4 AND ends_at > ?4) \
+         OR (?3 = 'ended' AND ends_at <= ?4))";
+
+fn search(q: &str) -> String {
+    q.trim().to_lowercase().chars().take(100).collect()
+}
+
+/// Latest start first, or the earliest with `oldest`.
+#[allow(clippy::too_many_arguments)]
 pub async fn page(
     c: &Connection,
     project_id: i64,
+    q: &str,
+    state: &str,
+    now: i64,
+    oldest: bool,
     limit: i64,
     offset: i64,
 ) -> anyhow::Result<Vec<Window>> {
+    let order = if oldest {
+        "starts_at ASC, id ASC"
+    } else {
+        "starts_at DESC, id DESC"
+    };
     let windows = query_all(
         c,
-        format!("SELECT {COLS} FROM maintenance_windows WHERE project_id = ?1 ORDER BY starts_at DESC, id DESC LIMIT ?2 OFFSET ?3"),
-        (project_id, limit, offset),
+        format!("SELECT {COLS} FROM maintenance_windows WHERE {MATCHES} ORDER BY {order} LIMIT ?5 OFFSET ?6"),
+        (project_id, search(q), state, now, limit, offset),
         window,
     )
     .await?;

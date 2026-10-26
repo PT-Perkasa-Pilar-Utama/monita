@@ -186,12 +186,58 @@ pub async fn end_now(db: &Db, project_id: i64, id: i64, now: i64) -> Result<(), 
 }
 
 /// One page of the project's windows, latest start first, and how many there are.
-pub async fn page(db: &Db, project_id: i64, page: i64) -> anyhow::Result<(Vec<Window>, i64)> {
+/// What a page of windows shows: a title search, one state or every state, and the order of
+/// their starts.
+#[derive(Debug, Default)]
+pub struct Filter {
+    pub q: String,
+    pub state: Option<State>,
+    pub oldest: bool,
+}
+
+impl State {
+    pub fn parse(raw: &str) -> Option<Self> {
+        match raw.trim() {
+            "scheduled" => Some(Self::Scheduled),
+            "active" => Some(Self::Active),
+            "ended" => Some(Self::Ended),
+            _ => None,
+        }
+    }
+
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Scheduled => "scheduled",
+            Self::Active => "active",
+            Self::Ended => "ended",
+        }
+    }
+}
+
+/// One page of the windows that match `f`, and how many match in all.
+pub async fn page(
+    db: &Db,
+    project_id: i64,
+    page: i64,
+    f: &Filter,
+    now: i64,
+) -> anyhow::Result<(Vec<Window>, i64)> {
     let c = db.read().await?;
     let offset = (page.max(1) - 1).saturating_mul(caps::WINDOWS_PAGE);
+    let state = f.state.map_or("", State::as_str);
     Ok((
-        store::page(&c, project_id, caps::WINDOWS_PAGE, offset).await?,
-        store::count(&c, project_id).await?,
+        store::page(
+            &c,
+            project_id,
+            &f.q,
+            state,
+            now,
+            f.oldest,
+            caps::WINDOWS_PAGE,
+            offset,
+        )
+        .await?,
+        store::count(&c, project_id, &f.q, state, now).await?,
     ))
 }
 
