@@ -17,6 +17,10 @@ use super::sql::{Connection, Pool};
 /// Idle reading connections kept for the next request. More can be open at once; the rest close.
 const IDLE_READERS: usize = 8;
 const BUSY_TIMEOUT: Duration = Duration::from_secs(5);
+/// `PRAGMA auto_vacuum` answers 2 for incremental.
+const INCREMENTAL: i64 = 2;
+/// 2000 pages of 4 KiB, 8 MB: about 50 ms of the writer on a 350 MB file.
+const FREE_BATCH: i64 = 2000;
 
 #[derive(Clone)]
 pub struct Db(Arc<Inner>);
@@ -217,6 +221,47 @@ impl Db {
         .await?
     }
 
+    /// Switches a file made before v1.1 to incremental auto-vacuum, so `free_pages` can give
+    /// deleted space back to the disk. A new file has it from the start (`open_raw`). The switch
+    /// rewrites the file once: 4 s for 350 MB, and it needs that much free disk for the copy. It
+    /// runs on the writer, the one connection that must know the new mode, and blocks its thread,
+    /// so it runs at start, before the server listens. Answers whether it switched.
+    pub async fn enable_incremental_vacuum(&self) -> anyhow::Result<bool> {
+        let mut w = self.0.writer.lock().await;
+        w.clean(&self.0.path).await;
+        if query_i64(&w.conn, "PRAGMA auto_vacuum", ()).await? == Some(INCREMENTAL) {
+            return Ok(false);
+        }
+        w.conn
+            .execute_batch("PRAGMA auto_vacuum = INCREMENTAL; VACUUM")
+            .await?;
+        Ok(true)
+    }
+
+    /// Gives free pages back to the disk, `FREE_BATCH` per write, so a check or a ping waits for
+    /// one batch at most. It does nothing on a file without incremental auto-vacuum.
+    pub async fn free_pages(&self) -> anyhow::Result<()> {
+        let mut before = i64::MAX;
+        loop {
+            let left = self
+                .write(async |c| {
+                    if query_i64(c, "PRAGMA auto_vacuum", ()).await? != Some(INCREMENTAL) {
+                        return Ok(0);
+                    }
+                    c.execute_batch(format!("PRAGMA incremental_vacuum({FREE_BATCH})"))
+                        .await?;
+                    Ok(query_i64(c, "PRAGMA freelist_count", ())
+                        .await?
+                        .unwrap_or(0))
+                })
+                .await?;
+            if left == 0 || left >= before {
+                return Ok(());
+            }
+            before = left;
+        }
+    }
+
     /// Drops every table. Only reset-state calls this.
     pub async fn drop_all_tables(&self) -> anyhow::Result<()> {
         let names = query_all(
@@ -251,6 +296,9 @@ fn open_raw(path: &Path, writer: bool) -> anyhow::Result<rusqlite::Connection> {
         .with_context(|| format!("opening the database {}", path.display()))?;
     conn.busy_timeout(BUSY_TIMEOUT)?;
     if writer {
+        // Takes effect only on a file with no tables yet; an older file switches in
+        // `enable_incremental_vacuum`.
+        conn.execute_batch("PRAGMA auto_vacuum = INCREMENTAL")?;
         let mode: String = conn.query_row("PRAGMA journal_mode = WAL", [], |r| r.get(0))?;
         anyhow::ensure!(
             mode.eq_ignore_ascii_case("wal"),
@@ -290,148 +338,4 @@ pub async fn query_i64(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn foreign_keys_are_back_on_after_a_dropped_write_without_them() {
-        let dir = tempfile::tempdir().unwrap();
-        let db = Db::open(&dir.path().join("t.db")).await.unwrap();
-        crate::platform::migrate::run(&db).await.unwrap();
-        let abandoned = tokio::time::timeout(
-            std::time::Duration::from_millis(100),
-            db.write_without_fk(async |_| {
-                tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-                Ok(())
-            }),
-        )
-        .await;
-        assert!(abandoned.is_err(), "the write was dropped by the timeout");
-        db.write(async |c| {
-            c.execute("INSERT INTO settings (key, value) VALUES ('ok', '1')", ())
-                .await?;
-            Ok(())
-        })
-        .await
-        .expect("an ordinary write works");
-        let orphan = db
-            .write(async |c| {
-                c.execute(
-                    "INSERT INTO check_results (monitor_id, checked_at, ok) VALUES (999, 1, 1)",
-                    (),
-                )
-                .await?;
-                Ok(())
-            })
-            .await;
-        assert!(
-            orphan.is_err(),
-            "a row for a missing monitor is refused again"
-        );
-    }
-
-    #[tokio::test]
-    async fn open_creates_the_missing_data_folder() {
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("data/nested/t.db");
-        Db::open(&path).await.unwrap();
-        assert!(path.parent().unwrap().is_dir());
-    }
-
-    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-    async fn a_write_does_not_wait_for_a_backup_copy() {
-        let dir = tempfile::tempdir().unwrap();
-        let db = Db::open(&dir.path().join("t.db")).await.unwrap();
-        db.write(async |c| {
-            c.execute("CREATE TABLE big (v TEXT)", ()).await?;
-            // 40 MB: SQLite copies a few MB within the sleep below, and the copy must still run
-            // when the write lands.
-            for i in 0..40_000 {
-                c.execute("INSERT INTO big VALUES (?1)", [format!("{i:0>1000}")])
-                    .await?;
-            }
-            Ok(())
-        })
-        .await
-        .unwrap();
-        let copy = {
-            let (db, path) = (db.clone(), dir.path().join("copy.db"));
-            tokio::spawn(async move { db.vacuum_into(&path).await })
-        };
-        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
-        db.write(async |c| {
-            c.execute("INSERT INTO big VALUES ('during')", ()).await?;
-            Ok(())
-        })
-        .await
-        .unwrap();
-        assert!(
-            !copy.is_finished(),
-            "the write finished while the copy still ran"
-        );
-        copy.await.unwrap().unwrap();
-    }
-
-    #[tokio::test]
-    async fn drop_all_tables_then_migrate_again() {
-        let dir = tempfile::tempdir().unwrap();
-        let db = Db::open(&dir.path().join("t.db")).await.unwrap();
-        crate::platform::migrate::run(&db).await.unwrap();
-        db.drop_all_tables().await.unwrap();
-        crate::platform::migrate::run(&db).await.unwrap();
-        let conn = db.read().await.unwrap();
-        let n = query_i64(&conn, "SELECT count(*) FROM settings", ())
-            .await
-            .unwrap();
-        assert_eq!(n, Some(crate::platform::settings::KEYS.len() as i64));
-    }
-
-    #[tokio::test]
-    async fn a_write_dropped_mid_transaction_is_rolled_back_before_the_next() {
-        let dir = tempfile::tempdir().unwrap();
-        let db = Db::open(&dir.path().join("t.db")).await.unwrap();
-        crate::platform::migrate::run(&db).await.unwrap();
-        let abandoned = tokio::time::timeout(
-            std::time::Duration::from_millis(100),
-            db.write(async |c| {
-                c.execute(
-                    "INSERT INTO settings (key, value) VALUES ('ghost', '1')",
-                    (),
-                )
-                .await?;
-                tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-                Ok(())
-            }),
-        )
-        .await;
-        assert!(abandoned.is_err(), "the write was dropped by the timeout");
-        db.write(async |c| {
-            c.execute("INSERT INTO settings (key, value) VALUES ('next', '1')", ())
-                .await?;
-            Ok(())
-        })
-        .await
-        .expect("the next write works");
-        let conn = db.read().await.unwrap();
-        assert_eq!(
-            query_i64(
-                &conn,
-                "SELECT count(*) FROM settings WHERE key = 'ghost'",
-                ()
-            )
-            .await
-            .unwrap(),
-            Some(0)
-        );
-        assert_eq!(
-            query_i64(
-                &conn,
-                "SELECT count(*) FROM settings WHERE key = 'next'",
-                ()
-            )
-            .await
-            .unwrap(),
-            Some(1)
-        );
-    }
-}
+mod tests;

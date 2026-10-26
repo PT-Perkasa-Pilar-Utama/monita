@@ -15,7 +15,8 @@ const LAST_DAY: &str = "rollup_through";
 
 /// Summarizes every day from the last rollup to yesterday (90 days at most), then deletes raw
 /// check results and pings older than 7 days, delivered outbox rows older than 30 days, and
-/// expired sessions and invites. Roll up first, so the sweep never deletes unsummarized rows.
+/// expired sessions and invites, and gives the freed space back to the disk. Roll up first, so
+/// the sweep never deletes unsummarized rows.
 pub async fn run(db: &Db, now: i64) -> anyhow::Result<()> {
     let today = crate::platform::time::day_start(now);
     let yesterday = today - 86_400;
@@ -49,7 +50,7 @@ pub async fn run(db: &Db, now: i64) -> anyhow::Result<()> {
         .await?
         > 0
     {}
-    Ok(())
+    db.free_pages().await
 }
 
 /// Summarizes one day, `caps::JOB_BATCH` sources per read and per write.

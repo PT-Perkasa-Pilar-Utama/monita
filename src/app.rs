@@ -52,6 +52,14 @@ async fn start(
         )
     })?;
     migrate::run(&db).await?;
+    match db.enable_incremental_vacuum().await {
+        Ok(true) => tracing::info!("the database now gives deleted space back to the disk"),
+        Ok(false) => {}
+        Err(e) => tracing::warn!(
+            error = %e,
+            "could not switch the database to incremental vacuum, so the file keeps its largest size"
+        ),
+    }
     let state = AppState {
         db,
         config: Arc::new(config),

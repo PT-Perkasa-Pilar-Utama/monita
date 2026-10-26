@@ -200,6 +200,7 @@ Daily at 01:00 UTC. Writes `monita-YYYYMMDD.db` to `MONITA_BACKUP_DIR` with `VAC
 | `Db::read()` | Returns a reading connection from a pool of up to 8 idle ones; it goes back when dropped. |
 | `platform::sql` | The connection the stores use: rusqlite underneath, called as `c.query(sql, params).await?`. A call runs to its end on the calling thread; `query` collects its rows, which every `LIMIT` bounds. |
 | Every connection | A 5 s busy timeout. The writer also sets WAL, `synchronous = FULL` and `foreign_keys = ON`. |
+| Free space | A new file gets `auto_vacuum = INCREMENTAL` before its first table. At start, `Db::enable_incremental_vacuum` switches an older file with one `VACUUM` on the writer (4 s for 350 MB); a failure is logged and the start goes on. After the retention sweep, `Db::free_pages` runs `incremental_vacuum` 2 000 pages per write until no free page is left. |
 | Lock | `Db::open` holds `<database>.lock` while the process runs, so a second Monita process on the same database stops at open with "is open in another Monita process". |
 
 Spike result (50 tasks, 2 000 inserts): one writer behind a mutex took 75 ms; 50 connections with `busy_timeout` took 834 ms; 50 connections without it hit 161 000 busy errors. Rule: no module opens its own writing connection.
