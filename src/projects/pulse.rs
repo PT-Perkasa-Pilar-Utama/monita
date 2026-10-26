@@ -71,9 +71,9 @@ fn worse(a: &'static str, b: &'static str) -> &'static str {
 }
 
 /// Each part read through its module's interface.
-pub async fn pulse(db: &Db, project_id: i64) -> anyhow::Result<Pulse> {
+/// `off`: the viewer's clock, minutes east of UTC, for the hour labels.
+pub async fn pulse(db: &Db, project_id: i64, off: i64) -> anyhow::Result<Pulse> {
     let t = now();
-    let off = crate::platform::settings::utc_offset(&db.read().await?).await?;
     let [monitors, heartbeats] = crate::checks::summaries(db, project_id).await?;
     // A deleted monitor's or heartbeat's incidents stay in the list but leave the bars.
     let live = crate::checks::series::source_keys(db, project_id).await?;

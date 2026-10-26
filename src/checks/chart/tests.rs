@@ -113,5 +113,11 @@ fn every_bucket_answers_a_hover_even_an_empty_one() {
         "{}",
         c.hovers[2].title
     );
-    assert!(c.hovers[2].title.contains("UTC+7"), "{}", c.hovers[2].title);
+    // The viewer's own clock (UTC+7 here), with no zone name.
+    assert!(
+        c.hovers[2].title.starts_with("1970-01-01 16:03"),
+        "{}",
+        c.hovers[2].title
+    );
+    assert!(!c.hovers[2].title.contains("UTC"), "{}", c.hovers[2].title);
 }

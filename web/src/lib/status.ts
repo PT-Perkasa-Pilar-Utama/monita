@@ -79,7 +79,7 @@ function shortDay(d: string): string {
 
 /** "Oct 15, 18:31 to 18:56 UTC+7", with the end day when it ends on another, or "since" while open. */
 export function span(i: PublicIncident): string {
-  if (i.resolved_at === null) return `Since ${shortDay(day(i.started_at))}, ${hhmm(i.started_at)} ${zone()}`;
+  if (i.resolved_at === null) return `Since ${shortDay(day(i.started_at))}, ${hhmm(i.started_at)} ${zone()}`.trimEnd();
   return between(i.started_at, i.resolved_at);
 }
 
@@ -87,7 +87,7 @@ export function span(i: PublicIncident): string {
 export function between(from: number, to: number): string {
   const start = `${shortDay(day(from))}, ${hhmm(from)}`;
   const end = day(from) === day(to) ? hhmm(to) : `${shortDay(day(to))}, ${hhmm(to)}`;
-  return `${start} to ${end} ${zone()}`;
+  return `${start} to ${end} ${zone()}`.trimEnd();
 }
 
 /** The mean of the bars that have data, as "99.87%", or null when none has. */

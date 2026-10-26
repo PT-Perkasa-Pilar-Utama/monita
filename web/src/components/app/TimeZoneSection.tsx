@@ -71,7 +71,7 @@ export function TimeZoneSection({ initial, digestHour }: { initial: number; dige
     <SettingsSection
       id="time-zone"
       title="Times on every page"
-      description="Every page, chart and status page shows times in this offset, and Today and the status page days start at its midnight. Monita stores times in UTC and does not follow daylight saving."
+      description="The public status page shows its times in this offset and starts its days at its midnight, while the team's own pages show every time on each person's own clock."
       footerNote={`Now it is ${stamp(Math.floor(Date.now() / 1000), value)}. ${digestNote(digestHour, value)}`}
       footer={
         <Button onClick={() => void save()} disabled={busy || value === saved}>

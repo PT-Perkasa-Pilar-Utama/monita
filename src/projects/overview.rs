@@ -24,7 +24,8 @@ pub struct Overview {
     pub chart: OverviewChart,
 }
 
-pub async fn read(db: &Db, project_id: i64) -> anyhow::Result<Overview> {
+/// `off`: the viewer's clock, minutes east of UTC, for the chart's labels.
+pub async fn read(db: &Db, project_id: i64, off: i64) -> anyhow::Result<Overview> {
     let [monitors, heartbeats] = checks::summaries(db, project_id).await?;
     let stages = tickets::stage_counts(db, project_id).await?;
     let triage = stages
@@ -34,7 +35,6 @@ pub async fn read(db: &Db, project_id: i64) -> anyhow::Result<Overview> {
     let mut open = incidents::list(db, project_id, Some(true)).await?;
     open.truncate(INCIDENTS);
     let keys = super::list_keys(db, project_id).await?;
-    let off = crate::platform::settings::utc_offset(&db.read().await?).await?;
     let chart = checks::series::project(db, project_id, now(), off).await?;
     Ok(Overview {
         chart,

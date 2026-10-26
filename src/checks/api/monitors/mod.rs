@@ -137,6 +137,7 @@ async fn detail(
     CurrentUser(user): CurrentUser,
     Path((slug, id)): Path<(String, i64)>,
     Query(paging): Query<Paging>,
+    crate::platform::ui::ViewerOffset(off): crate::platform::ui::ViewerOffset,
 ) -> UiResult {
     let p = projects::find_for(&state.db, &user, &slug).await?;
     let m = checks::find_monitor(&state.db, p.id, id)
@@ -151,7 +152,6 @@ async fn detail(
         .get(&(SourceKind::Monitor, id))
         .copied();
     let s = checks::item_state(m.last.is_some(), m.paused_at.is_some(), incident).0;
-    let off = crate::platform::settings::utc_offset(&state.db.read().await?).await?;
     let insight = Insight::monitor(&state.db, &m, paging.range(), now(), off).await?;
     let last = match &m.last {
         Some(c) => (

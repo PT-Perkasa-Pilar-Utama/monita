@@ -172,7 +172,7 @@ pub fn next_ping_stat(deadline: Option<i64>, now: i64, off: i64) -> crate::check
         Some(d) if d > now => (
             label,
             format!("in {}", time::duration(d - now)),
-            format!("by {}", time::stamp(d, off)),
+            format!("by {}", time::local(d, off)),
             "plain",
         ),
         Some(d) => (

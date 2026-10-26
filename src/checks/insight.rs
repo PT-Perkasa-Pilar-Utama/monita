@@ -94,7 +94,7 @@ impl Insight {
             return ("Created", age, "nothing recorded yet".into(), "plain");
         }
         let (label, value) = self.streak();
-        let since = format!("since {}", time::stamp(self.report.streak.since, self.off));
+        let since = format!("since {}", time::local(self.report.streak.since, self.off));
         (label, value, since, self.streak_kind())
     }
 

@@ -155,10 +155,12 @@ Use a bot for Monita alone: Monita reads the bot's messages to find connect link
 
 ## Time zone
 
-**Admin**, **Time zone** sets the offset every page uses to show times. Pick it under **Show times in**, for example `UTC+7: Jakarta (WIB), Bangkok, Hanoi`, and select **Save changes**. The page reloads.
+The team's pages show every time on each person's own computer clock, daylight saving included, with no zone name. Charts and the hourly bars follow the same clock.
 
-- The offset is fixed. Monita does not follow daylight saving. Change it by hand when your clock changes.
-- Charts, "since" times, the Today figure and the 90 days on the status page start at midnight in this offset.
+**Admin**, **Time zone** sets the offset the public status page uses. Pick it under **Show times in**, for example `UTC+7: Jakarta (WIB), Bangkok, Hanoi`, and select **Save changes**.
+
+- The offset is fixed. The status page does not follow daylight saving. Change it by hand when your clock changes.
+- The status page shows its times in this offset, and its 90 days start at midnight in this offset.
 - Monita stores times in UTC. The daily summaries and the month chart still count UTC days. At UTC+7 a month-chart day runs 07:00 to 07:00.
 - Ticket daily caps, data retention and the daily digest hour follow UTC. The page says when the digest goes out, in UTC and in the offset you pick. Change the hour with `MONITA_DIGEST_UTC_HOUR`.
 

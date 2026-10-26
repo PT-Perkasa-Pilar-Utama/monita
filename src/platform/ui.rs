@@ -202,6 +202,33 @@ where
     }
 }
 
+/// The viewer's clock in minutes east of UTC, from the `x-utc-offset` header the app sends, so
+/// team charts and day bars follow the person looking. Without a usable header it is the admin
+/// time zone, as the public pages use.
+pub struct ViewerOffset(pub i64);
+
+impl axum::extract::FromRequestParts<crate::app::AppState> for ViewerOffset {
+    type Rejection = UiError;
+
+    async fn from_request_parts(
+        parts: &mut axum::http::request::Parts,
+        state: &crate::app::AppState,
+    ) -> Result<Self, Self::Rejection> {
+        let sent = parts
+            .headers
+            .get("x-utc-offset")
+            .and_then(|v| v.to_str().ok())
+            .and_then(|v| v.trim().parse::<i64>().ok())
+            .filter(|m| super::settings::valid_offset(*m));
+        match sent {
+            Some(m) => Ok(ViewerOffset(m)),
+            None => Ok(ViewerOffset(
+                super::settings::utc_offset(&state.db.read().await?).await?,
+            )),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

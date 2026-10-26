@@ -27,10 +27,12 @@ type Method = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 /** Calls `/api/ui${path}` and returns `data`. A 401 sends the reader to sign in. */
 export async function api<T>(path: string, method: Method = "GET", body?: unknown, cache?: RequestCache): Promise<T> {
-  const init: RequestInit = { method, credentials: "same-origin", headers: { accept: "application/json" } };
+  // The viewer's clock, so the server lays out chart labels and day bars in the viewer's time.
+  const clock = { "x-utc-offset": String(-new Date().getTimezoneOffset()) };
+  const init: RequestInit = { method, credentials: "same-origin", headers: { accept: "application/json", ...clock } };
   if (cache) init.cache = cache;
   if (body !== undefined) {
-    init.headers = { accept: "application/json", "content-type": "application/json" };
+    init.headers = { accept: "application/json", "content-type": "application/json", ...clock };
     init.body = JSON.stringify(body);
   }
   const res = await fetch(`/api/ui${path}`, init);

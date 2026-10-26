@@ -1,55 +1,71 @@
-// Time display, matching src/platform/time.rs. Storage and the API use Unix seconds, UTC. Pages
-// show times in the fixed UTC offset a super admin sets; the app and the public pages load it
-// once and call `setOffset`.
+// Time display, matching src/platform/time.rs. Storage and the API use Unix seconds, UTC. The
+// team's pages show times on the viewer's own clock with no zone name (`setViewerClock`); the
+// public pages show them in the fixed UTC offset a super admin sets (`setOffset`), named.
 
 const pad = (n: number, w = 2): string => String(n).padStart(w, "0");
 
 let offsetMin = 0;
+let viewerClock = false;
 
-/** Minutes east of UTC that every time on the page uses. */
+/** Public pages: every time on the page is in this fixed offset, minutes east of UTC. */
 export function setOffset(min: number): void {
   offsetMin = min;
+  viewerClock = false;
 }
 
-/** `UTC`, `UTC+7`, `UTC+5:30`, `UTC-3`. */
-export function zone(off: number = offsetMin): string {
+/** The team's pages: every time is on the viewer's own clock, daylight saving included. */
+export function setViewerClock(): void {
+  viewerClock = true;
+}
+
+/** `UTC`, `UTC+7`, `UTC+5:30`, `UTC-3`, or nothing on the viewer's own clock, which needs no name. */
+export function zone(off?: number): string {
+  if (off === undefined) {
+    if (viewerClock) return "";
+    off = offsetMin;
+  }
   if (off === 0) return "UTC";
   const a = Math.abs(off);
   const hm = a % 60 === 0 ? `${a / 60}` : `${Math.floor(a / 60)}:${pad(a % 60)}`;
   return `UTC${off > 0 ? "+" : "-"}${hm}`;
 }
 
-/** `2026-10-16 15:00`, the time in the offset without its name. */
-function local(ts: number, off: number): string {
-  const d = new Date((ts + off * 60) * 1000);
+/** `2026-10-16 15:00`, the time on the page's clock, or in `off` when given, without its name. */
+function local(ts: number, off?: number): string {
+  if (off === undefined && viewerClock) {
+    const d = new Date(ts * 1000);
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+  const d = new Date((ts + (off ?? offsetMin) * 60) * 1000);
   return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
 }
 
 /** `2026-10-16 15:00 UTC+7`: the time in the offset, with the offset named. */
-export function stamp(ts: number, off: number = offsetMin): string {
-  return `${local(ts, off)} ${zone(off)}`;
+export function stamp(ts: number, off?: number): string {
+  return `${local(ts, off)} ${zone(off)}`.trimEnd();
 }
 
 /** `2026-10-16T15:00`, a `datetime-local` input's value for the time in the offset. */
-export function inputValue(ts: number, off: number = offsetMin): string {
+export function inputValue(ts: number, off?: number): string {
   return local(ts, off).replace(" ", "T");
 }
 
 /** The Unix seconds a `datetime-local` value names in the offset, or null when it is not a time. */
-export function fromInputValue(v: string, off: number = offsetMin): number | null {
+export function fromInputValue(v: string, off?: number): number | null {
+  if (off === undefined && viewerClock) return fromLocalInputValue(v);
   const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(v);
   if (!m) return null;
   const [y, mo, d, h, mi] = m.slice(1).map(Number) as [number, number, number, number, number];
-  return Date.UTC(y, mo - 1, d, h, mi) / 1000 - off * 60;
+  return Date.UTC(y, mo - 1, d, h, mi) / 1000 - (off ?? offsetMin) * 60;
 }
 
 /** `2026-10-16`, the day a timestamp falls on in the offset. */
-export function day(ts: number, off: number = offsetMin): string {
+export function day(ts: number, off?: number): string {
   return local(ts, off).slice(0, 10);
 }
 
 /** `14:02`, the time of day in the offset. */
-export function hhmm(ts: number, off: number = offsetMin): string {
+export function hhmm(ts: number, off?: number): string {
   return local(ts, off).slice(11, 16);
 }
 
@@ -96,9 +112,10 @@ export function fromLocalInputValue(v: string): number | null {
   return new Date(y, mo - 1, d, h, mi).getTime() / 1000;
 }
 
-/** True when this computer's clock at `ts` is not in Monita's time zone. */
-export function clockDiffers(ts: number, off: number = offsetMin): boolean {
-  return -new Date(ts * 1000).getTimezoneOffset() !== off;
+/** True when this computer's clock at `ts` is not the clock the page shows times in. */
+export function clockDiffers(ts: number, off?: number): boolean {
+  if (off === undefined && viewerClock) return false;
+  return -new Date(ts * 1000).getTimezoneOffset() !== (off ?? offsetMin);
 }
 
 /**

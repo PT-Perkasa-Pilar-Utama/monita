@@ -1,6 +1,6 @@
 import type { ReactElement, ReactNode } from "react";
 import { createContext, useContext } from "react";
-import { setOffset } from "@/lib/time";
+import { setViewerClock } from "@/lib/time";
 import { useApi } from "@/lib/useApi";
 
 export type Role = "super_admin" | "tl" | "supervisor";
@@ -34,7 +34,8 @@ const ReloadContext = createContext<() => void>(() => {});
 export function SessionProvider({ children }: { children: ReactNode }): ReactElement | null {
   const me = useApi<Me>("/me");
   if (!me.data) return null;
-  setOffset(me.data.utc_offset_min);
+  // The team sees times on its own clocks; the admin time zone is for the public pages.
+  setViewerClock();
   return (
     <ReloadContext.Provider value={me.reload}>
       <SessionContext.Provider value={me.data}>{children}</SessionContext.Provider>

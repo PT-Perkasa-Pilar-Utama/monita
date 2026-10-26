@@ -113,3 +113,33 @@ async fn a_deleted_monitor_leaves_the_project_chart_and_the_pulse() {
         .unwrap();
     assert!(hours.iter().all(|h| h["downtime_s"] == 0), "{list}");
 }
+
+#[tokio::test]
+async fn team_charts_follow_the_viewers_clock() {
+    let app = TestApp::spawn("test").await;
+    let tl = setup(&app).await;
+    let labels = |off: &'static str| {
+        let req = app
+            .http
+            .get(app.url("/api/ui/projects-chart"))
+            .header("cookie", tl.clone())
+            .header("x-utc-offset", off)
+            .send();
+        async move {
+            let body: serde_json::Value = req.await.unwrap().json().await.unwrap();
+            body["data"]["chart"]["columns"][0]["label"]
+                .as_str()
+                .unwrap()
+                .to_string()
+        }
+    };
+    let utc = labels("0").await;
+    let jakarta = labels("420").await;
+    let hour = |l: &str| l[..2].parse::<i64>().unwrap();
+    assert_eq!((hour(&utc) + 7) % 24, hour(&jakarta), "{utc} vs {jakarta}");
+    let junk = labels("99999").await;
+    assert_eq!(
+        junk, utc,
+        "an unusable offset falls back to the admin time zone"
+    );
+}

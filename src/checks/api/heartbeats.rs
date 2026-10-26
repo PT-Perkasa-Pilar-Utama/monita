@@ -137,6 +137,7 @@ async fn detail(
     CurrentUser(user): CurrentUser,
     Path((slug, id)): Path<(String, i64)>,
     Query(paging): Query<Paging>,
+    crate::platform::ui::ViewerOffset(off): crate::platform::ui::ViewerOffset,
 ) -> UiResult {
     let p = projects::find_for(&state.db, &user, &slug).await?;
     let hb = heartbeat::find(&state.db, p.id, id)
@@ -151,7 +152,6 @@ async fn detail(
         .get(&(SourceKind::Heartbeat, id))
         .copied();
     let s = hb.state(incident).0;
-    let off = crate::platform::settings::utc_offset(&state.db.read().await?).await?;
     let insight = Insight::heartbeat(&state.db, &hb, paging.range(), now(), off).await?;
     let newest = heartbeat::last_pings(&state.db, p.id).await?.remove(&id);
     let last = match &newest {

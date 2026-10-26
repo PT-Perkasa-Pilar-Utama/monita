@@ -148,7 +148,8 @@ fn when(w: &Window, i: usize) -> String {
     if w.step >= 86_400 {
         time::day_at(t, w.off)
     } else {
-        time::stamp(t, w.off)
+        // Team pages: the viewer's own clock, which needs no zone name.
+        time::local(t, w.off)
     }
 }
 

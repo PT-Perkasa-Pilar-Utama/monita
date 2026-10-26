@@ -12,7 +12,7 @@ use super::{Project, ProjectError, ProjectInput, TabCounts};
 use crate::{
     accounts::{AdminUser, CurrentUser},
     app::AppState,
-    platform::ui::{Body, UiError, UiResult, created, data},
+    platform::ui::{Body, UiError, UiResult, ViewerOffset, created, data},
 };
 
 pub fn router() -> Router<AppState> {
@@ -150,6 +150,7 @@ async fn chart(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
     Query(q): Query<ListQuery>,
+    ViewerOffset(off): ViewerOffset,
 ) -> UiResult {
     let found = page_of(&state, &user, &q).await?;
     let projects: Vec<(i64, String)> = found
@@ -157,7 +158,6 @@ async fn chart(
         .iter()
         .map(|p| (p.id, p.name.clone()))
         .collect();
-    let off = crate::platform::settings::utc_offset(&state.db.read().await?).await?;
     let chart =
         crate::checks::series::projects(&state.db, &projects, crate::platform::now(), off).await?;
     // The page links by slug; the chart names projects by id.
@@ -174,6 +174,7 @@ async fn list(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
     Query(q): Query<ListQuery>,
+    ViewerOffset(off): ViewerOffset,
 ) -> UiResult {
     let found = page_of(&state, &user, &q).await?;
     let owner_options = if user.is_admin() {
@@ -182,7 +183,7 @@ async fn list(
         Vec::new()
     };
     Ok(data(ProjectList {
-        projects: rows(&state, &found.projects).await?,
+        projects: rows(&state, &found.projects, off).await?,
         total: found.total,
         page: found.page,
         page_size: crate::platform::caps::PROJECTS_PAGE,
@@ -201,12 +202,12 @@ struct ProjectRow {
 
 /// One page of projects, `caps::PROJECTS_PAGE` at most, each with its pulse.
 // ponytail: one pulse read per project, 20 a page; batch them into grouped queries if the list gets slow.
-async fn rows(state: &AppState, projects: &[Project]) -> anyhow::Result<Vec<ProjectRow>> {
+async fn rows(state: &AppState, projects: &[Project], off: i64) -> anyhow::Result<Vec<ProjectRow>> {
     let mut out = Vec::with_capacity(projects.len());
     for p in projects {
         out.push(ProjectRow {
             project: ProjectView::from(p),
-            pulse: super::pulse(&state.db, p.id).await?,
+            pulse: super::pulse(&state.db, p.id, off).await?,
         });
     }
     Ok(out)
@@ -273,9 +274,10 @@ async fn overview(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
     Path(slug): Path<String>,
+    ViewerOffset(off): ViewerOffset,
 ) -> UiResult {
     let p = super::find_for(&state.db, &user, &slug).await?;
-    Ok(data(super::overview::read(&state.db, p.id).await?))
+    Ok(data(super::overview::read(&state.db, p.id, off).await?))
 }
 
 #[derive(Deserialize, Default)]
