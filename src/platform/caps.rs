@@ -18,6 +18,8 @@ pub const SOURCES_PER_PROJECT: i64 = MONITORS_PER_PROJECT + HEARTBEATS_PER_PROJE
 /// Live API keys per project. Settings also shows the newest revoked ones, up to this many.
 /// Other machines that run checks for this Monita (technical-specs 14).
 pub const LOCATIONS: i64 = 10;
+/// Monitors named in a location's list on the Locations page; the count covers the rest.
+pub const LOCATION_MONITORS_SHOWN: i64 = 50;
 /// Jobs in one work answer, and results in one post, of a probe.
 pub const PROBE_BATCH: i64 = 50;
 pub const KEYS_PER_PROJECT: i64 = 20;

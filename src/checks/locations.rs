@@ -41,9 +41,7 @@ pub async fn create(db: &Db, name: &str) -> Result<(i64, String), LocationError>
     if name.is_empty() || name.chars().count() > 40 {
         return Err(LocationError::BadName);
     }
-    let token = format!("{TOKEN_PREFIX}{}", token::random_token());
-    let prefix = token[TOKEN_PREFIX.len()..TOKEN_PREFIX.len() + 4].to_string();
-    let hash = token::hash(&token);
+    let (token, prefix, hash) = new_token();
     let made = db
         .write(async |c| {
             if store::locations::count(c).await? >= caps::LOCATIONS {
@@ -58,6 +56,31 @@ pub async fn create(db: &Db, name: &str) -> Result<(i64, String), LocationError>
         })
         .await??;
     Ok((made, token))
+}
+
+/// A fresh token: (the token, shown once; its prefix, shown always; its hash, stored).
+fn new_token() -> (String, String, String) {
+    let token = format!("{TOKEN_PREFIX}{}", token::random_token());
+    let prefix = token[TOKEN_PREFIX.len()..TOKEN_PREFIX.len() + 4].to_string();
+    let hash = token::hash(&token);
+    (token, prefix, hash)
+}
+
+/// Gives a location a new token, shown once. The old one stops working at once, and the
+/// location reads as not running until the probe calls with the new one. None when there is no
+/// such location.
+pub async fn rotate(db: &Db, id: i64) -> anyhow::Result<Option<String>> {
+    let (token, prefix, hash) = new_token();
+    let done = db
+        .write(async |c| store::locations::set_token(c, id, &hash, &prefix).await)
+        .await?;
+    Ok(done.then_some(token))
+}
+
+/// The monitors that check from a location, as (monitor id, project id, name), at most
+/// `caps::LOCATION_MONITORS_SHOWN`.
+pub async fn monitors_of(db: &Db, id: i64) -> anyhow::Result<Vec<(i64, i64, String)>> {
+    store::locations::monitors_of(&db.read().await?, id).await
 }
 
 /// Deletes a location with its assignments and results. False when there was none.

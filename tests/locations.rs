@@ -633,3 +633,74 @@ async fn claims_a_probe_never_answered_do_not_credit_a_later_result() {
         json!({ "stored": 1, "skipped": 1 })
     );
 }
+
+#[tokio::test]
+async fn a_new_token_stops_the_old_probe_and_waits_for_the_new_one() {
+    let app = TestApp::spawn("test").await;
+    let (admin, tl) = setup(&app).await;
+    let (id, old) = location(&app, &admin, "Jakarta").await;
+    let made = app
+        .api_post(
+            MONITORS,
+            monitor("http://127.0.0.1:9/", &[id], "1"),
+            Some(&tl),
+        )
+        .await;
+    assert_eq!(made.status(), 201);
+    let call = |t: &str| {
+        app.http
+            .get(app.url("/api/v1/probe/work"))
+            .bearer_auth(t.to_string())
+            .send()
+    };
+    assert_eq!(call(&old).await.unwrap().status(), 200);
+    assert!(
+        count(
+            &app,
+            "SELECT count(*) FROM locations WHERE last_seen_at IS NOT NULL"
+        )
+        .await
+            == 1
+    );
+
+    let res = app
+        .api_post(&format!("{ADMIN}/{id}/token"), json!({}), Some(&admin))
+        .await;
+    assert_eq!(res.status(), 200);
+    let new = json_of(res).await["data"]["token"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    assert_ne!(new, old);
+    assert_eq!(
+        count(
+            &app,
+            "SELECT count(*) FROM locations WHERE last_seen_at IS NULL"
+        )
+        .await,
+        1,
+        "not running until the new probe calls"
+    );
+    assert_eq!(call(&old).await.unwrap().status(), 401);
+    assert_eq!(call(&new).await.unwrap().status(), 200);
+    assert_eq!(
+        app.api_post(&format!("{ADMIN}/999/token"), json!({}), Some(&admin))
+            .await
+            .status(),
+        404
+    );
+    let tl_try = app
+        .api_post(&format!("{ADMIN}/{id}/token"), json!({}), Some(&tl))
+        .await;
+    assert_eq!(tl_try.status(), 403);
+
+    let list = json_of(
+        app.get(&format!("{ADMIN}/{id}/monitors"), Some(&admin))
+            .await,
+    )
+    .await;
+    let monitors = list["data"]["monitors"].as_array().unwrap();
+    assert_eq!(monitors.len(), 1, "{list}");
+    assert_eq!(monitors[0]["name"], "Checkout");
+    assert_eq!(monitors[0]["slug"], "payments");
+}

@@ -6,7 +6,7 @@ use axum::{
     extract::{Path, State},
     http::StatusCode,
     response::IntoResponse,
-    routing::{delete, get},
+    routing::{delete, get, post},
 };
 use serde::Deserialize;
 
@@ -24,6 +24,8 @@ pub(super) fn router() -> Router<AppState> {
     Router::new()
         .route("/api/ui/admin/locations", get(list).post(create))
         .route("/api/ui/admin/locations/{id}", delete(remove))
+        .route("/api/ui/admin/locations/{id}/token", post(rotate))
+        .route("/api/ui/admin/locations/{id}/monitors", get(monitors))
 }
 
 async fn list(State(state): State<AppState>, _: AdminUser) -> UiResult {
@@ -51,6 +53,31 @@ async fn create(
         Err(LocationError::Other(e)) => Err(UiError::Internal(e)),
         Err(e) => Err(UiError::field("name", e.to_string())),
     }
+}
+
+/// A new token for the location, shown once; the old one stops working at once.
+async fn rotate(State(state): State<AppState>, _: AdminUser, Path(id): Path<i64>) -> UiResult {
+    match locations::rotate(&state.db, id).await? {
+        Some(token) => Ok(data(serde_json::json!({ "token": token }))),
+        None => Err(UiError::NotFound),
+    }
+}
+
+/// The monitors that check from the location, each with its project for a link.
+async fn monitors(State(state): State<AppState>, _: AdminUser, Path(id): Path<i64>) -> UiResult {
+    let rows = locations::monitors_of(&state.db, id).await?;
+    let ids: Vec<i64> = rows.iter().map(|r| r.1).collect();
+    let projects = crate::projects::by_ids(&state.db, &ids).await?;
+    let list: Vec<serde_json::Value> = rows
+        .into_iter()
+        .filter_map(|(mid, pid, name)| {
+            let p = projects.get(&pid)?;
+            Some(serde_json::json!({ "id": mid, "name": name, "project": p.name, "slug": p.slug }))
+        })
+        .collect();
+    Ok(data(
+        serde_json::json!({ "monitors": list, "shown_max": caps::LOCATION_MONITORS_SHOWN }),
+    ))
 }
 
 async fn remove(State(state): State<AppState>, _: AdminUser, Path(id): Path<i64>) -> UiResult {

@@ -73,6 +73,34 @@ pub async fn insert(
 
 /// Deletes the location; its assignments and results cascade. Each monitor's quorum then drops to
 /// at most its number of places. False when there was no such location.
+/// Swaps a location's token and clears `last_seen_at`, so the next call proves the new probe.
+/// False when there was no such location.
+pub async fn set_token(c: &Connection, id: i64, hash: &str, prefix: &str) -> anyhow::Result<bool> {
+    Ok(c
+        .execute(
+            "UPDATE locations SET token_hash = ?1, token_prefix = ?2, last_seen_at = NULL WHERE id = ?3",
+            (hash, prefix, id),
+        )
+        .await?
+        > 0)
+}
+
+/// (monitor id, project id, name) of the monitors that check from a location, by name, at most
+/// `caps::LOCATION_MONITORS_SHOWN`.
+pub async fn monitors_of(
+    c: &Connection,
+    location_id: i64,
+) -> anyhow::Result<Vec<(i64, i64, String)>> {
+    query_all(
+        c,
+        "SELECT m.id, m.project_id, m.name FROM monitor_locations ml JOIN monitors m ON m.id = ml.monitor_id
+         WHERE ml.location_id = ?1 ORDER BY m.name LIMIT ?2",
+        (location_id, caps::LOCATION_MONITORS_SHOWN),
+        |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+    )
+    .await
+}
+
 pub async fn delete(c: &Connection, id: i64) -> anyhow::Result<bool> {
     let gone = c
         .execute("DELETE FROM locations WHERE id = ?1", [id])
