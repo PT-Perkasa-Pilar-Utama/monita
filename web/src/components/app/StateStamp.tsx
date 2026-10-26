@@ -4,10 +4,12 @@ import { ago, duration, hhmm, nowSecs } from "@/lib/time";
 import type { MaintenanceRef } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-/** Barrier stripes for a list row that is paused or in maintenance; nothing for any other state. */
-export function rowTape(state: string): CSSProperties | undefined {
+/** Barrier stripes for a list row that is paused or in maintenance; nothing for any other state.
+ * `covered` is a window over it: the row is in maintenance even when an open incident keeps the
+ * state Down, because the state column says the state and the tape says what Monita is doing. */
+export function rowTape(state: string, covered = false): CSSProperties | undefined {
   if (state === "paused") return tape("--muted-foreground", 10, "--row-tape-boost");
-  if (state === "maintenance") return tape("--issue", 14, "--row-tape-boost");
+  if (state === "maintenance" || covered) return tape("--issue", 14, "--row-tape-boost");
   return undefined;
 }
 

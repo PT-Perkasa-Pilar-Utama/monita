@@ -130,6 +130,17 @@ async fn an_incident_open_before_the_window_stays_open_and_closes_as_usual() {
         status["data"]["status"]["items"][0]["state"], "down",
         "an open incident outranks the window"
     );
+    let rows = json_of(
+        app.api_get("/api/ui/projects/payments/monitors", Some(&tl))
+            .await,
+    )
+    .await;
+    let row = &rows["data"]["monitors"][0];
+    assert_eq!(row["state"], "down");
+    assert_eq!(
+        row["covered"], true,
+        "the row still says a window covers it"
+    );
 
     record(&app, true, t + 6).await;
     assert_eq!(count(&app, OPEN).await, 0);

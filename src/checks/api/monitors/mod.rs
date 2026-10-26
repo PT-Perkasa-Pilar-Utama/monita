@@ -53,6 +53,8 @@ struct Row {
     day: Option<Day>,
     /// The viewer pinned it (Q48).
     pinned: bool,
+    /// An active maintenance window covers it, whatever its state says.
+    covered: bool,
 }
 
 #[derive(Serialize)]
@@ -78,6 +80,7 @@ async fn list(
     let states = incidents::team_states_for(&state.db, p.id).await?;
     let mut days: HashMap<i64, Day> = overview::last_day(&state.db, p.id, now()).await?;
     let pinned = checks::pins::ids(&state.db, user.pin_owner(), p.id, SourceKind::Monitor).await?;
+    let covered = crate::maintenance::covered(&state.db, p.id, now()).await?;
     let state_of = |m: &Monitor| {
         checks::item_state(
             m.last.is_some(),
@@ -94,6 +97,7 @@ async fn list(
             let s = state_of(&m);
             Row {
                 pinned: pinned.contains(&m.id),
+                covered: covered.contains(&(SourceKind::Monitor, m.id)),
                 day: days.remove(&m.id),
                 monitor: view(m, s, user.is_read_only()),
             }

@@ -187,7 +187,8 @@ export type MonitorView = {
 /** One monitor's last 24 hours, drawn in a 160 x 32 view box. */
 export type Day = { path: string; fails: number[]; uptime: string | null; mean_ms: number | null };
 
-export type MonitorRow = MonitorView & { day: Day | null; pinned: boolean };
+/** `covered`: an active maintenance window covers it, even when an open incident keeps it Down. */
+export type MonitorRow = MonitorView & { day: Day | null; pinned: boolean; covered: boolean };
 
 export type ListSummary = { kind: StateKind; text: string };
 
@@ -292,7 +293,7 @@ export type HeartbeatView = {
   due: Due;
 };
 
-export type HeartbeatList = { heartbeats: (HeartbeatView & { pinned: boolean })[]; summary: ListSummary };
+export type HeartbeatList = { heartbeats: (HeartbeatView & { pinned: boolean; covered: boolean })[]; summary: ListSummary };
 
 export type PingRow = { id: number; received_at: number; kind: "ok" | "fail"; source_ip: string | null; cause: string | null };
 

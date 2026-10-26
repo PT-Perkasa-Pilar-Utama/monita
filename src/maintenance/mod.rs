@@ -278,6 +278,21 @@ pub async fn spans(
     store::spans(c, kind, id, from, to).await
 }
 
+/// Every monitor and heartbeat an active window covers, for the list rows' tape. An open incident
+/// outranks a window in the state, so a covered row can still read Down.
+pub async fn covered(
+    db: &Db,
+    project_id: i64,
+    at: i64,
+) -> anyhow::Result<std::collections::HashSet<(SourceKind, i64)>> {
+    let windows = store::active(&db.read().await?, project_id, at).await?;
+    Ok(windows
+        .into_iter()
+        .flat_map(|w| w.items)
+        .map(|i| (i.kind, i.id))
+        .collect())
+}
+
 /// The project's active windows with their items, at most `caps::OPEN_WINDOWS_PER_PROJECT`.
 pub async fn active(c: &Connection, project_id: i64, at: i64) -> anyhow::Result<Vec<Window>> {
     store::active(c, project_id, at).await

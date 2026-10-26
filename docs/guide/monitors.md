@@ -119,7 +119,7 @@ The monitor's incidents reach the status page only when the monitor shows there.
 | Up | The last check passed |
 | Down | The monitor is past its failed-check count |
 | Issue | An open manual incident names it |
-| Maintenance | An active maintenance window covers it. The page shows a yellow **In maintenance** stamp under the title, and its list row has yellow stripes. |
+| Maintenance | An active maintenance window covers it. The page shows a yellow **In maintenance** stamp under the title, and its list row has yellow stripes. An incident that was open when the window began still shows: the state stays **Down** until a check passes, and the stamp and the yellow stripes still show the window. |
 | Paused | A tech lead paused it |
 | No data yet | No check has run |
 

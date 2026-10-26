@@ -118,7 +118,7 @@ export function Monitors({ creating = false }: { creating?: boolean }): ReactEle
                 </TableHeader>
                 <TableBody>
                   {rows.map((m) => (
-                    <LinkRow key={m.id} to={`${base}/${m.id}`} className={selected.has(m.id) ? "bg-accent/60" : ""} style={rowTape(m.state)}>
+                    <LinkRow key={m.id} to={`${base}/${m.id}`} className={selected.has(m.id) ? "bg-accent/60" : ""} style={rowTape(m.state, m.covered)}>
                       {canEdit && (
                         <TableCell>
                           <Checkbox aria-label={`Select ${m.name}`} checked={selected.has(m.id)} onCheckedChange={() => toggle(m.id)} />

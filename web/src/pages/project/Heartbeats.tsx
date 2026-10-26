@@ -118,7 +118,7 @@ export function Heartbeats({ creating = false }: { creating?: boolean }): ReactE
                 </TableHeader>
                 <TableBody>
                   {rows.map((h) => (
-                    <LinkRow key={h.id} to={`${base}/${h.id}`} className={selected.has(h.id) ? "bg-accent/60" : ""} style={rowTape(h.state)}>
+                    <LinkRow key={h.id} to={`${base}/${h.id}`} className={selected.has(h.id) ? "bg-accent/60" : ""} style={rowTape(h.state, h.covered)}>
                       {canEdit && (
                         <TableCell>
                           <Checkbox aria-label={`Select ${h.name}`} checked={selected.has(h.id)} onCheckedChange={() => toggle(h.id)} />

@@ -89,12 +89,14 @@ struct ListView {
     summary: serde_json::Value,
 }
 
-/// A heartbeat in the list, and whether the viewer pinned it (Q48).
+/// A heartbeat in the list, whether the viewer pinned it (Q48), and whether an active
+/// maintenance window covers it, whatever its state says.
 #[derive(Serialize)]
 struct Listed {
     #[serde(flatten)]
     heartbeat: HeartbeatView,
     pinned: bool,
+    covered: bool,
 }
 
 async fn list(
@@ -115,6 +117,7 @@ async fn list(
     let t = now();
     let pinned =
         super::super::pins::ids(&state.db, user.pin_owner(), p.id, SourceKind::Heartbeat).await?;
+    let covered = crate::maintenance::covered(&state.db, p.id, t).await?;
     Ok(data(ListView {
         heartbeats: all
             .into_iter()
@@ -123,6 +126,7 @@ async fn list(
                 let last = lasts.remove(&h.id);
                 Listed {
                     pinned: pinned.contains(&h.id),
+                    covered: covered.contains(&(SourceKind::Heartbeat, h.id)),
                     heartbeat: view(h, last, s, t),
                 }
             })
