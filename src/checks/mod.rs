@@ -25,7 +25,7 @@ use crate::platform::{caps, db::Db, now, token};
 
 pub use input::{CERT_WARN_DAYS, FieldErrors, MonitorInput, valid_expected_status};
 pub use job::{Job, JobAuth};
-pub use pause::set_paused;
+pub use pause::{paused_keys, set_paused};
 pub use probe::{Auth, Clients, Target, probe, status_matches};
 pub use store::{CheckRow, Monitor, projects_of};
 

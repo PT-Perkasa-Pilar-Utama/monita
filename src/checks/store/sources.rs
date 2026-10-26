@@ -119,16 +119,19 @@ pub async fn projects_of(
 }
 
 /// Every monitor and heartbeat of the project as (kind, id), at most `caps::SOURCES_PER_PROJECT`.
+/// `paused_only` keeps the paused ones.
 pub async fn source_keys(
     c: &Connection,
     project_id: i64,
+    paused_only: bool,
 ) -> anyhow::Result<std::collections::HashSet<(crate::incidents::SourceKind, i64)>> {
     use crate::incidents::SourceKind;
     let mut rows = c
         .query(
-            "SELECT 'monitor', id FROM monitors WHERE project_id = ?1
-             UNION ALL SELECT 'heartbeat', id FROM heartbeats WHERE project_id = ?1 LIMIT ?2",
-            (project_id, crate::platform::caps::SOURCES_PER_PROJECT),
+            "SELECT 'monitor', id FROM monitors WHERE project_id = ?1 AND (?3 = 0 OR paused_at IS NOT NULL)
+             UNION ALL SELECT 'heartbeat', id FROM heartbeats WHERE project_id = ?1 AND (?3 = 0 OR paused_at IS NOT NULL)
+             LIMIT ?2",
+            (project_id, crate::platform::caps::SOURCES_PER_PROJECT, paused_only),
         )
         .await?;
     let mut out = std::collections::HashSet::new();

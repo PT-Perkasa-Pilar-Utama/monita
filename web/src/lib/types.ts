@@ -39,7 +39,7 @@ export type ProjectList = {
 
 /** A project's numbers. Tabs show only the ones that flag a problem: down systems, open
  * incidents, tickets in Triage. */
-export type TabCounts = { monitors: number; heartbeats: number; monitors_down: number; heartbeats_down: number; incidents: number; tickets: number; triage: number };
+export type TabCounts = { monitors: number; heartbeats: number; monitors_down: number; heartbeats_down: number; incidents: number; tickets: number; triage: number; on_hold: number };
 
 export type ProjectHead = { project: Project; counts: TabCounts };
 

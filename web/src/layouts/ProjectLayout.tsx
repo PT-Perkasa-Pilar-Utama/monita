@@ -69,7 +69,7 @@ function ProjectChrome(): ReactElement | null {
         { to: `${base}/monitors`, label: "Monitors", icon: Activity, count: counts.monitors_down, alarm: true },
         { to: `${base}/heartbeats`, label: "Heartbeats", icon: Heartbeat, count: counts.heartbeats_down, alarm: true },
         { to: `${base}/incidents`, label: "Incidents", icon: AlertTriangle, count: counts.incidents, alarm: true },
-        { to: `${base}/maintenance`, label: "Maintenance", icon: Wrench },
+        { to: `${base}/maintenance`, label: "Maintenance", icon: Wrench, count: counts.on_hold },
         { to: `${base}/tickets`, label: "Tickets", icon: Ticket, count: counts.triage },
         { to: `${base}/changelog`, label: "Changelog", icon: ScrollText },
         { to: `${base}/settings`, label: "Settings", icon: Settings },

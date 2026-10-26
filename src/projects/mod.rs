@@ -168,6 +168,8 @@ pub struct TabCounts {
     pub incidents: i64,
     pub tickets: i64,
     pub triage: i64,
+    /// Monitors and heartbeats paused or in an active maintenance window now, each once.
+    pub on_hold: i64,
 }
 
 /// Each number read through its module's interface.
@@ -181,6 +183,14 @@ pub async fn tab_counts(db: &Db, project_id: i64) -> anyhow::Result<TabCounts> {
             .filter(|((k, _), s)| *k == kind && **s == ItemState::Down)
             .count() as i64
     };
+    let mut held = crate::checks::paused_keys(db, project_id).await?;
+    held.extend(
+        states
+            .iter()
+            .filter(|(_, s)| **s == ItemState::Maintenance)
+            .map(|(k, _)| *k),
+    );
+    let on_hold = held.len() as i64;
     let triage = crate::tickets::stage_counts(db, project_id)
         .await?
         .into_iter()
@@ -194,6 +204,7 @@ pub async fn tab_counts(db: &Db, project_id: i64) -> anyhow::Result<TabCounts> {
         incidents: crate::incidents::open_count(db, project_id).await?,
         tickets: crate::tickets::open_count(db, project_id).await?,
         triage,
+        on_hold,
     })
 }
 

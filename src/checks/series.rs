@@ -323,5 +323,5 @@ pub async fn source_keys(
     db: &Db,
     project_id: i64,
 ) -> anyhow::Result<std::collections::HashSet<(crate::incidents::SourceKind, i64)>> {
-    super::store::source_keys(&db.read().await?, project_id).await
+    super::store::source_keys(&db.read().await?, project_id, false).await
 }

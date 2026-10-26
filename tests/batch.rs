@@ -209,3 +209,36 @@ async fn a_write_key_may_batch_and_a_read_key_may_not() {
     assert_eq!(call(read).await.unwrap().status(), 403);
     assert_eq!(call(write).await.unwrap().status(), 200);
 }
+
+#[tokio::test]
+async fn the_maintenance_tab_counts_what_is_paused_or_in_a_window_once() {
+    let app = TestApp::spawn("test").await;
+    let (tl, ids) = setup(&app).await;
+    let res = batch(
+        &app,
+        &tl,
+        "monitors",
+        json!({ "action": "pause", "ids": [ids[0], ids[1]] }),
+    )
+    .await;
+    assert_eq!(res.status(), 200);
+    let t = monita::platform::now();
+    app.state
+        .db
+        .write(async |c| {
+            c.execute_batch(&format!(
+                "INSERT INTO maintenance_windows (id, project_id, title, starts_at, ends_at, created_at) VALUES (1, 1, 'Move', {s}, {e}, {s});
+                 INSERT INTO maintenance_items VALUES (1, 'monitor', {a}), (1, 'monitor', {b});",
+                s = t - 60,
+                e = t + 3600,
+                a = ids[1],
+                b = ids[2],
+            ))
+            .await?;
+            Ok(())
+        })
+        .await
+        .unwrap();
+    let head = json_of(app.get("/api/ui/projects/payments", Some(&tl)).await).await;
+    assert_eq!(head["data"]["counts"]["on_hold"], 3, "{head}");
+}

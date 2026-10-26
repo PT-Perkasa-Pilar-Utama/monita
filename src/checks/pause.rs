@@ -20,6 +20,14 @@ pub async fn set_paused(
         .await
 }
 
+/// The project's paused monitors and heartbeats, for the Maintenance tab's count.
+pub async fn paused_keys(
+    db: &Db,
+    project_id: i64,
+) -> anyhow::Result<std::collections::HashSet<(SourceKind, i64)>> {
+    store::source_keys(&db.read().await?, project_id, true).await
+}
+
 /// `set_paused` inside the caller's write, so a batch changes all of its sources or none.
 pub(super) async fn set_paused_on(
     c: &turso::Connection,
