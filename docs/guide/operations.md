@@ -72,7 +72,7 @@ The command turns two-factor off and stops the old password. It queues an email 
 
 ## Upgrade
 
-Take a backup, install the new binary over the old one, and restart. Migrations run at start. On Docker Compose, back up the data volume, then run `docker compose pull && docker compose up -d` (see [Install](install.md#upgrade-from-v10)).
+Take a backup, install the new binary over the old one, and restart. Migrations run at start, before `/healthz` answers. A large database can take a few seconds: v1.1 took 11 s on 3 million checks. To go back to an older version, restore the backup, because an older binary does not know the newer tables. On Docker Compose, back up the data volume, then run `docker compose pull && docker compose up -d` (see [Install](install.md#upgrade-from-v10)).
 
 ```sh
 systemctl stop monita && cp /var/lib/monita/monita.db /var/backups/monita/pre-upgrade.db

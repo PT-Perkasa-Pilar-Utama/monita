@@ -103,9 +103,13 @@ The Compose file above pins `ghcr.io/pt-perkasa-pilar-utama/monita:1`. The relea
 docker compose pull && docker compose up -d
 ```
 
-Monita migrates the database when it starts (migrations 0024 to 0040). Back up the data volume first. The image does not turn on Monita's daily backups: set `MONITA_BACKUP_DIR` if you want them.
+Monita migrates the database when it starts (migrations 0024 to 0046). Back up the data volume first. The image does not turn on Monita's daily backups: set `MONITA_BACKUP_DIR` if you want them.
 
 A v1.0.1 database was upgraded this way in a test. It held a project, a monitor, a heartbeat, a critical route with two emails and a webhook, ticket alerts with a webhook, and an API key. The migration finished cleanly and `integrity_check` returned ok. Each route became alert cards: an owner card, an Email card with both addresses, and a JSON webhook card. The ticket alerts became ticket cards.
+
+A second test, on 2026-10-26, took a v1.0.1 database through migrations 0024 to 0046. It held a monitor with 13 checks, a heartbeat with 3 pings, and an API key. Monita answered `/healthz` 3.7 s after it started. The checks and pings stayed, the charts showed the old checks, the key still issued ref IDs, and the old ping URL still worked. The key became a `ref_ids` key, so it cannot use the project key API until you give it a new scope. Migration 0046 adds up the stored checks into 15-minute slots: on 3 million checks this took 11 s, and `/healthz` answers only after it ends. The file stays a standard SQLite file, so `sqlite3` still opens it.
+
+To go back to v1.0.1, restore the backup you took before the upgrade. v1.0.1 starts on an upgraded database and keeps checking, but its System page fails, because v1.1 removed a setting that page reads.
 
 ### From source
 
