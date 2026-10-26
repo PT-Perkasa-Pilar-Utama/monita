@@ -1,5 +1,6 @@
 //! Monitors and heartbeats as JSON for the frontend. Contract: docs/api-specs/04-checks.md.
 
+mod batch;
 mod heartbeats;
 mod locations;
 mod monitors;
@@ -25,7 +26,9 @@ pub fn router() -> Router<AppState> {
 /// The routes below `/api/ui/projects/{slug}` that a project API key also reaches under
 /// `/api/v1/projects/{slug}` (v1.1 Q44).
 pub fn project_routes() -> Router<AppState> {
-    monitors::project_routes().merge(heartbeats::project_routes())
+    monitors::project_routes()
+        .merge(heartbeats::project_routes())
+        .merge(batch::project_routes())
 }
 
 /// Field errors from a form's `validate`, as a 422 on those fields.

@@ -12,6 +12,7 @@ use axum::{
 use serde::Serialize;
 
 mod form;
+mod view;
 
 use super::{Paging, invalid, views};
 use crate::{
@@ -30,6 +31,7 @@ use crate::{
     projects,
 };
 use form::MonitorForm;
+use view::{MonitorView, view};
 
 /// Checks per page of a monitor's history.
 const PAGE: i64 = 25;
@@ -41,136 +43,6 @@ pub fn project_routes() -> Router<AppState> {
         .route("/monitors", get(list).post(create))
         .route("/monitors/{id}", get(detail).put(update).delete(delete))
         .route("/monitors/{id}/paused", axum::routing::put(paused))
-}
-
-/// A monitor as its rows and pages show it.
-#[derive(Serialize)]
-struct MonitorView {
-    id: i64,
-    name: String,
-    /// `http`, `tcp`, `dns` or `ping`.
-    kind: String,
-    /// The URL, `host:port` for TCP, or the host name for DNS.
-    url: String,
-    /// DNS only: the address one answer must equal.
-    expected_address: Option<String>,
-    /// HTTPS only: days of warning before the certificate expires; null is off.
-    cert_warn_days: Option<i64>,
-    /// The `notAfter` of the certificate the last HTTPS check saw.
-    cert_expires_at: Option<i64>,
-    interval_s: i64,
-    /// `30 seconds`, `1 minute`, `3 minutes` or `5 minutes`.
-    every: &'static str,
-    timeout_s: i64,
-    expected_status: String,
-    keyword: Option<String>,
-    skip_tls_verify: bool,
-    severity: String,
-    is_public: bool,
-    alert: bool,
-    auto_incident: bool,
-    fails_to_open: i64,
-    /// How many places must fail (technical-specs 14.7).
-    quorum: i64,
-    method: String,
-    /// `Name: value` lines. Owner and super admin only, like the rest of this view.
-    headers: String,
-    body: Option<String>,
-    /// `none`, `bearer`, `basic` or `header`. Never the secret's value.
-    auth_kind: String,
-    auth_secret_id: Option<i64>,
-    /// Set on one monitor's page only.
-    auth_secret_name: Option<String>,
-    auth_user: Option<String>,
-    auth_header: Option<String>,
-    created_at: i64,
-    next_check_at: i64,
-    /// `up`, `down`, `issue`, `maintenance`, `paused` or `unknown` (waiting for the first check).
-    state: &'static str,
-    /// When a tech lead paused it; null while it runs.
-    paused_at: Option<i64>,
-    last: Option<LastCheck>,
-}
-
-#[derive(Serialize)]
-struct LastCheck {
-    checked_at: i64,
-    ok: bool,
-    /// `200 in 182ms`, or the start of the error.
-    summary: String,
-}
-
-/// What a supervisor sees of a request: header names and whether a body or a sign-in name is
-/// sent, never the values, which often carry credentials (technical-specs 07: owner and super admin only).
-const HIDDEN: &str = "(hidden)";
-
-fn hide_values(headers: &str) -> String {
-    headers
-        .lines()
-        .map(|l| match l.split_once(':') {
-            Some((name, _)) => format!("{name}: {HIDDEN}"),
-            None => HIDDEN.to_string(),
-        })
-        .collect::<Vec<_>>()
-        .join("\n")
-}
-
-/// A URL's query and fragment, where tokens such as `?apikey=` live, read `(hidden)`.
-fn hide_query(url: &str) -> String {
-    match url.find(['?', '#']) {
-        Some(i) => format!("{}{}{HIDDEN}", &url[..i], &url[i..=i]),
-        None => url.to_string(),
-    }
-}
-
-fn view(m: Monitor, state: &'static str, read_only: bool) -> MonitorView {
-    let headers = m.headers.unwrap_or_default();
-    MonitorView {
-        id: m.id,
-        every: interval_label(m.interval_s),
-        interval_s: m.interval_s,
-        timeout_s: m.timeout_ms / 1000,
-        expected_status: m.expected_status,
-        keyword: m.keyword,
-        skip_tls_verify: m.skip_tls_verify,
-        severity: m.severity,
-        is_public: m.is_public,
-        alert: m.alert,
-        auto_incident: m.auto_incident,
-        fails_to_open: m.fails_to_open,
-        quorum: m.quorum,
-        method: m.method,
-        headers: if read_only {
-            hide_values(&headers)
-        } else {
-            headers
-        },
-        body: m
-            .body
-            .map(|b| if read_only { HIDDEN.to_string() } else { b }),
-        auth_kind: m.auth_kind,
-        auth_secret_id: m.auth_secret_id,
-        auth_secret_name: None,
-        auth_user: m
-            .auth_user
-            .map(|u| if read_only { HIDDEN.to_string() } else { u }),
-        auth_header: m.auth_header,
-        created_at: m.created_at,
-        next_check_at: m.next_check_at,
-        paused_at: m.paused_at,
-        state,
-        last: m.last.as_ref().map(|c: &CheckRow| LastCheck {
-            checked_at: c.checked_at,
-            ok: c.ok,
-            summary: check_summary(c),
-        }),
-        name: m.name,
-        kind: m.kind,
-        url: if read_only { hide_query(&m.url) } else { m.url },
-        expected_address: m.expected_address,
-        cert_warn_days: m.cert_warn_days,
-        cert_expires_at: m.cert_expires_at,
-    }
 }
 
 #[derive(Serialize)]
@@ -390,7 +262,7 @@ async fn delete(
 
 #[cfg(test)]
 mod tests {
-    use super::hide_query;
+    use super::view::hide_query;
 
     #[test]
     fn a_supervisor_sees_the_url_without_its_query() {

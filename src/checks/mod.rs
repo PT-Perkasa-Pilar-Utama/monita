@@ -2,6 +2,7 @@
 //! Spec: docs/technical-specs/05-module-definitions.md section 5.3 and 13-check-scheduler.md.
 
 pub mod api;
+pub mod batch;
 mod cause;
 pub mod chart;
 pub mod heartbeat;
@@ -253,12 +254,8 @@ pub async fn delete_monitor(
     id: i64,
 ) -> anyhow::Result<()> {
     db.write(async |c| {
-        if let Some(m) = store::find_monitor(c, project_id, id).await? {
-            if let Some(ev) = crate::incidents::source_deleted(c, &m.source(), now()).await? {
-                crate::notify::send(c, &ev, base_url).await?;
-            }
-            store::delete_monitor(c, project_id, id).await?;
-        }
+        let kind = crate::incidents::SourceKind::Monitor;
+        batch::delete_on(c, base_url, project_id, kind, id, now()).await?;
         Ok(())
     })
     .await

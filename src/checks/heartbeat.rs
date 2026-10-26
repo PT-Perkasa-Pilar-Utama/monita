@@ -197,12 +197,8 @@ pub async fn update(
 /// Also closes the heartbeat's open incident and alerts that it ended.
 pub async fn delete(db: &Db, base_url: &str, project_id: i64, id: i64) -> anyhow::Result<()> {
     db.write(async |c| {
-        if let Some(hb) = store::find(c, project_id, id).await? {
-            if let Some(ev) = incidents::source_deleted(c, &hb.source(), now()).await? {
-                notify::send(c, &ev, base_url).await?;
-            }
-            store::delete(c, project_id, id).await?;
-        }
+        let kind = incidents::SourceKind::Heartbeat;
+        super::batch::delete_on(c, base_url, project_id, kind, id, now()).await?;
         Ok(())
     })
     .await
