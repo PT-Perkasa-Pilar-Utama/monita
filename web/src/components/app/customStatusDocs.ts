@@ -4,6 +4,8 @@ export type EndpointDoc = {
   tab: string;
   method: "GET" | "POST" | "PUT";
   path: string;
+  /** A second path the same call also takes, such as a heartbeat's beside a monitor's. */
+  alsoPath?: string;
   purpose: string;
   /** Who may call it and what they send to prove it, in plain words. */
   access: string;

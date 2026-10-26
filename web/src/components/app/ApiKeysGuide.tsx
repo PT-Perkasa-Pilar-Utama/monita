@@ -4,7 +4,7 @@ import { CodeCopy } from "@/components/app/CopyField";
 import { EndpointRows } from "@/components/app/CustomStatusSection";
 import { endpointDocs, type EndpointDoc } from "@/components/app/customStatusDocs";
 import { KEY_ERRORS, keyApiDocs } from "@/components/app/keyApiDocs";
-import { BookOpen } from "@/components/icons";
+import { BookOpen, ExternalLink } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -36,8 +36,12 @@ function Calls({ id, docs }: { id: string; docs: EndpointDoc[] }): ReactElement 
       </TabsList>
       {docs.map((d, n) => (
         <TabsContent key={d.tab} value={d.tab} className="flex flex-col gap-4">
-          <p className="font-mono text-[13px] break-all">
-            <span className="font-semibold">{d.method}</span> {d.path}
+          <p className="flex flex-col gap-1 font-mono text-[13px] break-all">
+            {[d.path, d.alsoPath].filter(Boolean).map((path) => (
+              <span key={path}>
+                <span className="font-semibold">{d.method}</span> {path}
+              </span>
+            ))}
           </p>
           <p className="text-muted-foreground">{d.purpose}</p>
           <EndpointRows rows={[{ label: "Who can call it", text: d.access }]} />
@@ -70,17 +74,19 @@ export function ApiKeysGuide(): ReactElement {
         </Button>
       </SheetTrigger>
       <SheetContent size="half" aria-describedby={undefined}>
-        <SheetHeader>
+        <SheetHeader className="flex-row items-center justify-between gap-4">
           <SheetTitle>How API keys work</SheetTitle>
+          <Button variant="secondary" size="sm" asChild>
+            <a href={`${DOCS}api/`} target="_blank" rel="noreferrer">
+              API docs
+              <ExternalLink data-icon="inline-end" />
+            </a>
+          </Button>
         </SheetHeader>
         <div className="flex flex-col gap-10 overflow-y-auto px-6 py-6">
           <Part title="What a key is for">
             <p className="text-muted-foreground">
-              A key lets your own server or scripts call Monita for this project, and the scope you pick when you create it decides which of the calls below it may make. The{" "}
-              <a href={`${DOCS}api/`} target="_blank" rel="noreferrer" className="text-link underline-offset-2 hover:underline">
-                API
-              </a>{" "}
-              page in the docs has the full list.
+              A key lets your own server or scripts call Monita for this project, and the scope you pick when you create it decides which of the calls below it may make.
             </p>
             <EndpointRows
               rows={[
