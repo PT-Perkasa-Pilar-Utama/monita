@@ -91,6 +91,8 @@ volumes:
   monita-data:
 ```
 
+[deploy/nginx/compose.yaml](../../deploy/nginx/compose.yaml) runs the same with nginx in front for HTTPS. Only nginx publishes ports there, so no one outside can forge `X-Forwarded-For`.
+
 Create the first super admin with `docker compose run --rm monita admin create --email you@company.co.id` before the first `docker compose up -d`. It asks for the password, at least 8 characters. If Monita is already running, run `docker compose stop` first: the running server holds the database, and `admin create` fails with "File is locked by another process". Then start it again with `docker compose up -d`. Each variable is in [Configuration](configuration.md). `monita service` does not apply in a container: Docker restarts it.
 
 #### Upgrade from v1.0
@@ -157,7 +159,7 @@ The web pages are built into the binary. A binary built without `make web` (or `
    monita whereis               # env file, database, backups, unit, logs
    ```
 
-3. Put the company reverse proxy in front for HTTPS. Setup's defaults, `MONITA_TRUST_PROXY=true` and `MONITA_BIND=127.0.0.1:7466`, assume one. If other hosts can reach the port, they can forge `X-Forwarded-For`. With `MONITA_TRUST_PROXY=false` behind a proxy, every visitor has the proxy's address, so one person can use up the per-address limits, sign-in included, for everyone.
+3. Put a reverse proxy in front for HTTPS. [deploy/nginx/monita.conf](../../deploy/nginx/monita.conf) is a ready nginx config: copy it to `/etc/nginx/conf.d/`, set your host name and certificate paths, and reload nginx. Setup's defaults, `MONITA_TRUST_PROXY=true` and `MONITA_BIND=127.0.0.1:7466`, assume a proxy. If other hosts can reach the port, they can forge `X-Forwarded-For`. With `MONITA_TRUST_PROXY=false` behind a proxy, every visitor has the proxy's address, so a project's IP allowlist sees only the proxy.
 
 `monita service status`, `monita service logs -f` and `monita service uninstall` cover the rest. `service install` writes the same unit as [deploy/monita.service](../../deploy/monita.service), with this host's paths.
 

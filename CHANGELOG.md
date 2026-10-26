@@ -24,6 +24,7 @@ More ways to check, alert and plan: TCP, DNS and ping monitors, certificate warn
 - Filter the project list by **State**: Down, Issue or Up, as the badges read.
 - The Overview charts the last 24 hours of every monitor and heartbeat on one time axis. The 5 monitors that need you first draw as response-time lines on a log scale, the rest faint behind them. Heartbeats draw as lanes of ping dots, failures in red. Hover for every value in a 15-minute slot; select a line or lane to open it. It reads again every 30 seconds and has a Refresh button.
 - `monita admin reset-sign-in --email` is the way back in for anyone who lost both the authenticator and the recovery codes. It turns two-factor off, stops the old password, and emails a link to set a new one. It prints the link too.
+- nginx configs in `deploy/nginx/`: `monita.conf` for a native install and `compose.yaml` with `monita.compose.conf` for Docker, with HTTPS, the 16 MiB ping body and no per-address limit.
 - **How API keys work** on the API keys page: what a key is for, how to send it, and each endpoint it opens.
 - A project API key has a scope: ref IDs only, read, or read and write. A read or write key manages its own project under `/api/v1/projects/{slug}/`: monitors, heartbeats, pause, incidents and their updates, and maintenance. A read key never sees a ping URL, a header value or a request body. An update a key posts names the key. Keys you already have stay ref IDs only. Migrations 0041 and 0042.
 - Pictures show in the user list and beside a project's owner.

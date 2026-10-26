@@ -1,0 +1,25 @@
+# Monita behind nginx. Put fullchain.pem and privkey.pem in ./certs, replace
+# monita.company.co.id here and in monita.compose.conf, then:
+#   docker compose run --rm monita admin create --email you@company.co.id
+#   docker compose up -d
+# Only nginx publishes ports; Monita is reachable only from nginx, so X-Forwarded-For cannot be
+# forged from outside.
+services:
+  monita:
+    image: ghcr.io/pt-perkasa-pilar-utama/monita:1
+    restart: unless-stopped
+    volumes: ["monita-data:/data"]
+    environment:
+      MONITA_BASE_URL: https://monita.company.co.id
+      MONITA_SMTP_URL: smtps://user:password@mail.company.co.id:465
+      MONITA_TRUST_PROXY: "true"
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on: [monita]
+    ports: ["80:80", "443:443"]
+    volumes:
+      - ./monita.compose.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./certs:/etc/nginx/certs:ro
+volumes:
+  monita-data:
