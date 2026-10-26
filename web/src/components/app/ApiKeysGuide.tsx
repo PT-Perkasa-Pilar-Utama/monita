@@ -78,9 +78,9 @@ export function ApiKeysGuide(): ReactElement {
             <p className="text-muted-foreground">
               A key lets your own server or scripts call Monita for this project, and the scope you pick when you create it decides which of the calls below it may make. The{" "}
               <a href={`${DOCS}api/`} target="_blank" rel="noreferrer" className="text-link underline-offset-2 hover:underline">
-                Public API
+                API
               </a>{" "}
-              page has the full list.
+              page in the docs has the full list.
             </p>
             <EndpointRows
               rows={[

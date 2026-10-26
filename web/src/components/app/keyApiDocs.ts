@@ -40,7 +40,7 @@ export function keyApiDocs(origin: string, slug: string): EndpointDoc[] {
       tab: "Pause",
       method: "PUT",
       path: `/api/v1/projects/${slug}/monitors/{id}/paused`,
-      purpose: "Stops a monitor while you deploy or move it, so its failures open no incident and send no alert.",
+      purpose: "Stops a monitor or a heartbeat while you deploy or move it, so its failures open no incident and send no alert.",
       access: "A Read and write key.",
       request: `${base}curl -s -X PUT "$PROJECT/monitors/17/paused" \\\n${body('{"paused": true}')}`,
       responseTitle: "Response 204, no body",
@@ -48,7 +48,7 @@ export function keyApiDocs(origin: string, slug: string): EndpointDoc[] {
       details: [
         { label: "Resume", text: "Send false to resume, and the monitor checks again at once." },
         { label: "While paused", text: "Nothing checks it, an open automatic incident closes without an alert, and it leaves the public status page until it resumes." },
-        { label: "Heartbeats", text: "PUT /heartbeats/{id}/paused works the same way, and the heartbeat keeps its pings." },
+        { label: "Heartbeats", text: "PUT /heartbeats/{id}/paused pauses a heartbeat with the same body, and a paused heartbeat still keeps the pings it gets." },
       ],
     },
     {

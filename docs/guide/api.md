@@ -1,4 +1,4 @@
-# Public API
+# API
 
 Every way a project's own code talks to Monita: the status JSON, bug tickets, ref IDs, heartbeat pings, and the key API that manages a project. None of them needs a sign-in.
 

@@ -40,7 +40,7 @@ const GROUPS: Group[] = [
   { title: "Watch", icon: "pulse", blurb: "Monitors for URLs, ports, names and hosts, heartbeats for cron jobs, and checks from more than one place.", pages: ["monitors", "heartbeats", "locations"] },
   { title: "Respond", icon: "bell", blurb: "Incidents, alerts, the public status page, bug tickets and the changelog.", pages: ["incidents", "alerts", "status-page", "tickets", "changelog"] },
   { title: "Operate", icon: "wrench", blurb: "Users and roles, configuration, the command line, backups, upgrades and limits.", pages: ["admin", "configuration", "cli", "operations", "limits"] },
-  { title: "Integrate", icon: "code", blurb: "The public API: status JSON, tickets, ref IDs, heartbeat pings and webhooks.", pages: ["api"] },
+  { title: "Integrate", icon: "code", blurb: "The API: status JSON, tickets, ref IDs, managing a project with a key, heartbeat pings and webhooks.", pages: ["api"] },
   { title: "Brand", icon: "palette", blurb: "The logo, Moni the mascot, colours and type, as files to download.", pages: ["brand"] },
 ];
 
@@ -261,6 +261,7 @@ function overview(pages: Map<string, Page>): string {
     ["api", "#status-json", "Status JSON: build your own status page or widget"],
     ["api", "#file-a-ticket", "Tickets: let users report bugs from your app"],
     ["api", "#issue-a-ref-id", "Ref IDs: tie tickets to your users"],
+    ["api", "#manage-a-project", "Key API: pause monitors and post updates from your pipeline"],
     ["api", "#heartbeat-pings", "Ping URL: report a cron job's success or failure"],
     ["alerts", "#what-recipients-get", "Webhooks: route alerts to chat"],
   ];
