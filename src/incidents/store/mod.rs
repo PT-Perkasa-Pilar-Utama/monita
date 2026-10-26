@@ -24,6 +24,12 @@ pub struct IncidentRow {
     pub started_at: i64,
     pub resolved_at: Option<i64>,
     pub last_label: Option<String>,
+    /// `planned` or `false_alarm` once reclassified (v1.1 Q46); such an incident leaves uptime,
+    /// the charts and the public page.
+    pub excluded: Option<String>,
+    pub excluded_at: Option<i64>,
+    /// Who reclassified it: an email, or "API key <name>".
+    pub excluded_by: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -286,7 +292,8 @@ pub async fn open_manual(
 }
 
 pub(super) const COLS: &str = "i.id, i.origin, i.title, i.severity, i.cause, i.started_at, i.resolved_at,
-    (SELECT label FROM status_updates WHERE incident_id = i.id ORDER BY created_at DESC, id DESC LIMIT 1)";
+    (SELECT label FROM status_updates WHERE incident_id = i.id ORDER BY created_at DESC, id DESC LIMIT 1),
+    i.excluded, i.excluded_at, i.excluded_by";
 
 pub(super) fn row(r: &turso::Row) -> turso::Result<IncidentRow> {
     Ok(IncidentRow {
@@ -298,7 +305,26 @@ pub(super) fn row(r: &turso::Row) -> turso::Result<IncidentRow> {
         started_at: r.get(5)?,
         resolved_at: r.get(6)?,
         last_label: r.get(7)?,
+        excluded: r.get(8)?,
+        excluded_at: r.get(9)?,
+        excluded_by: r.get(10)?,
     })
+}
+
+/// Sets or clears an incident's class (v1.1 Q46). It never opens or closes the incident.
+pub async fn set_class(
+    c: &Connection,
+    incident_id: i64,
+    class: Option<&str>,
+    by: &str,
+    now: i64,
+) -> anyhow::Result<()> {
+    c.execute(
+        "UPDATE incidents SET excluded = ?1, excluded_at = ?2, excluded_by = ?3 WHERE id = ?4",
+        (class, class.map(|_| now), class.map(|_| by), incident_id),
+    )
+    .await?;
+    Ok(())
 }
 
 /// `open`: Some(true) open only, Some(false) resolved only, None both.

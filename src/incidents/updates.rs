@@ -16,11 +16,12 @@ pub fn allowed_labels(_origin: &str, closed: bool) -> &'static [&'static str] {
 /// two new failed checks to open the next incident, and a heartbeat gets a new deadline from now.
 /// Returns the event, so whoever heard "opened" also hears the end; `None` when the source's
 /// alerts are off, as they were when it opened.
-async fn resolve_by_hand(
+pub(super) async fn resolve_by_hand(
     c: &Connection,
     project_id: i64,
     incident_id: i64,
     now: i64,
+    ended: Ended,
 ) -> anyhow::Result<Option<Event>> {
     let (started, severity) = store::release_auto(c, incident_id, now).await?;
     let item = store::items(c, incident_id).await?.into_iter().next();
@@ -44,7 +45,7 @@ async fn resolve_by_hand(
         source_name,
         severity,
         duration_s: now - started,
-        ended: Ended::ByHand,
+        ended,
     }))
 }
 
@@ -90,7 +91,8 @@ pub async fn post_update(
         if label == "resolved"
             && origin == "auto"
             && resolved_at.is_none()
-            && let Some(ev) = resolve_by_hand(c, project_id, incident_id, now).await?
+            && let Some(ev) =
+                resolve_by_hand(c, project_id, incident_id, now, Ended::ByHand).await?
         {
             crate::notify::send(c, &ev, base_url).await?;
         }

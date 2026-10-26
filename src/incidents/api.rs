@@ -5,7 +5,7 @@ use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
     response::IntoResponse,
-    routing::{get, post},
+    routing::{get, post, put},
 };
 use serde::{Deserialize, Serialize};
 
@@ -32,6 +32,51 @@ pub fn project_routes() -> Router<AppState> {
         .route("/incident-items", get(items))
         .route("/incidents/{id}", get(detail))
         .route("/incidents/{id}/updates", post(post_update))
+        .route("/incidents/{id}/class", put(reclassify))
+}
+
+#[derive(Deserialize, Default)]
+#[serde(default)]
+struct ClassForm {
+    /// `planned`, `false_alarm`, or `counted` to restore.
+    class: String,
+}
+
+/// v1.1 Q46: reclassify an incident as planned work or a false alarm, or count it again. 204.
+async fn reclassify(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path((slug, id)): Path<(String, i64)>,
+    Body(f): Body<ClassForm>,
+) -> UiResult {
+    let p = projects::find_for(&state.db, &user, &slug).await?;
+    let class = super::Class::parse(f.class.trim()).ok_or_else(|| {
+        UiError::field(
+            "class",
+            "Pick planned work, a false alarm, or count it again.",
+        )
+    })?;
+    let by = match &user.key {
+        Some(k) => format!("API key {}", k.name),
+        None => user.email.clone(),
+    };
+    let author = author(&user);
+    if super::reclassify(
+        &state.db,
+        &state.config.base_url,
+        p.id,
+        id,
+        class,
+        &by,
+        &author,
+        now(),
+    )
+    .await?
+    {
+        Ok(StatusCode::NO_CONTENT.into_response())
+    } else {
+        Err(UiError::NotFound)
+    }
 }
 
 /// A key writes as itself, so its updates never read as Monita's own.

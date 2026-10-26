@@ -61,7 +61,7 @@ pub async fn across(
             order_sql(f.sort)
         ),
         (owner, search(f.q), f.severity, limit, offset),
-        |r| Ok((r.get(8)?, row(r)?)),
+        |r| Ok((r.get(11)?, row(r)?)),
     )
     .await
 }

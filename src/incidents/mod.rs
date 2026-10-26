@@ -9,6 +9,7 @@ pub mod engine;
 pub mod history;
 mod manual;
 mod observe;
+mod reclassify;
 mod store;
 mod updates;
 
@@ -20,6 +21,7 @@ use crate::platform::{caps, db::Db};
 
 pub use manual::{NewIncident, open_manual};
 pub use observe::{observe, source_deleted, source_paused};
+pub use reclassify::{Class, reclassify};
 pub use store::{IncidentRow, ItemRef, UpdateRow};
 pub use updates::{allowed_labels, post_update};
 
@@ -102,6 +104,9 @@ pub enum Ended {
     Recovered,
     Deleted,
     ByHand,
+    /// Reclassified as planned work, or as a false alarm (v1.1 Q46).
+    Planned,
+    FalseAlarm,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

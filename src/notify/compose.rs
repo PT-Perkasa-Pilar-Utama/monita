@@ -91,6 +91,8 @@ pub(super) fn compose(
                 Ended::Recovered => "is up",
                 Ended::Deleted => "was deleted",
                 Ended::ByHand => "was marked resolved by a tech lead",
+                Ended::Planned => "was marked as planned work by a tech lead",
+                Ended::FalseAlarm => "was marked as a false alarm by a tech lead",
             };
             let text = format!(
                 "[RESOLVED] {name} / {source_name} {how} after {}",

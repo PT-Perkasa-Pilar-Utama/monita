@@ -125,7 +125,7 @@ pub async fn auto_intervals(
     let mut rows = c
         .query(
             "SELECT it.source_kind, it.source_id, i.started_at, i.resolved_at FROM incidents i JOIN incident_items it ON it.incident_id = i.id
-             WHERE i.project_id = ?1 AND i.origin = 'auto' AND (i.resolved_at IS NULL OR i.resolved_at >= ?2)
+             WHERE i.project_id = ?1 AND i.origin = 'auto' AND i.excluded IS NULL AND (i.resolved_at IS NULL OR i.resolved_at >= ?2)
              ORDER BY i.started_at DESC, i.id DESC LIMIT ?3",
             (project_id, since, crate::platform::caps::SPANS),
         )
@@ -157,7 +157,7 @@ pub async fn source_spans(
     crate::platform::db::query_all(
         c,
         "SELECT i.started_at, i.resolved_at FROM incidents i JOIN incident_items it ON it.incident_id = i.id
-         WHERE it.source_kind = ?1 AND it.source_id = ?2 AND i.origin = 'auto'
+         WHERE it.source_kind = ?1 AND it.source_id = ?2 AND i.origin = 'auto' AND i.excluded IS NULL
            AND (i.resolved_at IS NULL OR i.resolved_at >= ?3) AND i.started_at < ?4
          ORDER BY i.started_at DESC, i.id DESC LIMIT ?5",
         (item.kind.as_str(), item.id, since, until, crate::platform::caps::SPANS),
@@ -209,7 +209,7 @@ pub async fn touching(
     let mut rows = c
         .query(
             format!(
-                "SELECT {COLS} FROM incidents i WHERE i.project_id = ?1 AND {filter}
+                "SELECT {COLS} FROM incidents i WHERE i.project_id = ?1 AND i.excluded IS NULL AND {filter}
                  AND EXISTS (SELECT 1 FROM incident_items it WHERE it.incident_id = i.id AND (
                    (it.source_kind = 'monitor' AND it.source_id IN ({})) OR (it.source_kind = 'heartbeat' AND it.source_id IN ({}))))
                  ORDER BY i.started_at DESC, i.id DESC LIMIT ?4",
@@ -239,7 +239,7 @@ pub async fn period_stats(
         "SELECT count(*), coalesce(sum(min(coalesce(i.resolved_at, ?4), ?4) - max(i.started_at, ?3)), 0),
                 max(coalesce(i.resolved_at, ?4) - i.started_at), CAST(avg(coalesce(i.resolved_at, ?4) - i.started_at) AS INTEGER)
          FROM incidents i JOIN incident_items it ON it.incident_id = i.id
-         WHERE it.source_kind = ?1 AND it.source_id = ?2 AND i.origin = 'auto'
+         WHERE it.source_kind = ?1 AND it.source_id = ?2 AND i.origin = 'auto' AND i.excluded IS NULL
            AND coalesce(i.resolved_at, ?4) > ?3 AND i.started_at < ?4",
         (item.kind.as_str(), item.id, since, now),
         |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
@@ -256,7 +256,7 @@ pub async fn last_auto(
     Ok(crate::platform::db::query_all(
         c,
         "SELECT i.started_at, i.resolved_at FROM incidents i JOIN incident_items it ON it.incident_id = i.id
-         WHERE it.source_kind = ?1 AND it.source_id = ?2 AND i.origin = 'auto' ORDER BY i.started_at DESC LIMIT 1",
+         WHERE it.source_kind = ?1 AND it.source_id = ?2 AND i.origin = 'auto' AND i.excluded IS NULL ORDER BY i.started_at DESC LIMIT 1",
         (item.kind.as_str(), item.id),
         |r| Ok((r.get(0)?, r.get(1)?)),
     )
