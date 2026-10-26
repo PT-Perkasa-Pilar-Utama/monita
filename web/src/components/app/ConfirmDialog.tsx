@@ -22,22 +22,32 @@ import { toast } from "sonner";
  */
 export function ConfirmDialog({
   trigger,
+  open: shown,
+  onOpenChange,
   title,
   description,
   action,
   onConfirm,
 }: {
-  trigger: ReactNode;
+  /** The button that opens it. Leave it out and pass `open` to open it from a menu. */
+  trigger?: ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   title: string;
   description: string;
   action: string;
   onConfirm: () => Promise<void>;
 }): ReactElement | null {
-  const [open, setOpen] = useState(false);
+  const [own, setOwn] = useState(false);
+  const open = shown ?? own;
+  const setOpen = (o: boolean): void => {
+    onOpenChange?.(o);
+    if (shown === undefined) setOwn(o);
+  };
   if (!useCanEdit()) return null;
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
-      <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>
+      {trigger && <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>}
       <AlertDialogContent onOpenAutoFocus={(e) => e.preventDefault()}>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>

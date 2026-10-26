@@ -76,16 +76,18 @@ test("Admin in the header opens the admin page opened last", async ({ page }) =>
   await expect(page).toHaveURL(/\/admin\/email$/);
 });
 
-test("a location is added with its token shown once, a monitor checks from it, and it is deleted", async ({ page }) => {
+test("a location is added with its setup commands, a monitor checks from it, and it is deleted", async ({ page }) => {
   const name = `Jakarta ${Date.now() % 100000}`;
   await page.goto("/admin/locations");
   await page.getByRole("button", { name: "Add location" }).click();
   await page.getByLabel("Name").fill(name);
   await page.getByRole("dialog").getByRole("button", { name: "Add location" }).click();
-  await expect(page.getByText(`${name} is ready`)).toBeVisible();
-  await expect(page.locator("#probe-command")).toContainText("MONITA_PROBE_TOKEN='ml_");
+  await expect(page.getByRole("heading", { name: `Set up ${name}` })).toBeVisible();
+  await expect(page.locator("#setup-docker")).toContainText("MONITA_PROBE_TOKEN='ml_");
+  await expect(page.getByText(`Waiting for the probe in ${name}`)).toBeVisible();
+  await page.keyboard.press("Escape");
   const row = page.getByRole("row").filter({ hasText: name });
-  await expect(row).toContainText("Never");
+  await expect(row).toContainText("Not running yet");
 
   const slug = await apiProject(page, "Places");
   await page.goto(`/projects/${slug}/monitors/new`);
@@ -98,7 +100,8 @@ test("a location is added with its token shown once, a monitor checks from it, a
   await expect(page.getByRole("cell", { name, exact: true })).toBeVisible();
 
   await page.goto("/admin/locations");
-  await page.getByRole("button", { name: `Delete ${name}` }).click();
+  await page.getByRole("button", { name: `Actions for ${name}` }).click();
+  await page.getByRole("menuitem", { name: "Delete" }).click();
   await page.getByRole("button", { name: "Delete location" }).click();
   await expect(row).toHaveCount(0);
 });

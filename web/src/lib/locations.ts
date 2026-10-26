@@ -5,6 +5,35 @@ export function probeCommand(server: string, token: string): string {
   return [`export MONITA_PROBE_TOKEN='${token}'`, `./monita probe --server ${server}`].join("\n");
 }
 
+const IMAGE = "ghcr.io/pt-perkasa-pilar-utama/monita:1";
+const RELEASES = "https://github.com/PT-Perkasa-Pilar-Utama/monita/releases/latest/download";
+
+/** The three ways to start a location's probe on its machine, ready to paste: in Docker, as a
+ * Linux service that starts with the machine, or once in a terminal. */
+export function setupCommands(server: string, token: string): { docker: string; linux: string; once: string } {
+  return {
+    docker: [
+      "docker run -d --name monita-probe --restart unless-stopped \\",
+      `  -e MONITA_PROBE_SERVER=${server} \\`,
+      `  -e MONITA_PROBE_TOKEN='${token}' \\`,
+      `  ${IMAGE} probe`,
+    ].join("\n"),
+    linux: [
+      `curl -fsSL ${RELEASES}/monita_linux_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz | tar -xz monita`,
+      "sudo install -m 0755 monita /usr/local/bin/monita",
+      `sudo MONITA_PROBE_TOKEN='${token}' monita probe install --server ${server}`,
+    ].join("\n"),
+    once: probeCommand(server, token),
+  };
+}
+
+/** Running or not, in words: a probe silent for two minutes is not running. */
+export function probeState(at: number | null, now: number): { running: boolean; label: string } {
+  const seen = lastSeen(at, now);
+  if (!seen.stale) return { running: true, label: "Running" };
+  return { running: false, label: at === null ? "Not running yet" : `Not running, last seen ${seen.text}` };
+}
+
 /** `Never`, or how long ago the probe last called, and whether that is long enough to worry. */
 export function lastSeen(at: number | null, now: number): { text: string; stale: boolean } {
   if (at === null) return { text: "Never", stale: true };

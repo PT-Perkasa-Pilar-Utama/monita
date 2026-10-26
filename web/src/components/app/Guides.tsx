@@ -184,3 +184,21 @@ export function ChangelogGuide(): ReactElement {
     />
   );
 }
+
+export function LocationsGuide(): ReactElement {
+  return (
+    <GuideSheet
+      label="How locations work"
+      title="How locations work"
+      steps={[
+        "Every check runs from this server, so if its own network breaks, every monitor looks down at once even when your sites are fine.",
+        "A location is a second machine in another network that runs the same checks: it runs Monita as a probe, with no database or settings, asks this Monita for work each second and sends the results back.",
+        "Add a location, then run the command it gives you on that machine, with Docker or as a Linux service, and the page shows Connected when the probe calls in.",
+        "On a monitor, tick the locations under Check from and choose how many places must fail, so with this server and two locations, 2 of 3 means one place failing is a blip and two is an outage.",
+        "The probe only needs to reach this Monita over HTTPS, so it can sit behind a firewall or NAT.",
+        "New token in a location's menu replaces its token, which stops the old probe at once, so use it to move the probe to another machine or when the token is lost.",
+      ]}
+      note="Treat the token as a password, because a probe receives the secrets of every monitor that checks from its location."
+    />
+  );
+}
