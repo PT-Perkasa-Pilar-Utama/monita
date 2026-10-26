@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useTheme } from "@/components/layout/ThemeProvider";
 import { TwoFactorNote } from "@/components/layout/TwoFactorNote";
+import { WhatsNewNote } from "@/components/layout/WhatsNewNote";
 import { api } from "@/lib/api";
 import { lastAdminPage } from "@/lib/adminPage";
 import { lastProject } from "@/lib/lastProject";
@@ -169,6 +170,7 @@ export function TopBar({ crumb, tabs }: { crumb?: ReactNode; tabs?: ReactNode })
       </header>
       {/* Outside the sticky band, so it scrolls away instead of taking height on every page. */}
       <TwoFactorNote />
+      <WhatsNewNote />
     </>
   );
 }
