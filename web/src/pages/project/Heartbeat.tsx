@@ -77,7 +77,7 @@ export function Heartbeat({ editing = false }: { editing?: boolean }): ReactElem
           <div className="flex flex-col gap-6">
             {h.paused_at !== null && (
               <Alert>
-                <AlertDescription>Paused since {stamp(h.paused_at)}. Monita keeps its pings but watches no deadline and sends no alert.</AlertDescription>
+                <AlertDescription>Paused since {stamp(h.paused_at)}, so Monita keeps its pings but is not watching its deadline or sending alerts.</AlertDescription>
               </Alert>
             )}
             {fresh && d.ping_url && (

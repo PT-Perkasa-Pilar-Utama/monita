@@ -128,7 +128,7 @@ export function Telegram(): ReactElement {
         <SettingsSection
           id="bot"
           title="Global Telegram bot"
-          description="One bot that every project can send alerts through. Projects cannot pick Global Telegram until it is set."
+          description="One bot that every project can send alerts through, which projects can pick as Global Telegram once its token is saved here."
           action={<StateBadge kind="unknown" label="Not set" />}
         >
           <div className="flex flex-col gap-5">

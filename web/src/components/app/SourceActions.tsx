@@ -49,8 +49,8 @@ export function SourceActions({ slug, kind, id, path, paused, onChange }: { slug
           title={`Pause this ${kind}?`}
           description={
             kind === "monitor"
-              ? "Monita stops checking it and sends no alert. An open incident closes. It leaves the status page until you resume it."
-              : "Monita keeps its pings but watches no deadline and sends no alert. An open incident closes. It leaves the status page until you resume it."
+              ? "Monita stops checking it and sends no alerts until you resume it, closes any open incident, and hides it from the status page in the meantime."
+              : "Monita keeps its pings but stops watching its deadline and sends no alerts until you resume it, closes any open incident, and hides it from the status page in the meantime."
           }
           action="Pause"
           onConfirm={() => set(true)}

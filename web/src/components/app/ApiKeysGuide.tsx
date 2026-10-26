@@ -43,11 +43,11 @@ export function ApiKeysGuide(): ReactElement {
         <div className="flex flex-col gap-10 overflow-y-auto px-6 py-6">
           <Part title="What a key is for">
             <p className="text-muted-foreground">
-              A key lets your own server call Monita for this project. It issues ref IDs: the codes your users file and follow bug reports with, from inside your app. A key cannot read or change monitors, incidents or settings.
+              A key lets your own server issue ref IDs for this project, the codes your users file and follow bug reports with from inside your app, but it cannot read or change monitors, incidents or settings.
             </p>
             <ol className="list-decimal space-y-1 pl-5 text-muted-foreground">
               <li>Your server issues a ref ID for a signed-in user, with the key.</li>
-              <li>Your app files that user's tickets with the ref ID. It needs no key.</li>
+              <li>Your app files that user's tickets with the ref ID, without the key.</li>
               <li>Your app lists that user's tickets with the same ref ID.</li>
             </ol>
           </Part>
@@ -55,10 +55,10 @@ export function ApiKeysGuide(): ReactElement {
             <EndpointRows
               rows={[
                 { label: "Header", text: "Authorization: Bearer mk_… on each call." },
-                { label: "Where", text: "On your server only. A key in a browser page or a mobile app is public." },
-                { label: "Once", text: "Monita shows a key once, right after you create it. Keep it in your secret store." },
-                { label: "Revoke", text: "Revoke a key that leaked. Every call that sends it then gets 401." },
-                { label: "Limits", text: "120 calls a minute for each key by default. Wrong keys count against the caller's address. A super admin sets both in Admin, Rate limits." },
+                { label: "Where", text: "Only on your server, because anyone can read a key placed in a browser page or a mobile app." },
+                { label: "Once", text: "Monita shows a key only once, right after you create it, so keep it in your secret store." },
+                { label: "Revoke", text: "Revoke a key that leaked, and every call that sends it gets 401 from then on." },
+                { label: "Limits", text: "Each key may make 120 calls a minute by default and wrong keys count against the caller's address, both of which a super admin can change in Admin, Rate limits." },
               ]}
             />
             <CodeCopy id="key-env" title="Keep it in your server's environment" code={"MONITA_API_KEY=mk_…"} />

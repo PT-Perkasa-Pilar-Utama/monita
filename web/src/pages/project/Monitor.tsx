@@ -81,7 +81,7 @@ export function Monitor({ editing = false }: { editing?: boolean }): ReactElemen
           <div className="flex flex-col gap-6">
             {m.paused_at !== null && (
               <Alert>
-                <AlertDescription>Paused since {stamp(m.paused_at)}. Monita does not check it and sends no alert.</AlertDescription>
+                <AlertDescription>Paused since {stamp(m.paused_at)}, so Monita is not checking it or sending alerts.</AlertDescription>
               </Alert>
             )}
             <StatCards stats={d.stats} />
