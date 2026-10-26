@@ -134,7 +134,7 @@ async fn set_zone(app: &TestApp, who: &str, min: i64) -> u16 {
 }
 
 #[tokio::test]
-async fn the_admin_offset_moves_the_times_pages_show() {
+async fn the_viewers_clock_sets_the_times_and_the_admin_offset_is_the_fallback() {
     let app = TestApp::spawn("test").await;
     let t = monitor(&app, 3 * 86_400).await;
     let tl = app.login("rina@x.co", common::PASSWORD).await;
@@ -147,7 +147,29 @@ async fn the_admin_offset_moves_the_times_pages_show() {
     assert_eq!(me["data"]["utc_offset_min"], 420);
     sql(&app, &format!("INSERT INTO check_results (monitor_id, checked_at, ok, status_code, latency_ms) VALUES (1, {}, 1, 200, 5);", t - 60)).await;
     let path = "/api/ui/projects/payments/monitors/1";
-    let page = common::json_of(app.api_get(path, Some(&tl)).await).await;
-    let since = page["data"]["stats"][0]["sub"].as_str().unwrap();
-    assert!(since.ends_with(" UTC+7"), "{since}");
+    let since = |clock: Option<&'static str>| {
+        let mut req = app.http.get(app.url(path)).header("cookie", tl.clone());
+        if let Some(c) = clock {
+            req = req.header("x-utc-offset", c);
+        }
+        async move {
+            let page: serde_json::Value = req.send().await.unwrap().json().await.unwrap();
+            page["data"]["stats"][0]["sub"]
+                .as_str()
+                .unwrap()
+                .to_string()
+        }
+    };
+    let hour = |s: &str| s[s.len() - 5..s.len() - 3].parse::<i64>().unwrap();
+    let admin = since(None).await;
+    let utc = since(Some("0")).await;
+    assert!(
+        !admin.contains("UTC") && !utc.contains("UTC"),
+        "{admin} / {utc}"
+    );
+    assert_eq!(
+        (hour(&utc) + 7) % 24,
+        hour(&admin),
+        "no clock sent: the admin's UTC+7"
+    );
 }
