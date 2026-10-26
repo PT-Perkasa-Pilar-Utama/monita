@@ -97,6 +97,11 @@ async function signedIn(browser: Browser, cookie: string, scale: number): Promis
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, colorScheme: "light", deviceScaleFactor: scale });
   const [name, value] = cookie.split("=") as [string, string];
   await context.addCookies([{ name, value, domain: "127.0.0.1", path: "/" }]);
+  // The demo and the screenshots show the pages, not the notes a first visit gets.
+  await context.addInitScript(() => {
+    localStorage.setItem("monita.2fa-note-closed:admin@monita.test", "1");
+    localStorage.setItem("monita.whats-new-seen:admin@monita.test", "999.0.0");
+  });
   return context;
 }
 
