@@ -76,30 +76,32 @@ export function LocationSetup({ setup, server, onClose }: { setup: Setup | null;
                 </>
               )}
             </div>
+          </div>
+        )}
+        {setup && (
+          <div className="mt-auto flex flex-wrap items-center gap-2 border-t bg-paper px-6 py-3">
             {!connected && (
-              <p className="text-muted-foreground">
-                You can close this and set it up later from the location's Set up button, which makes a fresh token, or{" "}
-                <Button
-                  variant="link"
-                  className="h-auto p-0 text-down"
-                  disabled={removing}
-                  onClick={() => {
-                    if (!setup) return;
-                    setRemoving(true);
-                    void api(`/admin/locations/${setup.id}`, "DELETE")
-                      .then(() => {
-                        toast.success(`${setup.name} is removed.`);
-                        onClose();
-                      })
-                      .catch((err: unknown) => toast.error(errorText(err)))
-                      .finally(() => setRemoving(false));
-                  }}
-                >
-                  remove {setup?.name}
-                </Button>{" "}
-                if you changed your mind.
-              </p>
+              <Button
+                variant="danger"
+                disabled={removing}
+                onClick={() => {
+                  setRemoving(true);
+                  void api(`/admin/locations/${setup.id}`, "DELETE")
+                    .then(() => {
+                      toast.success(`${setup.name} is removed.`);
+                      onClose();
+                    })
+                    .catch((err: unknown) => toast.error(errorText(err)))
+                    .finally(() => setRemoving(false));
+                }}
+              >
+                {removing ? <Spinner data-icon="inline-start" /> : <Trash2 data-icon="inline-start" />}
+                Remove {setup.name}
+              </Button>
             )}
+            <Button className="ml-auto" variant={connected ? "default" : "secondary"} onClick={onClose}>
+              {connected ? "Done" : "Set up later"}
+            </Button>
           </div>
         )}
       </SheetContent>
