@@ -1,3 +1,5 @@
+import { Badge } from "@/components/ui/badge";
+import { CLASS_LABEL } from "@/components/app/Reclassify";
 import type { ReactElement } from "react";
 import { Writable } from "@/lib/session";
 import { Link, useNavigate } from "react-router-dom";
@@ -109,6 +111,11 @@ export function Incidents({ creating = false }: { creating?: boolean }): ReactEl
                     <div className="font-mono text-xs text-muted-foreground">
                       INC-{i.id} {i.origin === "auto" ? "detected by Monita" : "reported by hand"}
                     </div>
+                    {i.excluded && (
+                      <Badge variant="outline" className="mt-1">
+                        {CLASS_LABEL[i.excluded]}
+                      </Badge>
+                    )}
                   </TableCell>
                   <TableCell>
                     <SeverityBadge severity={i.severity} />

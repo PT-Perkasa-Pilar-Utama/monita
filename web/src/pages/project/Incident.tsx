@@ -3,6 +3,7 @@ import { Writable } from "@/lib/session";
 import type { FormEvent, ReactElement } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { ChoiceCards } from "@/components/app/ChoiceCards";
+import { ClassNotice, Reclassify } from "@/components/app/Reclassify";
 import { FormSheet, FormSheetBody } from "@/components/app/FormSheet";
 import { Side } from "@/components/app/Side";
 import { LabelBadge, SeverityBadge, StateBadge } from "@/components/app/Tone";
@@ -162,6 +163,15 @@ export function Incident(): ReactElement {
               </>
             }
             actions={
+              <>
+              <Reclassify
+                path={path}
+                incident={i}
+                onDone={() => {
+                  res.reload();
+                  reloadProject();
+                }}
+              />
               <PostUpdate
                 key={`${i.resolved_at ?? "open"}`}
                 path={path}
@@ -172,8 +182,12 @@ export function Incident(): ReactElement {
                   reloadProject();
                 }}
               />
+              </>
             }
           />
+          <div className="mb-6 empty:hidden">
+            <ClassNotice incident={i} />
+          </div>
           <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_18rem]">
             <section aria-labelledby="timeline" className="flex min-w-0 flex-col gap-4">
               <h2 id="timeline" className="text-[15px] font-semibold">

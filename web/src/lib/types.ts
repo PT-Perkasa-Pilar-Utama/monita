@@ -61,6 +61,10 @@ export type IncidentRow = {
   started_at: number;
   resolved_at: number | null;
   last_label: UpdateLabel | null;
+  /** Reclassified (v1.1 Q46): left out of uptime, the charts and the status page. */
+  excluded: "planned" | "false_alarm" | null;
+  excluded_at: number | null;
+  excluded_by: string | null;
 };
 
 export type Overview = {
