@@ -8,11 +8,24 @@ The React pages under `/projects/{slug}/incidents` call these routes (convention
 
 | Method | Path | Access | Input | Behavior | AC |
 | --- | --- | --- | --- | --- | --- |
-| GET | `/api/ui/projects/{slug}/incidents` | owner, super_admin, supervisor | `?state=resolved\|all` (open when absent or any other value) | `incidents`, the newest 200: `id`, `origin` (`auto` or `manual`), `title`, `severity`, `cause`, `started_at`, `resolved_at` (null while open) and `last_label`. `all` lists open and resolved together, ties broken by id. The page searches title and INC id and filters severity in the browser. | |
+| GET | `/api/ui/projects/{slug}/incidents` | owner, super_admin, supervisor | `?state=resolved\|all` (open when absent or any other value) | `incidents`, the newest 200: `id`, `origin` (`auto` or `manual`), `title`, `severity`, `cause`, `started_at`, `resolved_at` (null while open) and `last_label`, and `excluded`, `excluded_at`, `excluded_by` (5.1a; all null for a counted incident). `all` lists open and resolved together, ties broken by id. The page searches title and INC id and filters severity in the browser. | |
 | GET | `/api/ui/projects/{slug}/incidents/{id}` | owner, super_admin, supervisor | | `incident`, `items` (names of the affected monitors and heartbeats; a deleted one reads "Deleted monitor"), `updates` oldest first with `label`, `message`, `author_email` (a user's), `author_key` (the API key's name when a key wrote it, v1.1 Q44; both null for Monita) and `created_at`, and `labels`, the labels an update may take now: all four while open, only `resolved` after close. | AC-18.02 |
 | GET | `/api/ui/projects/{slug}/incident-items` | owner, super_admin, supervisor | | The project's monitors and heartbeats, for the manual form: `value` (`monitor:<id>` or `heartbeat:<id>`), `kind` (`monitor` or `heartbeat`), `name` and `state` (`down`, `issue` or `maintenance` as the team's pages show it, or null when it is up). The maintenance form uses the same list. | AC-20.01 |
 | POST | `/api/ui/projects/{slug}/incidents` | owner, super_admin | `title` (up to 120 chars), `items` (a list of `monitor:<id>` or `heartbeat:<id>`), `severity` (`critical` or `warning`, required), `message` (up to 10 000 chars) | Manual incident. First update has label `investigating`. Errors in form order: title, items, severity, message. A project with 20 open manual incidents is 422 with no field. 201 `{id}`. | AC-20.01 |
 | POST | `/api/ui/projects/{slug}/incidents/{id}/updates` | owner, super_admin | `label` (`investigating`, `identified`, `monitoring`, `resolved`), `message` (1 to 10 000 chars) | Empty message: 422 on `message` (AC-19.02). After close, only `resolved` is accepted, as a follow-up note (AC-19.03); other labels are 422 on `label`. `resolved` on an open manual incident closes it (AC-20.02). `resolved` on an open auto incident also closes it, by hand: the resolved alert goes out ("marked resolved by a tech lead"), a heartbeat gets a new deadline from now, and the source starts over, so a monitor needs its full failure count again to open the next incident. An incident takes 50 updates; one more is 422 with no field. 204 when stored; an unknown incident is 404. | AC-19.01 to AC-19.03, AC-20.02 |
+| PUT | `/api/ui/projects/{slug}/incidents/{id}/class` | owner, super_admin | `class` (`planned`, `false_alarm` or `counted`) | Reclassify (v1.1 Q46, 5.1a). Any other value is 422 on `class`: "Pick planned work, a false alarm, or count it again." An unknown incident, or one of another project, is 404. 204. | |
+
+### 5.1a Reclassify an incident (v1.1 Q46)
+
+A tech lead marks an incident as `planned` (maintenance, or a pause that came too late) or as `false_alarm` (the check was wrong). A marked incident leaves availability, the charts and the public status page. The daily summary of a day already summarized keeps its stored downtime. The team still sees it, with the class, who set it and when. `counted` is the normal class. A project API key with the `write` scope calls the same route under `/api/v1/projects/{slug}` (3.4), and its name shows as the one who marked it ("API key <name>").
+
+| From | To | Rule |
+| --- | --- | --- |
+| counted | `planned` or `false_alarm` | An open incident closes now. It gets a `resolved` update that says it closed as planned work or as a false alarm. An open automatic incident also sends the resolved alert, and its source starts over, as for a hand resolve (5.1). |
+| `planned` or `false_alarm` | the other one | Nothing else changes. |
+| `planned` or `false_alarm` | `counted` | The incident counts again. It stays closed and never reopens. |
+
+Fields in a list row and in the detail: `excluded` (`planned`, `false_alarm` or null), `excluded_at` (Unix seconds or null) and `excluded_by` (the user's email or "API key <name>", or null). Spec 06 section 6.3.11 has the columns.
 
 ## 5.2 Incidents across projects
 

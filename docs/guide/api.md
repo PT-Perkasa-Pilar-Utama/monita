@@ -151,7 +151,9 @@ The routes are the ones the team's pages use, with `/api/v1/projects/{slug}` in 
 | `/monitors`, `/monitors/{id}` | List, create, read, change and delete monitors |
 | `/heartbeats`, `/heartbeats/{id}` | The same for heartbeats |
 | `/monitors/{id}/paused`, `/heartbeats/{id}/paused` | `PUT {"paused": true}` pauses, `false` resumes |
+| `/monitors/batch`, `/heartbeats/batch` | `POST {"action": "pause", "ids": [3, 4]}` pauses, resumes or deletes up to 100 at once |
 | `/incidents`, `/incidents/{id}`, `/incidents/{id}/updates` | List and open incidents, and post updates |
+| `/incidents/{id}/class` | `PUT {"class": "false_alarm"}` marks an incident planned work or a false alarm, or counts it again |
 | `/maintenance`, `/maintenance/{id}`, `/maintenance/{id}/end` | List, plan, delete and end maintenance windows |
 
 Pause a monitor while you deploy, then resume it:

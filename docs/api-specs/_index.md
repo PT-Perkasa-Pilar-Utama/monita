@@ -46,8 +46,10 @@ Legend: `OK` implemented and tested, `WIP` in progress, `TODO` not started, `SCA
 | Secrets: list, create, replace, delete | [03](03-projects.md#33-secrets) | OK |
 | Check options, monitors (method, headers, body, `fails_to_open`, `auth_*`), heartbeats (`last`, `alert`, `auto_incident`) | [04](04-checks.md#43-frontend-routes) | OK |
 | Pause and resume a monitor or heartbeat (`PUT .../paused`, `paused_at`, state `paused`) | [04](04-checks.md#43a-pause-v11-q38) | OK |
+| Batch pause, resume and delete (`POST .../monitors/batch`, `.../heartbeats/batch`) | [04](04-checks.md#43c-batch-pause-resume-and-delete) | OK |
 | System page, mail server and its tests, limits, time zone | [04](04-checks.md#44-system-page) | OK |
 | Project incidents, incident items, updates | [05](05-incidents.md#51-frontend-routes) | OK |
+| Reclassify an incident (`PUT .../incidents/{id}/class`, `excluded`) | [05](05-incidents.md#51-frontend-routes) | OK |
 | Incidents across projects (`/api/ui/incidents`) | [05](05-incidents.md#52-incidents-across-projects) | OK |
 | Maintenance windows | [05](05-incidents.md#53-maintenance-windows) | OK |
 | Alert cards and ticket cards (list, add, edit, delete, switch, test), alerts preview | [06](06-notify.md#61-frontend-routes) | OK |

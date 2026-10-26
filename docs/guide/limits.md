@@ -8,6 +8,8 @@ No page or job in Monita grows without bound. A list you add to refuses one more
 | Accounts per instance | 500 |
 | Monitors per project | 100 |
 | Heartbeats per project | 100 |
+| Pins for each person | 6 projects, and 6 monitors and 6 heartbeats in each project |
+| Monitors or heartbeats in one batch pause, resume or delete | 100 |
 | Live API keys per project | 20 |
 | Secrets per project | 20, up to 4 KB each |
 | Headers on a monitor | 20, up to 4 KB a value |

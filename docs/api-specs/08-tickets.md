@@ -70,11 +70,11 @@ The reporter sees their original title. The description is not returned.
 
 ## 8.4 CORS preflight
 
-`OPTIONS /api/v1/tickets` and `OPTIONS /api/v1/tickets/mine` answer 204 with `Access-Control-Allow-Origin: *`, `Allow-Methods: GET, POST, OPTIONS`, `Allow-Headers: content-type, x-ref-id` and `Max-Age: 86400`. Preflights do not count against the per-IP limit.
+`OPTIONS /api/v1/tickets` and `OPTIONS /api/v1/tickets/mine` answer 204 with `Access-Control-Allow-Origin: *`, `Allow-Methods: GET, POST, OPTIONS`, `Allow-Headers: content-type, x-ref-id` and `Max-Age: 86400`.
 
 ## 8.5 Frontend routes
 
-The public pages `/status/{slug}/issues` (known issues) and `/status/{slug}/ticket` (Report a bug and My tickets, one page) call the public routes below with no sign-in; the old paths `/tickets`, `/report` and `/mine` redirect there. The per-IP limit covers `/api/ui/public/` (SEC-12). The pages `/projects/{slug}/tickets`, `/projects/{slug}/tickets/done` and `/projects/{slug}/tickets/{number}` call the tech lead's routes (conventions 1.10). A supervisor may read and gets 403 on every write (conventions 1.9). A refused form is 422 with the error on its field: `ref_id`, `title`, `description`, `page_url`, `stage`, `close_reason` or `public_title`. SEC-14: no public route returns a description or a reporter. Without a ref ID, no public route returns a close reason or a Triage ticket; `mine` returns both, but only for the tickets that ref ID reported (8.3).
+The public pages `/status/{slug}/issues` (known issues) and `/status/{slug}/ticket` (Report a bug and My tickets, one page) call the public routes below with no sign-in; the old paths `/tickets`, `/report` and `/mine` redirect there. The ref ID caps (5 per ref ID per day, 100 per project per day) bound filing; no limit applies per IP address (Q45). The pages `/projects/{slug}/tickets`, `/projects/{slug}/tickets/done` and `/projects/{slug}/tickets/{number}` call the tech lead's routes (conventions 1.10). A supervisor may read and gets 403 on every write (conventions 1.9). A refused form is 422 with the error on its field: `ref_id`, `title`, `description`, `page_url`, `stage`, `close_reason` or `public_title`. SEC-14: no public route returns a description or a reporter. Without a ref ID, no public route returns a close reason or a Triage ticket; `mine` returns both, but only for the tickets that ref ID reported (8.3).
 
 The project's `report` and `known_issues` flags (3.1, `public-pages`) gate the public routes: with `report` off, `report` and `mine` are 404; with `known_issues` off, the public board is 404.
 

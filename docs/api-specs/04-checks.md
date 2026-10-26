@@ -11,7 +11,7 @@ Rules: [../technical-specs/13-check-scheduler.md](../technical-specs/13-check-sc
 | Input | Path `token`. Any body is read and dropped, up to 16 MiB within 10 s of admission. A body that fits gets its answer through `curl -f`; a longer or slower one may see a reset. This route never answers 413. A ping refused at `admit` (unknown token, 429, or an `admit` error) is answered without reading its body. Monita records an admitted ping even if its client hangs up during the request. A client that half-closes its connection right after the request, as `nc -N` does, is not heard. Shutdown waits up to 10 s for a ping being stored (spec 13.4). |
 | Behavior | 1. Find the heartbeat by token. 2. Rate limit: 1 per second per heartbeat, in the bucket `ping:{id}`. Over the limit: 429. A refused ping is not stored; the ping accepted in that second keeps the heartbeat alive (AC-13.02). 3. Insert `pings(kind=ok)`. 4. Set `last_ping_at = now`, `deadline_at = now + period_s + grace_s`. 5. `incidents::observe(Heartbeat, Ping)`, which closes an open incident (AC-18.01). |
 | Output | 200 `text/plain` `OK`. HEAD has no body. (AC-13.01) |
-| Errors | 404 `not_found` (plain text `not found`) for an unknown token. 429 with `Retry-After: 1` when over the limit. More than 60 unknown-token pings per minute from one IP (IPv6: one /64) get 429 before any lookup. |
+| Errors | 404 `not_found` (plain text `not found`) for an unknown token. 429 with `Retry-After: 1` when over the limit. An unknown token is not limited, because each token is random (Q45). |
 
 Example:
 
@@ -43,6 +43,7 @@ The React pages under `/projects/{slug}/monitors` and `/projects/{slug}/heartbea
 | PUT | `/api/ui/projects/{slug}/monitors/{id}` | owner, super_admin | same as create | Validate and update, 204. An unknown id is 404. A changed interval draws a new first-check offset. | |
 | PUT | `/api/ui/projects/{slug}/monitors/{id}/paused` | owner, super_admin | `paused` (boolean) | Pause or resume the monitor (v1.1 Q38, 4.3a), 204. An unknown id, or one in another project, is 404. Pausing twice changes nothing. | |
 | DELETE | `/api/ui/projects/{slug}/monitors/{id}` | owner, super_admin | | Delete with its results; an open incident on it closes. 204. | |
+| POST | `/api/ui/projects/{slug}/monitors/batch` | owner, super_admin | `action` (`pause`, `resume` or `delete`), `ids` (a list of monitor ids) | Apply the action to every monitor in one write (4.3c). 200 `{count}`. | |
 | GET | `/api/ui/projects/{slug}/heartbeats` | owner, super_admin, supervisor | | `heartbeats`: each a heartbeat (below) with `pinned`. `summary` as for monitors. | |
 | PUT, DELETE | `/api/ui/projects/{slug}/monitors/{id}/pin`, `/api/ui/projects/{slug}/heartbeats/{id}/pin` | anyone who sees the project, a supervisor too | | Pin or unpin for the signed-in user (Q48). 204; 404 for a source of another project. A seventh pin of a kind in a project is 422: "6 monitors are pinned in this project, which is the most, so unpin one to pin {name}." Not under `/api/v1`. | |
 | POST | `/api/ui/projects/{slug}/heartbeats` | owner, super_admin | `name`, `period_s`, `grace_s`, `severity`, `is_public`, `alert`, `auto_incident` | Create the token. `deadline_at = now + period_s + grace_s`. 201 `{id}`; a project with 100 heartbeats is 422 on `name`. | AC-12.01, AC-12.02 |
@@ -50,6 +51,7 @@ The React pages under `/projects/{slug}/monitors` and `/projects/{slug}/heartbea
 | PUT | `/api/ui/projects/{slug}/heartbeats/{id}` | owner, super_admin | same as create | Validate and update, 204. A pending deadline is recomputed from the last ping with the new period and grace. | |
 | PUT | `/api/ui/projects/{slug}/heartbeats/{id}/paused` | owner, super_admin | `paused` (boolean) | Pause or resume the heartbeat (v1.1 Q38, 4.3a), 204. An unknown id, or one in another project, is 404. Pausing twice changes nothing. | |
 | DELETE | `/api/ui/projects/{slug}/heartbeats/{id}` | owner, super_admin | | Delete with its pings; its URL answers 404 from then on. An open incident on it closes. 204. | |
+| POST | `/api/ui/projects/{slug}/heartbeats/batch` | owner, super_admin | `action` (`pause`, `resume` or `delete`), `ids` (a list of heartbeat ids) | Apply the action to every heartbeat in one write (4.3c). 200 `{count}`. | |
 
 ### Monitor
 
@@ -102,6 +104,19 @@ View fields: `id`, `every` and `grace` (in words, such as `1 day`, `30 minutes`)
 | Status page | A paused source is hidden from the page and its JSON until it resumes (07). |
 
 A maintenance window is different: checks keep running during a window (05, 5.3).
+
+### 4.3c Batch pause, resume and delete
+
+`POST .../monitors/batch` and `POST .../heartbeats/batch` take `{action, ids}`. The lists select rows and send one call for them. The row menu sends the same call with one id. A project API key with the `write` scope reaches both routes under `/api/v1/projects/{slug}` (3.4). A supervisor and a `read` key get 403 like every write.
+
+| Part | Rule |
+| --- | --- |
+| `action` | `pause`, `resume` or `delete`. Any other value is 422 on `action`: "Pick pause, resume or delete." |
+| `ids` | Monitor ids on the monitors route, heartbeat ids on the heartbeats route. A repeated id counts once. An empty list is 422 on `ids`: "Pick at least one." More than 100 is 422 on `ids`: "Pick 100 or fewer at once." |
+| All or nothing | The batch runs in one write. An id that is not a source of this project makes the whole batch 404, and nothing changes. |
+| `pause`, `resume` | As `PUT .../paused` (4.3a), for each id. A source already in that state changes nothing and counts. |
+| `delete` | As `DELETE .../{id}`, for each id. An open automatic incident of a deleted source closes, and its resolved alert goes out. |
+| Answer | 200 `{count}`: the number of different ids done. |
 
 ### 4.3b Ping checks (v1.1 Q24, Q40)
 

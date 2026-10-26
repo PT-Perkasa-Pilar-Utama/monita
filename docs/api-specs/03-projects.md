@@ -86,8 +86,11 @@ A `read` or `write` key manages its own project from a script or a deploy pipeli
 | (none) | GET | `/api/ui/projects/{slug}` (3.1) |
 | `/overview` | GET | 3.1 |
 | `/monitors`, `/monitors/{id}`, `/monitors/{id}/paused` | GET, POST, PUT, DELETE as on the page | 4.3 |
+| `/monitors/batch` | POST | 4.3c |
 | `/heartbeats`, `/heartbeats/{id}`, `/heartbeats/{id}/paused` | GET, POST, PUT, DELETE as on the page | 4.3 |
+| `/heartbeats/batch` | POST | 4.3c |
 | `/incidents`, `/incidents/{id}`, `/incident-items`, `/incidents/{id}/updates` | GET, POST | 5.1 |
+| `/incidents/{id}/class` | PUT | 5.1 |
 | `/maintenance`, `/maintenance/{id}`, `/maintenance/{id}/end` | GET, POST, DELETE | 5.3 |
 
 - A `read` key sees what a supervisor sees: no ping URL, no header values, no request body and no sign-in name.

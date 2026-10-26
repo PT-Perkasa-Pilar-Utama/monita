@@ -6,11 +6,12 @@ A monitor checks one thing on a fixed interval: a URL over HTTP, a TCP port, a D
 
 1. In a project, open **Monitors** and select **New monitor**. The form opens beside the list.
 2. Enter a **Name**.
-3. Under **What it checks**, pick **HTTP**, **TCP port**, **DNS name** or **Ping**.
-4. Fill in the **Check** section. For HTTP, also fill in **Authentication** and **Headers** as you need.
-5. Set what a passing check is under **A check passes when**.
-6. Set what a failure does under **Alerts and status page**.
-7. Save. The first check runs at a random moment within the first interval. Monitors added together do not check in the same second.
+3. Under **Who sees it**, pick **Only your team** or **Also the status page**. See [Who sees it](#who-sees-it).
+4. Under **What it checks**, pick **HTTP**, **TCP port**, **DNS name** or **Ping**.
+5. Fill in the **Check** section. For HTTP, also fill in **Authentication** and **Headers** as you need.
+6. Set what a passing check is under **A check passes when**.
+7. Set what a failure does under **Alerts**.
+8. Save. The first check runs at a random moment within the first interval. Monitors added together do not check in the same second.
 
 Select **How monitors work** at the top of the page for a short guide with examples.
 
@@ -28,7 +29,7 @@ A ping check first uses an ICMP socket that needs no root and no extra capabilit
 
 ## Certificate warning
 
-An HTTP monitor of an `https://` URL can warn before its certificate expires. Under **Alerts and status page**, set **Warn before the certificate expires** to 7, 14 or 30 days.
+An HTTP monitor of an `https://` URL can warn before its certificate expires. Under **Alerts**, set **Warn before the certificate expires** to 7, 14 or 30 days.
 
 - Each check reads the expiry date of the server's certificate. **Details** shows it under **Certificate**. When the URL redirects to another host, Monita cannot see the first host's certificate and keeps the last date it read; point the monitor at the address that answers.
 - When the date falls inside the window, Monita sends one alert to every alert card that listens to warning. No incident opens.
@@ -89,17 +90,27 @@ A check fails on a timeout, a connection error, a status outside the expected li
 
 | Setting | Means |
 | --- | --- |
-| Alert level | Which alert setup the monitor uses: critical or warning. Each has its own emails and webhook. Default: warning. |
+| Alert level | Two cards, **Critical** and **Warning**. The card picks which alert setup the monitor uses. Each has its own emails and webhook. Default: warning. |
 | It counts as down after | The number of failed checks in a row, from 1 to 99. Default: 2. |
 | Send alerts to the people in Alerts settings | Off means Monita sends nothing for this monitor. |
 | Open an incident | Off means no incident and nothing on the status page. |
-| Show this monitor and its incidents on the public status page | On puts the monitor on the status page. |
 
 With **Open an incident** on, the monitor opens an incident after the set number of failed checks. The first passing check closes it and sends a recovery alert. The cause says "on 1 check" or "after N checks".
 
 With **Open an incident** off, a failure only sends a `[DOWN]` alert, and recovery sends an `[UP]` alert. The team's lists show **Down**. The status page shows nothing. See [Alerts](alerts.md).
 
 A tech lead can also open an incident by hand. See [Incidents](incidents.md).
+
+## Who sees it
+
+**Who sees it** is a choice of two cards under the name. It starts on **Only your team**.
+
+| Card | Means |
+| --- | --- |
+| **Only your team** | The monitor and its incidents stay inside Monita. |
+| **Also the status page** | Visitors see the monitor, its uptime bars and its incidents on the public status page. |
+
+The monitor's incidents reach the status page only when the monitor shows there.
 
 ## States
 
@@ -108,7 +119,7 @@ A tech lead can also open an incident by hand. See [Incidents](incidents.md).
 | Up | The last check passed |
 | Down | The monitor is past its failed-check count |
 | Issue | An open manual incident names it |
-| Maintenance | An active maintenance window covers it |
+| Maintenance | An active maintenance window covers it. The page shows a yellow **In maintenance** stamp under the title, and its list row has yellow stripes. |
 | Paused | A tech lead paused it |
 | No data yet | No check has run |
 
@@ -122,12 +133,26 @@ Select **Pause** on the monitor page and confirm. Use it when you take a system 
 
 - Monita runs no check on it, from this server or from a location.
 - No incident opens and no alert goes out.
-- The state reads **Paused** in grey, and the page says **Paused since** and the time.
+- The state reads **Paused** in grey, and the page says **Paused since** and the time. A grey **Paused** stamp sits under the title, and its list row has grey stripes.
 - The status page hides it.
 
 Pausing closes the monitor's open automatic incident without a resolved alert. The incident's last update reads "Paused by a tech lead." The count of failed checks in a row starts over. Select **Resume** and the next check runs at once.
 
-A maintenance window is different. During a window the checks keep running. See [Maintenance windows](incidents.md#maintenance-windows).
+A maintenance window is different. During a window the checks keep running. See [Maintenance windows](incidents.md#maintenance-windows). A failed check in a window counts as held: the table still shows it, but the chart and the availability count it as good, and the chart draws the window as grey stripes.
+
+## Pause, resume or delete several
+
+Tick the box at the start of each row you want. The box in the heading ticks every monitor the list shows now. A bar with **N selected** replaces the count above the list. A supervisor sees no boxes.
+
+| Button | Does |
+| --- | --- |
+| **Pause** | Asks first, then pauses every picked monitor. |
+| **Resume** | Shows when any picked monitor is paused. It resumes every picked monitor. |
+| **Plan maintenance** | Opens the maintenance form with the picked monitors ticked. |
+| **Delete** | Asks first. It lists the monitors, what goes and what stays. For more than one, type `delete N` to confirm. **Pause instead** is in the same dialog. |
+| **Clear selection** | Unticks every row. |
+
+The action covers up to 100 monitors and it all happens or nothing does. The row menu at the end of a row holds **Edit**, **Pause** or **Resume**, **Plan maintenance** and **Delete** for that monitor alone. **Pause** and **Resume** there offer **Undo** in the message. Deleting a monitor closes its open incident and sends the resolved alert. A script does the same with a `write` API key. See [API](api.md).
 
 ## The monitor page
 
@@ -136,7 +161,7 @@ Select **Refresh** to read the latest data. The page also reads itself every 30 
 | Part | Shows |
 | --- | --- |
 | Stats | How long it has been up or down, the last check, the mean response time, incidents in 30 days |
-| Chart | Mean response time per bucket, failed checks in red, down time in a red band. Hover to read a bucket: the time, the count, and "Up" or "Down for ...". Hour, day and week read the raw checks; month reads the daily summary. |
+| Chart | Mean response time per bucket, failed checks in red, down time in a red band, maintenance windows as grey stripes. Hover to read a bucket: the time, the count, and "Up" or "Down for ...". Hour, day and week read the raw checks; month reads the daily summary. |
 | Availability | Today, the last 7, 30 and 365 days, and all time: percent up, downtime, incidents, the longest and the average |
 | Checks | The last 7 days, 25 per page, newest first |
 

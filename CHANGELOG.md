@@ -8,10 +8,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [1.1.0] - 2026-10-21
 
-More ways to check, alert and plan: TCP, DNS and ping monitors, certificate warnings, checks from more than one place, Discord, Telegram, ntfy and PagerDuty alerts, maintenance windows, and two-factor sign-in. Migrations 0024 to 0047 run on start; 0029 rebuilds the `monitors` table, and 0039 rebuilds `alert_cards`.
+More ways to check, alert and plan: TCP, DNS and ping monitors, certificate warnings, checks from more than one place, Discord, Telegram, ntfy and PagerDuty alerts, maintenance windows, and two-factor sign-in. Migrations 0024 to 0048 run on start; 0029 rebuilds the `monitors` table, and 0039 rebuilds `alert_cards`.
 
 ### Added
 
+- Select rows on the Monitors and Heartbeats lists to pause, resume or delete many at once, or open the row menu for one. A batch is all or nothing, takes up to 100, and a `write` API key calls it too with `POST .../monitors/batch` and `.../heartbeats/batch`. Deleting asks first, and more than one asks you to type `delete N`.
+- Reclassify an incident as planned work or a false alarm, or count it again, from **Reclassify** on its page or with `PUT .../incidents/{id}/class` (decision Q46). It closes if it is open, leaves uptime, the charts and the status page, and stays in the team's lists with a tag and who marked it. The cross-project Incidents list shows the tag too. Migration 0044.
 - Pin up to 6 projects, and up to 6 monitors and 6 heartbeats in each project, with the pin on any row or card. Pinned ones lead their lists and the charts: every pinned monitor gets its own line on the Overview. Migration 0048.
 - The Maintenance tab lists windows as the other lists do: search by title, filter by Scheduled, Active or Ended, and sort by start.
 - Locations: checks from more than one place. A super admin adds a location and runs `monita probe` on another machine with its token. A monitor checks from this server and any locations, and counts a check as failed only when a chosen number of places agree ([#6](https://github.com/PT-Perkasa-Pilar-Utama/monita/issues/6)). Migrations 0030 and 0031. Design: `docs/technical-specs/14-locations.md`.
@@ -39,9 +41,14 @@ More ways to check, alert and plan: TCP, DNS and ping monitors, certificate warn
 ### Changed
 
 - Monita reads and writes its database with SQLite itself, through rusqlite, instead of Turso (decision Q47). The file does not change: an existing database opens as it is, and migration 0047 drops Turso's unused counter tables. Answers, rows and speed match the Turso build in the parity kit (`scripts/parity/`). A second Monita process on the same database still stops at open, now through `monita.db.lock` beside it.
+- The database gives deleted space back to the disk. A new file starts with incremental auto-vacuum, and the first start of 1.1 rewrites an older file once to switch it: about 4 s for 350 MB, with that much free disk. After the daily retention sweep, Monita frees the pages in small steps. Without the disk space for the switch, Monita starts, logs a warning and keeps the file at its largest size.
+- After a migration, Monita checks every reference between tables and refuses to start when a row points at a missing one. The message names the first broken references and says to restore the backup taken before the upgrade.
 - The charts read 15-minute summaries instead of every check (migration 0046), and JSON (gzip) and the web bundle (brotli or gzip) go out compressed. On 3 million checks the project list's chart answers in 41 ms instead of 391 ms. Status pages load the public pages alone.
 - Monita no longer limits callers per IP address, so one shared office or carrier address can never lock out everyone behind it. Sign-in takes 10 wrong passwords per account per 15 minutes instead. **Visits per minute from one address** is gone from **Rate limits**. Migration 0043.
 - **Ticket alerts** are alert cards too, in their own section. Every project has three fixed owner cards: the daily digest, each new ticket, and each ticket move. A new project starts with all three off. A project adds up to 10 ticket cards of its own: an email list or a webhook in JSON, Discord, Telegram, the global Telegram bot or ntfy, each listening to new tickets, moves or both. Migrations 0038 and 0039 convert the old settings: the digest keeps its state, and a saved ticket webhook becomes a card.
+- **Maintenance** is a project tab at `/projects/{slug}/maintenance`, beside Incidents. It lists the windows and every paused monitor and heartbeat with a **Resume** button, and its number counts what is paused or in a window now. `/projects/{slug}/incidents/maintenance` redirects there. **Plan maintenance** moved to the row menu and the batch bar.
+- A paused or in-maintenance monitor or heartbeat shows a stamp under its title, and its list row is striped: grey for paused, yellow for maintenance.
+- **Who sees it** is a choice of two cards under the name in the monitor and heartbeat forms, **Only your team** or **Also the status page**, in place of the tick box near the end. It starts on **Only your team**.
 - Passwords need 8 characters or more, down from 12.
 - **Alert cards** replace the Critical and Warning sections. Every project keeps two fixed cards that email its owner, one per level, and adds up to 10 of its own: an email list or a webhook in any format, each listening to critical, warning or both, each with its own switch and test. A card needs no name: it takes its kind, or its Telegram chat. Migration 0037 converts the old settings; nobody who got alerts stops getting them.
 - A new project's critical alerts no longer start with the webhook ticked. Neither severity calls a webhook until its owner ticks it and sets a URL. Migration 0033 unticks existing routes that have no URL.
@@ -53,6 +60,8 @@ More ways to check, alert and plan: TCP, DNS and ping monitors, certificate warn
 
 ### Fixed
 
+- A failed check or ping inside an active maintenance window counts as held, not failed. It keeps its row, but the charts, the sparklines and the daily summary count it as good, and the monitor and heartbeat charts draw the window as stripes (decision Q46). Migration 0045.
+- A deleted monitor or heartbeat no longer shows in the project list's chart or the pulse bars. Its incidents stay in the incident list.
 - Pages that listed a project's monitors read every project's checks. On a large install the Monitors list took over a second; it now reads only its own monitors (6 ms in a test with 290 000 checks).
 - The project list showed green bars for hours before a monitor or heartbeat existed. Those hours now show no data.
 - Mail to Monita's own sender address is dropped, so alerts no longer loop back into the sending mailbox. A user who signs in with that address still gets mail.
@@ -65,6 +74,7 @@ More ways to check, alert and plan: TCP, DNS and ping monitors, certificate warn
 - The install steps put `admin create` last in its block, so a pasted block no longer types the next command into the password prompt.
 - Sending a new invite stops the old password at once, as the guide says. Before, it kept working until the new link was used.
 - The online demo's side panels (a ticket, a new or edited monitor) close with their X, Cancel, the backdrop or Escape.
+- Monita takes the fixed releases of `rustls-webpki` and `webpki-root-certs`, which trusted distrusted emSign certificates (RUSTSEC-2026-0382 and 0383), and of `ctutils` under the password hash (RUSTSEC-2026-0385).
 
 ## [1.0.1] - 2026-10-19
 

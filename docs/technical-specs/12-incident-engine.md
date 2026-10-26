@@ -102,6 +102,20 @@ A pause (v1.1 Q38) is not a window. `checks::set_paused` calls `source_paused`, 
 
 Availability counts automatic incidents only, so a window adds no downtime. An incident that was open before the window counts through it.
 
+The scheduler and `/ping` also mark each stored result: `in_window` is 1 when an active window covers the source at that moment (v1.1 Q46, migration 0045). The mark does not reach `step`. It only changes how charts and counts read the result (spec 13 section 13.2a).
+
+## 12.3c Reclassify (v1.1 Q46)
+
+An incident has a class. `counted` is the default and is stored as NULL. A tech lead sets `planned` (maintenance, or a pause that came too late) or `false_alarm` (the check was wrong). `incidents::reclassify` does it in one write. The class is not part of `step`.
+
+| From | To | Actor | Guard | Effect |
+| --- | --- | --- | --- | --- |
+| counted | planned, false_alarm | tech lead, or a `write` API key | the incident is in the project | An open incident closes: it gets a `resolved` update, and an automatic one sends the resolved alert and its source starts over, as a hand resolve does (`Ended::Planned` or `Ended::FalseAlarm`). Then the class, who and when are stored. |
+| planned, false_alarm | the other class | tech lead, or a `write` API key | the incident is in the project | The class, who and when change. |
+| planned, false_alarm | counted | tech lead, or a `write` API key | the incident is in the project | The class clears. The incident stays closed. |
+
+Every figure that counts downtime skips an incident with a class: availability and its periods, the last incident, the down bands and pulse bars on charts, the daily downtime of a new summary, and the public status page and history. The team's lists, pages and counts still show the incident with its class, who set it and when. A day that is already summarized keeps its stored `downtime_s`.
+
 ## 12.4 Performance targets
 
 | Target | Value | Source |

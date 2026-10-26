@@ -63,12 +63,32 @@ Use **Report incident** for a problem no check catches, such as slow sign-in for
 
 A manual incident marks its items as **Issue**, not down. It never counts as downtime. It closes only when a tech lead posts **Resolved**. A project holds at most 20 open manual incidents. A manual incident sends no alert.
 
+## Reclassify an incident
+
+Some outages do not count: the work was planned, or the check was wrong. A tech lead can mark the incident so it leaves the numbers. Open the incident and select **Reclassify**. Pick one:
+
+| Choice | Use it when |
+| --- | --- |
+| **Planned work** | The outage was maintenance, or a pause that came too late. |
+| **False alarm** | The check was wrong and nothing was down. |
+| **Count it again** | You marked it by mistake. The incident counts again. |
+
+Each choice opens a dialog that says what changes. After you confirm:
+
+- An open incident closes now with a **Resolved** update. An automatic one also sends the resolved alert.
+- The incident leaves uptime, the availability figures, the charts and the status page, with its history.
+- The team still sees the incident. Its page shows the class and who marked it. The lists show a **Planned work** or **False alarm** tag.
+- **Count it again** does not reopen the incident. It stays closed and counts in the numbers again.
+- A day that Monita already summarized keeps the downtime it stored.
+
+A supervisor sees the class and cannot change it. A `write` API key can reclassify too. See [API](api.md).
+
 ## Maintenance windows
 
 Plan a window before planned work, so the work neither alerts the team nor shows as an outage.
 
-1. Open **Incidents** in a project and select **Maintenance**, then **Plan maintenance**. Or select **Plan maintenance** on a monitor or heartbeat page. The form opens with that system already ticked.
-2. Enter a **Title**, then pick when it **Starts** and **Ends**. Times are in the time zone a super admin set. A start in the past starts now. A window lasts 30 days at most.
+1. Open **Maintenance** in a project and select **Plan maintenance**. Or open the row menu of a monitor or heartbeat and select **Plan maintenance**. Or tick several rows and select **Plan maintenance** in the bar above the list. The form opens with those systems already ticked.
+2. Enter a **Title**, then pick when it **Starts** and **Ends**. Type the times on your own clock. A line under them says when the window starts and how long it lasts. It also shows how Monita displays the window when Monita's time zone differs from your clock. A start in the past starts now. A window lasts 30 days at most.
 3. Tick the monitors and heartbeats it covers.
 4. Optional: write a **Message on the status page**.
 
@@ -76,6 +96,7 @@ While a window is active:
 
 - Monita still checks the items and stores every result.
 - A failure opens no incident and sends no alert.
+- A failed check or ping counts as held. It stays in the checks and pings tables, but the charts, the response-time sparklines and the daily summary count it as good, so planned work leaves no red. The monitor and heartbeat charts draw the window as grey stripes. Hover a stripe to read the window's title and length.
 - A heartbeat's `/fail` ping in the window opens nothing then. If the job still has not sent a success ping when the window ends, the incident opens then, with the failure text the job sent.
 - The items show **Maintenance** on the team's pages and on the status page. The status page shows the title, the times and the message.
 - A window adds no downtime. An incident that was open before the window stays open, closes as usual, and counts as downtime.
@@ -90,9 +111,13 @@ When the window ends, a check that still fails opens an incident at once. A hear
 
 A project has at most 20 windows scheduled or active. A window cannot be edited: delete it and plan a new one.
 
+The **Maintenance** page lists the windows 20 a page. **Search windows** finds a title. The state filter shows **Scheduled**, **Active** or **Ended**. Select **When** to sort by start, newest first or oldest first. Below the list, a second card shows the count of paused systems. It lists every paused monitor and heartbeat with a **Resume** button. The number on the **Maintenance** tab counts the monitors and heartbeats that are paused or in an active window now, each once.
+
+The old address `/projects/<project>/incidents/maintenance` still opens this page.
+
 ## The Incidents page
 
-A project's **Incidents** page lists its incidents with alert level, latest update, start and duration. Filter by **Open**, **Resolved** or **All**. Search by title and filter by severity.
+A project's **Incidents** page lists its incidents with alert level, latest update, start and duration. Filter by **Open**, **Resolved** or **All**. Search by title and filter by severity. A reclassified incident shows its **Planned work** or **False alarm** tag under the title.
 
 ### Across projects
 
@@ -101,6 +126,7 @@ A project's **Incidents** page lists its incidents with alert level, latest upda
 - The list shows open incidents first. Critical ones come first.
 - Use the state filter for **Open**, **Resolved** or **Open and resolved**. Use **Search incidents** and the alert level filter to narrow the list.
 - Sort by **Alert level** or **Started**.
+- A reclassified incident shows its **Planned work** or **False alarm** tag under the title.
 - The list shows 25 a page. A count on the menu shows the open incidents.
 - A row opens the incident. The crumb **All incidents** returns to the same search and page.
 

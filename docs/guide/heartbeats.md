@@ -6,10 +6,11 @@ A heartbeat watches a job that runs on a schedule. The job calls a URL when it f
 
 1. In a project, open **Heartbeats** and select **New heartbeat**.
 2. Enter a **Name**, for example `nightly-backup`.
-3. Set **Runs every** to the job's schedule: 1, 5, 10, 15 or 30 minutes, 1, 2, 6 or 12 hours, 1, 7 or 30 days.
-4. Set **Can be late by** to how late the job may finish: None, 1, 5, 15 or 30 minutes, 1, 2 or 6 hours, or 1 day.
-5. Pick the alert level and what a failure does. These fields work as on a [monitor](monitors.md#when-it-fails), but a heartbeat has no failed-check count.
-6. Save, then copy the ping URL.
+3. Under **Who sees it**, pick **Only your team** or **Also the status page**. The cards work as on a [monitor](monitors.md#who-sees-it). A new heartbeat starts on **Only your team**.
+4. Set **Runs every** to the job's schedule: 1, 5, 10, 15 or 30 minutes, 1, 2, 6 or 12 hours, 1, 7 or 30 days.
+5. Set **Can be late by** to how late the job may finish: None, 1, 5, 15 or 30 minutes, 1, 2 or 6 hours, or 1 day.
+6. Pick the **Alert level** and set **When it fails**. These fields work as on a [monitor](monitors.md#when-it-fails), but a heartbeat has no failed-check count.
+7. Save, then copy the ping URL.
 
 The deadline is the last ping plus **Runs every** plus **Can be late by**. Example: a job runs every 1 day, can be late by 1 hour, and pings at 01:00. The next deadline is 02:00 the next day.
 
@@ -93,12 +94,30 @@ Select **Pause** on the heartbeat page and confirm. While it is paused:
 
 - Monita still accepts its pings and stores them, but a ping opens and closes nothing.
 - Monita watches no deadline, so a missed ping opens no incident and sends no alert.
-- The state reads **Paused** in grey, and the page says **Paused since** and the time.
+- The state reads **Paused** in grey, and the page says **Paused since** and the time. A grey **Paused** stamp sits under the title, and its list row has grey stripes.
 - The status page hides it.
 
 Pausing closes the heartbeat's open automatic incident without a resolved alert. Its last update reads "Paused by a tech lead." Select **Resume** and the deadline starts over: now plus **Runs every** plus **Can be late by**.
 
-For planned work that should not alert, you can also [plan maintenance](incidents.md#maintenance-windows) from the heartbeat page.
+For planned work that should not alert, [plan maintenance](incidents.md#maintenance-windows) from the row menu or the batch bar. While a window covers a heartbeat, the page shows a yellow **In maintenance** stamp and its list row has yellow stripes. A `/fail` ping in the window is stored as held: the pings table shows it, but the chart and the availability count it as good, and the chart draws the window as grey stripes.
+
+## Pause, resume or delete several
+
+Tick the box at the start of each row you want. The box in the heading ticks every heartbeat the list shows now. A bar with **N selected** replaces the count above the list. A supervisor sees no boxes.
+
+| Button | Does |
+| --- | --- |
+| **Pause** | Asks first, then pauses every picked heartbeat. |
+| **Resume** | Shows when any picked heartbeat is paused. It resumes every picked heartbeat. |
+| **Plan maintenance** | Opens the maintenance form with the picked heartbeats ticked. |
+| **Delete** | Asks first. It lists the heartbeats, what goes and what stays. For more than one, type `delete N` to confirm. **Pause instead** is in the same dialog. |
+| **Clear selection** | Unticks every row. |
+
+The action covers up to 100 heartbeats and it all happens or nothing does. The row menu at the end of a row holds **Edit**, **Pause** or **Resume**, **Plan maintenance** and **Delete** for that heartbeat alone. A deleted heartbeat's URL answers 404 from then on, and its open incident closes with a resolved alert. A script does the same with a `write` API key. See [API](api.md).
+
+## Pin a heartbeat
+
+Select the pin at the start of a heartbeat's row to keep it at the top of the list and in the first lanes of the project's Overview chart. Each person pins their own, up to 6 heartbeats and 6 monitors in a project and 6 projects. Select the pin again, or Undo in the message, to unpin.
 
 ## Resolve by hand
 

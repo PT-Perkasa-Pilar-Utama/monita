@@ -1,5 +1,5 @@
-//! Public JSON for the report form, the reporter's list and the public board. No sign-in; the
-//! per-IP limit covers `/api/ui/public/` (SEC-12). SEC-14: no description or reporter leaves here.
+//! Public JSON for the report form, the reporter's list and the public board. No sign-in and no
+//! per-IP limit (Q45). SEC-14: no description or reporter leaves here.
 
 use super::*;
 

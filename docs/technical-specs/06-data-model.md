@@ -235,10 +235,12 @@ State words on the team's pages: `Up`, `Down`, `Issue`, `Maintenance`, `Paused` 
 
 | table | columns |
 | --- | --- |
-| check_results | id, monitor_id FK, checked_at INDEX(monitor_id, checked_at), ok, status_code NULL, latency_ms NULL, error NULL, location_id NULL FK locations ON DELETE CASCADE INDEX(monitor_id, location_id, checked_at) (null: this server; migration 0030) |
-| pings | id, heartbeat_id FK, received_at INDEX(heartbeat_id, received_at), kind (`ok`, `fail`), source_ip, cause (NULL, the first 1 KB of a `/fail` body after leading whitespace) |
+| check_results | id, monitor_id FK, checked_at INDEX(monitor_id, checked_at), ok, status_code NULL, latency_ms NULL, error NULL, location_id NULL FK locations ON DELETE CASCADE INDEX(monitor_id, location_id, checked_at) (null: this server; migration 0030), in_window INTEGER NOT NULL default 0 (migration 0045) |
+| pings | id, heartbeat_id FK, received_at INDEX(heartbeat_id, received_at), kind (`ok`, `fail`), source_ip, cause (NULL, the first 1 KB of a `/fail` body after leading whitespace), in_window INTEGER NOT NULL default 0 (migration 0045) |
 
 Both keep 7 days. See [13 section 13.6](13-check-scheduler.md). Charts, daily summaries and the monitor list's last check read this server's results only (`location_id IS NULL`).
+
+`in_window` is 1 when an active maintenance window covered the source at `checked_at` or `received_at` (v1.1 Q46, migration 0045). The row keeps its real `ok` or `kind`, so the checks table and the ping list still show the failure. Every count of good results (the charts, the sparklines, `check_slots`, `ping_slots` and the daily rollup) reads `ok OR in_window`, so a held failure counts as good. Rows from before the migration read 0. See [13 section 13.2a](13-check-scheduler.md).
 
 ### 6.3.9a locations and monitor_locations
 
@@ -284,10 +286,12 @@ Uptime % for a day = `1 - downtime_s / 86400`. The status page computes the same
 
 | table | columns |
 | --- | --- |
-| incidents | id, project_id FK, origin (`auto`, `manual`), title, severity, cause NULL, started_at, resolved_at NULL, created_by NULL FK users |
+| incidents | id, project_id FK, origin (`auto`, `manual`), title, severity, cause NULL, started_at, resolved_at NULL, created_by NULL FK users, excluded NULL (`planned`, `false_alarm`; CHECK; migration 0044), excluded_at NULL, excluded_by NULL (the user's email or "API key <name>") |
 | incident_items | incident_id FK, source_kind, source_id. PK all three |
 | incident_sources | source_kind, source_id (PK), fail_streak INTEGER default 0, open_incident_id NULL FK incidents, down_since INTEGER NULL |
 | status_updates | id, incident_id FK, label (`investigating`, `identified`, `monitoring`, `resolved`), message, author_id NULL, author_key NULL (the API key's name, v1.1 Q44, migration 0042; both NULL = Monita), created_at |
+
+`excluded` is the class a tech lead gave the incident (v1.1 Q46). NULL counts as usual. `planned` and `false_alarm` leave availability, the charts, the pulse bars and the public status page and its history; the team's incident lists and pages still show them, tagged. Spec 12 section 12.3c has the rules.
 
 `down_since` is when the source went down. A source with `auto_incident` off is down with no incident, so this column is the only record of it. A source counts as down while `open_incident_id` or `down_since` is set. A hand resolve and a passing check clear all three columns.
 
@@ -370,6 +374,8 @@ stateDiagram-v2
   Open --> Resolved: check passes or ping arrives (auto) / TL posts Resolved (auto or manual)
   Resolved --> Resolved: Resolved note (post-mortem)
 ```
+
+Class is a second field and does not change this machine. A tech lead can set it on an open or a resolved incident (spec 12 section 12.3c).
 
 Rules are in [12](12-incident-engine.md).
 

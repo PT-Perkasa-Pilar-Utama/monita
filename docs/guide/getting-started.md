@@ -37,13 +37,13 @@ Sign in as `tl@monita.test` (a tech lead) or `admin@monita.test` (a super admin)
 
 1. On **Projects**, select **New project**. Enter a name and the **Homepage**, the address of the system. Monita makes the slug from the name plus 6 random characters, for example `payments-k3x9qa`. The status page lives at `/status/<slug>`.
    You may add a description and an icon. The page shrinks the icon to a small square before it sends it. A super admin can also pick the owner; a tech lead owns the projects they create.
-2. Open the project. Its tabs are Overview, Monitors, Heartbeats, Incidents, Tickets, Changelog and Settings. Settings holds General, Status page, Alerts, API keys, Secrets and Allowlist. See [Projects and settings](project-settings.md).
+2. Open the project. Its tabs are Overview, Monitors, Heartbeats, Incidents, Maintenance, Tickets, Changelog and Settings. Settings holds General, Status page, Alerts, API keys, Secrets and Allowlist. See [Projects and settings](project-settings.md).
 
 ## Watch a URL
 
 1. Open **Monitors** and select **New monitor**.
 2. Enter a name and the URL. Keep the defaults: GET, every minute, 10 s timeout, any `2xx` status.
-3. Under **Alerts and status page**, tick **Show this monitor and its incidents on the public status page** if users may see it.
+3. Under **Who sees it**, pick **Also the status page** if users may see it. The default is **Only your team**.
 4. Save. The first check runs within one interval.
 
 The monitor page shows the state, the response time chart and the availability. Until the first check, the state reads **No data yet**. See [Monitors](monitors.md).

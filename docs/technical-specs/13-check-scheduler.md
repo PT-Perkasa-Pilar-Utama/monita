@@ -43,6 +43,19 @@ every 1 s:
       MONITA_DIGEST_UTC_HOUR  ticket digest
 ```
 
+## 13.2a Results inside a maintenance window (v1.1 Q46)
+
+Checks keep running during a window (spec 12 section 12.3a). When the scheduler, a location's results or a ping stores a result, it asks `maintenance::covers` for the source at the result's time. The answer sets `in_window` on the new `check_results` or `pings` row (migration 0045). The row keeps its real `ok` or `kind`.
+
+| Reader | Rule |
+| --- | --- |
+| Slots, daily rollup, charts, sparklines | A good result is `ok OR in_window`, so a held failure counts as good and leaves no red. |
+| Monitor and heartbeat charts | Each window over the source draws as a grey striped band (`maintenance::spans`), titled "Maintenance: <title>, <duration>". |
+| Checks and pings tables | They show the failure as it happened. |
+| Incidents | None open, as before. |
+
+A deleted monitor or heartbeat takes its results with it. Its incidents stay in the incident list, but the project chart and the pulse bars skip them.
+
 ## 13.3 Performance targets
 
 | Target | Value | Source |

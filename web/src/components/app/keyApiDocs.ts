@@ -35,6 +35,7 @@ export function keyApiDocs(origin: string, slug: string): PrimitiveDoc[] {
         { method: "PUT", path: "/monitors/{id}", text: "Changes a monitor with the same fields", write: true },
         { method: "DELETE", path: "/monitors/{id}", text: "Deletes a monitor", write: true },
         { method: "PUT", path: "/monitors/{id}/paused", text: "Pauses it with {\"paused\": true} and resumes it with false", write: true },
+        { method: "POST", path: "/monitors/batch", text: "Pauses, resumes or deletes many with {\"action\": \"pause\", \"ids\": [17, 18]}", write: true },
       ],
       examples: [
         {
@@ -49,11 +50,13 @@ export function keyApiDocs(origin: string, slug: string): PrimitiveDoc[] {
           }),
         },
         { title: "Pause a monitor while you deploy", request: send("PUT", "/monitors/17/paused", '{"paused": true}'), responseTitle: "Response 204, no body", response: none },
+        { title: "Pause several at once", request: send("POST", "/monitors/batch", '{"action": "pause", "ids": [17, 18]}'), responseTitle: "Response 200", response: json({ data: { count: 2 } }) },
       ],
       details: [
         { label: "State", text: "up, down, issue, maintenance, paused, or unknown before the first check." },
         { label: "Paused", text: "Nothing checks it, an open automatic incident closes without an alert, and it leaves the public status page until it resumes and checks again at once." },
         { label: "Hidden", text: "A Read key gets header values and the request body as (hidden)." },
+        { label: "Batch", text: "action is pause, resume or delete, and ids is 1 to 100 monitors of this project. It all happens or nothing does: an id from another project is 404." },
       ],
     },
     {
@@ -66,6 +69,7 @@ export function keyApiDocs(origin: string, slug: string): PrimitiveDoc[] {
         { method: "PUT", path: "/heartbeats/{id}", text: "Changes a heartbeat with the same fields", write: true },
         { method: "DELETE", path: "/heartbeats/{id}", text: "Deletes a heartbeat", write: true },
         { method: "PUT", path: "/heartbeats/{id}/paused", text: "Pauses it with {\"paused\": true} and resumes it with false", write: true },
+        { method: "POST", path: "/heartbeats/batch", text: "Pauses, resumes or deletes many with {\"action\": \"resume\", \"ids\": [55, 56]}", write: true },
       ],
       examples: [
         {
@@ -90,6 +94,7 @@ export function keyApiDocs(origin: string, slug: string): PrimitiveDoc[] {
         { label: "Body", text: "period_s and grace_s are seconds, and severity is critical or warning." },
         { label: "Ping URL", text: "Only a Read and write key sees ping_url, so a Read key gets null." },
         { label: "Paused", text: "No deadline runs and nothing opens, the pings it gets are still kept, and resuming starts a fresh deadline." },
+        { label: "Batch", text: "action is pause, resume or delete, and ids is 1 to 100 heartbeats of this project. It all happens or nothing does: an id from another project is 404." },
       ],
     },
     {
@@ -101,6 +106,7 @@ export function keyApiDocs(origin: string, slug: string): PrimitiveDoc[] {
         { method: "GET", path: "/incident-items", text: "Lists the monitors and heartbeats an incident may name", write: false },
         { method: "POST", path: "/incidents", text: "Opens an incident by hand with title, items, severity and message", write: true },
         { method: "POST", path: "/incidents/{id}/updates", text: "Posts an update with label and message", write: true },
+        { method: "PUT", path: "/incidents/{id}/class", text: "Marks it planned work or a false alarm, or counts it again, with {\"class\": \"false_alarm\"}", write: true },
       ],
       examples: [
         {
@@ -124,6 +130,7 @@ export function keyApiDocs(origin: string, slug: string): PrimitiveDoc[] {
         { label: "Label", text: "investigating, identified, monitoring or resolved, and resolved closes the incident." },
         { label: "Items", text: "Each item is monitor:{id} or heartbeat:{id}." },
         { label: "Author", text: "The team sees the key's name as the author, while the public page shows no author." },
+        { label: "Class", text: "class is planned, false_alarm or counted. Planned and false_alarm close an open incident and leave uptime, the charts and the status page. counted restores it but does not reopen it." },
       ],
     },
     {

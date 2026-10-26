@@ -29,7 +29,7 @@ Select a row to edit it in the same panel. Select **Delete release** in the pane
 
 ## Show it to visitors
 
-A new project has the public Changelog tab off. Turn it on in **Settings**, **Status page**, under **Public tabs**. See [Status page](status-page.md#tabs).
+A new project has the public Changelog tab on. Until you publish a release, the tab reads "No release is published yet." A project made before this default keeps its own setting. You can turn the tab off in **Settings**, **Status page**, under **Public tabs**. See [Status page](status-page.md#tabs).
 
 While the tab is off, its address and its JSON answer 404.
 

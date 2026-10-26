@@ -65,7 +65,7 @@ Output 200:
 
 ## 7.2 Frontend routes
 
-The React pages under `/status/{slug}` call these routes with no sign-in. The page has an Uptime tab (always shown) and tabs for Incidents, Known issues, Report a bug and Changelog; a project switches the last four with `public-pages` (3.1). A route of a tab that is off answers 404, so the page and the route agree. The Uptime tab, `/status/{slug}/uptime` and the Incidents tab show the 7.1 wire types, so none sends an author or Monita's cause text (SEC-21). All are `Cache-Control: public, max-age=30`, and the per-IP limit covers `/api/ui/public/` and the pages under `/status/`. The page's Refresh button skips that cache.
+The React pages under `/status/{slug}` call these routes with no sign-in. The page has an Uptime tab (always shown) and tabs for Incidents, Known issues, Report a bug and Changelog; a project switches the last four with `public-pages` (3.1). A route of a tab that is off answers 404, so the page and the route agree. The Uptime tab, `/status/{slug}/uptime` and the Incidents tab show the 7.1 wire types, so none sends an author or Monita's cause text (SEC-21). All are `Cache-Control: public, max-age=30`. No limit applies per IP address (Q45). The page's Refresh button skips that cache.
 
 | Method | Path | Access | Behavior | AC |
 | --- | --- | --- | --- | --- |
