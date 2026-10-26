@@ -243,6 +243,7 @@ async fn a_tech_lead_made_a_supervisor_while_their_request_runs_does_not_get_a_p
         id,
         email: "rina@x.co".into(),
         role: monita::accounts::Role::Tl,
+        key: None,
     };
     let role = app
         .api_send(

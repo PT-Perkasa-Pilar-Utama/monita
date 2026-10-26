@@ -25,6 +25,14 @@ pub fn router() -> Router<AppState> {
         .merge(super::settings_api::router())
 }
 
+/// The project's own reads that a project API key reaches under `/api/v1/projects/{slug}`
+/// (v1.1 Q44). Delete, profile, keys, the allowlist and secrets stay off it.
+pub fn key_routes() -> Router<AppState> {
+    Router::new()
+        .route("/", get(detail))
+        .route("/overview", get(overview))
+}
+
 /// A project as every page shows it.
 #[derive(Serialize)]
 pub struct ProjectView {

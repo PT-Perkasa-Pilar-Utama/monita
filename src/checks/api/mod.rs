@@ -18,9 +18,14 @@ use crate::{
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/api/ui/check-options", get(options))
-        .merge(monitors::router())
+        .nest("/api/ui/projects/{slug}", project_routes())
         .merge(locations::router())
-        .merge(heartbeats::router())
+}
+
+/// The routes below `/api/ui/projects/{slug}` that a project API key also reaches under
+/// `/api/v1/projects/{slug}` (v1.1 Q44).
+pub fn project_routes() -> Router<AppState> {
+    monitors::project_routes().merge(heartbeats::project_routes())
 }
 
 /// Field errors from a form's `validate`, as a 422 on those fields.

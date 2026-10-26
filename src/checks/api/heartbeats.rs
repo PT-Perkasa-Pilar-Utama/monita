@@ -26,17 +26,13 @@ use crate::{
     projects,
 };
 
-pub fn router() -> Router<AppState> {
+/// The routes below `/api/ui/projects/{slug}` that a project API key also reaches under
+/// `/api/v1/projects/{slug}` (v1.1 Q44).
+pub fn project_routes() -> Router<AppState> {
     Router::new()
-        .route("/api/ui/projects/{slug}/heartbeats", get(list).post(create))
-        .route(
-            "/api/ui/projects/{slug}/heartbeats/{id}",
-            get(detail).put(update).delete(delete),
-        )
-        .route(
-            "/api/ui/projects/{slug}/heartbeats/{id}/paused",
-            axum::routing::put(paused),
-        )
+        .route("/heartbeats", get(list).post(create))
+        .route("/heartbeats/{id}", get(detail).put(update).delete(delete))
+        .route("/heartbeats/{id}/paused", axum::routing::put(paused))
 }
 
 #[derive(Serialize)]

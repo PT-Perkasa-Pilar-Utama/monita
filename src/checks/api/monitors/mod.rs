@@ -34,17 +34,13 @@ use form::MonitorForm;
 /// Checks per page of a monitor's history.
 const PAGE: i64 = 25;
 
-pub fn router() -> Router<AppState> {
+/// The routes below `/api/ui/projects/{slug}` that a project API key also reaches under
+/// `/api/v1/projects/{slug}` (v1.1 Q44).
+pub fn project_routes() -> Router<AppState> {
     Router::new()
-        .route("/api/ui/projects/{slug}/monitors", get(list).post(create))
-        .route(
-            "/api/ui/projects/{slug}/monitors/{id}",
-            get(detail).put(update).delete(delete),
-        )
-        .route(
-            "/api/ui/projects/{slug}/monitors/{id}/paused",
-            axum::routing::put(paused),
-        )
+        .route("/monitors", get(list).post(create))
+        .route("/monitors/{id}", get(detail).put(update).delete(delete))
+        .route("/monitors/{id}/paused", axum::routing::put(paused))
 }
 
 /// A monitor as its rows and pages show it.

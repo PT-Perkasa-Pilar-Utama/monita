@@ -27,6 +27,15 @@ use std::net::{IpAddr, SocketAddr};
 
 use axum::http::HeaderMap;
 
+/// The path the client asked for. Inside a nested router `parts.uri` has lost the nest's prefix,
+/// so an extractor that branches on the path reads it here.
+pub fn request_path(parts: &axum::http::request::Parts) -> &str {
+    parts
+        .extensions
+        .get::<axum::extract::OriginalUri>()
+        .map_or(parts.uri.path(), |o| o.0.path())
+}
+
 /// The JSON error envelope of api-specs 01: `{"error": {"code", "message"}}`.
 pub fn api_error(
     status: axum::http::StatusCode,

@@ -41,6 +41,9 @@ pub fn session_token(headers: &HeaderMap) -> Option<String> {
 /// request gets 401 in the JSON envelope. A supervisor gets 403 on any method but GET and HEAD:
 /// every signed-in route that changes something takes this extractor, so this one check keeps
 /// the role read-only. The one exception is a user's own two-factor (`AccountUser`).
+///
+/// Under `/api/v1/projects/` the caller is a project API key instead, and a session cookie
+/// counts for nothing there (v1.1 Q44). A read key gets the same 403 on a write.
 pub struct CurrentUser(pub User);
 
 impl FromRequestParts<AppState> for CurrentUser {
@@ -50,9 +53,22 @@ impl FromRequestParts<AppState> for CurrentUser {
         parts: &mut Parts,
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
-        let user = signed_in(parts, state).await?;
-        if user.role == Role::Supervisor && !parts.method.is_safe() {
-            return Err(forbidden(parts.uri.path().starts_with("/api/")));
+        let user = if crate::platform::request_path(parts).starts_with(crate::projects::KEY_API) {
+            crate::projects::key_user(parts, state).await?
+        } else {
+            signed_in(parts, state).await?
+        };
+        if user.is_read_only() && !parts.method.is_safe() {
+            if user.key.is_some() {
+                return Err(crate::platform::api_error(
+                    axum::http::StatusCode::FORBIDDEN,
+                    "forbidden",
+                    "This key may only read.",
+                ));
+            }
+            return Err(forbidden(
+                crate::platform::request_path(parts).starts_with("/api/"),
+            ));
         }
         Ok(CurrentUser(user))
     }
@@ -76,7 +92,7 @@ impl FromRequestParts<AppState> for AccountUser {
 /// The user of the session cookie. Without a valid session a page request goes to `/login`, and
 /// an `/api/` request gets 401 in the JSON envelope.
 async fn signed_in(parts: &Parts, state: &AppState) -> Result<User, Response> {
-    let api = parts.uri.path().starts_with("/api/");
+    let api = crate::platform::request_path(parts).starts_with("/api/");
     let to_login = || {
         if api {
             crate::platform::ui::UiError::Unauthorized.into_response()
@@ -98,6 +114,7 @@ async fn signed_in(parts: &Parts, state: &AppState) -> Result<User, Response> {
                 id: u.id,
                 email: u.email,
                 role,
+                key: None,
             }),
             None => Err(to_login()),
         },
@@ -128,7 +145,9 @@ impl FromRequestParts<AppState> for AdminUser {
         if user.sees_all() {
             Ok(AdminUser(user))
         } else {
-            Err(forbidden(parts.uri.path().starts_with("/api/")))
+            Err(forbidden(
+                crate::platform::request_path(parts).starts_with("/api/"),
+            ))
         }
     }
 }

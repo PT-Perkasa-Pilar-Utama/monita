@@ -65,6 +65,17 @@ async fn start(
 /// SEC-19: forms get 413 past this. The ping routes have their own bound in `ping_routes`.
 pub const MAX_BODY: usize = 128 * 1024;
 
+/// Everything a project API key reaches (v1.1 Q44): the same handlers as the team's pages, which
+/// `CurrentUser` scopes to the key's project. Keys, the allowlist, secrets, alert cards, the
+/// Telegram link, tickets and project delete or profile are never on this list.
+fn key_routes() -> Router<AppState> {
+    Router::new()
+        .merge(crate::projects::api::key_routes())
+        .merge(crate::checks::api::project_routes())
+        .merge(crate::incidents::api::project_routes())
+        .merge(crate::maintenance::api::project_routes())
+}
+
 pub fn router(state: AppState) -> Router {
     let mut r = Router::new()
         .route("/healthz", get(health::healthz))
@@ -87,6 +98,7 @@ pub fn router(state: AppState) -> Router {
         .merge(crate::status::routes::router())
         .merge(crate::platform::limits::router())
         .merge(crate::platform::mail_api::router())
+        .nest("/api/v1/projects/{slug}", key_routes())
         .fallback(crate::platform::spa::fallback);
 
     // SEC-17: the route does not exist in prod. Registration is the control, not authorization.

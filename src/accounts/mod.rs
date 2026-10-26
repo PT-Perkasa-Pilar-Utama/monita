@@ -10,6 +10,7 @@ mod settings;
 mod store;
 pub mod totp;
 mod two_factor;
+mod user;
 
 use crate::platform::{db::Db, now, page::PageError, token};
 use password::{hash_password, verify_password};
@@ -18,62 +19,12 @@ pub use admin::{AdminError, disable, enable, reset_sign_in, set_role, turn_off_t
 pub use auth::{AccountUser, AdminUser, CurrentUser, clear_cookie, session_cookie, session_token};
 pub use store::UserRow;
 pub use two_factor::TwoFactorError;
+pub use user::{KeyGrant, Role, User};
 
 pub const SESSION_COOKIE: &str = "monita_session";
 const SESSION_TTL_S: i64 = 14 * 86_400;
 const INVITE_TTL_S: i64 = 72 * 3_600;
 pub const MIN_PASSWORD: usize = 8;
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Role {
-    SuperAdmin,
-    Tl,
-    /// Sees everything a super admin sees and changes nothing.
-    Supervisor,
-}
-
-impl Role {
-    pub fn as_str(self) -> &'static str {
-        match self {
-            Role::SuperAdmin => "super_admin",
-            Role::Tl => "tl",
-            Role::Supervisor => "supervisor",
-        }
-    }
-
-    pub fn parse(s: &str) -> Option<Self> {
-        match s {
-            "super_admin" => Some(Role::SuperAdmin),
-            "tl" => Some(Role::Tl),
-            "supervisor" => Some(Role::Supervisor),
-            _ => None,
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct User {
-    pub id: i64,
-    pub email: String,
-    pub role: Role,
-}
-
-impl User {
-    /// May change anything, in every project and in the admin pages.
-    pub fn is_admin(&self) -> bool {
-        self.role == Role::SuperAdmin
-    }
-
-    /// Sees every project and the admin pages: a super admin or a supervisor.
-    pub fn sees_all(&self) -> bool {
-        matches!(self.role, Role::SuperAdmin | Role::Supervisor)
-    }
-
-    /// Reads only. `CurrentUser` refuses every request from them that would change something.
-    pub fn is_read_only(&self) -> bool {
-        self.role == Role::Supervisor
-    }
-}
 
 #[derive(Debug, thiserror::Error)]
 pub enum AccountError {
@@ -138,6 +89,7 @@ pub async fn create_super_admin(
         id,
         email,
         role: Role::SuperAdmin,
+        key: None,
     })
 }
 

@@ -21,14 +21,25 @@ use crate::{
 };
 
 pub fn router() -> Router<AppState> {
+    Router::new().nest("/api/ui/projects/{slug}", project_routes())
+}
+
+/// The routes below `/api/ui/projects/{slug}` that a project API key also reaches under
+/// `/api/v1/projects/{slug}` (v1.1 Q44).
+pub fn project_routes() -> Router<AppState> {
     Router::new()
-        .route("/api/ui/projects/{slug}/incidents", get(list).post(create))
-        .route("/api/ui/projects/{slug}/incident-items", get(items))
-        .route("/api/ui/projects/{slug}/incidents/{id}", get(detail))
-        .route(
-            "/api/ui/projects/{slug}/incidents/{id}/updates",
-            post(post_update),
-        )
+        .route("/incidents", get(list).post(create))
+        .route("/incident-items", get(items))
+        .route("/incidents/{id}", get(detail))
+        .route("/incidents/{id}/updates", post(post_update))
+}
+
+/// A key writes as itself, so its updates never read as Monita's own.
+fn author(user: &crate::accounts::User) -> super::Author {
+    match &user.key {
+        Some(k) => super::Author::Key(k.name.clone()),
+        None => super::Author::User(user.id),
+    }
 }
 
 /// The form field an update or manual-incident error belongs to; `None` is the whole form.
@@ -174,7 +185,7 @@ async fn post_update(
         id,
         &f.label,
         &f.message,
-        &super::Author::User(user.id),
+        &author(&user),
         now(),
     )
     .await
@@ -208,7 +219,7 @@ async fn create(
         items: f.items,
         severity: f.severity,
         message: f.message,
-        author: super::Author::User(user.id),
+        author: author(&user),
     };
     let id = super::open_manual(&state.db, &incident, now()).await?;
     Ok(created(serde_json::json!({ "id": id })))

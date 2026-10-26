@@ -22,13 +22,16 @@ use crate::{
 };
 
 pub fn router() -> Router<AppState> {
+    Router::new().nest("/api/ui/projects/{slug}", project_routes())
+}
+
+/// The routes below `/api/ui/projects/{slug}` that a project API key also reaches under
+/// `/api/v1/projects/{slug}` (v1.1 Q44).
+pub fn project_routes() -> Router<AppState> {
     Router::new()
-        .route(
-            "/api/ui/projects/{slug}/maintenance",
-            get(list).post(create),
-        )
-        .route("/api/ui/projects/{slug}/maintenance/{id}", delete(remove))
-        .route("/api/ui/projects/{slug}/maintenance/{id}/end", post(end))
+        .route("/maintenance", get(list).post(create))
+        .route("/maintenance/{id}", delete(remove))
+        .route("/maintenance/{id}/end", post(end))
 }
 
 impl From<MaintenanceError> for UiError {

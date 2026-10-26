@@ -48,16 +48,20 @@ pub async fn revoke_key(
     Ok(())
 }
 
-/// Returns (key id, project, last_used_at) for a live key.
-/// The live key behind `hash`: (key id, its project, when it was last used, its scope).
-pub async fn find_live_key(
-    c: &Connection,
-    hash: &str,
-) -> anyhow::Result<Option<(i64, Project, Option<i64>, String)>> {
+pub struct LiveKey {
+    pub id: i64,
+    pub project: Project,
+    pub last_used_at: Option<i64>,
+    pub scope: String,
+    pub name: String,
+}
+
+/// The live key behind `hash`.
+pub async fn find_live_key(c: &Connection, hash: &str) -> anyhow::Result<Option<LiveKey>> {
     let mut rows = c
         .query(
             format!(
-                "SELECT {COLS}, k.id, k.last_used_at, k.scope FROM api_keys k
+                "SELECT {COLS}, k.id, k.last_used_at, k.scope, k.name FROM api_keys k
                  JOIN projects p ON p.id = k.project_id JOIN users u ON u.id = p.owner_id
                  WHERE k.key_hash = ?1 AND k.revoked_at IS NULL"
             ),
@@ -67,7 +71,13 @@ pub async fn find_live_key(
     // The key's columns follow the project's, however many COLS holds.
     let n = COLS.split(',').count();
     Ok(match rows.next().await? {
-        Some(r) => Some((r.get(n)?, row(&r)?, r.get(n + 1)?, r.get(n + 2)?)),
+        Some(r) => Some(LiveKey {
+            id: r.get(n)?,
+            project: row(&r)?,
+            last_used_at: r.get(n + 1)?,
+            scope: r.get(n + 2)?,
+            name: r.get(n + 3)?,
+        }),
         None => None,
     })
 }

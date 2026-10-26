@@ -17,7 +17,7 @@ use crate::{
     platform::{caps, db::Db, now, page::PageError, token},
 };
 
-pub use api_key::ApiProject;
+pub use api_key::{ApiProject, KEY_API, key_user};
 pub use profile::{ProfileInput, ProjectInput, create, find_owner, icon, slug_for, update_profile};
 pub use store::{ApiKeyRow, Project, Sort};
 
@@ -214,10 +214,13 @@ pub async fn owns_any(c: &turso::Connection, user_id: i64) -> anyhow::Result<boo
     store::owns_any(c, user_id).await
 }
 
-/// A super admin and a supervisor see every project; a tech lead sees their own. A supervisor's
-/// writes never get this far: `CurrentUser` refuses them.
+/// A super admin and a supervisor see every project; a tech lead sees their own, and an API key
+/// its own project. A supervisor's writes never get this far: `CurrentUser` refuses them.
 pub fn can_view(user: &User, project: &Project) -> bool {
-    user.sees_all() || project.owner_id == user.id
+    match &user.key {
+        Some(k) => project.id == k.project_id,
+        None => user.sees_all() || project.owner_id == user.id,
+    }
 }
 
 /// The project a user may open, or 404 so other projects' names do not leak.
