@@ -92,7 +92,7 @@ A `read` or `write` key manages its own project from a script or a deploy pipeli
 - A `read` key sees what a supervisor sees: no ping URL, no header values, no request body and no sign-in name.
 - A `write` key sees them, since it may set them.
 - A status update or manual incident from a key shows the key's name as its author to the team (`author_key`, 5.1). The public page never shows an author (SEC-21).
-- Keys, the allowlist, secrets, alert cards, the Telegram link, tickets, the changelog, project delete and profile are not on this API. A path there is 404.
+- Keys, the allowlist, secrets, alert cards, the Telegram link, tickets, the changelog, project delete and profile are not on this API. A path there is 404, and a method a route does not take is 405.
 - Writes need no `Origin` header, because no cookie counts here.
 - The same 120 calls a minute per key cover this API and `POST /api/v1/ref-ids`.
 

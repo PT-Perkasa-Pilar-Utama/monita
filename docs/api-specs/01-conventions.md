@@ -130,6 +130,6 @@ The app reads and writes through `/api/ui/...`:
 - A dead link or token is 410 `gone`.
 - A body over 128 KiB is 413 `too_large`.
 - A write that reveals a one-time secret (a new API key, an invite link) returns it in the 2xx body once. It is never in a URL.
-- Every `/api/ui/` response outside `/api/ui/public/` carries `Cache-Control: no-store`, so a one-time secret never sits in a cache.
+- Every `/api/ui/` response outside `/api/ui/public/` carries `Cache-Control: no-store`, so a one-time secret never sits in a cache. So does every answer of the key API (3.4) and of `POST /api/v1/ref-ids`.
 - A public read (status, history, uptime, incidents by month, the public ticket board, the public Changelog) carries `Cache-Control: public, max-age=30`; a refused one carries no cache header.
 - A daily ticket cap is 429 `daily_cap_reached`.

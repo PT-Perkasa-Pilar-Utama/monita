@@ -14,9 +14,12 @@ use crate::app::AppState;
 const CSP: &str = "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'";
 
 pub async fn security_headers(req: Request, next: Next) -> Response {
-    // Signed-in JSON can carry a one-time secret (a new API key, an invite link): no cache keeps it.
-    let private = req.uri().path().starts_with("/api/ui/")
-        && !req.uri().path().starts_with("/api/ui/public/");
+    // Signed-in and key JSON can carry a secret (a new API key, an invite link, a ref ID, a ping
+    // URL): no cache keeps it.
+    let path = req.uri().path();
+    let private = (path.starts_with("/api/ui/") && !path.starts_with("/api/ui/public/"))
+        || path.starts_with("/api/v1/projects/")
+        || path == "/api/v1/ref-ids";
     let mut res = next.run(req).await;
     let h = res.headers_mut();
     if private {

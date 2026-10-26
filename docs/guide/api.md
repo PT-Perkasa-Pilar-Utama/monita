@@ -178,7 +178,8 @@ The team sees the key's name as the update's author. The public page shows no au
 | --- | --- |
 | 401 `unauthorized` | No key, an unknown key or a revoked key |
 | 403 `forbidden` | A Ref IDs only key, a read key that tries to change something, or a caller outside the allowlist |
-| 404 `not_found` | Another project's slug, or a route the key API does not have: keys, secrets, alert cards, tickets and project delete |
+| 404 `not_found` | Another project's slug, or a route the key API does not have, such as keys, secrets, alert cards or tickets |
+| 405 | A method the route does not take, such as `DELETE` on the project itself |
 | 422 `validation_failed` | A refused form, with each bad field in `error.fields` |
 
 Fields may be added to an answer within v1, but none is removed or renamed. Ignore fields you do not know. The full contract is in `docs/api-specs/03-projects.md` section 3.4.

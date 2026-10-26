@@ -22,13 +22,21 @@ async fn key(app: &TestApp, cookie: &str, slug: &str, scope: &str) -> String {
 }
 
 async fn ref_id(app: &TestApp, key: &str) -> reqwest::StatusCode {
-    app.http
+    let res = app
+        .http
         .post(app.url("/api/v1/ref-ids"))
         .bearer_auth(key)
         .send()
         .await
-        .unwrap()
-        .status()
+        .unwrap();
+    if res.status() == 201 {
+        assert_eq!(
+            res.headers()["cache-control"],
+            "no-store",
+            "a ref ID is never cached"
+        );
+    }
+    res.status()
 }
 
 #[tokio::test]
@@ -144,7 +152,13 @@ async fn a_write_key_manages_its_project_and_writes_as_itself() {
     let hb = post(&app, "/payments/heartbeats", &write, heartbeat_body()).await;
     assert_eq!(hb.status(), 201);
     let hb_id = json_of(hb).await["data"]["id"].as_i64().unwrap();
-    let hb = json_of(get(&app, &format!("/payments/heartbeats/{hb_id}"), &write).await).await;
+    let hb = get(&app, &format!("/payments/heartbeats/{hb_id}"), &write).await;
+    assert_eq!(
+        hb.headers()["cache-control"],
+        "no-store",
+        "a ping URL is never cached"
+    );
+    let hb = json_of(hb).await;
     assert!(hb["data"]["ping_url"].as_str().unwrap().contains("/ping/"));
 
     let paused = call(
