@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [1.1.0] - 2026-10-21
 
-More ways to check, alert and plan: TCP, DNS and ping monitors, certificate warnings, checks from more than one place, Discord, Telegram, ntfy and PagerDuty alerts, maintenance windows, and two-factor sign-in. Migrations 0024 to 0042 run on start; 0029 rebuilds the `monitors` table, and 0039 rebuilds `alert_cards`.
+More ways to check, alert and plan: TCP, DNS and ping monitors, certificate warnings, checks from more than one place, Discord, Telegram, ntfy and PagerDuty alerts, maintenance windows, and two-factor sign-in. Migrations 0024 to 0043 run on start; 0029 rebuilds the `monitors` table, and 0039 rebuilds `alert_cards`.
 
 ### Added
 
@@ -35,6 +35,7 @@ More ways to check, alert and plan: TCP, DNS and ping monitors, certificate warn
 
 ### Changed
 
+- Monita no longer limits callers per IP address, so one shared office or carrier address can never lock out everyone behind it. Sign-in takes 10 wrong passwords per account per 15 minutes instead. **Visits per minute from one address** is gone from **Rate limits**. Migration 0043.
 - **Ticket alerts** are alert cards too, in their own section. Every project has three fixed owner cards: the daily digest, each new ticket, and each ticket move. A new project starts with all three off. A project adds up to 10 ticket cards of its own: an email list or a webhook in JSON, Discord, Telegram, the global Telegram bot or ntfy, each listening to new tickets, moves or both. Migrations 0038 and 0039 convert the old settings: the digest keeps its state, and a saved ticket webhook becomes a card.
 - Passwords need 8 characters or more, down from 12.
 - **Alert cards** replace the Critical and Warning sections. Every project keeps two fixed cards that email its owner, one per level, and adds up to 10 of its own: an email list or a webhook in any format, each listening to critical, warning or both, each with its own switch and test. A card needs no name: it takes its kind, or its Telegram chat. Migration 0037 converts the old settings; nobody who got alerts stops getting them.

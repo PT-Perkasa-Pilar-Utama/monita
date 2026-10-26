@@ -93,7 +93,6 @@ To turn it off, enter a code or a recovery code on the same page. A super admin 
 | Group | Limit | Default |
 | --- | --- | --- |
 | Monitoring | Checks at the same time | 50 |
-| Visitors and apps | Visits per minute from one address. Sign-in attempts count apart, at the same rate. | 60 |
 | Visitors and apps | API calls per minute from one key | 120 |
 | Visitors and apps | Pings per second for one heartbeat | 1 |
 | Bug reports | Bug reports per user per day | 5 |
@@ -101,7 +100,6 @@ To turn it off, enter a code or a recovery code on the same page. A super admin 
 
 Each row shows its default under the box. Select **Save limits** to apply your changes, or **Discard changes** to reset the form.
 
-- **Visits per minute from one address** covers status page visits, bug reports and sign-in tries.
 - **Pings per second for one heartbeat**: extra pings in the same second are turned away. The first one still keeps the heartbeat alive.
 - **Bug reports per user per day**: Monita knows the user by their ref ID.
 

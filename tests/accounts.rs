@@ -470,24 +470,13 @@ async fn a_disabled_super_admin_signs_in_again_once_enabled() {
 }
 
 #[tokio::test]
-async fn invite_posts_are_limited_per_ip_and_a_bad_token_is_refused_before_hashing() {
+async fn a_bad_invite_token_is_refused_before_the_form_is_checked() {
     let app = TestApp::spawn("test").await;
-    app.state
-        .db
-        .write(async |c| monita::platform::settings::set(c, "rl_ip_per_min", 2).await)
-        .await
-        .unwrap();
     let form = json!({ "password": PASSWORD, "password_confirm": "a-different-one" });
-    for _ in 0..2 {
-        let res = app
-            .api_post("/api/ui/invites/not-a-token", form.clone(), None)
-            .await;
-        assert_eq!(res.status(), 410, "a dead link is 410 even with a mismatch");
-    }
     let res = app
         .api_post("/api/ui/invites/not-a-token", form, None)
         .await;
-    assert_eq!(res.status(), 429);
+    assert_eq!(res.status(), 410, "a dead link is 410 even with a mismatch");
 }
 
 #[tokio::test]

@@ -32,30 +32,54 @@ async fn set(app: &TestApp, key: &str, value: i64) {
 }
 
 #[tokio::test]
-async fn public_pages_are_limited_per_ip_and_health_is_not() {
-    // AC-31.01, AC-31.03
+async fn nothing_is_limited_per_address() {
+    // v1.1 Q45: one shared office or carrier address must never lock out everyone behind it.
     let app = TestApp::spawn("test").await;
-    set(&app, "rl_ip_per_min", 3).await;
-    for _ in 0..3 {
-        let res = app.get("/api/ui/public/nope/status", None).await;
-        assert_eq!(res.status(), 404);
+    for _ in 0..70 {
+        let page = app.get("/api/v1/public/status/nope", None).await;
+        assert_eq!(page.status(), 404);
+        let key = app
+            .http
+            .post(app.url("/api/v1/ref-ids"))
+            .bearer_auth("mk_aaaaaaaaaaaaaaaaaaaaaaaaaa")
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(key.status(), 401);
     }
-    let limited = app.get("/status/nope", None).await;
-    assert_eq!(limited.status(), 429);
-    assert!(limited.headers().contains_key("retry-after"));
-    let api = app.get("/api/v1/public/status/nope", None).await;
-    assert_eq!(api.status(), 429);
     assert_eq!(
-        api.headers()["access-control-allow-origin"],
-        "*",
-        "a browser caller can read the 429"
+        app.get("/api/ui/invites/not-a-token", None).await.status(),
+        410
     );
-    let body: Value = api.json().await.unwrap();
-    assert_eq!(body["error"]["code"], "rate_limited");
+}
+
+#[tokio::test]
+async fn sign_in_is_limited_per_account_not_per_address() {
+    let app = TestApp::spawn("test").await;
+    let login = |email: &'static str, password: &'static str| {
+        app.api_post(
+            "/api/ui/login",
+            serde_json::json!({ "email": email, "password": password }),
+            None,
+        )
+    };
+    app.tl("rina@x.co").await;
+    for _ in 0..10 {
+        assert_eq!(login("rina@x.co", "wrong-password").await.status(), 422);
+    }
+    let locked = login("rina@x.co", "wrong-password").await;
+    assert_eq!(locked.status(), 429);
+    let body: Value = locked.json().await.unwrap();
+    assert_eq!(body["error"]["code"], "too_many_tries");
     assert_eq!(
-        app.get("/healthz", None).await.status(),
-        200,
-        "health is never limited"
+        login("rina@x.co", common::PASSWORD).await.status(),
+        429,
+        "even the right password waits"
+    );
+    assert_eq!(
+        login("sari@x.co", "wrong-password").await.status(),
+        422,
+        "another account from the same address is not held up"
     );
 }
 
@@ -329,58 +353,6 @@ async fn monita_pings_its_peer_at_start_and_every_minute() {
     assert_eq!(hits.load(Ordering::SeqCst), 1);
 }
 
-#[tokio::test]
-async fn wrong_api_keys_are_limited_per_ip() {
-    let app = TestApp::spawn("test").await;
-    set(&app, "rl_ip_per_min", 2).await;
-    let call = || {
-        app.http
-            .post(app.url("/api/v1/ref-ids"))
-            .bearer_auth("mk_aaaaaaaaaaaaaaaaaaaaaaaaaa")
-            .send()
-    };
-    for _ in 0..2 {
-        assert_eq!(call().await.unwrap().status(), 401);
-    }
-    let limited = call().await.unwrap();
-    assert_eq!(limited.status(), 429);
-    assert!(limited.headers().contains_key("retry-after"));
-}
-
-#[tokio::test]
-async fn invite_links_are_limited_per_ip_when_read() {
-    let app = TestApp::spawn("test").await;
-    set(&app, "rl_ip_per_min", 2).await;
-    for _ in 0..2 {
-        let res = app.get("/api/ui/invites/not-a-token", None).await;
-        assert_eq!(res.status(), 410);
-    }
-    let res = app.get("/api/ui/invites/not-a-token", None).await;
-    assert_eq!(res.status(), 429);
-}
-
-#[tokio::test]
-async fn status_page_traffic_does_not_use_up_sign_in() {
-    let app = TestApp::spawn("test").await;
-    set(&app, "rl_ip_per_min", 2).await;
-    for _ in 0..3 {
-        app.get("/api/ui/public/nope/status", None).await;
-    }
-    let login = || {
-        app.api_post(
-            "/api/ui/login",
-            serde_json::json!({ "email": "rina@x.co", "password": "wrong-password" }),
-            None,
-        )
-    };
-    for _ in 0..2 {
-        assert_ne!(login().await.status(), 429, "sign-in has its own bucket");
-    }
-    assert_eq!(login().await.status(), 429, "and its own limit");
-}
-
-/// SEC-18: the database holds secrets, so it is private even when the umask is not.
-#[cfg(unix)]
 #[tokio::test]
 async fn the_database_files_are_readable_by_their_owner_only() {
     use std::os::unix::fs::PermissionsExt;

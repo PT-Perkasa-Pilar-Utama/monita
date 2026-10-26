@@ -28,9 +28,9 @@ A refused form is 422 with every bad field in `error.fields`.
 
 ## 11.2 Public routes
 
-The public page `/status/{slug}/changelog` calls these routes with no sign-in. The per-IP limit covers them (SEC-12). Both answer `Cache-Control: public, max-age=30`. Both answer 404 while the project's Changelog tab is off, or for an unknown slug. They return only what the team typed: version, day, title and changes.
+The public page `/status/{slug}/changelog` calls these routes with no sign-in. Both answer `Cache-Control: public, max-age=30`. Both answer 404 while the project's Changelog tab is off, or for an unknown slug. They return only what the team typed: version, day, title and changes.
 
 | Method | Path | Access | Input | Behavior | AC |
 | --- | --- | --- | --- | --- | --- |
-| GET | `/api/ui/public/{slug}/changelog` | public, 60/min per IP | Query `q` (version or title), `before=<released_on>.<id>` from `older` | The version index. `releases`: each `{version, title, released_on}`, newest first, 25 a page. `older` is the next cursor, or null. A bad cursor reads the first page. | |
-| GET | `/api/ui/public/{slug}/changelog/{version}` | public, 60/min per IP | | One release. `release`: `{version, released_on, title, sections}`. `newer` and `older`: the neighbouring releases as `{version, title, released_on}`, or null at the ends. The version `latest` names the newest release. An unknown version, or `latest` with no release, is 404. | |
+| GET | `/api/ui/public/{slug}/changelog` | public | Query `q` (version or title), `before=<released_on>.<id>` from `older` | The version index. `releases`: each `{version, title, released_on}`, newest first, 25 a page. `older` is the next cursor, or null. A bad cursor reads the first page. | |
+| GET | `/api/ui/public/{slug}/changelog/{version}` | public | | One release. `release`: `{version, released_on, title, sections}`. `newer` and `older`: the neighbouring releases as `{version, title, released_on}`, or null at the ends. The version `latest` names the newest release. An unknown version, or `latest` with no release, is 404. | |

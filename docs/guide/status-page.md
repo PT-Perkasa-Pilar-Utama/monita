@@ -72,7 +72,7 @@ curl -s https://monita.example.com/api/v1/public/status/payments?days=30
 
 | Part | Value |
 | --- | --- |
-| Access | Public, 60 requests per minute per IP, CORS `*`, cached 30 s |
+| Access | Public, CORS `*`, cached 30 s |
 | `days` | 1 to 90, default 90 |
 
 ```json

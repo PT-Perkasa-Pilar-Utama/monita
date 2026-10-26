@@ -44,12 +44,13 @@ Then Monita returns the same data as the status page, as JSON
 
 ## US-31: Limit incoming traffic (Super admin)
 
-### AC-31.01: Limit per IP
+### AC-31.01: Limit sign-in per account, never per IP (v1.1 Q45)
 
 ```gherkin
-Given an IP sent 60 requests in the last minute to the public pages or the ticket form
-When the IP sends another request
+Given an account took 10 wrong passwords in the last 15 minutes
+When anyone tries to sign in to that account
 Then Monita returns 429
+And sign-in to other accounts from the same address still works
 ```
 
 ### AC-31.02: Limit per API key

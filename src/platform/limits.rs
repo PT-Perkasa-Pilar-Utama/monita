@@ -40,12 +40,6 @@ const META: &[(&str, &str, &str, i64)] = &[
         50,
     ),
     (
-        "rl_ip_per_min",
-        "Visitors and apps",
-        "How often one visitor can open a status page, send a bug report or try to sign in each minute, which stops one person or bot from flooding Monita.",
-        60,
-    ),
-    (
         "rl_key_per_min",
         "Visitors and apps",
         "How often one of your apps can call the Monita API with its key, each minute.",

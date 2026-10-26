@@ -448,7 +448,7 @@ async fn limits_page_is_for_super_admins_and_rejects_bad_values() {
     let fields = &json_of(res).await["error"]["fields"];
     assert!(fields["check_concurrency"].is_string() && fields.as_object().unwrap().len() == 1);
     let mut huge = limits(50);
-    huge["rl_ip_per_min"] = json!("4294967296");
+    huge["rl_key_per_min"] = json!("4294967296");
     let res = app
         .api_send(Method::PUT, "/api/ui/admin/limits", huge, Some(&admin))
         .await;

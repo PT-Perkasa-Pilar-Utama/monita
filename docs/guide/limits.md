@@ -31,7 +31,7 @@ A super admin changes these under **Admin**, **Rate limits**. See [Admin and rol
 | What | Default |
 | --- | --- |
 | Checks at the same time | 50 |
-| Visits per minute from one address (status page, bug report, sign-in) | 60 |
+| Wrong passwords for one account, then sign-in waits | 10 per 15 minutes |
 | API calls per minute from one key | 120 |
 | Pings per second for one heartbeat | 1 |
 | Bug reports per user per day | 5 |

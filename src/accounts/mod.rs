@@ -36,6 +36,8 @@ pub enum AccountError {
     PasswordTooShort,
     #[error("Wrong email or password.")]
     BadCredentials,
+    #[error("Too many wrong passwords for this account, so wait {0} seconds and try again.")]
+    TooMany(i64),
     #[error("This link is invalid, expired or already used.")]
     InviteInvalid,
     #[error("No super admin has this email.")]
@@ -124,8 +126,25 @@ pub enum SignIn {
 }
 
 /// Signs in, or asks for the code when two-factor is on.
-pub async fn login(db: &Db, email: &str, password: &str) -> Result<SignIn, AccountError> {
+/// Wrong passwords one account may take in `WRONG_WINDOW_S` before sign-in refuses it for the
+/// rest of the window. Counted per account, never per address, so one office or one carrier's
+/// shared address can never lock everyone out (v1.1 Q45).
+const WRONG_PASSWORDS: u32 = 10;
+const WRONG_WINDOW_S: i64 = 900;
+
+pub async fn login(
+    db: &Db,
+    limiter: &crate::platform::rate_limit::Limiter,
+    email: &str,
+    password: &str,
+) -> Result<SignIn, AccountError> {
+    use crate::platform::rate_limit::Verdict;
     let email = email_key(email).ok_or(AccountError::BadCredentials)?;
+    // An unknown email has a budget too, so the answer never tells whether an account exists.
+    let budget = format!("signin:{email}");
+    if let Verdict::Deny(retry) = limiter.over(&budget, WRONG_PASSWORDS, WRONG_WINDOW_S, now()) {
+        return Err(AccountError::TooMany(retry));
+    }
     let user = store::find_user_by_email(&db.read().await?, &email).await?;
     // An unknown, disabled or not yet activated account costs one argon2 run, as a real one does.
     let signed_in = match user.as_ref().filter(|u| u.disabled_at.is_none()) {
@@ -143,7 +162,10 @@ pub async fn login(db: &Db, email: &str, password: &str) -> Result<SignIn, Accou
                 Ok(SignIn::Session(new_session(db, u.id).await?))
             }
         }
-        _ => Err(AccountError::BadCredentials),
+        _ => {
+            limiter.hit(&budget, WRONG_PASSWORDS, WRONG_WINDOW_S, now());
+            Err(AccountError::BadCredentials)
+        }
     }
 }
 

@@ -110,10 +110,6 @@ pub fn router(state: AppState) -> Router {
     r.layer(DefaultBodyLimit::max(MAX_BODY))
         .layer(middleware::from_fn_with_state(
             state.clone(),
-            crate::platform::rate_limit::per_ip,
-        ))
-        .layer(middleware::from_fn_with_state(
-            state.clone(),
             headers::origin_check,
         ))
         .layer(middleware::from_fn(headers::security_headers))

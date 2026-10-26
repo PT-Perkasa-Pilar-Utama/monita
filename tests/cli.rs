@@ -85,7 +85,9 @@ impl Host {
 
 async fn can_sign_in(db_path: &str, email: &str, password: &str) -> bool {
     let db = Db::open(Path::new(db_path)).await.unwrap();
-    monita::accounts::login(&db, email, password).await.is_ok()
+    monita::accounts::login(&db, &Default::default(), email, password)
+        .await
+        .is_ok()
 }
 
 #[tokio::test]

@@ -58,47 +58,6 @@ impl Limiter {
     }
 }
 
-/// The bucket name for a caller's IP. IPv6 is keyed on its /64: one host owns the whole prefix
-/// and could otherwise rotate addresses past every per-IP limit.
-pub fn ip_key(ip: Option<std::net::IpAddr>) -> String {
-    match ip {
-        Some(std::net::IpAddr::V6(v6)) => {
-            let prefix = u128::from(v6) & (u128::MAX << 64);
-            format!("{}/64", std::net::Ipv6Addr::from(prefix))
-        }
-        Some(v4) => v4.to_string(),
-        None => "unknown".into(),
-    }
-}
-
-/// Paths limited per client IP (SEC-12): public pages, sign-in, public and ticket APIs.
-/// `/ping/` has its own limit; `/healthz`, assets and signed-in pages are not limited here.
-// ponytail: a hand-kept prefix list, which a new public route can miss; move to a layer on the
-// public sub-routers if the public surface grows past these prefixes.
-pub fn ip_limited(method: &axum::http::Method, path: &str) -> bool {
-    path.starts_with("/status/")
-        || path.starts_with("/api/ui/public/")
-        || path.starts_with("/api/v1/public/")
-        || path.starts_with("/api/v1/tickets")
-        || path.starts_with("/api/ui/invites/")
-        || (method == axum::http::Method::POST && is_sign_in(path))
-}
-
-/// The password step and the two-factor code step share one bucket.
-fn is_sign_in(path: &str) -> bool {
-    path == "/api/ui/login" || path == "/api/ui/login/code"
-}
-
-/// Sign-in counts in its own bucket, so status-page traffic from an office behind one address
-/// cannot use up the attempts its people need to sign in.
-fn bucket(path: &str, ip: &str) -> String {
-    if is_sign_in(path) {
-        format!("login:{ip}")
-    } else {
-        format!("ip:{ip}")
-    }
-}
-
 /// 429 with `Retry-After`: the JSON envelope under `/api/`, plain text elsewhere. The routes that
 /// browsers call (api-specs 01 section 1.8) also get `Access-Control-Allow-Origin: *`, so a page
 /// can read the 429; `/api/v1/ref-ids` is for backends and gets none.
@@ -121,40 +80,6 @@ pub fn too_many(path: &str, retry_after: i64) -> axum::response::Response {
     } else {
         (StatusCode::TOO_MANY_REQUESTS, retry, message).into_response()
     }
-}
-
-/// Middleware for SEC-12's per-IP limit, read from `settings.rl_ip_per_min` on each request.
-pub async fn per_ip(
-    axum::extract::State(state): axum::extract::State<crate::app::AppState>,
-    req: axum::extract::Request,
-    next: axum::middleware::Next,
-) -> axum::response::Response {
-    if req.method() == axum::http::Method::OPTIONS || !ip_limited(req.method(), req.uri().path()) {
-        return next.run(req).await;
-    }
-    let ip = ip_key(super::caller_ip(
-        req.headers(),
-        req.extensions(),
-        state.config.trust_proxy,
-    ));
-    // ponytail: one settings read per limited request; cache the value in AppState, refreshed by
-    // the scheduler tick, if public traffic makes this read show up.
-    let limit = match state.db.read().await {
-        Ok(c) => super::settings::get_or(&c, "rl_ip_per_min", 60).await,
-        Err(e) => {
-            tracing::warn!(error = %e, "no read connection; using the default IP limit");
-            60
-        }
-    };
-    if let Verdict::Deny(retry) = state.limiter.hit(
-        &bucket(req.uri().path(), &ip),
-        u32::try_from(limit.max(1)).unwrap_or(u32::MAX),
-        60,
-        super::now(),
-    ) {
-        return too_many(req.uri().path(), retry);
-    }
-    next.run(req).await
 }
 
 #[cfg(test)]
@@ -215,16 +140,6 @@ mod tests {
     }
 
     #[test]
-    fn ipv6_callers_share_a_bucket_per_64() {
-        let a = ip_key(Some("2001:db8:1:2::1".parse().unwrap()));
-        let b = ip_key(Some("2001:db8:1:2:ffff::9".parse().unwrap()));
-        let other = ip_key(Some("2001:db8:1:3::1".parse().unwrap()));
-        assert_eq!(a, b);
-        assert_ne!(a, other);
-        assert_eq!(ip_key(Some("10.0.0.1".parse().unwrap())), "10.0.0.1");
-    }
-
-    #[test]
     fn over_reports_a_full_window_without_counting() {
         let l = Limiter::default();
         assert!(matches!(l.over("k", 1, 60, 120), Verdict::Allow));
@@ -234,29 +149,5 @@ mod tests {
             matches!(l.over("k", 1, 60, 180), Verdict::Allow),
             "new window"
         );
-    }
-
-    #[test]
-    fn public_pages_and_their_json_are_limited_per_ip_but_signed_in_json_is_not() {
-        use axum::http::Method;
-        for path in [
-            "/status/shop/report",
-            "/api/ui/public/shop/report",
-            "/api/ui/public/shop/tickets",
-        ] {
-            assert!(ip_limited(&Method::POST, path), "{path}");
-        }
-        assert!(!ip_limited(&Method::GET, "/api/ui/projects/shop/tickets"));
-        assert!(!ip_limited(&Method::GET, "/api/ui/login"));
-    }
-
-    #[test]
-    fn the_password_and_the_code_step_share_the_sign_in_bucket() {
-        use axum::http::Method;
-        for path in ["/api/ui/login", "/api/ui/login/code"] {
-            assert!(ip_limited(&Method::POST, path), "{path}");
-            assert_eq!(bucket(path, "1.2.3.4"), "login:1.2.3.4");
-        }
-        assert_eq!(bucket("/api/ui/public/x/status", "1.2.3.4"), "ip:1.2.3.4");
     }
 }

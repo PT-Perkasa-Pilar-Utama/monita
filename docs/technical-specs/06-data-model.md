@@ -340,7 +340,7 @@ Planned work on a project (migration 0026, v1.1 decision Q18). Owned by the `mai
 
 | table | columns |
 | --- | --- |
-| settings | key TEXT PK, value TEXT. Limit keys, with the label the Rate limits page shows: `check_concurrency` (50, "Checks at the same time"), `rl_ip_per_min` (60, "Visits per minute from one address"), `rl_key_per_min` (120, "API calls per minute from one key"), `rl_ping_per_s` (1, "Pings per second for one heartbeat"), `tickets_per_ref_per_day` (5, "Bug reports per user per day"), `tickets_per_project_per_day` (100, "Bug reports per project per day"). Every value is 1 to 1 000 000; `check_concurrency` is 1 to 500. |
+| settings | key TEXT PK, value TEXT. Limit keys, with the label the Rate limits page shows: `check_concurrency` (50, "Checks at the same time"), `rl_key_per_min` (120, "API calls per minute from one key"), `rl_ping_per_s` (1, "Pings per second for one heartbeat"), `tickets_per_ref_per_day` (5, "Bug reports per user per day"), `tickets_per_project_per_day` (100, "Bug reports per project per day"). Every value is 1 to 1 000 000; `check_concurrency` is 1 to 500. |
 | settings (raw keys) | Not on the limits page. `utc_offset_min`: minutes east of UTC that pages show times in, -720 to 840 in quarter hours, default 0. `mail`: JSON of the mail server a super admin saved (`host`, `port`, `security` of `tls`, `starttls` or `none`, `user`, `password`, `from`, `skip_verify`); the key is absent when none is saved. `last_digest_ticket_id`: the digest watermark. |
 | schema_migrations | version INTEGER PK, applied_at |
 

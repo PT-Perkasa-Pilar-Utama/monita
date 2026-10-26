@@ -27,7 +27,7 @@ Output 201:
 | Part | Contract |
 | --- | --- |
 | Purpose | Submit a bug ticket. Called by the project UI or backend. |
-| Access | Anyone with a valid ref ID. 60/min per IP. CORS `*`. |
+| Access | Anyone with a valid ref ID. CORS `*`. |
 | Behavior | 1. Validate fields. 2. Find the ref ID by hash. Unknown, revoked or used up: 422 (AC-24.03, AC-27.01). 3. Count today's tickets (UTC) for the ref ID and the project. Over the per-ref and per-project limits (defaults 5 and 100; a super admin changes them in 4.4): 429 `daily_cap_reached` (AC-24.04, AC-24.05). 4. In one transaction: insert the ticket with `stage = triage` and the next `number`, and mark a single-use ref ID used (AC-25.02). 5. `notify::send(TicketCreated)` (AC-30.03). |
 | Errors | 400, 422 `ref_id_invalid`, 429 `daily_cap_reached`, 429 `rate_limited` |
 
@@ -51,7 +51,7 @@ Output 201:
 | Part | Contract |
 | --- | --- |
 | Purpose | A reporter lists their own tickets. |
-| Access | Header `X-Ref-Id: <ref_id>`. Header, not query, so the ID stays out of access logs. 60/min per IP. CORS `*`. |
+| Access | Header `X-Ref-Id: <ref_id>`. Header, not query, so the ID stays out of access logs. CORS `*`. |
 | Behavior | Find the ref ID, including revoked or used ones. Return its newest 100 tickets, newest first, including Triage. (AC-29.01) |
 | Errors | 401 `unauthorized` for a missing header. 422 `ref_id_invalid` for an unknown ID. |
 
@@ -95,8 +95,8 @@ A ticket on the team board and detail (`TicketRow`):
 | Method | Path | Access | Input | Behavior | AC |
 | --- | --- | --- | --- | --- | --- |
 | GET | `/api/ui/public/{slug}` | public | | The project's `name`, `slug`, `pages` (the public flags of 3.1), `utc_offset_min` and `homepage_url`, for a public page's header and its tabs. Unknown slug: 404. | |
-| POST | `/api/ui/public/{slug}/report` | public, 60/min per IP | `ref_id`, `title`, `description`, `page_url` | Same rules as 8.2. The ref ID must belong to this project. 201 `{number}`; a cap is 429 `daily_cap_reached`. 404 with `report` off. | AC-24.01, AC-24.03 to AC-24.05 |
-| POST | `/api/ui/public/{slug}/mine` | public, 60/min per IP | `ref_id` | `tickets`: the same data as 8.3. The ref ID must belong to this project, or it is 422 on `ref_id`. A POST keeps the ref ID out of URLs and logs. The page asks for the ref ID once, then shows a New report form beside the reporter's tickets. 404 with `report` off. | AC-29.01 |
+| POST | `/api/ui/public/{slug}/report` | public | `ref_id`, `title`, `description`, `page_url` | Same rules as 8.2. The ref ID must belong to this project. 201 `{number}`; a cap is 429 `daily_cap_reached`. 404 with `report` off. | AC-24.01, AC-24.03 to AC-24.05 |
+| POST | `/api/ui/public/{slug}/mine` | public | `ref_id` | `tickets`: the same data as 8.3. The ref ID must belong to this project, or it is 422 on `ref_id`. A POST keeps the ref ID out of URLs and logs. The page asks for the ref ID once, then shows a New report form beside the reporter's tickets. 404 with `report` off. | AC-29.01 |
 | GET | `/api/ui/public/{slug}/tickets` | public | `?stage=` (`backlog`, `in_progress` or `done`) and `?page=` | Public board: stages Backlog, In progress, Done. `tickets` with number, public title or title, stage, created, updated; `counts` per stage. Each column holds its newest 25 by last change. With `?stage=`, one page of that column: `{tickets, page, total, page_size}`; `triage` and any unknown stage are 404 (Q22). `Cache-Control: public, max-age=30`. 404 with `known_issues` off. | AC-28.01, AC-28.02, AC-26.01 |
 | GET | `/api/ui/projects/{slug}/tickets` | owner, super_admin, supervisor | `?stage=` and `?page=` | Ticket board: Triage, Backlog, In progress, Done. `tickets` (newest 25 by last change per column) and `counts` per stage. With `?stage=`, one page of that column as for the public board; an unknown stage is 404. | AC-25.01 |
 | POST | `/api/ui/projects/{slug}/tickets` | owner, super_admin | `title`, `description`, `stage` (`triage`, `backlog` or `in_progress`) | The team files a ticket. No ref ID, no daily caps and no new-ticket alert. Rules for `title` and `description` as 8.2; a stage of `done` or another value is 422 on `stage`. 201 `{number}`. The ticket shows `filed_by`. | |

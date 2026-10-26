@@ -144,7 +144,7 @@ This file is an index. The full Given/When/Then bodies live in the per-sprint fi
 
 ### US-31 : Limit incoming traffic (Super admin)
 
-- AC-31.01 : Limit per IP
+- AC-31.01 : Limit sign-in per account, never per IP
 - AC-31.02 : Limit per API key
 - AC-31.03 : Change the limits in settings
 

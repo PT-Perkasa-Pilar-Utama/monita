@@ -100,23 +100,12 @@ async fn authenticate(parts: &Parts, state: &AppState) -> Result<store::LiveKey,
     let ip =
         crate::platform::caller_ip(&parts.headers, &parts.extensions, state.config.trust_proxy);
     let conn = state.db.read().await.map_err(internal)?;
-    // A wrong key has no key bucket yet, so its misses count per IP, as unknown ping tokens do.
-    let miss_key = format!("keymiss:{}", crate::platform::rate_limit::ip_key(ip));
-    let ip_limit = crate::platform::settings::get_or(&conn, "rl_ip_per_min", 60).await;
-    let ip_limit = u32::try_from(ip_limit.max(1)).unwrap_or(u32::MAX);
-    if let crate::platform::rate_limit::Verdict::Deny(retry) =
-        state.limiter.over(&miss_key, ip_limit, 60, now())
-    {
-        return Err(crate::platform::rate_limit::too_many(
-            crate::platform::request_path(parts),
-            retry,
-        ));
-    }
+    // A wrong key is not limited: a key is 130 random bits, so guessing one is hopeless, and a
+    // limit per address would lock out everyone behind that address (v1.1 Q45).
     let Some(key) = store::find_live_key(&conn, &token::hash(raw.trim()))
         .await
         .map_err(internal)?
     else {
-        state.limiter.hit(&miss_key, ip_limit, 60, now());
         return Err(unauthorized());
     };
     if let Some(list) = &key.project.ip_allowlist

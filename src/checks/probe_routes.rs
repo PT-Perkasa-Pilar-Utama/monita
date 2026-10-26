@@ -15,8 +15,7 @@ use crate::{
     app::AppState,
     platform::{
         api_error, caps, now,
-        rate_limit::{Verdict, ip_key, too_many},
-        settings,
+        rate_limit::{Verdict, too_many},
         ui::{Body, UiError, UiResult, data},
     },
 };
@@ -66,21 +65,12 @@ impl FromRequestParts<AppState> for ProbeLocation {
             .filter(|(scheme, _)| scheme.eq_ignore_ascii_case("bearer"))
             .map(|(_, token)| token)
             .ok_or_else(unauthorized)?;
-        let ip =
-            crate::platform::caller_ip(&parts.headers, &parts.extensions, state.config.trust_proxy);
         let conn = state.db.read().await.map_err(internal)?;
-        // An unknown token has no bucket of its own, so its misses count per IP, as wrong API keys do.
-        let miss_key = format!("keymiss:{}", ip_key(ip));
-        let ip_limit = settings::get_or(&conn, "rl_ip_per_min", 60).await;
-        let ip_limit = u32::try_from(ip_limit.max(1)).unwrap_or(u32::MAX);
-        if let Verdict::Deny(retry) = state.limiter.over(&miss_key, ip_limit, 60, now()) {
-            return Err(too_many(parts.uri.path(), retry));
-        }
+        // An unknown token is not limited: tokens are random, so guessing one is hopeless (Q45).
         let Some((id, last_seen_at)) = locations::authenticate(&conn, raw)
             .await
             .map_err(internal)?
         else {
-            state.limiter.hit(&miss_key, ip_limit, 60, now());
             return Err(unauthorized());
         };
         drop(conn);

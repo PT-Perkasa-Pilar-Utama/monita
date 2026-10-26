@@ -132,7 +132,7 @@ command: ["/bin/sh", "-c", "run-report && wget -q -T 10 -O /dev/null https://mon
 | Rule | Value |
 | --- | --- |
 | Pings per heartbeat | 1 per second by default. Extra pings get 429 and are not stored. The ping accepted in that second keeps the heartbeat alive. `/fail` has its own limit, so a fail right after a success is heard. A super admin changes this on [Rate limits](admin.md#rate-limits). |
-| Unknown tokens | 60 per minute per IP, then 429 |
+| Unknown tokens | 404, never limited: a token is random, so guessing one is hopeless |
 | Request body | Read up to 16 MiB within 10 s; only `/fail` keeps its first 1 KB |
 | Pings kept | 7 days |
 

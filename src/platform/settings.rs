@@ -4,7 +4,6 @@ use turso::Connection;
 
 pub const KEYS: &[(&str, &str)] = &[
     ("check_concurrency", "Checks at the same time"),
-    ("rl_ip_per_min", "Visits per minute from one address"),
     ("rl_key_per_min", "API calls per minute from one key"),
     ("rl_ping_per_s", "Pings per second for one heartbeat"),
     ("tickets_per_ref_per_day", "Bug reports per user per day"),

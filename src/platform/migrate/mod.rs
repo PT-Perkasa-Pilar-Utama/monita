@@ -136,6 +136,7 @@ const MIGRATIONS: &[(i64, &str)] = &[
         42,
         include_str!("../../../migrations/0042_update_author_key.sql"),
     ),
+    (43, include_str!("../../../migrations/0043_no_ip_limit.sql")),
 ];
 
 pub async fn run(db: &Db) -> anyhow::Result<()> {

@@ -212,7 +212,6 @@ Every error has the same shape, with its HTTP status:
 
 | Limit | Default |
 | --- | --- |
-| Status JSON, tickets, wrong API keys and unknown ping tokens | 60 a minute per address |
 | Calls with one API key | 120 a minute |
 | Pings for one heartbeat | 1 a second |
 | Request body | 128 KiB, except the ping routes |

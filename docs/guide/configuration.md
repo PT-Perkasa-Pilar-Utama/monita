@@ -31,7 +31,6 @@ A super admin changes these on **Rate limits** without a restart:
 | Setting | Default |
 | --- | --- |
 | Checks at the same time | 50 |
-| Visits per minute from one address | 60 |
 | API calls per minute from one key | 120 |
 | Pings per second for one heartbeat | 1 |
 | Bug reports per user per day | 5 |

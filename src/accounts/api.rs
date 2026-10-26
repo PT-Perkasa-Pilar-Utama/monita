@@ -90,13 +90,14 @@ struct LoginInput {
 }
 
 async fn login(State(state): State<AppState>, Body(f): Body<LoginInput>) -> UiResult {
-    match super::login(&state.db, &f.email, &f.password).await {
+    match super::login(&state.db, &state.limiter, &f.email, &f.password).await {
         Ok(super::SignIn::Session(raw)) => Ok(signed_in(&state, &raw)),
         // The page asks for the code and sends it with this token to `/api/ui/login/code`.
         Ok(super::SignIn::Code(challenge)) => Ok(data(
             serde_json::json!({ "two_factor": true, "challenge": challenge }),
         )),
         Err(AccountError::Other(e)) => Err(e.into()),
+        Err(e @ AccountError::TooMany(_)) => Err(UiError::TooMany(e.to_string())),
         Err(e) => Err(UiError::invalid(e.to_string())),
     }
 }
