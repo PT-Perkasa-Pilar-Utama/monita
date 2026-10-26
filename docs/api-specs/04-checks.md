@@ -131,11 +131,11 @@ Design: [technical-specs 14](../technical-specs/14-locations.md).
 
 ### Probe API
 
-A probe authenticates with `Authorization: Bearer ml_…`. A missing or unknown token is 401 `unauthorized` and counts in the caller IP's `keymiss:` bucket. A known token counts in `probe:{id}`, 300 calls a minute; over it, 429 with `Retry-After`.
+A probe authenticates with `Authorization: Bearer ml_…`. A missing or unknown token is 401 `unauthorized`; a token is random, so wrong ones are not limited (v1.1 Q45). A known token counts in `probe:{id}`, 300 calls a minute; over it, 429 with `Retry-After`.
 
 | Method | Path | Input | Behavior |
 | --- | --- | --- | --- |
-| GET | `/api/v1/probe/work` | `?free=N`, 1 to 50, missing 50; any other value is 422 on `free` | Claims up to N of this location's due checks and moves each one interval ahead. 200 `{"jobs": [job]}`, empty when nothing is due. A job: `monitor_id`, `kind`, `target`, `method`, `headers`, `body`, `timeout_ms`, `expected_status`, `keyword`, `skip_tls_verify`, `expected_address`, `auth` (`{kind, user, header, secret}` or null), `secret_gone` (true when the monitor's secret was deleted: the job fails with a fixed sentence). |
+| GET | `/api/v1/probe/work` | `?free=N`, 1 to 50, missing 50; any other value is 422 on `free`. `?wait=S`, 0 to 25 seconds, missing 0; any other value is 422 on `wait` | Claims up to N of this location's due checks and moves each one interval ahead. 200 `{"jobs": [job]}`. With nothing due and `wait` above 0, the server holds the request (a long poll): it looks again when the next check falls due, and at least every 5 s, and answers as soon as a check is due, when the wait runs out with `{"jobs": []}`, or at once when the server starts to shut down. A job: `monitor_id`, `kind`, `target`, `method`, `headers`, `body`, `timeout_ms`, `expected_status`, `keyword`, `skip_tls_verify`, `expected_address`, `auth` (`{kind, user, header, secret}` or null), `secret_gone` (true when the monitor's secret was deleted: the job fails with a fixed sentence). |
 | POST | `/api/v1/probe/results` | `{"results": [{monitor_id, ok, status_code, latency_ms, error}]}`, 1 to 50 items | Stores each result that answers a check this location claimed, with this server's clock, one result per claim (spec 14.6). Any other result is skipped. A stored result counts in the monitor's next verdict (14.7). 200 `{"stored", "skipped"}`. An empty or longer list, or a missing field, is 422. |
 
 ### Pages
@@ -145,6 +145,8 @@ A probe authenticates with `Authorization: Bearer ml_…`. A missing or unknown 
 | GET | `/api/ui/admin/locations` | super_admin, supervisor | | `locations`: each `{id, name, token_prefix, last_seen_at, monitors, created_at}`, by name; `max`, the cap (10). |
 | POST | `/api/ui/admin/locations` | super_admin | `name`, 1 to 40 characters, unique | 201 `{id, name, token}`. The token shows only in this answer. A blank, long or taken name is 422 on `name`; an 11th location is 422 on `name`. |
 | DELETE | `/api/ui/admin/locations/{id}` | super_admin | | Deletes the location, its assignments and its results. Each monitor's quorum drops to at most its number of places. 204; 404 when unknown. |
+| POST | `/api/ui/admin/locations/{id}/token` | super_admin | | Gives the location a new token. The old token stops at once and `last_seen_at` becomes null until the probe calls with the new one. 200 `{token}`, shown only in this answer; 404 when unknown. |
+| GET | `/api/ui/admin/locations/{id}/monitors` | super_admin, supervisor | | The monitors that check from the location, by name, at most 50: each `{id, name, project, slug}`; `shown_max` (50). The list's `monitors` count covers the rest. |
 
 The monitor form (4.3) takes two more fields:
 

@@ -64,7 +64,19 @@ Runs checks for one location of another Monita (technical-specs 14). It reads no
 | `--token <token>` | `MONITA_PROBE_TOKEN` | The location's token. Prefer the variable: a command line shows in `ps`. |
 | `--concurrency <n>` | | Checks at once, 1 to 50, default 20 |
 
-Each second it asks for as many jobs as it has free slots, runs them, and posts each finished batch. A server it cannot reach is logged and tried again 5 seconds later. A 401 means the token was deleted: it logs that and exits with status 1. It stops on Ctrl-C or SIGTERM after the checks in flight.
+With a free slot, it asks for as many jobs as it has free slots with `wait=25` (a long poll, 4.5): the server answers when a check falls due, or after 25 s with none. An idle probe so calls about twice a minute. A server that answers at once, from before long polling, is asked again a second later. The probe posts results from its own task as checks finish, in batches of up to 50. A server it cannot reach is logged and tried again 5 seconds later. A 401 means the token was deleted or replaced: it logs that and exits with status 1. It stops on Ctrl-C or SIGTERM after the checks in flight.
+
+### `monita probe install` and `monita probe uninstall`
+
+Linux with systemd, as root. Other systems get exit 1 with a pointer to Docker.
+
+| Part | Contract |
+| --- | --- |
+| Input | `--server <url>` or `MONITA_PROBE_SERVER`; the token from `MONITA_PROBE_TOKEN` or `--token`. |
+| Checks | The server must start with `http://` or `https://`, and the token with `ml_`. The binary must not sit under `/home` or `/root`, which the unit hides. Nothing is written when a check fails. |
+| Writes | `/etc/monita/probe.env` with mode 0600 (`MONITA_PROBE_SERVER`, `MONITA_PROBE_TOKEN`), and `/etc/systemd/system/monita-probe.service` from `deploy/monita-probe.service` with this binary in `ExecStart`. |
+| Then | `systemctl daemon-reload`, `enable` and `restart monita-probe`. |
+| Uninstall | `systemctl disable --now monita-probe`, then removes the unit and the env file. |
 
 ## 10.6 `monita admin reset-sign-in`
 

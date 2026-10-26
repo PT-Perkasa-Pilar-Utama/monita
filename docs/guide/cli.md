@@ -14,6 +14,7 @@ The `monita` binary serves the app and manages a host.
 | `monita admin reset-password --email` | Sets a new password for a super admin, turns their two-factor sign-in off, and signs them out |
 | `monita admin reset-sign-in --email` | For any active user who lost the authenticator and the recovery codes. Turns two-factor off, stops the old password, and sends a link to set a new one |
 | `monita probe --server <url>` | Runs checks for one location of another Monita and reports them. Reads the token from `MONITA_PROBE_TOKEN`; no env file, no database. See [Locations](locations.md). |
+| `monita probe install --server <url>` | Linux, as root: installs the probe as the `monita-probe` systemd service, with the token from `MONITA_PROBE_TOKEN` in `/etc/monita/probe.env` (mode 0600). `monita probe uninstall` removes it. |
 | `monita --version` | Prints the version |
 
 ## The env file

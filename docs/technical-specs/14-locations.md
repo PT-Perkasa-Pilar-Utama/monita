@@ -50,19 +50,20 @@ Caps (`platform::caps`): 10 locations; 50 jobs in one work answer; 50 results in
 - Only the SHA-256 hash is stored (SEC-07). The token is never logged.
 - The probe reads it from `MONITA_PROBE_TOKEN`; `--token` is the fallback, because a command line shows in `ps`.
 - A request sends it as `Authorization: Bearer ml_…`.
-- A wrong token counts in the caller IP's `keymiss:` bucket, as a wrong API key does, and answers 401.
-- A known token counts in its own bucket `probe:{id}`: 300 calls a minute. A probe that polls each second uses 60.
+- A wrong token answers 401 and is not limited: a token is random (v1.1 Q45).
+- A known token counts in its own bucket `probe:{id}`: 300 calls a minute. A long-polling probe (14.5) uses about 2 when idle.
 
 **Trust boundary.** A location token holder receives every job of that location, and a job carries the monitor's secret value when the monitor signs in. A location token is therefore as sensitive as every project secret its monitors use. Only a super admin creates or deletes a location. A supervisor reads the locations page; there is no token to read after creation.
 
 ## 14.5 Work
 
-`GET /api/v1/probe/work?free=N`, N from 1 to 50 (missing: 50).
+`GET /api/v1/probe/work?free=N&wait=S`, N from 1 to 50 (missing: 50), S from 0 to 25 seconds (missing: 0).
 
 1. Authenticate the token (14.4).
-2. On a read connection: does this location have a due row (`next_check_at <= now`)? If not, answer `{"jobs": []}`. Update `last_seen_at` only when it is 30 s or more old, so an idle probe does not take the writer each second.
+2. On a read connection: does this location have a due row (`next_check_at <= now`)? If not, go to step 4. Update `last_seen_at` only when it is 30 s or more old, so an idle probe does not take the writer each second.
 3. Otherwise, in one write: claim up to N due rows by setting `next_check_at = now + interval_s`, `claimed_at = now` and `open_claims = min(open_claims + 1, 2)` (migration 0031), set `last_seen_at = now`, and read the jobs.
-4. A job is everything one check needs:
+4. With no job and S above 0, hold the request: nap until the next due check, at least 1 s and at most 5 s (so a monitor newly given this location is seen within 5 s), never past S, then go back to step 2. Answer at once when shutdown starts (`AppState.stopping`). An idle probe so calls about twice a minute instead of 60 times. On the demo server (debug build, 2026-10-26), 8 idle probes cost 3.04 s of CPU a minute with 1 s polling and 0.55 s with long polling, and a shutdown with 8 polls held took 0.1 s.
+5. A job is everything one check needs:
 
 ```json
 { "monitor_id": 12, "kind": "http", "target": "https://pay.example.com/healthz",
