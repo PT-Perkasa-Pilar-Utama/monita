@@ -117,13 +117,13 @@ function HeartbeatFormBody({ id, onClose, onSaved }: { id: string | undefined; o
                     <Input id="h-name" autoFocus={!id} maxLength={80} aria-required aria-invalid={err("name") ? true : undefined} value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="nightly-backup" />
                     {err("name") && <FieldError>{err("name")}</FieldError>}
                   </Field>
+                  <PublicField id="h" noun="heartbeat" checked={form.is_public} onChange={(v) => set("is_public", v)} />
                   <div className="grid gap-5 sm:grid-cols-2">
                     <ChoiceField id="h-period" label="Runs every" value={form.period_s} choices={options.data.periods} onChange={(v) => set("period_s", v)} error={err("period_s")} />
                     <ChoiceField id="h-grace" label="Can be late by" value={form.grace_s} choices={options.data.graces} onChange={(v) => set("grace_s", v)} error={err("grace_s")} />
                   </div>
                   <SeverityField value={form.severity} onChange={(v) => set("severity", v)} />
                   <WhenItFails id="h" alert={form.alert} autoIncident={form.auto_incident} onChange={set} />
-                  <PublicField id="h" noun="heartbeat" checked={form.is_public} onChange={(v) => set("is_public", v)} />
                 </FieldGroup>
               
       )}

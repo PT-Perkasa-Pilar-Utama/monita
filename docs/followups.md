@@ -11,3 +11,5 @@ Work skipped during the fast UI round of 2026-10-26 (maintenance and pause). Fix
 | Failures inside a maintenance window count as held (`in_window`, migration 0045) and charts draw the window as stripes | technical-specs 06 and 13, guide `monitors.md`, `heartbeats.md` and `incidents.md`, CHANGELOG, the CLAUDE.md Pause and Maintenance checklist lines |
 | Deleted monitors and heartbeats leave the project list chart and the pulse bars | CHANGELOG |
 | Paused and maintenance stamps, striped rows, the Maintenance tab with Paused now | design-system page recipes, guide screenshots |
+| Who sees it is a card choice under the name in the monitor and heartbeat forms | `e2e/specs/status.spec.ts:15` now picks the "Also the status page" radio, not run yet; guide `monitors.md` and `heartbeats.md` field lists |
+| Maintenance and Changelog guides | guide `changelog.md` still says a new project has the public Changelog tab off, which contradicts decision Q28 |

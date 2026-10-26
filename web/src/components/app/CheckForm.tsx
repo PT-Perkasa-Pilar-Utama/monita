@@ -96,17 +96,19 @@ export function WhenItFails({
   );
 }
 
-/** Whether visitors see this monitor or heartbeat. Its incidents reach the status page only when they do. */
+/** Whether visitors see this monitor or heartbeat, as two cards near the top of its form, so the
+ * choice is made on purpose. Its incidents reach the status page only when it is shown there. */
 export function PublicField({ id, noun, checked, onChange }: { id: string; noun: "monitor" | "heartbeat"; checked: boolean; onChange: (v: boolean) => void }): ReactElement {
   return (
-    <FieldSet className="gap-3">
-      <FieldLegend variant="label">Status page</FieldLegend>
-      <Field orientation="horizontal">
-        <Checkbox id={`${id}-public`} checked={checked} onCheckedChange={(v) => onChange(v === true)} />
-        <FieldLabel htmlFor={`${id}-public`} className="font-normal">
-          Show this {noun} and its incidents on the public status page
-        </FieldLabel>
-      </Field>
-    </FieldSet>
+    <ChoiceCards
+      id={`${id}-public`}
+      legend="Who sees it"
+      value={checked ? "public" : "private"}
+      onChange={(v) => onChange(v === "public")}
+      choices={[
+        { value: "private", title: "Only your team", description: `The ${noun} and its incidents stay inside Monita.` },
+        { value: "public", title: "Also the status page", description: `Visitors see this ${noun}, its uptime bars and its incidents on the public status page.` },
+      ]}
+    />
   );
 }

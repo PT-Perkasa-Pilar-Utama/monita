@@ -153,6 +153,7 @@ function MonitorFormBody({ id, onClose, onSaved }: { id: string | undefined; onC
                     <Input id="m-name" autoFocus={!id} maxLength={80} aria-required aria-invalid={err("name") ? true : undefined} value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="Checkout API" />
                     {err("name") && <FieldError>{err("name")}</FieldError>}
                   </Field>
+                  <PublicField id="m" noun="monitor" checked={form.is_public} onChange={(v) => set("is_public", v)} />
                   <FieldSeparator />
                   <RequestFields {...parts} />
                   <FieldSeparator />
@@ -212,7 +213,7 @@ function MonitorFormBody({ id, onClose, onSaved }: { id: string | undefined; onC
                     </>
                   )}
                   <FieldSet className="gap-7">
-                  <FieldLegend>Alerts and status page</FieldLegend>
+                  <FieldLegend>Alerts</FieldLegend>
                   <SeverityField value={form.severity} onChange={(v) => set("severity", v)} />
                   <WhenItFails id="m" alert={form.alert} autoIncident={form.auto_incident} onChange={set}>
                     <Field data-invalid={err("fails_to_open") ? true : undefined}>
@@ -258,7 +259,6 @@ function MonitorFormBody({ id, onClose, onSaved }: { id: string | undefined; onC
                       {err("cert_warn_days") && <FieldError>{err("cert_warn_days")}</FieldError>}
                     </Field>
                   )}
-                  <PublicField id="m" noun="monitor" checked={form.is_public} onChange={(v) => set("is_public", v)} />
                   </FieldSet>
                 </FieldGroup>
               
