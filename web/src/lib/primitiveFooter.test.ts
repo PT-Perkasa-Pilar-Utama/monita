@@ -8,6 +8,7 @@ test("each primitive's list, detail and form pages get its footer", () => {
   expect(footerFor(`${base}/monitors/12/edit`, base)).toBe("monitors");
   expect(footerFor(`${base}/heartbeats/new`, base)).toBe("heartbeats");
   expect(footerFor(`${base}/incidents/4`, base)).toBe("incidents");
+  expect(footerFor(`${base}/maintenance/new`, base)).toBe("maintenance");
   expect(footerFor(`${base}/tickets/done`, base)).toBe("tickets");
   expect(footerFor(`${base}/changelog`, base)).toBe("changelog");
 });

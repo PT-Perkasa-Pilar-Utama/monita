@@ -1,7 +1,7 @@
 /** A project's primitives: the tabs that each get a footer illustration. */
-export type Primitive = "monitors" | "heartbeats" | "incidents" | "tickets" | "changelog";
+export type Primitive = "monitors" | "heartbeats" | "incidents" | "maintenance" | "tickets" | "changelog";
 
-const PRIMITIVES: readonly Primitive[] = ["monitors", "heartbeats", "incidents", "tickets", "changelog"];
+const PRIMITIVES: readonly Primitive[] = ["monitors", "heartbeats", "incidents", "maintenance", "tickets", "changelog"];
 
 /** The primitive whose tab `pathname` is in, under the project at `base`; null for Overview and
  * Settings. */
