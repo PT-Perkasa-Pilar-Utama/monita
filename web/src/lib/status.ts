@@ -14,13 +14,15 @@ export function splitSystems(items: PublicItem[]): { barred: PublicItem[]; rest:
   return { barred: [...problems, ...calm.slice(0, BARS)], rest: calm.slice(BARS) };
 }
 
-/** One sentence for the whole page: which system is down, or that all run. */
+/** One sentence for the whole page: which system is down, that all run, or that it cannot tell
+ * yet. With no public system, or none checked, it never says all systems work. */
 export function headline(overall: StateKind, items: PublicItem[]): string {
   const down = items.filter((i) => i.state === "down");
   if (overall === "down") return down.length === 1 ? `${down[0]!.name} is down` : `${down.length} systems are down`;
   if (overall === "issue") return "Some systems have issues";
   if (overall === "maintenance") return "Maintenance in progress";
-  return "All systems operational";
+  if (overall === "up") return "All systems operational";
+  return items.length === 0 ? "No systems to show yet" : "Waiting for the first checks";
 }
 
 /** A day's bar: no data, all up, under 1% down, or more. */

@@ -62,7 +62,7 @@ curl -s "https://monita.example.com/api/v1/public/status/payments?days=90"
 | Field | Meaning |
 | --- | --- |
 | `days` (query) | 1 to 90, default 90. How many days of bars come back, and how far back incidents go. Open incidents always come back. |
-| `overall` | `up`, `down` or `issue`, for the whole page |
+| `overall` | `up`, `down`, `issue` or `maintenance` for the whole page, or `unknown` while no public system was checked |
 | `items[].state` | `up`, `down`, `issue`, `maintenance` or `unknown` (no data yet). A paused system is left out. |
 | `items[].days[]` | Oldest first. `uptime` is `null` for a day before the system existed. |
 | `incidents[].updates[]` | Newest first. `label` is `investigating`, `identified`, `monitoring` or `resolved`. |

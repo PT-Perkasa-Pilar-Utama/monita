@@ -47,6 +47,7 @@ More ways to check, alert and plan: TCP, DNS and ping monitors, certificate warn
 - Pages that listed a project's monitors read every project's checks. On a large install the Monitors list took over a second; it now reads only its own monitors (6 ms in a test with 290 000 checks).
 - The project list showed green bars for hours before a monitor or heartbeat existed. Those hours now show no data.
 - Mail to Monita's own sender address is dropped, so alerts no longer loop back into the sending mailbox. A user who signs in with that address still gets mail.
+- A status page with no public system, or none checked yet, no longer says "All systems operational". It says so in grey, and `overall` in its JSON is `unknown`.
 - The Telegram admin page shows clearly whether a bot is set.
 - The custom status page's notes are a labelled table instead of a list.
 - Recovery codes keep their spacing, and a wrong two-factor code's error uses the whole row.

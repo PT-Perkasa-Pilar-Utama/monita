@@ -9,7 +9,9 @@ test("the headline names a single down system and counts several", () => {
   expect(headline("down", [item("API", "down"), item("Site", "up")])).toBe("API is down");
   expect(headline("down", [item("API", "down"), item("Site", "down")])).toBe("2 systems are down");
   expect(headline("issue", [item("API", "issue")])).toBe("Some systems have issues");
-  expect(headline("up", [])).toBe("All systems operational");
+  expect(headline("up", [item("API", "up")])).toBe("All systems operational");
+  expect(headline("unknown", [])).toBe("No systems to show yet");
+  expect(headline("unknown", [item("API", "unknown")])).toBe("Waiting for the first checks");
   expect(headline("maintenance", [item("API", "maintenance")])).toBe("Maintenance in progress");
 });
 

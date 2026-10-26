@@ -66,7 +66,7 @@ export function endpointDocs(origin: string, slug: string, name: string): Endpoi
       }),
       details: [
         { label: "Query", text: "days is optional, 1 to 90, default 90. It sets the bars and how far back incidents go. Open incidents always come back." },
-        { label: "States", text: "overall is up, down, issue or maintenance. A system's state can also be unknown, before its first check." },
+        { label: "States", text: "overall is up, down, issue or maintenance, or unknown while no public system was checked. A system's state can also be unknown, before its first check." },
         { label: "Bars", text: "days[] runs oldest first. uptime is null for a day before the system existed." },
         { label: "Incidents", text: "updates[] runs newest first. label is investigating, identified, monitoring or resolved. With the Incidents tab off, incidents is empty." },
         { label: "Maintenance", text: "The active windows that cover a public system, with title, message, starts_at, ends_at and items." },

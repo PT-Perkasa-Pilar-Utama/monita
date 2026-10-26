@@ -138,6 +138,23 @@ struct Items {
     off: i64,
 }
 
+/// The page's one word: the worst state of its systems. With no public system, or none checked
+/// yet, it is `unknown`: the page cannot say that everything works.
+fn overall_of(items: &[ItemStatus]) -> &'static str {
+    let any = |s: &str| items.iter().any(|i| i.state == s);
+    if any("down") {
+        "down"
+    } else if any("issue") {
+        "issue"
+    } else if any("maintenance") {
+        "maintenance"
+    } else if any("up") {
+        "up"
+    } else {
+        "unknown"
+    }
+}
+
 async fn items(db: &Db, slug: &str, days: usize) -> anyhow::Result<Option<Items>> {
     let Some(project) = projects::find_public(db, slug).await? else {
         return Ok(None);
@@ -175,15 +192,7 @@ async fn items(db: &Db, slug: &str, days: usize) -> anyhow::Result<Option<Items>
         })
         .collect();
 
-    let overall = if items.iter().any(|i| i.state == "down") {
-        "down"
-    } else if items.iter().any(|i| i.state == "issue") {
-        "issue"
-    } else if items.iter().any(|i| i.state == "maintenance") {
-        "maintenance"
-    } else {
-        "up"
-    };
+    let overall = overall_of(&items);
 
     let refs: Vec<(ItemRef, String)> = public
         .iter()
@@ -358,6 +367,30 @@ pub async fn history_page(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_page_says_everything_works_only_when_a_system_was_checked() {
+        let item = |state| ItemStatus {
+            kind: "monitor",
+            id: 1,
+            name: "API".into(),
+            state,
+            uptime_90d: None,
+            days: Vec::new(),
+        };
+        assert_eq!(overall_of(&[]), "unknown", "no public system");
+        assert_eq!(
+            overall_of(&[item("unknown")]),
+            "unknown",
+            "none checked yet"
+        );
+        assert_eq!(overall_of(&[item("unknown"), item("up")]), "up");
+        assert_eq!(
+            overall_of(&[item("up"), item("maintenance")]),
+            "maintenance"
+        );
+        assert_eq!(overall_of(&[item("issue"), item("down")]), "down");
+    }
 
     #[test]
     fn uptime_rounds_to_two_decimals_and_skips_empty_spans() {

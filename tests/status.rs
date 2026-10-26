@@ -154,7 +154,10 @@ async fn days_before_an_item_existed_are_null() {
     assert!(days[1]["uptime"].is_null());
     assert_eq!(days[2]["uptime"], 100.0);
     assert_eq!(body["data"]["items"][0]["state"], "unknown", "no check yet");
-    assert_eq!(body["data"]["overall"], "up");
+    assert_eq!(
+        body["data"]["overall"], "unknown",
+        "no check yet, so the page cannot say all systems work"
+    );
 }
 
 #[tokio::test]

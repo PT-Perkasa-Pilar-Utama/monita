@@ -25,7 +25,8 @@ test.describe("as the TL", () => {
     const v = await visitor.newPage();
     await v.goto(`/status/${slug}`);
     await expect(v.getByRole("heading", { name: "Storefront" })).toBeVisible();
-    await expect(v.getByText("All systems operational")).toBeVisible();
+    // Not checked yet: the page does not claim that everything works.
+    await expect(v.getByText("Waiting for the first checks")).toBeVisible();
     await expect(v.getByText("Checkout")).toBeVisible();
     await expect(v.getByText("internal-etl")).toHaveCount(0);
     await expect(v.locator("[data-uptime-bars] > span")).toHaveCount(90);

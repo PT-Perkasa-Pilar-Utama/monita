@@ -58,7 +58,7 @@ Output 200:
 | --- | --- |
 | `id` | The item's id. With `kind` it picks the item on the past-uptime route (7.2). It is not secret. |
 | `state` | `up`, `down`, `issue` (open manual incident), `maintenance` (an active maintenance window covers it and no incident names it), `unknown` (no data yet) |
-| `overall` | `down` if any item is down, else `issue` if any has an issue, else `maintenance` if any is in maintenance, else `up` |
+| `overall` | `down` if any item is down, else `issue` if any has an issue, else `maintenance` if any is in maintenance, else `up` if any item was checked, else `unknown` (no public item, or none checked yet) |
 | `maintenance` | The active maintenance windows that cover a public item, soonest end first: `title`, `message` (may be empty), `starts_at`, `ends_at`, and the public `items` it covers. A window over hidden items only is left out. (v1.1 Q18) |
 | `days[].day` | `YYYY-MM-DD` in the admin's time zone offset |
 | `days[].uptime` | `null` for a day before the item existed. The page renders a grey bar. |

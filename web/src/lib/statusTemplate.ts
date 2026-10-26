@@ -58,7 +58,7 @@ export function statusTemplate(origin: string, slug: string): string {
 const MONITA = ${lit(origin)};
 const SLUG = ${lit(slug)};
 const WORD = { up: "Up", down: "Down", issue: "Issue", maintenance: "Maintenance", unknown: "No data yet" };
-const HEADLINE = { up: "All systems operational", down: "Some systems are down", issue: "Some systems have issues", maintenance: "Maintenance in progress" };
+const HEADLINE = { up: "All systems operational", down: "Some systems are down", issue: "Some systems have issues", maintenance: "Maintenance in progress", unknown: "No data yet" };
 
 function el(tag, className, text) {
   const n = document.createElement(tag);

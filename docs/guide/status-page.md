@@ -96,7 +96,7 @@ curl -s https://monita.example.com/api/v1/public/status/payments?days=30
 | Field | Values |
 | --- | --- |
 | `state` | `up`, `down`, `issue` (an open manual incident), `maintenance`, `unknown` (no data yet) |
-| `overall` | `down` if any item is down, else `issue` if any has an issue, else `maintenance` if any is in maintenance, else `up` |
+| `overall` | `down` if any item is down, else `issue` if any has an issue, else `maintenance` if any is in maintenance, else `up` if any item was checked, else `unknown` (no public item, or none checked yet) |
 | `days[].uptime` | `null` for a day before the item existed |
 | `incidents` | Empty while the Incidents tab is off |
 
