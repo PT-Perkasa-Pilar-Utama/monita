@@ -107,8 +107,8 @@ Tick the box at the start of each row you want. The box in the heading ticks eve
 
 | Button | Does |
 | --- | --- |
-| **Pause** | Asks first, then pauses every picked heartbeat. |
-| **Resume** | Shows when any picked heartbeat is paused. It resumes every picked heartbeat. |
+| **Pause** | Shows when any picked heartbeat runs. Asks first, then pauses the picked heartbeats that run. When some are paused already, it reads **Pause N** and leaves those as they are. |
+| **Resume** | Shows when any picked heartbeat is paused. It resumes the paused ones, and reads **Resume N** when the pick is mixed. |
 | **Plan maintenance** | Opens the maintenance form with the picked heartbeats ticked. |
 | **Delete** | Asks first. It lists the heartbeats, what goes and what stays. For more than one, type `delete N` to confirm. **Pause instead** is in the same dialog. |
 | **Clear selection** | Unticks every row. |

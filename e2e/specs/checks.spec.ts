@@ -217,3 +217,27 @@ test("two monitors go in one batch delete after typing the confirmation", async 
   await expect(page.locator("tbody tr")).toHaveCount(1);
   await expect(page.locator("tbody tr")).toContainText("Keeper");
 });
+
+test("a mixed pick pauses only the running monitors and resumes only the paused ones", async ({ page }) => {
+  const slug = await apiProject(page, "Mixed");
+  for (const name of ["Alpha", "Bravo", "Charlie"]) await apiMonitor(page, slug, { name });
+  await page.goto(`/projects/${slug}/monitors`);
+  await page.getByRole("checkbox", { name: "Select Alpha" }).check();
+  await page.getByRole("button", { name: "Pause", exact: true }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Pause" }).click();
+  await expect(page.getByText("1 monitor paused.")).toBeVisible();
+
+  for (const name of ["Alpha", "Bravo", "Charlie"]) await page.getByRole("checkbox", { name: `Select ${name}` }).check();
+  await expect(page.getByRole("button", { name: "Resume 1" })).toBeVisible();
+  await page.getByRole("button", { name: "Pause 2" }).click();
+  const dialog = page.getByRole("alertdialog");
+  await expect(dialog.getByText("Pause 2 monitors?")).toBeVisible();
+  await expect(dialog.getByText("The 1 already paused stay as they are.", { exact: false })).toBeVisible();
+  await dialog.getByRole("button", { name: "Pause" }).click();
+  await expect(page.getByText("2 monitors paused.")).toBeVisible();
+
+  for (const name of ["Alpha", "Bravo", "Charlie"]) await page.getByRole("checkbox", { name: `Select ${name}` }).check();
+  await expect(page.getByRole("button", { name: /^Pause/ })).toHaveCount(0);
+  await page.getByRole("button", { name: "Resume", exact: true }).click();
+  await expect(page.getByText("3 monitors run again.")).toBeVisible();
+});

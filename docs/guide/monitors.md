@@ -146,8 +146,8 @@ Tick the box at the start of each row you want. The box in the heading ticks eve
 
 | Button | Does |
 | --- | --- |
-| **Pause** | Asks first, then pauses every picked monitor. |
-| **Resume** | Shows when any picked monitor is paused. It resumes every picked monitor. |
+| **Pause** | Shows when any picked monitor runs. Asks first, then pauses the picked monitors that run. When some are paused already, it reads **Pause N** and leaves those as they are. |
+| **Resume** | Shows when any picked monitor is paused. It resumes the paused ones, and reads **Resume N** when the pick is mixed. |
 | **Plan maintenance** | Opens the maintenance form with the picked monitors ticked. |
 | **Delete** | Asks first. It lists the monitors, what goes and what stays. For more than one, type `delete N` to confirm. **Pause instead** is in the same dialog. |
 | **Clear selection** | Unticks every row. |

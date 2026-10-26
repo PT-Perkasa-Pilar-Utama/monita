@@ -111,11 +111,15 @@ export function BatchBar({
   const [busy, setBusy] = useState(false);
   const ids = picked.map((p) => p.id);
   const n = picked.length;
+  // A mixed pick: Pause acts on the running ones and Resume on the paused ones, so each count is
+  // what changes. Plan maintenance and Delete take every pick.
+  const running = picked.filter((p) => !p.paused).map((p) => p.id);
+  const paused = picked.filter((p) => p.paused).map((p) => p.id);
   const resume = async (): Promise<void> => {
     setBusy(true);
     try {
-      await runBatch(slug, kind, "resume", ids);
-      toast.success(`${n} ${noun(kind, n)} run again.`);
+      await runBatch(slug, kind, "resume", paused);
+      toast.success(`${paused.length} ${noun(kind, paused.length)} run again.`);
       onClear();
       onDone();
     } catch (err) {
@@ -127,27 +131,29 @@ export function BatchBar({
   return (
     <span className="flex flex-wrap items-center gap-2">
       <span aria-live="polite">{n} selected</span>
-      <ConfirmDialog
-        trigger={
-          <Button size="sm" variant="secondary" disabled={busy}>
-            <Pause data-icon="inline-start" />
-            Pause
-          </Button>
-        }
-        title={`Pause ${n} ${noun(kind, n)}?`}
-        description={PAUSE_TEXT[kind]}
-        action="Pause"
-        onConfirm={async () => {
-          await runBatch(slug, kind, "pause", ids);
-          toast.success(`${n} ${noun(kind, n)} paused.`);
-          onClear();
-          onDone();
-        }}
-      />
-      {picked.some((p) => p.paused) && (
+      {running.length > 0 && (
+        <ConfirmDialog
+          trigger={
+            <Button size="sm" variant="secondary" disabled={busy}>
+              <Pause data-icon="inline-start" />
+              {paused.length > 0 ? `Pause ${running.length}` : "Pause"}
+            </Button>
+          }
+          title={`Pause ${running.length} ${noun(kind, running.length)}?`}
+          description={paused.length > 0 ? `${PAUSE_TEXT[kind]} The ${paused.length} already paused stay as they are.` : PAUSE_TEXT[kind]}
+          action="Pause"
+          onConfirm={async () => {
+            await runBatch(slug, kind, "pause", running);
+            toast.success(`${running.length} ${noun(kind, running.length)} paused.`);
+            onClear();
+            onDone();
+          }}
+        />
+      )}
+      {paused.length > 0 && (
         <Button size="sm" variant="secondary" disabled={busy} onClick={() => void resume()}>
           {busy ? <Spinner data-icon="inline-start" /> : <Play data-icon="inline-start" />}
-          Resume
+          {running.length > 0 ? `Resume ${paused.length}` : "Resume"}
         </Button>
       )}
       <Button size="sm" variant="secondary" asChild>
