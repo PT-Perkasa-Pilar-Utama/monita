@@ -11,11 +11,6 @@ export function setOffset(min: number): void {
   offsetMin = min;
 }
 
-/** The offset every time on the page uses, in minutes east of UTC. */
-export function offset(): number {
-  return offsetMin;
-}
-
 /** `UTC`, `UTC+7`, `UTC+5:30`, `UTC-3`. */
 export function zone(off: number = offsetMin): string {
   if (off === 0) return "UTC";
@@ -86,25 +81,34 @@ export function digestNote(hourUtc: number, off: number): string {
   return off === 0 ? `The daily ticket digest goes out at ${utc}.` : `The daily ticket digest stays at ${utc}, ${hhmm(hourUtc * 3600, off)} in ${zone(off)}.`;
 }
 
-/** Minutes east of UTC on this computer right now. */
-export function browserOffset(): number {
-  return -new Date().getTimezoneOffset();
+/** `2026-10-16T22:00`, a `datetime-local` value on this computer's clock: people type times there. */
+export function localInputValue(ts: number): string {
+  const d = new Date(ts * 1000);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/** The Unix seconds a `datetime-local` value names on this computer's clock, daylight saving
+ * included, or null when it is not a time. */
+export function fromLocalInputValue(v: string): number | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(v);
+  if (!m) return null;
+  const [y, mo, d, h, mi] = m.slice(1).map(Number) as [number, number, number, number, number];
+  return new Date(y, mo - 1, d, h, mi).getTime() / 1000;
+}
+
+/** True when this computer's clock at `ts` is not in Monita's time zone. */
+export function clockDiffers(ts: number, off: number = offsetMin): boolean {
+  return -new Date(ts * 1000).getTimezoneOffset() !== off;
 }
 
 /**
- * One line under a window's start and end: when it starts and how long it lasts, so a time typed
- * in the wrong zone shows before it is saved. When this computer's zone is not Monita's, it says
- * so too.
+ * One line under a window's start and end, typed on this computer's clock: when it starts and how
+ * long it lasts, and, when Monita's time zone differs, how Monita will show it (`shownAs`).
  */
-export function windowHint(starts: number | null, ends: number | null, now: number, off: number, browser: number): string {
-  let when = "";
-  if (starts !== null && ends !== null && ends > starts) {
-    const minutes = (secs: number): number => Math.round(secs / 60) * 60;
-    const start = starts <= now + 60 ? "It starts now" : `It starts in ${duration(minutes(starts - now))}`;
-    when = `${start} and lasts ${duration(minutes(ends - Math.max(starts, now)))}.`;
-  }
-  if (browser === off) return when;
-  const gap = Math.abs(browser - off);
-  const ahead = `${duration(gap * 60).replace(" 0m", "")} ${browser > off ? "behind" : "ahead of"} your computer`;
-  return `${when} Times here are in ${zone(off)}, Monita's time zone, which is ${ahead}.`.trim();
+export function windowHint(starts: number | null, ends: number | null, now: number, shownAs: string | null): string {
+  if (starts === null || ends === null || ends <= starts) return "";
+  const minutes = (secs: number): number => Math.round(secs / 60) * 60;
+  const start = starts <= now + 60 ? "It starts now" : `It starts in ${duration(minutes(starts - now))}`;
+  const when = `${start} and lasts ${duration(minutes(ends - Math.max(starts, now)))}.`;
+  return shownAs ? `${when} Monita shows it as ${shownAs}.` : when;
 }

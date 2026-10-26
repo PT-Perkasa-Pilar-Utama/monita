@@ -22,7 +22,7 @@ import { api, ApiError, dropField, errorText } from "@/lib/api";
 import { useProject } from "@/lib/project";
 import { Writable } from "@/lib/session";
 import { between } from "@/lib/status";
-import { browserOffset, fromInputValue, inputValue, nowSecs, offset, windowHint, zone } from "@/lib/time";
+import { clockDiffers, fromLocalInputValue, localInputValue, nowSecs, windowHint } from "@/lib/time";
 import type { IncidentItem, MaintenancePage, MaintenanceWindow, WindowState } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 import { ItemPicker } from "@/pages/project/IncidentForm";
@@ -58,13 +58,14 @@ function WindowAction({ w, base, onDone }: { w: MaintenanceWindow; base: string;
   );
 }
 
-/** Plan a window: a title, a start and an end in the admin's time zone, the items, and a note for visitors. */
+/** Plan a window: a title, a start and an end on the user's own clock, the items, and a note for visitors. */
 function WindowForm({ base, onClose, onSaved }: { base: string; onClose: () => void; onSaved: () => void }): ReactElement {
   const { project: p } = useProject();
   const choices = useApi<IncidentItem[]>(`/projects/${p.slug}/incident-items`);
   const [title, setTitle] = useState("");
-  const [starts, setStarts] = useState(() => inputValue(nowSecs()));
-  const [ends, setEnds] = useState(() => inputValue(nowSecs() + 3600));
+  // People type times on their own clock; the hint says how Monita's time zone shows them.
+  const [starts, setStarts] = useState(() => localInputValue(nowSecs()));
+  const [ends, setEnds] = useState(() => localInputValue(nowSecs() + 3600));
   // "Plan maintenance" on a monitor or heartbeat opens the form with it picked: ?item=monitor:3.
   const [params] = useSearchParams();
   const [items, setItems] = useState<string[]>(() => params.getAll("item"));
@@ -78,7 +79,7 @@ function WindowForm({ base, onClose, onSaved }: { base: string; onClose: () => v
     setBusy(true);
     setError(null);
     try {
-      await api(base, "POST", { title, message, starts_at: fromInputValue(starts), ends_at: fromInputValue(ends), items });
+      await api(base, "POST", { title, message, starts_at: fromLocalInputValue(starts), ends_at: fromLocalInputValue(ends), items });
       toast.success("Maintenance planned.");
       onSaved();
     } catch (e) {
@@ -88,7 +89,8 @@ function WindowForm({ base, onClose, onSaved }: { base: string; onClose: () => v
     }
   };
   const formError = error && Object.keys(error.fields).length === 0 ? error.message : undefined;
-  const hint = windowHint(fromInputValue(starts), fromInputValue(ends), nowSecs(), offset(), browserOffset());
+  const [from, to] = [fromLocalInputValue(starts), fromLocalInputValue(ends)];
+  const hint = windowHint(from, to, nowSecs(), from !== null && to !== null && clockDiffers(from) ? between(from, to) : null);
 
   return (
     <FormSheetBody
@@ -128,7 +130,7 @@ function WindowForm({ base, onClose, onSaved }: { base: string; onClose: () => v
           <div className="grid gap-5 sm:grid-cols-2">
             <Field data-invalid={err("starts_at") ? true : undefined}>
               <FieldLabel htmlFor="w-starts" required>
-                Starts, {zone()}
+                Starts
               </FieldLabel>
               <Input id="w-starts" type="datetime-local" aria-required aria-invalid={err("starts_at") ? true : undefined} value={starts} onChange={(e) => {
                 setStarts(e.target.value);
@@ -138,7 +140,7 @@ function WindowForm({ base, onClose, onSaved }: { base: string; onClose: () => v
             </Field>
             <Field data-invalid={err("ends_at") ? true : undefined}>
               <FieldLabel htmlFor="w-ends" required>
-                Ends, {zone()}
+                Ends
               </FieldLabel>
               <Input id="w-ends" type="datetime-local" aria-required aria-invalid={err("ends_at") ? true : undefined} value={ends} onChange={(e) => {
                 setEnds(e.target.value);
