@@ -1,3 +1,4 @@
+import { DOCS } from "@/components/layout/TopBar";
 import type { ReactElement, ReactNode } from "react";
 import { CodeCopy } from "@/components/app/CopyField";
 import { EndpointRows } from "@/components/app/CustomStatusSection";
@@ -63,7 +64,14 @@ export function ApiKeysGuide(): ReactElement {
             />
             <CodeCopy id="key-env" title="Keep it in your server's environment" code={"MONITA_API_KEY=mk_…"} />
           </Part>
-          <Part title="Endpoints">
+          <Part title="The ticket flow">
+            <p className="text-muted-foreground">
+              Only <strong className="font-medium text-foreground">Issue a ref ID</strong> takes the key, while the other two calls take the ref ID your server issued, and the{" "}
+              <a href={`${DOCS}api/`} target="_blank" rel="noreferrer" className="text-link underline-offset-2 hover:underline">
+                Public API
+              </a>{" "}
+              page lists every endpoint Monita has.
+            </p>
             <Tabs defaultValue={FLOW[0]} className="gap-4">
               <TabsList className="flex-wrap">
                 {docs.map((d) => (
