@@ -11,7 +11,7 @@ use crate::checks::CheckResult;
 use crate::platform::now;
 
 /// The check's error when the system refuses the socket and has no `ping` to run. It names the fix.
-pub const REFUSED: &str = "This server does not allow ping. Set the sysctl net.ipv4.ping_group_range to \"0 2147483647\", or use a TCP check.";
+pub const REFUSED: &str = "This server does not allow ping, so set the sysctl net.ipv4.ping_group_range to \"0 2147483647\" or use a TCP check.";
 
 // ponytail: one echo per check; send 3 and pass on the first reply if single-packet loss proves noisy.
 pub async fn probe_ping(host: &str, timeout_ms: i64) -> CheckResult {

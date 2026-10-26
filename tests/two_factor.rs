@@ -451,7 +451,7 @@ async fn a_waiting_key_expires_and_retention_clears_it() {
     assert_eq!(res.status(), 422);
     assert_eq!(
         json_of(res).await["error"]["message"],
-        "This key expired or was replaced. Select Turn on to get a new one."
+        "This key expired or was replaced, so select Turn on to get a new one."
     );
 
     app.state

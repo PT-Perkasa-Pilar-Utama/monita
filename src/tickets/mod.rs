@@ -56,7 +56,7 @@ pub enum TicketError {
     Invalid(Vec<(&'static str, &'static str)>),
     #[error("This ref ID is unknown, revoked or already used.")]
     RefIdInvalid,
-    #[error("The daily ticket limit is reached. Try again tomorrow.")]
+    #[error("The daily ticket limit is reached, so try again tomorrow.")]
     DailyCap,
     #[error("Pick a close reason.")]
     NeedReason,

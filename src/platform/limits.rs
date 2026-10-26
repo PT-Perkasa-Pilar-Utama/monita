@@ -36,13 +36,13 @@ const META: &[(&str, &str, &str, i64)] = &[
     (
         "check_concurrency",
         "Monitoring",
-        "How many checks Monita runs at once. When every slot is busy, the next check waits a moment. Raise it if you have many monitors and their checks run late.",
+        "How many checks Monita runs at once. When every slot is busy the next check waits a moment, so raise it if you have many monitors and their checks run late.",
         50,
     ),
     (
         "rl_ip_per_min",
         "Visitors and apps",
-        "How often one visitor can open a status page, send a bug report or try to sign in, each minute. This stops one person or bot from flooding Monita.",
+        "How often one visitor can open a status page, send a bug report or try to sign in each minute, which stops one person or bot from flooding Monita.",
         60,
     ),
     (
@@ -54,13 +54,13 @@ const META: &[(&str, &str, &str, i64)] = &[
     (
         "rl_ping_per_s",
         "Visitors and apps",
-        "How often one heartbeat can ping Monita, each second. Extra pings in the same second are turned away; the first one still keeps the heartbeat alive.",
+        "How often one heartbeat can ping Monita each second. Extra pings in the same second are turned away, but the first one still keeps the heartbeat alive.",
         1,
     ),
     (
         "tickets_per_ref_per_day",
         "Bug reports",
-        "How many bug reports one user can send each day. Monita knows the user by their ref ID.",
+        "How many bug reports one user can send each day, counted by their ref ID.",
         5,
     ),
     (

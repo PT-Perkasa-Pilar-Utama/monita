@@ -137,7 +137,7 @@ impl IntoResponse for UiError {
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "internal",
-                    "The error is in the server log. Try again in a moment.".to_string(),
+                    "Try again in a moment, and if it keeps failing, the error is in the server log.".to_string(),
                     BTreeMap::new(),
                 )
             }

@@ -176,7 +176,7 @@ impl MonitorInput {
             Some(b) if !matches!(self.method(), "POST" | "PUT") && !b.is_empty() => {
                 e.insert(
                     "body",
-                    "Only POST and PUT send a body. Pick one, or clear the body.",
+                    "Only POST and PUT send a body, so pick one of them or clear the body.",
                 );
             }
             Some(b) if b.len() > 65_536 => {
@@ -191,7 +191,7 @@ impl MonitorInput {
             } else if !url.to_ascii_lowercase().starts_with("https://") {
                 e.insert(
                     "cert_warn_days",
-                    "Only an https:// URL has a certificate to watch. Turn the warning off.",
+                    "Only an https:// URL has a certificate to watch, so turn the warning off.",
                 );
             }
         }
@@ -258,7 +258,7 @@ impl MonitorInput {
         if kind == "header" && probe::parse_headers(&format!("{header}: x")).is_err() {
             e.insert(
                 "auth_header",
-                "Enter one header name, such as X-Api-Key. Host and Content-Length are not allowed.",
+                "Enter one header name such as X-Api-Key, other than Host or Content-Length.",
             );
         }
         let sent = if kind == "header" {
@@ -273,7 +273,7 @@ impl MonitorInput {
         if twice {
             e.insert(
                 "headers",
-                "Remove the header that Authentication sends. Its value goes in a secret.",
+                "Remove the header that Authentication sends, because its value goes in a secret.",
             );
         }
     }

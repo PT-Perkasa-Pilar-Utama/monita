@@ -20,7 +20,7 @@ pub enum SettingsError {
     WrongPassword,
     #[error("Use at least 8 characters.")]
     TooShort,
-    #[error("Too many tries. Wait {0} seconds, then try again.")]
+    #[error("Too many tries, so wait {0} seconds and try again.")]
     TooMany(i64),
     #[error("{0}")]
     BadPicture(&'static str),

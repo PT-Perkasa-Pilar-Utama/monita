@@ -29,11 +29,11 @@ pub enum SecretError {
     #[error("Enter a value of up to 4 KB.")]
     BadValue,
     #[error(
-        "A project holds {} secrets at most. Delete one first.",
+        "A project holds {} secrets at most, so delete one first.",
         caps::SECRETS_PER_PROJECT
     )]
     Full,
-    #[error("{0} use it. Change them first.")]
+    #[error("{0} use it, so change them first.")]
     InUse(String),
     #[error("This secret does not exist.")]
     NotFound,

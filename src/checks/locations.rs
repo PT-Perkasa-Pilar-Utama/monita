@@ -18,7 +18,7 @@ pub enum LocationError {
     #[error("A location already has this name.")]
     Taken,
     #[error(
-        "Monita takes {} locations at most. Delete one first.",
+        "Monita takes {} locations at most, so delete one first.",
         caps::LOCATIONS
     )]
     Full,

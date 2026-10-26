@@ -27,7 +27,7 @@ Collection:
 Error:
 
 ```json
-{ "error": { "code": "rate_limited", "message": "Too many requests. Retry in 12 s." } }
+{ "error": { "code": "rate_limited", "message": "Too many requests, so retry in 12 s." } }
 ```
 
 `/ping` returns plain text `OK` instead, so `curl` and cron logs stay readable.
@@ -74,7 +74,7 @@ A list that can grow is capped or paged. Each endpoint states which.
 | `ref_id_invalid` | 422 | Unknown, revoked or used-up ref ID |
 | `rate_limited` | 429 | Over a rate limit (SEC-12) |
 | `daily_cap_reached` | 429 | Over a ticket cap (SEC-13) |
-| `internal` | 500 | Unexpected failure. The cause is logged. The body says only "Unexpected failure." on `/api/v1/`, and "The error is in the server log. Try again in a moment." on `/api/ui/`. |
+| `internal` | 500 | Unexpected failure. The cause is logged. The body says only "Unexpected failure." on `/api/v1/`, and "Try again in a moment, and if it keeps failing, the error is in the server log." on `/api/ui/`. |
 
 ## 1.6 Rate-limit headers
 

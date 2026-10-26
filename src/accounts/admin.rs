@@ -12,7 +12,7 @@ pub enum AdminError {
     Yourself,
     #[error("No such user, or the change does not apply to them.")]
     NotFound,
-    #[error("This person owns projects. Give their projects to another owner first.")]
+    #[error("This person owns projects, so give their projects to another owner first.")]
     OwnsProjects,
     #[error("Your account is no longer an active super admin.")]
     NotSuperAdmin,

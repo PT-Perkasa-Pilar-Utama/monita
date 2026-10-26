@@ -155,7 +155,7 @@ Alerts can post JSON to a chat or any URL you set. The bodies and their `event` 
 Every error has the same shape, with its HTTP status:
 
 ```json
-{ "error": { "code": "rate_limited", "message": "Too many requests. Retry in 12 s." } }
+{ "error": { "code": "rate_limited", "message": "Too many requests, so retry in 12 s." } }
 ```
 
 | Limit | Default |

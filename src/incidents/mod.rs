@@ -268,7 +268,7 @@ pub enum UpdateError {
     #[error("An incident takes {} updates at most.", caps::UPDATES_PER_INCIDENT)]
     TooManyUpdates,
     #[error(
-        "{} manual incidents are open, the limit. Resolve one first.",
+        "{} manual incidents are open, which is the limit, so resolve one first.",
         caps::OPEN_MANUAL_PER_PROJECT
     )]
     TooManyOpen,

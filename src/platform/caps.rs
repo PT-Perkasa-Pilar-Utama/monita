@@ -9,8 +9,10 @@ pub const PROJECTS_PAGE: i64 = 20;
 pub const USERS: i64 = 500;
 pub const MONITORS_PER_PROJECT: i64 = 100;
 pub const HEARTBEATS_PER_PROJECT: i64 = 100;
-pub const MONITORS_FULL: &str = "This project has 100 monitors, its limit. Delete one first.";
-pub const HEARTBEATS_FULL: &str = "This project has 100 heartbeats, its limit. Delete one first.";
+pub const MONITORS_FULL: &str =
+    "This project has 100 monitors, which is the limit, so delete one first.";
+pub const HEARTBEATS_FULL: &str =
+    "This project has 100 heartbeats, which is the limit, so delete one first.";
 /// Monitors and heartbeats together: what an incident can name.
 pub const SOURCES_PER_PROJECT: i64 = MONITORS_PER_PROJECT + HEARTBEATS_PER_PROJECT;
 /// Live API keys per project. Settings also shows the newest revoked ones, up to this many.

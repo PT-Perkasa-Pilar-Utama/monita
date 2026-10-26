@@ -20,15 +20,15 @@ const CALL_TIMEOUT: Duration = Duration::from_secs(10);
 
 #[derive(Debug, thiserror::Error)]
 pub enum TelegramError {
-    #[error("Telegram refused this token. Copy it again from @BotFather.")]
+    #[error("Telegram refused this token, so copy it again from @BotFather.")]
     BadToken,
     #[error(
-        "This bot sends its messages to a webhook, so Monita cannot read them. Use a bot for Monita alone."
+        "This bot sends its messages to a webhook, so Monita cannot read them and needs a bot of its own."
     )]
     WebhookSet,
     #[error("Ask a super admin to set the global Telegram bot first.")]
     NoBot,
-    #[error("Monita could not reach Telegram. Try again.")]
+    #[error("Monita could not reach Telegram, so try again.")]
     Unreachable,
     #[error(transparent)]
     Other(#[from] anyhow::Error),

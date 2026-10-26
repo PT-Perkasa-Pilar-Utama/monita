@@ -69,7 +69,7 @@ pub async fn handler(
             api_error(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "internal",
-                "Reset failed. See the server log.",
+                "Reset failed, and the server log says why.",
             )
         }
     }

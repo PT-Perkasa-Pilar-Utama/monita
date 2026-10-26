@@ -232,7 +232,7 @@ pub async fn update_monitor(
 
 /// The error of a check whose secret is gone. It names no value.
 pub const SECRET_GONE: &str =
-    "The secret this monitor signs in with was deleted. Pick one in Edit.";
+    "The secret this monitor signs in with was deleted, so pick another one in Edit.";
 
 /// Probes one claimed monitor, with its secret's value when it signs in. `Err` only when the
 /// secret could not be read: the check is skipped then, not failed.

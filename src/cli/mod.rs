@@ -201,7 +201,7 @@ pub async fn run(cli: Cli) -> anyhow::Result<()> {
             offline(&config, async |db| {
                 let link = crate::accounts::reset_sign_in_by_email(db, &base_url, &email).await?;
                 println!("Two-factor is off for {email} and the old password no longer works.");
-                println!("An email with this link goes out when Monita runs. It works once, for 72 hours:");
+                println!("An email with this link goes out when Monita runs, and the link works once, for 72 hours:");
                 println!("{link}");
                 Ok(())
             })

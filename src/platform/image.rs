@@ -29,7 +29,7 @@ pub fn parse(field: &str) -> Result<Option<Image>, &'static str> {
     }
     let data = STANDARD
         .decode(b64)
-        .map_err(|_| "The picture did not arrive whole. Pick it again.")?;
+        .map_err(|_| "The picture did not arrive whole, so pick it again.")?;
     if data.len() > MAX_BYTES {
         return Err("The picture must be 32 KB or less.");
     }

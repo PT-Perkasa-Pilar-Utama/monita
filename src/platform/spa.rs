@@ -55,7 +55,7 @@ pub async fn fallback(method: Method, uri: Uri) -> Response {
             .into_response(),
         None => (
             StatusCode::SERVICE_UNAVAILABLE,
-            "The web frontend is not built. Run `make web`, then build Monita again.",
+            "The web frontend is not built, so run `make web` and build Monita again.",
         )
             .into_response(),
     }

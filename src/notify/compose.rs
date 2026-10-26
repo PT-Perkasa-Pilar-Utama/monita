@@ -150,7 +150,7 @@ pub(super) fn compose(
                         "severity": severity, "cause": cause, "source_url": url, "at": now(),
                     }),
                     text: format!(
-                        "{text}\n\nNo incident was opened. Report one if users should know.\n{url}\n"
+                        "{text}\n\nNo incident was opened, so report one if users should know.\n{url}\n"
                     ),
                 },
             )

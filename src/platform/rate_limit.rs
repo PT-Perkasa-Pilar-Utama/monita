@@ -108,7 +108,7 @@ pub fn too_many(path: &str, retry_after: i64) -> axum::response::Response {
         response::IntoResponse,
     };
     let retry = [(header::RETRY_AFTER, retry_after.to_string())];
-    let message = format!("Too many requests. Retry in {retry_after} s.");
+    let message = format!("Too many requests, so retry in {retry_after} s.");
     if path.starts_with("/api/") {
         let mut res = super::api_error(StatusCode::TOO_MANY_REQUESTS, "rate_limited", &message);
         if path.starts_with("/api/v1/public/") || path.starts_with("/api/v1/tickets") {

@@ -36,18 +36,20 @@ const ISSUER: &str = "Monita";
 
 #[derive(Debug, thiserror::Error)]
 pub enum TwoFactorError {
-    #[error("Wrong code. Use the code your authenticator app shows now, or a recovery code.")]
+    #[error(
+        "That code is wrong, so enter the one your authenticator app shows now or a recovery code."
+    )]
     WrongCode,
     #[error("Two-factor sign-in is already on.")]
     AlreadyOn,
     #[error("Two-factor sign-in is off.")]
     NotOn,
-    #[error("This key expired or was replaced. Select Turn on to get a new one.")]
+    #[error("This key expired or was replaced, so select Turn on to get a new one.")]
     NotPending,
-    #[error("This sign-in has expired. Sign in again.")]
+    #[error("This sign-in has expired, so sign in again.")]
     ChallengeGone,
     /// Seconds until the account's wrong-code budget resets.
-    #[error("Too many wrong codes for this account. Wait {} minutes and try again.", (.0 + 59) / 60)]
+    #[error("Too many wrong codes for this account, so wait {} minutes and try again.", (.0 + 59) / 60)]
     TooMany(i64),
     #[error(transparent)]
     Other(#[from] anyhow::Error),

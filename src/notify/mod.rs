@@ -85,12 +85,12 @@ pub enum AlertError {
     NoLevel,
     #[error("Pick new tickets, ticket moves or both.")]
     NoEvent,
-    #[error("PagerDuty takes incidents only. Pick another kind for tickets.")]
+    #[error("PagerDuty takes incidents only, so pick another kind for tickets.")]
     TicketPagerDuty,
-    #[error("The owner's email cards stay as they are. Turn them on or off.")]
+    #[error("The owner's email cards stay as they are, and you can only turn them on or off.")]
     Fixed,
     #[error(
-        "This section has {} cards, its limit. Delete one first.",
+        "This section has {} cards, which is the limit, so delete one first.",
         crate::platform::caps::ALERT_CARDS
     )]
     Full,

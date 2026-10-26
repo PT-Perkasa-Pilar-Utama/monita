@@ -295,7 +295,7 @@ pub async fn create_key(db: &Db, project_id: i64, name: &str) -> Result<String, 
     db.write(async |c| {
         if store::count_live_keys(c, project_id).await? >= caps::KEYS_PER_PROJECT {
             return Ok(Err(ProjectError::Full(format!(
-                "A project holds {} live keys at most. Revoke one first.",
+                "A project holds {} live keys at most, so revoke one first.",
                 caps::KEYS_PER_PROJECT
             ))));
         }

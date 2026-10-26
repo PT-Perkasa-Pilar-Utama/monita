@@ -61,11 +61,11 @@ pub enum MaintenanceError {
     #[error("{}", .0.first().map_or("Fix the fields marked below.", |f| f.1))]
     Invalid(Vec<(&'static str, &'static str)>),
     #[error(
-        "{} windows are scheduled or active, the limit. Delete or end one first.",
+        "{} windows are scheduled or active, which is the limit, so delete or end one first.",
         caps::OPEN_WINDOWS_PER_PROJECT
     )]
     Full,
-    #[error("This window has started. End it instead.")]
+    #[error("This window has started, so end it instead.")]
     Started,
     #[error("Only an active window can end now.")]
     NotActive,

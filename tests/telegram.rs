@@ -93,7 +93,7 @@ async fn a_super_admin_sets_the_bot_and_nobody_reads_its_token() {
     assert_eq!(bad.status(), 422);
     assert_eq!(
         json_of(bad).await["error"]["fields"]["token"],
-        "Telegram refused this token. Copy it again from @BotFather."
+        "Telegram refused this token, so copy it again from @BotFather."
     );
     let refused = set_token(&app, &admin, "999:ABCdefGHIjklMNOpqrSTUvwxYZ_0123456").await;
     assert_eq!(

@@ -76,7 +76,7 @@ pub async fn run(server: &str, token: &str, concurrency: u16) -> anyhow::Result<
         let jobs = match fetch(&api, &server, &auth, free).await {
             Ok(jobs) => jobs,
             Err(Fetch::Refused) => bail!(
-                "The server refused the token. The location was deleted, or the token is wrong."
+                "The server refused the token, because the location was deleted or the token is wrong."
             ),
             Err(Fetch::Other(e)) => {
                 tracing::warn!(error = %e, "could not reach the server; trying again in 5 s");
@@ -176,7 +176,7 @@ async fn post_finished(
         match sent {
             Ok(r) if r.status() == reqwest::StatusCode::UNAUTHORIZED => {
                 bail!(
-                    "The server refused the token. The location was deleted, or the token is wrong."
+                    "The server refused the token, because the location was deleted or the token is wrong."
                 )
             }
             Ok(r) if r.status().is_success() => {}
