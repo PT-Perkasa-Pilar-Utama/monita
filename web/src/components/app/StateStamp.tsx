@@ -6,15 +6,15 @@ import { cn } from "@/lib/utils";
 
 /** Barrier stripes for a list row that is paused or in maintenance; nothing for any other state. */
 export function rowTape(state: string): CSSProperties | undefined {
-  if (state === "paused") return tape("--muted-foreground", 10);
-  if (state === "maintenance") return tape("--issue", 14);
+  if (state === "paused") return tape("--muted-foreground", 10, "--row-tape-boost");
+  if (state === "maintenance") return tape("--issue", 14, "--row-tape-boost");
   return undefined;
 }
 
-/** Diagonal stripes like barrier tape, in a state's own token. */
-export function tape(token: string, strength = 22): CSSProperties {
+/** Diagonal stripes like barrier tape, in a state's own token. The boost token makes them stronger in dark mode. */
+export function tape(token: string, strength = 22, boost = "--tape-boost"): CSSProperties {
   return {
-    backgroundImage: `repeating-linear-gradient(-45deg, color-mix(in oklab, var(${token}) ${strength}%, transparent) 0 10px, transparent 10px 20px)`,
+    backgroundImage: `repeating-linear-gradient(-45deg, color-mix(in oklab, var(${token}) min(100%, calc(${strength}% * var(${boost}))), transparent) 0 10px, transparent 10px 20px)`,
   };
 }
 

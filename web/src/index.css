@@ -107,6 +107,10 @@
   --series-5: #8a5a2b;
   --series-6: #6b7a1f;
   /* Moni looks the same in both themes, so these are set once here and not under .dark. */
+  /* Barrier tape (StateStamp.tsx): a tint that reads on white turns murky on the dark page, so dark mode scales it,
+     the stamp's thin bars much more than a row, whose text sits on the stripes. */
+  --tape-boost: 1;
+  --row-tape-boost: 1;
   --mascot-body: #fbe4f2;
   --mascot-line: #c4258f;
   --mascot-ink: #1e1a1d;
@@ -135,6 +139,8 @@
   --destructive: #eb5757;
   --destructive-foreground: #ffffff;
   /* Raised fills for dark mode: dark enough at the middle for 4.5:1 with white text. */
+  --tape-boost: 3.4;
+  --row-tape-boost: 1.8;
   --primary-raised: linear-gradient(to bottom, #d63fa3, #b5207f);
   --destructive-raised: linear-gradient(to bottom, #d64848, #b02c2c);
   --border: color-mix(in srgb, #f7f8f8 9%, transparent);

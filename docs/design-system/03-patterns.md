@@ -193,7 +193,7 @@ Barrier tape marks a source that Monita is not watching as usual. The tape colou
 | Held failures | Grey stripes in the chart, `--neutral-strong` at 25% | The hover title "Maintenance: {title}, {duration}" | `ChartSvg`, over the window's span. |
 | Reclassified incident | Grey, `--neutral-strong` | "Planned work" or "False alarm" | `ClassNotice` above the thread. Lists show the same words in an outline `Badge` under the title. |
 
-- `tape(token, strength)` in `app/StateStamp.tsx` returns the stripes: a repeating 45 degree gradient, 10 px of colour and 10 px of gap, mixed from the token. `rowTape(state)` picks the token for a list row (strength 10 for paused, 14 for maintenance).
+- `tape(token, strength)` in `app/StateStamp.tsx` returns the stripes: a repeating 45 degree gradient, 10 px of colour and 10 px of gap, mixed from the token. `rowTape(state)` picks the token for a list row (strength 10 for paused, 14 for maintenance). Dark mode multiplies the strength: `--tape-boost` (3.4) for the stamp's bars and `--row-tape-boost` (1.8) for a row, whose text sits on the stripes. A tint that reads on white turns murky on the dark page.
 - `StateStamp` sits under the page title as a bordered card with `role="status"`. It has a stripe bar of 10 px at the top and at the bottom, the word in a bold, uppercase, spaced box with a 2 px border in the tape colour, and one sentence of what it means. A maintenance stamp adds a "See the window" link to the Maintenance tab and says when the window ends.
 - Yellow is also the colour of Issue. The word tells them apart: Issue is a state badge, and maintenance is always "In maintenance" or "Maintenance" on tape.
 - Rows keep their text colours. The stripes are a background only, so the text keeps its contrast.
