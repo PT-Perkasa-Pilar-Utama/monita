@@ -16,6 +16,10 @@ pub(super) fn columns(
         .map(|i| {
             let (x, bw) = slot(w, i);
             let start = w.from + i as i64 * w.step;
+            // A monitor can be down with no check in a slot, when Monita itself was not
+            // checking; the readout says so instead of a bare "no check" under the red band.
+            let down_here =
+                |m: &MonitorSeries| m.down.iter().any(|&(s, e)| s < start + w.step && e > start);
             let mut rows = Vec::new();
             for m in shown {
                 let b = m.buckets.iter().find(|b| b.index == i);
@@ -26,6 +30,7 @@ pub(super) fn columns(
                     Some(Bucket {
                         avg_ms: Some(v), ..
                     }) => (format!("{v} ms"), "ok"),
+                    _ if down_here(m) => ("down, no check".to_string(), "fail"),
                     _ => ("no check".to_string(), "none"),
                 };
                 rows.push((m.name.clone(), text, tone));
@@ -44,6 +49,14 @@ pub(super) fn columns(
                     format!("{} other monitors", others.len()),
                     format!("{lo} to {hi} ms"),
                     "ok",
+                ));
+            }
+            let down = others.iter().filter(|m| down_here(m)).count();
+            if down > 0 {
+                rows.push((
+                    format!("{down} of {} other monitors", others.len()),
+                    "down".to_string(),
+                    "fail",
                 ));
             }
             for l in lanes {

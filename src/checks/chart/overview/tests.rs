@@ -153,3 +153,34 @@ fn a_series_with_no_check_gives_its_line_to_one_that_has_data_unless_it_is_down(
     let ids: Vec<i64> = c.lines.iter().map(|l| l.id).collect();
     assert_eq!(ids, [2, 3, 1]);
 }
+
+#[test]
+fn a_down_monitor_with_no_check_reads_down_and_the_rest_count_their_down_ones() {
+    let w = window();
+    let monitors: Vec<MonitorSeries> = (1..=7)
+        .map(|id| {
+            let mut m = monitor(id, if id <= 6 { "down" } else { "up" }, 10, None);
+            if id <= 6 {
+                m.buckets.retain(|b| b.index < 40);
+                m.down = vec![(w.from + 40 * w.step, NOW)];
+            }
+            m
+        })
+        .collect();
+    let c = overview(&w, monitors, Vec::new());
+    let rows = &c.columns[50].rows;
+    assert!(
+        rows[..5]
+            .iter()
+            .all(|r| r.1 == "down, no check" && r.2 == "fail")
+    );
+    assert!(rows.contains(&(
+        "1 of 2 other monitors".to_string(),
+        "down".to_string(),
+        "fail"
+    )));
+    assert_eq!(
+        c.columns[10].rows[0].1, "10 ms",
+        "before the incident the check reads as usual"
+    );
+}
