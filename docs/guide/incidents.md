@@ -79,7 +79,7 @@ Each choice opens a dialog that says what changes. After you confirm:
 - The incident leaves uptime, the availability figures, the charts and the status page, with its history.
 - The team still sees the incident. Its page shows the class and who marked it. The lists show a **Planned work** or **False alarm** tag.
 - **Count it again** does not reopen the incident. It stays closed and counts in the numbers again.
-- A day that Monita already summarized keeps the downtime it stored.
+- Past days change too, because Monita works out downtime from the incidents each time a page loads.
 
 A supervisor sees the class and cannot change it. A `write` API key can reclassify too. See [API](api.md).
 

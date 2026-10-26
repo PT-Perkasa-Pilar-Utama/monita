@@ -17,7 +17,7 @@ The React pages under `/projects/{slug}/incidents` call these routes (convention
 
 ### 5.1a Reclassify an incident (v1.1 Q46)
 
-A tech lead marks an incident as `planned` (maintenance, or a pause that came too late) or as `false_alarm` (the check was wrong). A marked incident leaves availability, the charts and the public status page. The daily summary of a day already summarized keeps its stored downtime. The team still sees it, with the class, who set it and when. `counted` is the normal class. A project API key with the `write` scope calls the same route under `/api/v1/projects/{slug}` (3.4), and its name shows as the one who marked it ("API key <name>").
+A tech lead marks an incident as `planned` (maintenance, or a pause that came too late) or as `false_alarm` (the check was wrong). A marked incident leaves availability, the charts and the public status page. Past days change at once: every figure works out downtime from the incidents, not from the daily summary. The team still sees it, with the class, who set it and when. `counted` is the normal class. A project API key with the `write` scope calls the same route under `/api/v1/projects/{slug}` (3.4), and its name shows as the one who marked it ("API key <name>").
 
 | From | To | Rule |
 | --- | --- | --- |

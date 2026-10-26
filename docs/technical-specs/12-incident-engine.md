@@ -114,7 +114,7 @@ An incident has a class. `counted` is the default and is stored as NULL. A tech 
 | planned, false_alarm | the other class | tech lead, or a `write` API key | the incident is in the project | The class, who and when change. |
 | planned, false_alarm | counted | tech lead, or a `write` API key | the incident is in the project | The class clears. The incident stays closed. |
 
-Every figure that counts downtime skips an incident with a class: availability and its periods, the last incident, the down bands and pulse bars on charts, the daily downtime of a new summary, and the public status page and history. The team's lists, pages and counts still show the incident with its class, who set it and when. A day that is already summarized keeps its stored `downtime_s`.
+Every figure that counts downtime skips an incident with a class: availability and its periods, the last incident, the down bands and pulse bars on charts, the daily downtime of a new summary, and the public status page and history. The team's lists, pages and counts still show the incident with its class, who set it and when. A day that is already summarized keeps its stored `downtime_s`, which no page reads: every page works out downtime from the incident spans, so past days change at once.
 
 ## 12.4 Performance targets
 
