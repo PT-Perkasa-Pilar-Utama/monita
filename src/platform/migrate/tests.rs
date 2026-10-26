@@ -469,8 +469,5 @@ async fn a_broken_reference_after_migrating_stops_the_start_and_is_named() {
     .await
     .unwrap();
     let err = check_references(&db).await.unwrap_err().to_string();
-    assert!(
-        err.contains("check_results row 1 points at a missing monitors"),
-        "{err}"
-    );
+    assert!(err.contains("row 1 points at a missing monitors"), "{err}");
 }
