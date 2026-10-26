@@ -33,7 +33,7 @@ Every row was confirmed in the design grill on 2026-10-16.
 | UI | React 19, TypeScript, react-router 7 | One single-page app for every page, signed-in and public. Decision: [react-ui-migration](../decisions/2026-10-17-react-ui-migration.md). |
 | Components | shadcn/ui (new-york, Radix), Phosphor icons, sonner | Copied as source into `web/src/components/ui` and restyled. See [design system](../design-system/). |
 | Styling | Tailwind 4 with the tokens in `web/src/index.css` | No hex values in components. |
-| Build | Bun (`web/build.ts`) | Hashed files under `web/dist/assets/`; `index.html` names them. No dev server in the e2e suite. |
+| Build | Bun (`web/build.ts`) | Two entries: the team app and the public pages, with their shared core in one chunk. Hashed files under `web/dist/assets/`, each also as `.br` and `.gz`; `index.html` and `status.html` name them. No dev server in the e2e suite. |
 | Charts | SVG drawn by React from server geometry (`checks::chart`) | No chart library; no unbounded rows reach the page. |
 
 ## 4.4 Datastore

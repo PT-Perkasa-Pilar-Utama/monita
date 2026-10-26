@@ -30,7 +30,7 @@ Button rules:
 - `danger` opens a `ConfirmDialog` (revoke, delete). `destructive` is the confirm button inside it.
 - `ghost` is for Cancel and quiet actions. `link` is for inline links, such as Clear filters.
 - A busy submit button shows `<Spinner data-icon="inline-start" />` and is disabled.
-- Toasts use `sonner` (`toast.success`, `toast.error`). The `Toaster` mounts in `main.tsx`.
+- Toasts use `sonner` (`toast.success`, `toast.error`). The `Toaster` mounts in `mount.tsx`, which both apps use.
 - Every button shows the pointer. See 1.10.
 
 ## 2.2 Tone badges

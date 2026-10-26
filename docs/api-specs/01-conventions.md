@@ -120,7 +120,7 @@ A GET shows a supervisor the same JSON as anyone else, with these values replace
 
 ## 1.10 The frontend and its API
 
-The pages are a React app in `web/`, embedded in the binary. A GET to any path no route claims returns its `index.html` with `Cache-Control: no-cache`; its hashed files live under `/assets/` with a one-year cache. A path under `/api/`, `/ping/`, `/static/` or `/assets/` that no route claims is a 404, in the envelope under `/api/`. A write to a path no route claims is also a 404, so an unregistered route such as reset-state in prod looks absent (SEC-17).
+The pages are a React app in `web/`, embedded in the binary. A GET to any path no route claims returns its `index.html` (or, under `/status/`, `status.html`, the public pages alone) with `Cache-Control: no-cache`; its hashed files live under `/assets/` with a one-year cache. A path under `/api/`, `/ping/`, `/static/` or `/assets/` that no route claims is a 404, in the envelope under `/api/`. A write to a path no route claims is also a 404, so an unregistered route such as reset-state in prod looks absent (SEC-17).
 
 The app reads and writes through `/api/ui/...`:
 

@@ -1,5 +1,6 @@
 //! The React frontend, built by `make web` into `web/dist` and embedded here. Every page path
-//! that no route claims gets `index.html`; the page's router takes it from there.
+//! that no route claims gets `index.html`, or `status.html` under `/status/`; the page's router
+//! takes it from there.
 
 use axum::{
     extract::Path,
@@ -59,7 +60,13 @@ pub async fn fallback(method: Method, uri: Uri) -> Response {
     if method != Method::GET && method != Method::HEAD {
         return StatusCode::NOT_FOUND.into_response();
     }
-    match Web::get("index.html") {
+    // A status page visitor gets the public app alone, not the team's pages (web/build.ts).
+    let shell = if path.starts_with("/status/") {
+        "status.html"
+    } else {
+        "index.html"
+    };
+    match Web::get(shell) {
         Some(file) => (
             [
                 (header::CONTENT_TYPE, "text/html; charset=utf-8".to_string()),

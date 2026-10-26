@@ -7,7 +7,6 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { AdminLayout } from "@/layouts/AdminLayout";
 import { AppLayout, SignedInLayout } from "@/layouts/AppLayout";
 import { ProjectLayout } from "@/layouts/ProjectLayout";
-import { PublicLayout } from "@/layouts/PublicLayout";
 import { SettingsLayout } from "@/layouts/SettingsLayout";
 import { Alerts } from "@/pages/project/Alerts";
 import { Allowlist } from "@/pages/project/Allowlist";
@@ -25,12 +24,6 @@ import { Monitors } from "@/pages/project/Monitors";
 import { Overview } from "@/pages/project/Overview";
 import { DoneTickets } from "@/pages/project/DoneTickets";
 import { Tickets } from "@/pages/project/Tickets";
-import { History } from "@/pages/public/History";
-import { Incidents as PublicIncidents } from "@/pages/public/Incidents";
-import { Issues } from "@/pages/public/Issues";
-import { PastUptime } from "@/pages/public/PastUptime";
-import { Ticket } from "@/pages/public/Ticket";
-import { Status } from "@/pages/public/Status";
 import { Email } from "@/pages/admin/Email";
 import { Telegram } from "@/pages/admin/Telegram";
 import { RateLimits } from "@/pages/admin/RateLimits";
@@ -42,10 +35,10 @@ import { AllIncidents } from "@/pages/AllIncidents";
 import { AllTickets } from "@/pages/AllTickets";
 import { Invite } from "@/pages/Invite";
 import { Changelog } from "@/pages/project/Changelog";
-import { PublicChangelog } from "@/pages/public/Changelog";
 import { Login } from "@/pages/Login";
 import { NotFound } from "@/pages/NotFound";
 import { Projects } from "@/pages/Projects";
+import { publicRoutes } from "@/PublicRoutes";
 
 /** Every page the binary serves; the server answers any path no route claims with this app. */
 export default function App(): ReactElement {
@@ -105,18 +98,7 @@ export default function App(): ReactElement {
           <Route path="alerts" element={<Navigate to="../settings/alerts" replace />} />
         </Route>
       </Route>
-      <Route path="/status/:slug" element={<PublicLayout />}>
-        <Route index element={<Status />} />
-        <Route path="uptime" element={<PastUptime />} />
-        <Route path="incidents" element={<PublicIncidents />} />
-        <Route path="history" element={<History />} />
-        <Route path="issues" element={<Issues />} />
-        <Route path="ticket" element={<Ticket />} />
-        <Route path="changelog/:version?" element={<PublicChangelog />} />
-        <Route path="tickets" element={<Navigate to="../issues" replace />} />
-        <Route path="report" element={<Navigate to="../ticket" replace />} />
-        <Route path="mine" element={<Navigate to="../ticket" replace />} />
-      </Route>
+      {publicRoutes()}
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

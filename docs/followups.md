@@ -11,6 +11,8 @@ Work skipped during the fast UI round of 2026-10-26 (maintenance and pause). Fix
 | Failures inside a maintenance window count as held (`in_window`, migration 0045) and charts draw the window as stripes | technical-specs 06 and 13, guide `monitors.md`, `heartbeats.md` and `incidents.md`, CHANGELOG, the CLAUDE.md Pause and Maintenance checklist lines |
 | Deleted monitors and heartbeats leave the project list chart and the pulse bars | CHANGELOG |
 | Paused and maintenance stamps, striped rows, the Maintenance tab with Paused now | design-system page recipes, guide screenshots |
-| Who sees it is a card choice under the name in the monitor and heartbeat forms | `e2e/specs/status.spec.ts:15` now picks the "Also the status page" radio, not run yet; guide `monitors.md` and `heartbeats.md` field lists |
+| Who sees it is a card choice under the name in the monitor and heartbeat forms | `e2e/specs/status.spec.ts` passes; guide `monitors.md` and `heartbeats.md` field lists |
 | Maintenance and Changelog guides | guide `changelog.md` still says a new project has the public Changelog tab off, which contradicts decision Q28 |
 | Locations: setup panel, New token, `monita probe install`, long polling | `scripts/smoke-cli.sh` running `probe install` on a real Linux host in CI; `e2e/specs/admin.spec.ts` location test updated but not run; a decision row for the setup flow and long polling |
+| `e2e/specs/tickets.spec.ts:71` fails on the drag to In progress: no "Moved #1 to In progress." toast. It fails on the bundle before the public split too | find the cause and fix the board or the test |
+| Charts read 15-minute slots (migration 0046), JSON goes out as zstd, the bundle as br or gzip, status pages load only the public app | CHANGELOG |
