@@ -1,5 +1,4 @@
-//! Compressed answers. JSON goes out as zstd:
-//! Chrome 123+, Firefox 126+ and Safari 26.3+ ask for it, and older browsers get plain JSON.
+//! Compressed answers. JSON goes out as gzip, which every browser takes, over plain HTTP too.
 //! The web bundle ships precompressed as `.br` and `.gz` (`web/build.ts`), picked by `asset`.
 
 use axum::{
@@ -12,8 +11,8 @@ use axum::{
 
 /// Smaller bodies gain less than the header costs.
 const MIN_BYTES: usize = 1024;
-/// zstd's default level: 259 KB of chart JSON to about 20 KB in about a millisecond.
-const LEVEL: i32 = 3;
+/// gzip's default level: 259 KB of chart JSON to about 34 KB. Level 1 leaves 45 KB.
+const LEVEL: u32 = 6;
 
 /// True when `Accept-Encoding` lists `coding` without `q=0`.
 pub fn accepts(headers: &HeaderMap, coding: &str) -> bool {
@@ -36,19 +35,21 @@ pub fn accepts(headers: &HeaderMap, coding: &str) -> bool {
 }
 
 /// BREACH needs a request another site starts that still carries the session cookie (a
-/// top-level navigation, under `SameSite=Lax`). Every browser that sends zstd also sends
-/// `Sec-Fetch-Site`, so only its own pages get compressed JSON. A client without the header is no
-/// browser and cannot be steered by another site.
+/// top-level navigation, under `SameSite=Lax`). A browser that says where a request comes from
+/// (`Sec-Fetch-Site`) gets compressed JSON only for its own pages. One that does not say (Safari
+/// before 16.4, Chrome before 76) gets it only without a cookie: a script with a key, or a public
+/// page.
 fn same_origin(headers: &HeaderMap) -> bool {
-    headers
-        .get("sec-fetch-site")
-        .is_none_or(|v| v == "same-origin" || v == "none")
+    match headers.get("sec-fetch-site") {
+        Some(v) => v == "same-origin" || v == "none",
+        None => !headers.contains_key(header::COOKIE),
+    }
 }
 
-/// Compresses a JSON answer with zstd when the client asks for it.
+/// Compresses a JSON answer with gzip when the client asks for it.
 pub async fn json(req: Request, next: Next) -> Response {
     let wants = req.method() != Method::HEAD
-        && accepts(req.headers(), "zstd")
+        && accepts(req.headers(), "gzip")
         && same_origin(req.headers());
     let mut res = next.run(req).await;
     let json = res
@@ -78,19 +79,26 @@ pub async fn json(req: Request, next: Next) -> Response {
     if bytes.len() < MIN_BYTES {
         return Response::from_parts(parts, Body::from(bytes));
     }
-    match zstd::bulk::compress(&bytes, LEVEL) {
+    match gzip(&bytes) {
         Ok(z) => {
             parts.headers.remove(header::CONTENT_LENGTH);
             parts
                 .headers
-                .insert(header::CONTENT_ENCODING, HeaderValue::from_static("zstd"));
+                .insert(header::CONTENT_ENCODING, HeaderValue::from_static("gzip"));
             Response::from_parts(parts, Body::from(z))
         }
         Err(e) => {
-            tracing::error!(error = %e, "zstd failed, so the answer goes out plain");
+            tracing::error!(error = %e, "gzip failed, so the answer goes out plain");
             Response::from_parts(parts, Body::from(bytes))
         }
     }
+}
+
+fn gzip(bytes: &[u8]) -> std::io::Result<Vec<u8>> {
+    use std::io::Write;
+    let mut z = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::new(LEVEL));
+    z.write_all(bytes)?;
+    z.finish()
 }
 
 /// The precompressed copy of a web file to send: its file suffix and its `Content-Encoding`.
@@ -123,8 +131,12 @@ mod tests {
     }
 
     #[test]
-    fn only_same_origin_or_non_browser_requests_get_compressed_json() {
+    fn only_same_origin_or_cookieless_requests_get_compressed_json() {
         assert!(same_origin(&HeaderMap::new()));
+        assert!(
+            !same_origin(&h(&[("cookie", "monita_session=x")])),
+            "an old browser with a session"
+        );
         assert!(same_origin(&h(&[("sec-fetch-site", "same-origin")])));
         assert!(!same_origin(&h(&[("sec-fetch-site", "cross-site")])));
         assert!(!same_origin(&h(&[("sec-fetch-site", "same-site")])));

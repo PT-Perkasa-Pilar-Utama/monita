@@ -160,22 +160,27 @@ async fn a_body_over_128_kib_is_refused() {
 }
 
 #[tokio::test]
-async fn json_goes_out_as_zstd_to_its_own_pages_and_plain_to_a_cross_site_request() {
+async fn json_goes_out_as_gzip_to_its_own_pages_and_plain_to_a_cross_site_request() {
     let app = TestApp::spawn("test").await;
     let cookie = app.super_admin("root@example.com").await;
     let get = |site: &'static str| {
         app.http
             .get(app.url("/api/ui/admin/system"))
             .header("cookie", &cookie)
-            .header("accept-encoding", "gzip, br, zstd")
+            .header("accept-encoding", "gzip, deflate")
             .header("sec-fetch-site", site)
             .send()
     };
     let packed = get("same-origin").await.unwrap();
     assert_eq!(packed.status(), 200);
-    assert_eq!(packed.headers()["content-encoding"], "zstd");
+    assert_eq!(packed.headers()["content-encoding"], "gzip");
     assert_eq!(packed.headers()["vary"], "accept-encoding");
-    let body = zstd::decode_all(&packed.bytes().await.unwrap()[..]).unwrap();
+    let mut body = Vec::new();
+    std::io::Read::read_to_end(
+        &mut flate2::read::GzDecoder::new(&packed.bytes().await.unwrap()[..]),
+        &mut body,
+    )
+    .unwrap();
     let plain = get("cross-site").await.unwrap();
     assert!(plain.headers().get("content-encoding").is_none());
     let plain: Value = plain.json().await.unwrap();

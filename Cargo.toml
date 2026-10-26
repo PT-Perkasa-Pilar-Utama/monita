@@ -38,7 +38,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 # SQLite itself, compiled in (`bundled`), so the binary needs no system library.
 rusqlite = { version = "0.41", default-features = false, features = ["bundled", "cache"] }
 # Compresses JSON answers (platform::compress).
-zstd = { version = "0.13", default-features = false }
+flate2 = "1.1"
 
 [dev-dependencies]
 http-body = "1.1"

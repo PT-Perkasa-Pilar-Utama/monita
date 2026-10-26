@@ -6,14 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-### Changed
-
-- Monita reads and writes its database with SQLite itself, through rusqlite, instead of Turso (decision Q47). The file does not change: an existing database opens as it is, and migration 0047 drops Turso's unused counter tables. Answers, rows and speed match the Turso build in the parity kit (`scripts/parity/`). A second Monita process on the same database still stops at open, now through `monita.db.lock` beside it.
-- The charts read 15-minute summaries instead of every check (migration 0046), and JSON and the web bundle go out compressed. On 3 million checks the project list's chart answers in 41 ms instead of 391 ms. Status pages load the public pages alone.
-
 ## [1.1.0] - 2026-10-21
 
-More ways to check, alert and plan: TCP, DNS and ping monitors, certificate warnings, checks from more than one place, Discord, Telegram, ntfy and PagerDuty alerts, maintenance windows, and two-factor sign-in. Migrations 0024 to 0043 run on start; 0029 rebuilds the `monitors` table, and 0039 rebuilds `alert_cards`.
+More ways to check, alert and plan: TCP, DNS and ping monitors, certificate warnings, checks from more than one place, Discord, Telegram, ntfy and PagerDuty alerts, maintenance windows, and two-factor sign-in. Migrations 0024 to 0047 run on start; 0029 rebuilds the `monitors` table, and 0039 rebuilds `alert_cards`.
 
 ### Added
 
@@ -41,6 +36,8 @@ More ways to check, alert and plan: TCP, DNS and ping monitors, certificate warn
 
 ### Changed
 
+- Monita reads and writes its database with SQLite itself, through rusqlite, instead of Turso (decision Q47). The file does not change: an existing database opens as it is, and migration 0047 drops Turso's unused counter tables. Answers, rows and speed match the Turso build in the parity kit (`scripts/parity/`). A second Monita process on the same database still stops at open, now through `monita.db.lock` beside it.
+- The charts read 15-minute summaries instead of every check (migration 0046), and JSON (gzip) and the web bundle (brotli or gzip) go out compressed. On 3 million checks the project list's chart answers in 41 ms instead of 391 ms. Status pages load the public pages alone.
 - Monita no longer limits callers per IP address, so one shared office or carrier address can never lock out everyone behind it. Sign-in takes 10 wrong passwords per account per 15 minutes instead. **Visits per minute from one address** is gone from **Rate limits**. Migration 0043.
 - **Ticket alerts** are alert cards too, in their own section. Every project has three fixed owner cards: the daily digest, each new ticket, and each ticket move. A new project starts with all three off. A project adds up to 10 ticket cards of its own: an email list or a webhook in JSON, Discord, Telegram, the global Telegram bot or ntfy, each listening to new tickets, moves or both. Migrations 0038 and 0039 convert the old settings: the digest keeps its state, and a saved ticket webhook becomes a card.
 - Passwords need 8 characters or more, down from 12.

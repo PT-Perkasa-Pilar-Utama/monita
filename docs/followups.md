@@ -15,8 +15,6 @@ Work skipped during the fast UI round of 2026-10-26 (maintenance and pause). Fix
 | Maintenance and Changelog guides | guide `changelog.md` still says a new project has the public Changelog tab off, which contradicts decision Q28 |
 | Locations: setup panel, New token, `monita probe install`, long polling | `scripts/smoke-cli.sh` running `probe install` on a real Linux host in CI; `e2e/specs/admin.spec.ts` location test updated but not run; a decision row for the setup flow and long polling |
 | `e2e/specs/tickets.spec.ts:71` fails on the drag to In progress: no "Moved #1 to In progress." toast. It fails on the bundle before the public split too | find the cause and fix the board or the test |
-| Charts read 15-minute slots (migration 0046), JSON goes out as zstd, the bundle as br or gzip, status pages load only the public app | CHANGELOG |
-| `cargo deny check` reports 7 advisories (RUSTSEC-2026-0382, 0383, 0385, 0391, 0398, 0403, 0410: `ctutils` under argon2 and sha2, `rustls-webpki` and its root certificates, `zstd`). They were there on the Turso build too | `cargo update` and a gate run; CI's deny job fails until then |
+| `cargo deny check` reports 3 advisories (RUSTSEC-2026-0382, 0383, 0385: `ctutils` under argon2 and sha2, `rustls-webpki`, `webpki-root-certs`). They were there on the Turso build too; the zstd ones left with it | `cargo update` and a gate run; CI's deny job fails until then |
 | SQLite never gives deleted space back, so the file stays at its largest size | `auto_vacuum = INCREMENTAL` (needs one `VACUUM` to switch an existing file) and an `incremental_vacuum` step after the retention sweep |
 | SQLite answers `PRAGMA foreign_key_check`, which Turso did not | run it after each migration in `platform::migrate` and refuse to start on a broken reference |
-| JSON compression keeps zstd, whose reason ("already in the tree through Turso") is gone | the user picks: keep zstd, or `flate2` gzip, which plain-HTTP browsers accept too |
