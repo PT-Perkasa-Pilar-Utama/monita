@@ -6,7 +6,7 @@ Order of choice: a shadcn component in `web/src/components/ui/`, then a Monita c
 
 | Component | File | Variants and rules |
 | --- | --- | --- |
-| Button | `ui/button.tsx` | `variant`: `default` (brand magenta), `secondary`, `outline`, `ghost`, `destructive`, `danger`, `link`. `size`: `default` (36 px), `sm` (32 px), `lg` (44 px), `icon`, `icon-sm`. Flat, with the input's 8 px corner (`rounded-lg`) and a 150 ms color fade. |
+| Button | `ui/button.tsx` | `variant`: `default` (brand magenta), `secondary`, `outline`, `ghost`, `destructive`, `danger`, `link`. `size`: `default` (36 px), `sm` (32 px), `lg` (44 px), `icon`, `icon-sm`. Flat, with the input's 8 px corner (`rounded-lg`) and a 150 ms color fade. In dark mode, `default` and `destructive` are raised: a `--*-raised` gradient, a light top edge, a dark rim and a shadow. |
 | Badge | `ui/badge.tsx` | `variant`: `up`, `down`, `issue`, `unknown`, `neutral`, `destructive`, `outline`, `secondary`, `default`. A tone pill: tinted fill, colored word, no dot, 6 px corner. |
 | Label | `ui/label.tsx` | `required` adds a red asterisk. The control also gets `aria-required`. |
 | Field | `ui/field.tsx` | `FieldGroup`, `Field`, `FieldLabel`, `FieldError`, `FieldSet`, `FieldLegend`, `FieldSeparator`. `Field orientation`: `vertical`, `horizontal`, `responsive`. |

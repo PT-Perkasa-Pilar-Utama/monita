@@ -29,7 +29,8 @@ All tokens live in `web/src/index.css`. Light values sit in `:root`. Dark values
 | `--border` | Every hairline |
 | `--input` | Input borders and the chart axis |
 | `--ring` | Focus ring (brand magenta at 45 %) |
-| `--primary`, `--primary-foreground` | The brand: magenta `#c4258f` light, `#f25cbf` dark |
+| `--primary`, `--primary-foreground` | The brand: magenta `#c4258f` light, `#f25cbf` dark. Text on it is white in both themes. |
+| `--primary-raised`, `--destructive-raised` | Dark mode only. A solid brand or danger fill with text on it (primary and destructive buttons, the default badge, a project's letter badge) uses this darker gradient, because white text on `#f25cbf` has a contrast of only 2.8:1. The middle of each gradient gives white text at least 4.5:1. |
 | `--link` | Link text: `#a61f79` light, `#f25cbf` dark |
 | `--destructive` | Destructive button, required asterisk, field errors |
 | `--code-comment`, `--code-string`, `--code-keyword`, `--code-flag` | Syntax colors in `CodeCopy` snippets (GitHub light and dark). A number uses `--code-flag`. They are not states: never reuse `--up`, `--down` or `--issue` for code. |

@@ -123,7 +123,8 @@
   --popover: #141516;
   --popover-foreground: #f7f8f8;
   --primary: #f25cbf;
-  --primary-foreground: #1a0612;
+  /* White text on the brand and danger fills: they use the darker gradients below, not the bright tokens. */
+  --primary-foreground: #ffffff;
   --link: #f25cbf;
   --secondary: color-mix(in srgb, #0f1011 90%, #f7f8f8);
   --secondary-foreground: #f7f8f8;
@@ -132,7 +133,10 @@
   --accent: color-mix(in srgb, #f7f8f8 6%, transparent);
   --accent-foreground: #f7f8f8;
   --destructive: #eb5757;
-  --destructive-foreground: #1a0606;
+  --destructive-foreground: #ffffff;
+  /* Raised fills for dark mode: dark enough at the middle for 4.5:1 with white text. */
+  --primary-raised: linear-gradient(to bottom, #d63fa3, #b5207f);
+  --destructive-raised: linear-gradient(to bottom, #d64848, #b02c2c);
   --border: color-mix(in srgb, #f7f8f8 9%, transparent);
   --input: color-mix(in srgb, #f7f8f8 14%, transparent);
   --ring: color-mix(in srgb, #f25cbf 45%, transparent);
