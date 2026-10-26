@@ -1,5 +1,8 @@
 import { RefreshButton } from "@/components/app/RefreshButton";
-import { Writable } from "@/lib/session";
+import { BatchBar, DeleteSourcesDialog, SourceRowMenu } from "@/components/app/SourceBatch";
+import { rowTape } from "@/components/app/StateStamp";
+import { Writable, useCanEdit } from "@/lib/session";
+import { useState } from "react";
 import type { ReactElement } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { LinkRow, ROW_LINK } from "@/components/app/LinkRow";
@@ -12,8 +15,9 @@ import { Plus } from "@/components/icons";
 import { PageHeader } from "@/components/layout/Page";
 import { TableEmpty } from "@/components/list/TableEmpty";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { countLabel, keeps } from "@/lib/filter";
 import { useProject } from "@/lib/project";
 import { ago } from "@/lib/time";
@@ -26,6 +30,8 @@ import { useSort } from "@/lib/useSort";
 import { useListFilter } from "@/lib/useListFilter";
 import { HeartbeatGuide } from "@/components/app/Guides";
 import { HeartbeatFormSheet } from "@/pages/project/HeartbeatForm";
+import type { Picked } from "@/lib/sources";
+import { useSelection } from "@/lib/useSelection";
 
 /** A project's heartbeats: one sentence on their state, then a row per job with its deadline. */
 export function Heartbeats({ creating = false }: { creating?: boolean }): ReactElement {
@@ -42,6 +48,11 @@ export function Heartbeats({ creating = false }: { creating?: boolean }): ReactE
     sort,
     { name: (h) => h.name, state: (h) => h.state, deadline: (h) => h.deadline_at, every: (h) => h.period_s, severity: (h) => h.severity, last: (h) => h.last?.at ?? null },
   );
+  const canEdit = useCanEdit();
+  const { selected, toggle, toggleShown, headerBox, clear: clearPicked } = useSelection(rows);
+  const [deleting, setDeleting] = useState<Picked[] | null>(null);
+  const pick = (h: (typeof all)[number]): Picked => ({ id: h.id, name: h.name, state: h.state, paused: h.paused_at !== null });
+  const chosen = all.filter((h) => selected.has(h.id)).map(pick);
   const newButton = (
     <Writable>
       <Button asChild>
@@ -78,24 +89,39 @@ export function Heartbeats({ creating = false }: { creating?: boolean }): ReactE
       ) : (
         <>
           <Overall summary={res.data.summary} />
-          <TableCard title={countLabel(rows.length, all.length, "heartbeat")} onClear={filtered ? clear : undefined} tools={<ListFilters noun="heartbeats" filter={filter} onChange={setFilter} />}>
+          <TableCard
+            title={chosen.length > 0 ? <BatchBar slug={p.slug} kind="heartbeat" picked={chosen} onClear={clearPicked} onDone={res.refresh} onDelete={setDeleting} /> : countLabel(rows.length, all.length, "heartbeat")}
+            onClear={filtered && chosen.length === 0 ? clear : undefined}
+            tools={<ListFilters noun="heartbeats" filter={filter} onChange={setFilter} />}
+          >
             {rows.length === 0 ? (
               <TableEmpty title="" filtered noun="heartbeats" onClear={clear} />
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
+                    {canEdit && (
+                      <TableHead className="w-10">
+                        <Checkbox aria-label="Select every heartbeat shown" checked={headerBox} onCheckedChange={(on) => toggleShown(on === true)} />
+                      </TableHead>
+                    )}
                     <SortHead by="name" label="Heartbeat" sort={sort} onSort={onSort} />
                     <SortHead by="state" label="State" sort={sort} onSort={onSort} />
                     <SortHead by="deadline" label="Next ping due" sort={sort} onSort={onSort} className="max-lg:hidden" />
                     <SortHead by="every" label="Every" sort={sort} onSort={onSort} className="max-md:hidden" />
                     <SortHead by="severity" label="Alert level" sort={sort} onSort={onSort} className="max-md:hidden" />
                     <SortHead by="last" label="Last ping" sort={sort} onSort={onSort} className="text-right max-sm:hidden" />
+                    {canEdit && <TableHead className="w-10" aria-label="Actions" />}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {rows.map((h) => (
-                    <LinkRow key={h.id} to={`${base}/${h.id}`}>
+                    <LinkRow key={h.id} to={`${base}/${h.id}`} className={selected.has(h.id) ? "bg-accent/60" : ""} style={rowTape(h.state)}>
+                      {canEdit && (
+                        <TableCell>
+                          <Checkbox aria-label={`Select ${h.name}`} checked={selected.has(h.id)} onCheckedChange={() => toggle(h.id)} />
+                        </TableCell>
+                      )}
                       <TableCell className="max-w-44 whitespace-normal sm:max-w-80">
                         <Link to={`${base}/${h.id}`} className={ROW_LINK}>
                           {h.name}
@@ -124,6 +150,11 @@ export function Heartbeats({ creating = false }: { creating?: boolean }): ReactE
                           <span className="text-muted-foreground">Never</span>
                         )}
                       </TableCell>
+                      {canEdit && (
+                        <TableCell className="text-right">
+                          <SourceRowMenu slug={p.slug} kind="heartbeat" base={base} item={pick(h)} onDone={res.refresh} onDelete={setDeleting} />
+                        </TableCell>
+                      )}
                     </LinkRow>
                   ))}
                 </TableBody>
@@ -133,6 +164,16 @@ export function Heartbeats({ creating = false }: { creating?: boolean }): ReactE
         </>
       )}
       <HeartbeatFormSheet open={creating} onClose={() => navigate(base)} />
+      <DeleteSourcesDialog
+        slug={p.slug}
+        kind="heartbeat"
+        items={deleting}
+        onClose={() => setDeleting(null)}
+        onDone={() => {
+          clearPicked();
+          res.refresh();
+        }}
+      />
     </>
   );
 }

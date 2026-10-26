@@ -31,6 +31,7 @@ import { cn } from "@/lib/utils";
 import { MonitorGuide } from "@/components/app/Guides";
 import { MonitorFormSheet } from "@/pages/project/MonitorForm";
 import type { Picked } from "@/lib/sources";
+import { useSelection } from "@/lib/useSelection";
 
 /** A project's monitors: one sentence on their state, then a row per monitor with its last day. */
 export function Monitors({ creating = false }: { creating?: boolean }): ReactElement {
@@ -48,25 +49,10 @@ export function Monitors({ creating = false }: { creating?: boolean }): ReactEle
     { name: (m) => m.name, state: (m) => m.state, every: (m) => m.interval_s, severity: (m) => m.severity, last: (m) => m.last?.checked_at },
   );
   const canEdit = useCanEdit();
-  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const { selected, toggle, toggleShown, headerBox, clear: clearPicked } = useSelection(rows);
   const [deleting, setDeleting] = useState<Picked[] | null>(null);
   const pick = (m: (typeof all)[number]): Picked => ({ id: m.id, name: m.name, state: m.state, paused: m.paused_at !== null });
   const chosen = all.filter((m) => selected.has(m.id)).map(pick);
-  const shownPicked = rows.filter((m) => selected.has(m.id)).length;
-  const allBox = shownPicked === 0 ? false : shownPicked === rows.length ? true : "indeterminate";
-  const toggle = (id: number): void =>
-    setSelected((s) => {
-      const n = new Set(s);
-      n.has(id) ? n.delete(id) : n.add(id);
-      return n;
-    });
-  const toggleShown = (on: boolean): void =>
-    setSelected((s) => {
-      const n = new Set(s);
-      for (const m of rows) on ? n.add(m.id) : n.delete(m.id);
-      return n;
-    });
-  const clearPicked = (): void => setSelected(new Set());
   const newButton = (
     <Writable>
       <Button asChild>
@@ -116,7 +102,7 @@ export function Monitors({ creating = false }: { creating?: boolean }): ReactEle
                   <TableRow>
                     {canEdit && (
                       <TableHead className="w-10">
-                        <Checkbox aria-label="Select every monitor shown" checked={allBox} onCheckedChange={(on) => toggleShown(on === true)} />
+                        <Checkbox aria-label="Select every monitor shown" checked={headerBox} onCheckedChange={(on) => toggleShown(on === true)} />
                       </TableHead>
                     )}
                     <SortHead by="name" label="Monitor" sort={sort} onSort={onSort} />
