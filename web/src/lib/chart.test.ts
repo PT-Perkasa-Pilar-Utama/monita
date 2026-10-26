@@ -9,6 +9,7 @@ const chart: Chart = {
   dots: [],
   up: [mark(100, 300, "Up")],
   down: [mark(400, 200, "Down for 3h 0m")],
+  held: [],
   fails: [],
   oks: [],
   hovers: [mark(56, 448, "2026-10-19 14:00 UTC+7: No pings"), mark(504, 448, "2026-10-19 15:00 UTC+7: 2 pings, 1 failed")],
