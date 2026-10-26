@@ -80,13 +80,12 @@ test("outside a project, the header leads back to the project opened last", asyn
   await expect(page).toHaveURL(new RegExp(`/projects/${slug}$`));
 });
 
-test("the overview draws the last day of each heartbeat, and a row opens it", async ({ page }) => {
+test("the overview charts the last day, and a heartbeat's lane opens it", async ({ page }) => {
   const slug = await apiProject(page, "Timeline");
   await apiHeartbeat(page, slug, "nightly-export");
   await page.goto(`/projects/${slug}`);
-  const beats = page.getByRole("region", { name: "Heartbeats" });
-  await expect(beats.getByText("nightly-export")).toBeVisible();
-  await expect(page.getByRole("region", { name: "Monitors" }).getByText("No monitor yet.", { exact: false })).toBeVisible();
-  await beats.getByRole("link", { name: "nightly-export, open its page" }).click();
+  const chart = page.getByRole("img", { name: /Response time of the monitors and pings of the heartbeats/ });
+  await expect(chart.getByText("No monitor yet")).toBeVisible();
+  await chart.getByText("nightly-export").click();
   await expect(page.getByRole("heading", { name: "nightly-export" })).toBeVisible();
 });

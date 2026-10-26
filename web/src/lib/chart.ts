@@ -28,3 +28,8 @@ export function readout(chart: Chart, x: number): Readout | null {
     band: band?.title ?? null,
   };
 }
+
+/** The slot of the Overview chart under view-box `x`, or null outside the plot. */
+export function columnAt<T extends { x: number; w: number }>(columns: T[], x: number): T | null {
+  return columns.find((c) => x >= c.x && x < c.x + c.w) ?? null;
+}

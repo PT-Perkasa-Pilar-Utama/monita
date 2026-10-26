@@ -3,7 +3,7 @@ import { Writable } from "@/lib/session";
 import { Link } from "react-router-dom";
 import { LinkRow, ROW_LINK } from "@/components/app/LinkRow";
 import { RefreshButton } from "@/components/app/RefreshButton";
-import { TimelineGroup } from "@/components/app/Timeline";
+import { OverviewChart } from "@/components/app/OverviewChart";
 import { ProjectAbout, useProjectEdit } from "@/components/app/ProjectAbout";
 import { ProjectBadge } from "@/components/app/ProjectBadge";
 import { LabelBadge, SeverityBadge } from "@/components/app/Tone";
@@ -61,26 +61,14 @@ export function Overview(): ReactElement {
       <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_18rem]">
         <div className="flex min-w-0 flex-col gap-6">
           <Card className="gap-5 p-5">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="flex flex-col gap-0.5">
                 <h2 className="font-semibold">Last 24 hours</h2>
-                <p className="text-[13px] text-muted-foreground">A bar for each hour. Open a row to see its checks or pings. It updates every 30 seconds.</p>
+                <p className="text-[13px] text-muted-foreground">{d ? `${d.monitors.text} ${d.heartbeats.text}` : "Response time and pings, updated every 30 seconds."}</p>
               </div>
               <RefreshButton onClick={o.refresh} busy={o.refreshing} />
             </div>
-            {!d ? (
-              <Skeleton className="h-48 rounded-lg" />
-            ) : (
-              <>
-                <TimelineGroup title="Monitors" base={`${base}/monitors`} lanes={d.timeline.monitors} total={d.monitors.total} empty="No monitor yet. A monitor checks a URL, a port, a DNS name or a host on a schedule." addLabel="Add a monitor" />
-                <TimelineGroup title="Heartbeats" base={`${base}/heartbeats`} lanes={d.timeline.heartbeats} total={d.heartbeats.total} empty="No heartbeat yet. A heartbeat waits for your cron job or worker to call it." addLabel="Add a heartbeat" />
-                <div className="flex items-center gap-3 pl-[calc(10rem+1.25rem)] pr-[calc(4.5rem+1.25rem)] text-xs text-muted-foreground max-sm:hidden sm:pl-[calc(14rem+1.25rem)] sm:pr-[calc(5rem+1.25rem)]">
-                  <span>24 hours ago</span>
-                  <span aria-hidden className="h-px flex-1 bg-border" />
-                  <span>Now</span>
-                </div>
-              </>
-            )}
+            {!d ? <Skeleton className="h-72 rounded-lg" /> : <OverviewChart base={base} chart={d.chart} monitorsTotal={d.monitors.total} />}
           </Card>
           <TableCard
             title="Open incidents"

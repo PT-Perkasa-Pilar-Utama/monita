@@ -69,11 +69,27 @@ export type Overview = {
   triage: number;
   incidents: IncidentRow[];
   active_keys: number;
-  timeline: { monitors: Lane[]; heartbeats: Lane[] };
+  chart: OverviewChart;
 };
 
-/** One monitor or heartbeat on the Overview's timeline: a bar an hour for the last day. */
-export type Lane = { id: number; name: string; state: StateKind; uptime: number | null; hours: UptimeDay[] };
+/** The Overview's one chart (v1.1 Q39), laid out by the server in a 1000-wide view box. */
+export type OverviewChart = {
+  height: number;
+  /** left, top, right, bottom of the latency plot. */
+  plot: [number, number, number, number];
+  lines: { id: number; name: string; state: StateKind; path: string; mean_ms: number | null; checks: number; failed: number }[];
+  /** The other monitors, drawn faint behind the lines. */
+  others: { id: number; name: string; path: string }[];
+  down: ChartRect[];
+  lanes: { id: number | null; name: string; state: StateKind; y: number; marks: ChartRect[] }[];
+  y_ticks: { at: number; label: string }[];
+  x_ticks: { at: number; label: string }[];
+  /** A 15-minute slot and a row per series: name, text, tone. */
+  columns: { x: number; w: number; label: string; rows: [string, string, "ok" | "fail" | "none"][] }[];
+  paused: number;
+};
+
+export type ChartRect = { x: number; w: number; y: number; h: number; tone: "ok" | "fail" | "down"; title: string };
 
 export type ApiKey = {
   id: number;

@@ -122,3 +122,60 @@ fn series(chart: Chart, range: Range, buckets: &[Bucket]) -> Series {
         mean_ms,
     }
 }
+
+/// The Overview's chart (v1.1 Q39): every monitor and heartbeat of the project over the last day,
+/// in 15-minute slots. Paused ones read nothing; the chart counts them apart.
+pub async fn project(
+    db: &Db,
+    project_id: i64,
+    now: i64,
+    off: i64,
+) -> anyhow::Result<chart::overview::OverviewChart> {
+    use chart::overview::{BeatSeries, MonitorSeries, overview};
+    let w = Window::new(Range::Day, now, off);
+    let states = crate::incidents::team_states_for(db, project_id).await?;
+    let down = history::intervals(db, project_id, w.from, now).await?;
+    let down_of = |kind, id| down.get(&(kind, id)).cloned().unwrap_or_default();
+    let monitors = super::list_monitors(db, project_id).await?;
+    let beats = super::heartbeat::list(db, project_id).await?;
+    let c = db.read().await?;
+    let mut ms = Vec::with_capacity(monitors.len());
+    for m in monitors {
+        let incident = states.get(&(SourceKind::Monitor, m.id)).copied();
+        let state = super::item_state(m.last.is_some(), m.paused_at.is_some(), incident).0;
+        let buckets = if state == "paused" {
+            Vec::new()
+        } else {
+            store::check_buckets(&c, m.id, w.from, w.step, w.buckets).await?
+        };
+        ms.push(MonitorSeries {
+            id: m.id,
+            state,
+            interval_s: m.interval_s,
+            buckets,
+            down: down_of(SourceKind::Monitor, m.id),
+            name: m.name,
+        });
+    }
+    let mut bs = Vec::with_capacity(beats.len());
+    for h in beats {
+        let state = h
+            .state(states.get(&(SourceKind::Heartbeat, h.id)).copied())
+            .0;
+        let buckets = if state == "paused" {
+            Vec::new()
+        } else {
+            store::ping_buckets(&c, h.id, w.from, w.step, w.buckets).await?
+        };
+        let since = h.last_ping_at.unwrap_or(h.created_at);
+        bs.push(BeatSeries {
+            id: h.id,
+            state,
+            buckets,
+            down: down_of(SourceKind::Heartbeat, h.id),
+            due: (now - since) * 100 / (h.period_s + h.grace_s).max(1),
+            name: h.name,
+        });
+    }
+    Ok(overview(&w, ms, bs))
+}

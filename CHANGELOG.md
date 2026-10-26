@@ -20,7 +20,7 @@ More ways to check, alert and plan: TCP, DNS and ping monitors, certificate warn
 - Discord, Telegram, ntfy and PagerDuty as webhook formats for each severity ([#10](https://github.com/PT-Perkasa-Pilar-Utama/monita/issues/10)). Migration 0025.
 - Pause a monitor or heartbeat instead of deleting it. While paused, nothing checks it, nothing opens and no alert goes out. A heartbeat keeps its pings. An open incident closes on pause, and the system leaves the status page until it resumes. Migration 0040.
 - **Plan maintenance** on a monitor's or heartbeat's page opens the maintenance form with it already picked.
-- The Overview shows the last 24 hours of up to 10 monitors and 10 heartbeats, those that need you first, with a bar an hour. A row opens its page. The page reads again every 30 seconds and has a Refresh button.
+- The Overview charts the last 24 hours of every monitor and heartbeat on one time axis. The 5 monitors that need you first draw as response-time lines on a log scale, the rest faint behind them. Heartbeats draw as lanes of ping dots, failures in red. Hover for every value in a 15-minute slot; select a line or lane to open it. It reads again every 30 seconds and has a Refresh button.
 - `monita admin reset-sign-in --email` is the way back in for anyone who lost both the authenticator and the recovery codes. It turns two-factor off, stops the old password, and emails a link to set a new one. It prints the link too.
 - **How API keys work** on the API keys page: what a key is for, how to send it, and each endpoint it opens.
 - Pictures show in the user list and beside a project's owner.

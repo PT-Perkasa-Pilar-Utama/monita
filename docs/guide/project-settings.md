@@ -33,9 +33,14 @@ A project has these tabs: **Overview**, **Monitors**, **Heartbeats**, **Incident
 
 ### Overview
 
-**Overview** opens with a **Last 24 hours** card. It has one row for each monitor and heartbeat, up to 10 of each. A row shows the name, the state, 24 bars (one for each hour) and the uptime for the 24 hours. Hover a bar to read that hour. Select a row to open its page. A bar is grey for an hour when Monita did not watch the system, as on the project list.
+**Overview** opens with a **Last 24 hours** chart of every monitor and heartbeat, in 15-minute slots. A line under it says how many are down.
 
-The rows that need you come first: down, issue, maintenance, no data yet, up, then paused. Rows in the same state sort by the lowest uptime, then by name. With more than 10 of a kind, the card says "10 of N, those that need you first" and links to **All monitors** or **All heartbeats**. The page reads again every 30 seconds, and **Refresh** reads it now. The About column shows the owner's picture, the owner and the number of tickets in Triage.
+- **Lines**: the response time of up to 5 monitors that need you first. Down comes first, then issue, maintenance, no data yet and up. Then come the most failed checks, then the slowest. The scale is logarithmic, so a 5 ms DNS check and a 900 ms page both read.
+- **Faint lines**: every other monitor, behind the lines. Hover one to name it.
+- **Red shading**: a monitor was down, from its automatic incidents.
+- **Lanes**: up to 6 heartbeats under the chart, with a dot for each slot that heard a ping. A red dot is a failed ping, and red shading is time missed or failed. The order is down first, then the most trouble, then the closest to its deadline. A last lane, such as **44 more**, holds the rest and still shows their failures.
+
+Hover the chart to read each line and lane in that slot. Select a line, a faint line, a lane name or a legend entry to open its page. Paused monitors and heartbeats are left out, and the legend counts them. The page reads again every 30 seconds, and **Refresh** reads it now. The About column shows the owner's picture, the owner and the number of tickets in Triage.
 
 ## Settings
 

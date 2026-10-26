@@ -50,6 +50,11 @@
   --color-issue: var(--issue);
   --color-unknown: var(--unknown);
   --color-neutral-strong: var(--neutral-strong);
+  --color-series-1: var(--series-1);
+  --color-series-2: var(--series-2);
+  --color-series-3: var(--series-3);
+  --color-series-4: var(--series-4);
+  --color-series-5: var(--series-5);
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 8px;
@@ -93,6 +98,12 @@
   --issue: #8a6300;
   --unknown: #7a7f87;
   --neutral-strong: #565a62;
+  /* Lines on the Overview chart. Never red, green or yellow: those mark a state. */
+  --series-1: #c4258f;
+  --series-2: #2f6fdb;
+  --series-3: #7b5bd6;
+  --series-4: #0e7f9c;
+  --series-5: #8a5a2b;
   /* Moni looks the same in both themes, so these are set once here and not under .dark. */
   --mascot-body: #fbe4f2;
   --mascot-line: #c4258f;
@@ -133,6 +144,11 @@
   --issue: #f2c94c;
   --unknown: #8a8f98;
   --neutral-strong: #a9aeb6;
+  --series-1: #e15fb4;
+  --series-2: #6f9cf0;
+  --series-3: #a58cf0;
+  --series-4: #4fb6d1;
+  --series-5: #c99a6b;
 }
 
 @layer base {

@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { readout } from "@/lib/chart";
+import { columnAt, readout } from "@/lib/chart";
 import type { Chart } from "@/lib/types";
 
 const mark = (x: number, w: number, title: string) => ({ x, y: 10, w, h: 202, title });
@@ -31,4 +31,15 @@ test("before the item existed there is no band, and outside the plot nothing", (
   expect(readout(chart, 60)?.band).toBeNull();
   expect(readout(chart, 20)).toBeNull();
   expect(readout(chart, 955)).toBeNull();
+});
+
+test("the Overview's readout picks the slot under the pointer", () => {
+  const cols = [
+    { x: 170, w: 10, label: "00:00" },
+    { x: 180, w: 10, label: "00:15" },
+  ];
+  expect(columnAt(cols, 175)?.label).toBe("00:00");
+  expect(columnAt(cols, 180)?.label).toBe("00:15");
+  expect(columnAt(cols, 160)).toBeNull();
+  expect(columnAt(cols, 190)).toBeNull();
 });

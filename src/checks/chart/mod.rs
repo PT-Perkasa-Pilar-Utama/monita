@@ -103,7 +103,7 @@ pub struct Mark {
 
 const FULL: (f64, f64) = (TOP, BOTTOM - TOP);
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, Debug, PartialEq)]
 pub struct Tick {
     pub at: f64,
     pub label: String,
@@ -342,6 +342,7 @@ pub fn pings(
 }
 
 mod marks;
+pub mod overview;
 use marks::{bands, hovers, plural};
 
 #[cfg(test)]

@@ -81,6 +81,7 @@ A table row's first cell holds the item's link and a mono second line. Secondary
 | --- | --- | --- |
 | `StatCards` | `app/Insight.tsx` | Four numbers under the title. A 3 px bar on the left shows the tone: `up`, `down` or `plain` (`--neutral-strong`). |
 | `ChartCard` | `app/Insight.tsx` | Totals, a range `ToggleGroup` (Hour, Day, Week, Month) kept in `?range=`, the SVG chart and its legend. Hover shows a guide line and a label with the bucket's time, its count and Up or Down for how long. There are no native tooltips. |
+| `OverviewChart` | `app/OverviewChart.tsx` | The Overview's one chart (v1.1 Q39): 5 coloured response-time lines on a log scale, the other monitors faint, red down shading, and heartbeat lanes of ping dots with a last "N more" lane. A crosshair readout lists every line and lane in the 15-minute slot (`columnAt` in `lib/chart.ts`). Lines, faint lines, lane names and legend entries open their page. |
 | `AvailabilityCard` | `app/Insight.tsx` | Period table with an availability bar. Bar color follows `grade()`: good `--up`, fair `--issue`, poor `--down`. |
 | `Facts` | `app/Facts.tsx` | A `dl` of label and value rows. Takes `rows: [string, ReactNode][]`. |
 | `Side` | `app/Side.tsx` | A titled block in a page's or a panel's right column, with a hairline under it. Used by the incident and ticket sidebars. |

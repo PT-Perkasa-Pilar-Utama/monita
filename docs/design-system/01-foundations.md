@@ -49,6 +49,7 @@ State colors carry data. They are the only colors outside the neutrals and the b
 | `--issue` | `#f2c94c` | Open manual incident, Warning, Identified, In progress |
 | `--unknown` | `#8a8f98` | No data yet, Triage, Revoked, Duplicate |
 | `--neutral-strong` | `#a9aeb6` | Backlog, the Monitoring label, Won't fix, and the `plain` stat bar |
+| `--series-1` to `--series-5` | magenta, blue, violet, teal, brown | The Overview chart's five response-time lines. Never red, green or yellow, which mark a state. |
 
 Ticket stages and close reasons are state pills (`StageBadge`, `ReasonBadge`, `components/app/Tone.tsx`):
 
