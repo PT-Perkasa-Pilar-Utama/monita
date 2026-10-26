@@ -1,3 +1,4 @@
+use super::form::{LONGEST_S, MESSAGE_MAX};
 use super::*;
 
 const NOW: i64 = 1_000_000;

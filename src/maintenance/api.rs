@@ -16,8 +16,8 @@ use crate::{
     app::AppState,
     incidents::SourceKind,
     platform::{
-        caps, now,
-        ui::{Body, UiError, UiResult, created, data},
+        caps, now, time,
+        ui::{Body, UiError, UiResult, ViewerOffset, created, data},
     },
     projects,
 };
@@ -80,11 +80,15 @@ struct PageQuery {
     q: String,
     state: String,
     sort: String,
+    /// `YYYY-MM-DD` on the viewer's clock; anything else is no bound.
+    from: String,
+    to: String,
 }
 
 async fn list(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
+    ViewerOffset(off): ViewerOffset,
     Path(slug): Path<String>,
     Query(q): Query<PageQuery>,
 ) -> UiResult {
@@ -95,6 +99,8 @@ async fn list(
         q: q.q,
         state: super::State::parse(&q.state),
         oldest: q.sort == "oldest",
+        from: time::parse_day_at(&q.from, off),
+        to: time::parse_day_at(&q.to, off).map(|d| d + 86_400),
     };
     let (windows, total) = super::page(&state.db, p.id, page, &filter, t).await?;
     let names = crate::checks::source_names(&state.db.read().await?, p.id).await?;

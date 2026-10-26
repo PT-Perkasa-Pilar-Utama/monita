@@ -14,7 +14,10 @@
 //! window refuses an edit.
 
 pub mod api;
+mod form;
 mod store;
+
+use form::{validate, validate_active};
 
 use crate::platform::sql::Connection;
 use serde::{Deserialize, Serialize};
@@ -25,11 +28,6 @@ use crate::{
 };
 
 pub use store::Window;
-
-const TITLE_MAX: usize = 120;
-const MESSAGE_MAX: usize = 1000;
-/// A window that silences alerts for longer is more likely a typo than a plan.
-const LONGEST_S: i64 = 30 * 86_400;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -80,88 +78,6 @@ pub enum MaintenanceError {
     NotFound,
     #[error(transparent)]
     Other(#[from] anyhow::Error),
-}
-
-/// The checked form: title, message, start (a past start becomes `now`), end, and the project's
-/// items it names. `names` are the project's monitors and heartbeats.
-fn validate(
-    f: &WindowInput,
-    names: &[(SourceKind, i64, String)],
-    now: i64,
-) -> Result<(String, String, i64, i64, Vec<ItemRef>), MaintenanceError> {
-    let mut bad = Vec::new();
-    let title = check_title(f, &mut bad);
-    let start = f.starts_at.map(|s| s.max(now));
-    if start.is_none() {
-        bad.push(("starts_at", "Pick when the work starts."));
-    }
-    check_end(start, f.ends_at, now, &mut bad);
-    let items: Vec<ItemRef> = names
-        .iter()
-        .filter(|(kind, id, _)| f.items.contains(&format!("{}:{id}", kind.as_str())))
-        .map(|(kind, id, _)| ItemRef {
-            kind: *kind,
-            id: *id,
-        })
-        .collect();
-    if items.is_empty() {
-        bad.push(("items", "Pick at least one monitor or heartbeat."));
-    }
-    check_message(f, &mut bad);
-    match (start, f.ends_at) {
-        (Some(s), Some(e)) if bad.is_empty() => {
-            Ok((title.into(), f.message.trim().into(), s, e, items))
-        }
-        _ => Err(MaintenanceError::Invalid(bad)),
-    }
-}
-
-/// The edit of an active window: its title, message and end against the start it already has.
-/// The form's start and items are ignored.
-fn validate_active(
-    f: &WindowInput,
-    start: i64,
-    now: i64,
-) -> Result<(String, String, i64), MaintenanceError> {
-    let mut bad = Vec::new();
-    let title = check_title(f, &mut bad);
-    check_end(Some(start), f.ends_at, now, &mut bad);
-    check_message(f, &mut bad);
-    match f.ends_at {
-        Some(e) if bad.is_empty() => Ok((title.into(), f.message.trim().into(), e)),
-        _ => Err(MaintenanceError::Invalid(bad)),
-    }
-}
-
-fn check_title<'a>(f: &'a WindowInput, bad: &mut Vec<(&'static str, &'static str)>) -> &'a str {
-    let title = f.title.trim();
-    if title.is_empty() || title.chars().count() > TITLE_MAX {
-        bad.push(("title", "Enter a title of up to 120 characters."));
-    }
-    title
-}
-
-fn check_end(
-    start: Option<i64>,
-    end: Option<i64>,
-    now: i64,
-    bad: &mut Vec<(&'static str, &'static str)>,
-) {
-    match (start, end) {
-        (_, None) => bad.push(("ends_at", "Pick when the work ends.")),
-        (_, Some(end)) if end <= now => bad.push(("ends_at", "Pick an end in the future.")),
-        (Some(s), Some(end)) if end <= s => bad.push(("ends_at", "Pick an end after the start.")),
-        (Some(s), Some(end)) if end - s > LONGEST_S => {
-            bad.push(("ends_at", "A window lasts 30 days at most."))
-        }
-        _ => {}
-    }
-}
-
-fn check_message(f: &WindowInput, bad: &mut Vec<(&'static str, &'static str)>) {
-    if f.message.trim().chars().count() > MESSAGE_MAX {
-        bad.push(("message", "Use at most 1000 characters."));
-    }
 }
 
 /// A checked edit: title, message, start, end, and the new items (None keeps them).
@@ -282,7 +198,6 @@ pub async fn end_now(db: &Db, project_id: i64, id: i64, now: i64) -> Result<(), 
     .await?
 }
 
-/// One page of the project's windows, latest start first, and how many there are.
 /// What a page of windows shows: a title search, one state or every state, and the order of
 /// their starts.
 #[derive(Debug, Default)]
@@ -290,6 +205,9 @@ pub struct Filter {
     pub q: String,
     pub state: Option<State>,
     pub oldest: bool,
+    /// The start of the first day and the end of the last: a window shows when it overlaps them.
+    pub from: Option<i64>,
+    pub to: Option<i64>,
 }
 
 impl State {
@@ -329,12 +247,13 @@ pub async fn page(
             &f.q,
             state,
             now,
+            (f.from, f.to),
             f.oldest,
             caps::WINDOWS_PAGE,
             offset,
         )
         .await?,
-        store::count(&c, project_id, &f.q, state, now).await?,
+        store::count(&c, project_id, &f.q, state, now, (f.from, f.to)).await?,
     ))
 }
 

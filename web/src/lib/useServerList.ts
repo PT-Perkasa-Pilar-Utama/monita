@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { listQuery, pageParam } from "@/lib/page";
 import { useRememberedQuery } from "@/lib/useRememberedQuery";
 
-/** A server-read list's URL: search, filters, sort and page. */
-export type ServerListParams = { q: string; state: string; severity: string; sort: string; page: number };
+/** A server-read list's URL: search, filters, an optional day range, sort and page. */
+export type ServerListParams = { q: string; state: string; severity: string; from: string; to: string; sort: string; page: number };
 
 /**
  * A list the server pages and filters. The query sits in the URL and is remembered in this
@@ -25,6 +25,8 @@ export function useServerList(key: string, active = true): {
     q: u.get("q") ?? "",
     state: u.get("state") ?? "",
     severity: u.get("severity") ?? "",
+    from: u.get("from") ?? "",
+    to: u.get("to") ?? "",
     sort: u.get("sort") ?? "",
     page: pageParam(u.get("page")),
   };
@@ -43,5 +45,5 @@ export function useServerList(key: string, active = true): {
     setDraft("");
     setSearch(listQuery({ q: "", sort: params.sort, page: 1 }), true);
   };
-  return { params, query: listQuery(params), draft, setDraft, set, clear, filtered: params.q !== "" || params.state !== "" || params.severity !== "" };
+  return { params, query: listQuery(params), draft, setDraft, set, clear, filtered: params.q !== "" || params.state !== "" || params.severity !== "" || params.from !== "" || params.to !== "" };
 }

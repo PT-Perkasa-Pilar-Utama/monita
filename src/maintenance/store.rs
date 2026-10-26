@@ -138,11 +138,12 @@ pub async fn count(
     q: &str,
     state: &str,
     now: i64,
+    (from, to): (Option<i64>, Option<i64>),
 ) -> anyhow::Result<i64> {
     Ok(query_i64(
         c,
         &format!("SELECT count(*) FROM maintenance_windows WHERE {MATCHES}"),
-        (project_id, search(q), state, now),
+        (project_id, search(q), state, now, from, to),
     )
     .await?
     .unwrap_or(0))
@@ -180,11 +181,13 @@ async fn with_items(c: &Connection, mut windows: Vec<Window>) -> anyhow::Result<
 }
 
 /// The windows a page lists: `?2` a title search, `?3` a state (`''` for all), `?4` the time
-/// that decides the state, the same rule as `maintenance::state`.
+/// that decides the state, the same rule as `maintenance::state`, and `?5`, `?6` a time range
+/// the window overlaps (NULL for no bound).
 const MATCHES: &str = "project_id = ?1 AND (?2 = '' OR instr(lower(title), ?2) > 0) \
     AND (?3 = '' OR (?3 = 'scheduled' AND starts_at > ?4) \
          OR (?3 = 'active' AND starts_at <= ?4 AND ends_at > ?4) \
-         OR (?3 = 'ended' AND ends_at <= ?4))";
+         OR (?3 = 'ended' AND ends_at <= ?4)) \
+    AND (?5 IS NULL OR ends_at > ?5) AND (?6 IS NULL OR starts_at < ?6)";
 
 fn search(q: &str) -> String {
     q.trim().to_lowercase().chars().take(100).collect()
@@ -198,6 +201,7 @@ pub async fn page(
     q: &str,
     state: &str,
     now: i64,
+    (from, to): (Option<i64>, Option<i64>),
     oldest: bool,
     limit: i64,
     offset: i64,
@@ -209,8 +213,8 @@ pub async fn page(
     };
     let windows = query_all(
         c,
-        format!("SELECT {COLS} FROM maintenance_windows WHERE {MATCHES} ORDER BY {order} LIMIT ?5 OFFSET ?6"),
-        (project_id, search(q), state, now, limit, offset),
+        format!("SELECT {COLS} FROM maintenance_windows WHERE {MATCHES} ORDER BY {order} LIMIT ?7 OFFSET ?8"),
+        (project_id, search(q), state, now, from, to, limit, offset),
         window,
     )
     .await?;

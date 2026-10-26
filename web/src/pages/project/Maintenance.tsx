@@ -8,6 +8,7 @@ import { ListFilters, type Option } from "@/components/app/ListFilters";
 import { TableCard } from "@/components/app/TableCard";
 import { Pencil, Plus, Trash2 } from "@/components/icons";
 import { PageHeader } from "@/components/layout/Page";
+import { DateRange } from "@/components/list/DateRange";
 import { Pager } from "@/components/list/Pager";
 import { SortHead } from "@/components/list/SortHead";
 import { TableEmpty } from "@/components/list/TableEmpty";
@@ -109,13 +110,16 @@ export function Maintenance({ creating = false, editing = false }: { creating?: 
           title={d ? `${d.total} ${d.total === 1 ? "window" : "windows"}` : "Windows"}
           onClear={q.filtered ? q.clear : undefined}
           tools={
-            <ListFilters
-              noun="windows"
-              filter={{ q: q.draft, state: q.params.state, severity: "" }}
-              onChange={(c) => (c.q !== undefined ? q.setDraft(c.q) : c.state !== undefined && q.set({ state: c.state }))}
-              stateOptions={STATES}
-              severity={false}
-            />
+            <>
+              <ListFilters
+                noun="windows"
+                filter={{ q: q.draft, state: q.params.state, severity: "" }}
+                onChange={(c) => (c.q !== undefined ? q.setDraft(c.q) : c.state !== undefined && q.set({ state: c.state }))}
+                stateOptions={STATES}
+                severity={false}
+              />
+              <DateRange from={q.params.from} to={q.params.to} onChange={q.set} />
+            </>
           }
         >
           {!d ? (
@@ -164,7 +168,7 @@ export function Maintenance({ creating = false, editing = false }: { creating?: 
                     </TableCell>
                     <TableCell className="text-right">
                       <Writable>
-                        <span className="inline-flex gap-2">
+                        <span className="flex flex-wrap justify-end gap-2">
                           {w.state !== "ended" && (
                             <Button asChild variant="outline" size="sm">
                               <Link to={`${base}/${w.id}/edit`}>

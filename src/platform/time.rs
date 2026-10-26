@@ -106,6 +106,21 @@ pub fn days_from_civil(y: i64, m: u32, d: u32) -> i64 {
     era * 146_097 + doe - 719_468
 }
 
+/// The Unix start of a `YYYY-MM-DD` day on a clock `off` minutes east of UTC, or None for
+/// anything that is not a real date.
+pub fn parse_day_at(s: &str, off: i64) -> Option<i64> {
+    let mut parts = s.trim().splitn(3, '-');
+    let y: i64 = parts.next()?.parse().ok()?;
+    let m: u32 = parts.next()?.parse().ok()?;
+    let d: u32 = parts.next()?.parse().ok()?;
+    if !(1970..=9999).contains(&y) {
+        return None;
+    }
+    let days = days_from_civil(y, m, d);
+    // A day past the month's end, such as 02-30, comes back as another date.
+    (civil_from_days(days) == (y, m, d)).then(|| days * 86_400 - off * 60)
+}
+
 /// Howard Hinnant's days-to-civil algorithm.
 fn civil_from_days(z: i64) -> (i64, u32, u32) {
     let z = z + 719_468;
@@ -123,6 +138,22 @@ fn civil_from_days(z: i64) -> (i64, u32, u32) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_day_parses_on_the_viewers_clock_and_a_bad_one_does_not() {
+        assert_eq!(parse_day_at("1970-01-02", 0), Some(86_400));
+        assert_eq!(parse_day_at("1970-01-02", 420), Some(86_400 - 7 * 3600));
+        for bad in [
+            "",
+            "2026-02-30",
+            "2026-13-01",
+            "26-01-01",
+            "2026-1",
+            "x-y-z",
+        ] {
+            assert_eq!(parse_day_at(bad, 0), None, "{bad}");
+        }
+    }
 
     #[test]
     fn civil_dates_and_day_numbers_round_trip() {

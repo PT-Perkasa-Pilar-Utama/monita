@@ -114,7 +114,7 @@ An active window keeps its start and its items, because the checks it already ho
 
 A project has at most 20 windows scheduled or active.
 
-The **Maintenance** page lists the windows 20 a page. Each row names the systems it covers, with links to their pages, and its message. **Search windows** finds a title. The state filter shows **Scheduled**, **Active** or **Ended**. Select **When** to sort by start, newest first or oldest first. Below the list, a second card shows the count of paused systems. It lists every paused monitor and heartbeat with a **Resume** button. The number on the **Maintenance** tab counts the monitors and heartbeats that are paused or in an active window now, each once.
+The **Maintenance** page lists the windows 20 a page. Each row names the systems it covers, with links to their pages, and its message. **Search windows** finds a title. The state filter shows **Scheduled**, **Active** or **Ended**. Pick a first and a last day to see the windows that overlap those days, on your own clock. Leave either one empty for no bound. Select **When** to sort by start, newest first or oldest first. Below the list, a second card shows the count of paused systems. It lists every paused monitor and heartbeat with a **Resume** button. The number on the **Maintenance** tab counts the monitors and heartbeats that are paused or in an active window now, each once.
 
 The old address `/projects/<project>/incidents/maintenance` still opens this page.
 

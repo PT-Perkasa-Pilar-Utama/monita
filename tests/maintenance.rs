@@ -473,6 +473,29 @@ async fn the_list_filters_by_state_and_title_and_sorts_by_start() {
         3,
         "an unknown state lists every window"
     );
+    let day = |ts: i64| monita::platform::time::day(ts);
+    let around = format!("from={}&to={}", day(t - 86_400), day(t + 86_400));
+    assert_eq!(
+        titles(&around).await.1,
+        3,
+        "every window overlaps these days"
+    );
+    assert_eq!(titles("to=1999-12-31").await.1, 0, "none starts by then");
+    assert_eq!(
+        titles("from=2999-01-01").await.1,
+        0,
+        "none is still on then"
+    );
+    assert_eq!(
+        titles(&format!("{around}&state=active")).await,
+        (vec!["Database upgrade".into()], 1),
+        "the range and the state filter together"
+    );
+    assert_eq!(
+        titles("from=nonsense&to=2026-02-30").await.1,
+        3,
+        "a date that is not real is no bound"
+    );
 }
 
 #[tokio::test]
