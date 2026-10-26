@@ -87,8 +87,9 @@ export default function App(): ReactElement {
           <Route path="heartbeats/:id/edit" element={<Heartbeat editing />} />
           <Route path="incidents" element={<Incidents />} />
           <Route path="incidents/new" element={<Incidents creating />} />
-          <Route path="incidents/maintenance" element={<Maintenance />} />
-          <Route path="incidents/maintenance/new" element={<Maintenance creating />} />
+          <Route path="maintenance" element={<Maintenance />} />
+          <Route path="maintenance/new" element={<Maintenance creating />} />
+          <Route path="incidents/maintenance" element={<Navigate to="../maintenance" replace />} />
           <Route path="incidents/:id" element={<Incident />} />
           <Route path="changelog" element={<Changelog />} />
           <Route path="tickets/done" element={<DoneTickets />} />

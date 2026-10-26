@@ -1,17 +1,15 @@
 import { useState } from "react";
 import type { ReactElement } from "react";
-import { Link } from "react-router-dom";
 import { ConfirmDialog } from "@/components/app/ConfirmDialog";
-import { Pause, Play, Wrench } from "@/components/icons";
+import { Pause, Play } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { api, errorText } from "@/lib/api";
 import { Writable } from "@/lib/session";
 import { toast } from "sonner";
 
-/** A monitor's or heartbeat's own actions in its page header: plan maintenance over it, and
- * pause or resume it (v1.1 Q38). `path` is its API path, such as `/projects/pay/monitors/3`. */
-export function SourceActions({ slug, kind, id, path, paused, onChange }: { slug: string; kind: "monitor" | "heartbeat"; id: number; path: string; paused: boolean; onChange: () => void }): ReactElement {
+/** A monitor's or heartbeat's own actions in its page header: pause or resume it (v1.1 Q38). `path` is its API path, such as `/projects/pay/monitors/3`. */
+export function SourceActions({ kind, path, paused, onChange }: { kind: "monitor" | "heartbeat"; path: string; paused: boolean; onChange: () => void }): ReactElement {
   const [busy, setBusy] = useState(false);
   const set = async (on: boolean): Promise<void> => {
     setBusy(true);
@@ -27,12 +25,6 @@ export function SourceActions({ slug, kind, id, path, paused, onChange }: { slug
   };
   return (
     <Writable>
-      <Button asChild variant="secondary">
-        <Link to={`/projects/${slug}/incidents/maintenance/new?item=${kind}:${id}`}>
-          <Wrench data-icon="inline-start" />
-          Plan maintenance
-        </Link>
-      </Button>
       {paused ? (
         <Button type="button" variant="secondary" disabled={busy} onClick={() => void set(false)}>
           {busy ? <Spinner data-icon="inline-start" /> : <Play data-icon="inline-start" />}

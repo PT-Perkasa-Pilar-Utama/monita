@@ -62,7 +62,7 @@ export function Heartbeat({ editing = false }: { editing?: boolean }): ReactElem
               <>
                 <RefreshButton onClick={res.refresh} busy={res.refreshing} />
                 {d.ping_url && <HeartbeatDetails h={h} pingUrl={d.ping_url} />}
-                <SourceActions slug={p.slug} kind="heartbeat" id={h.id} path={`${base}/${h.id}`} paused={h.paused_at !== null} onChange={res.reload} />
+                <SourceActions kind="heartbeat" path={`${base}/${h.id}`} paused={h.paused_at !== null} onChange={res.reload} />
                 <Writable>
                   <Button asChild variant="secondary">
                     <Link to={`${base}/${h.id}/edit`}>

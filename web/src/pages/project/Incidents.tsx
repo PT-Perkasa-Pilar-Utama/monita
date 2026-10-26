@@ -60,7 +60,7 @@ export function Incidents({ creating = false }: { creating?: boolean }): ReactEl
           <>
             <IncidentGuide />
             <Button asChild variant="outline">
-              <Link to={`/projects/${p.slug}/incidents/maintenance`}>
+              <Link to={`/projects/${p.slug}/maintenance`}>
                 <Wrench data-icon="inline-start" />
                 Maintenance
               </Link>

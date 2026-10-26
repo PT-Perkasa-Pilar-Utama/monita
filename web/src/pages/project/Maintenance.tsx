@@ -174,7 +174,7 @@ export function Maintenance({ creating = false }: { creating?: boolean }): React
   const navigate = useNavigate();
   const { project: p } = useProject();
   const base = `/projects/${p.slug}/maintenance`;
-  const here = `/projects/${p.slug}/incidents/maintenance`;
+  const here = `/projects/${p.slug}/maintenance`;
   const [page, setPage] = useState(1);
   const list = useApi<MaintenancePage>(`${base}?page=${page}`);
   const d = list.data;

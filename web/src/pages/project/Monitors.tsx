@@ -1,5 +1,7 @@
 import { RefreshButton } from "@/components/app/RefreshButton";
-import { Writable } from "@/lib/session";
+import { BatchBar, DeleteSourcesDialog, SourceRowMenu } from "@/components/app/SourceBatch";
+import { Writable, useCanEdit } from "@/lib/session";
+import { useState } from "react";
 import type { ReactElement } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { LinkRow, ROW_LINK } from "@/components/app/LinkRow";
@@ -12,6 +14,7 @@ import { Plus } from "@/components/icons";
 import { PageHeader } from "@/components/layout/Page";
 import { TableEmpty } from "@/components/list/TableEmpty";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { countLabel, keeps } from "@/lib/filter";
@@ -26,6 +29,7 @@ import { useListFilter } from "@/lib/useListFilter";
 import { cn } from "@/lib/utils";
 import { MonitorGuide } from "@/components/app/Guides";
 import { MonitorFormSheet } from "@/pages/project/MonitorForm";
+import type { Picked } from "@/lib/sources";
 
 /** A project's monitors: one sentence on their state, then a row per monitor with its last day. */
 export function Monitors({ creating = false }: { creating?: boolean }): ReactElement {
@@ -42,6 +46,26 @@ export function Monitors({ creating = false }: { creating?: boolean }): ReactEle
     sort,
     { name: (m) => m.name, state: (m) => m.state, every: (m) => m.interval_s, severity: (m) => m.severity, last: (m) => m.last?.checked_at },
   );
+  const canEdit = useCanEdit();
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [deleting, setDeleting] = useState<Picked[] | null>(null);
+  const pick = (m: (typeof all)[number]): Picked => ({ id: m.id, name: m.name, state: m.state, paused: m.paused_at !== null });
+  const chosen = all.filter((m) => selected.has(m.id)).map(pick);
+  const shownPicked = rows.filter((m) => selected.has(m.id)).length;
+  const allBox = shownPicked === 0 ? false : shownPicked === rows.length ? true : "indeterminate";
+  const toggle = (id: number): void =>
+    setSelected((s) => {
+      const n = new Set(s);
+      n.has(id) ? n.delete(id) : n.add(id);
+      return n;
+    });
+  const toggleShown = (on: boolean): void =>
+    setSelected((s) => {
+      const n = new Set(s);
+      for (const m of rows) on ? n.add(m.id) : n.delete(m.id);
+      return n;
+    });
+  const clearPicked = (): void => setSelected(new Set());
   const newButton = (
     <Writable>
       <Button asChild>
@@ -78,24 +102,39 @@ export function Monitors({ creating = false }: { creating?: boolean }): ReactEle
       ) : (
         <>
           <Overall summary={res.data.summary} />
-          <TableCard title={countLabel(rows.length, all.length, "monitor")} onClear={filtered ? clear : undefined} tools={<ListFilters noun="monitors" filter={filter} onChange={setFilter} />}>
+          <TableCard
+            title={chosen.length > 0 ? <BatchBar slug={p.slug} kind="monitor" picked={chosen} onClear={clearPicked} onDone={res.refresh} onDelete={setDeleting} /> : countLabel(rows.length, all.length, "monitor")}
+            onClear={filtered && chosen.length === 0 ? clear : undefined}
+            tools={<ListFilters noun="monitors" filter={filter} onChange={setFilter} />}
+          >
             {rows.length === 0 ? (
               <TableEmpty title="" filtered noun="monitors" onClear={clear} />
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
+                    {canEdit && (
+                      <TableHead className="w-10">
+                        <Checkbox aria-label="Select every monitor shown" checked={allBox} onCheckedChange={(on) => toggleShown(on === true)} />
+                      </TableHead>
+                    )}
                     <SortHead by="name" label="Monitor" sort={sort} onSort={onSort} />
                     <SortHead by="state" label="State" sort={sort} onSort={onSort} />
                     <TableHead className="max-lg:hidden">Last 24 hours</TableHead>
                     <SortHead by="every" label="Every" sort={sort} onSort={onSort} className="max-md:hidden" />
                     <SortHead by="severity" label="Alert level" sort={sort} onSort={onSort} className="max-md:hidden" />
                     <SortHead by="last" label="Last check" sort={sort} onSort={onSort} className="text-right max-sm:hidden" />
+                    {canEdit && <TableHead className="w-10" aria-label="Actions" />}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {rows.map((m) => (
-                    <LinkRow key={m.id} to={`${base}/${m.id}`}>
+                    <LinkRow key={m.id} to={`${base}/${m.id}`} className={selected.has(m.id) ? "bg-accent/60" : ""}>
+                      {canEdit && (
+                        <TableCell>
+                          <Checkbox aria-label={`Select ${m.name}`} checked={selected.has(m.id)} onCheckedChange={() => toggle(m.id)} />
+                        </TableCell>
+                      )}
                       <TableCell className="max-w-44 whitespace-normal sm:max-w-80">
                         <Link to={`${base}/${m.id}`} className={ROW_LINK}>
                           {m.name}
@@ -131,6 +170,11 @@ export function Monitors({ creating = false }: { creating?: boolean }): ReactEle
                           <span className="text-muted-foreground">Not checked yet</span>
                         )}
                       </TableCell>
+                      {canEdit && (
+                        <TableCell className="text-right">
+                          <SourceRowMenu slug={p.slug} kind="monitor" base={base} item={pick(m)} onDone={res.refresh} onDelete={setDeleting} />
+                        </TableCell>
+                      )}
                     </LinkRow>
                   ))}
                 </TableBody>
@@ -140,6 +184,16 @@ export function Monitors({ creating = false }: { creating?: boolean }): ReactEle
         </>
       )}
       <MonitorFormSheet open={creating} onClose={() => navigate(base)} />
+      <DeleteSourcesDialog
+        slug={p.slug}
+        kind="monitor"
+        items={deleting}
+        onClose={() => setDeleting(null)}
+        onDone={() => {
+          clearPicked();
+          res.refresh();
+        }}
+      />
     </>
   );
 }

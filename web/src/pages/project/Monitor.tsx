@@ -66,7 +66,7 @@ export function Monitor({ editing = false }: { editing?: boolean }): ReactElemen
               <>
                 <RefreshButton onClick={res.refresh} busy={res.refreshing} />
                 <MonitorDetails m={m} />
-                <SourceActions slug={p.slug} kind="monitor" id={m.id} path={`${base}/${m.id}`} paused={m.paused_at !== null} onChange={res.reload} />
+                <SourceActions kind="monitor" path={`${base}/${m.id}`} paused={m.paused_at !== null} onChange={res.reload} />
                 <Writable>
                   <Button asChild variant="secondary">
                     <Link to={`${base}/${m.id}/edit`}>
