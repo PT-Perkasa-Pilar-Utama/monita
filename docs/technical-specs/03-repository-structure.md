@@ -40,7 +40,7 @@ monita/
 ├── tests/                     Rust integration tests (temp-file DB, fake adapters)
 ├── e2e/                       Playwright on Bun: package.json, playwright.config.ts, specs/, demo/ (static demo build)
 ├── site/                      build.ts, landing page, site.css, docs.js: the GitHub Pages site
-├── scripts/                   smoke-cli.sh: `setup` and `service` as root on CI
+├── scripts/                   smoke-cli.sh: `setup`, `service` and `probe install` as root on CI
 ├── deploy/                    monita.service (systemd), monita.env.example
 ├── .githooks/                 pre-commit
 ├── Makefile                   the commands in 04 section 4.5

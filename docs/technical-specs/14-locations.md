@@ -117,7 +117,7 @@ Rule 3 means a location that goes silent never blocks an incident: the places th
 
 ## 14.8 Pages
 
-- **Locations** (`/admin/locations`): super admin manages, supervisor reads. Each row: name, token prefix, last seen ("Never", "12s ago"), monitors that use it. Add shows the token once with the probe command. Delete asks first and removes the location's results.
+- **Locations** (`/admin/locations`): super admin manages, supervisor reads. Each row: name, token prefix, last seen ("Never", "12s ago"), monitors that use it. Add location and **New token** open a setup panel with three commands (Docker, Linux service through `monita probe install`, run once), the token shown only there, and a line that turns to Connected at the probe's first call (v1.1 Q49). New token stops the old token at once and clears Last seen. Delete asks first and removes the location's results.
 - **Monitor form**: when locations exist, **Check from** lists this server (always on) and each location, and **Counts as failed when** `[quorum]` of the places fail.
 - **Monitor page**: when the monitor has locations, a **Places** card lists each place's newest result and how old it is. The check list names the place of each check.
 - Charts, the 24-hour sparkline, daily summaries, the monitor list's last check and the page header's state use this server's results only, so response times stay comparable. A monitor that only a location has checked so far reads "No data yet" until this server's first check.
@@ -128,5 +128,4 @@ Rule 3 means a location that goes silent never blocks an incident: the places th
 | --- | --- |
 | An alert when a location goes silent | The Locations page shows Last seen. A probe's host can ping a Monita heartbeat to get alerts today. |
 | Charts per location | The Places card shows each place's newest result. |
-| `monita service install --probe` | The guide gives a systemd unit for the probe. |
 | Monitors that skip this server | This server is always a place, so a lost probe never leaves a monitor unchecked. |
