@@ -58,7 +58,7 @@ export function IssueRefId(): ReactElement {
         </DialogHeader>
         {issued ? (
           <Alert role="status">
-            <AlertTitle>Ref ID issued. Copy it now: Monita shows it only once.</AlertTitle>
+            <AlertTitle>Ref ID issued, so copy it now because Monita shows it only once.</AlertTitle>
             <AlertDescription className="flex flex-col gap-3">
               <CopyField id="issued-ref-id" value={issued} />
               <span>{where}</span>

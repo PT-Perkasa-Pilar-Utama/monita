@@ -72,7 +72,7 @@ export function Monitors({ creating = false }: { creating?: boolean }): ReactEle
         <TableCard title="0 monitors">
           <TableEmpty
             title="Add your first monitor"
-            description="A monitor checks a URL on an interval and tells you when it stops answering. Add the health endpoint of your service first."
+            description="A monitor checks a URL on an interval and tells you when it stops answering, so add the health endpoint of your service first."
           />
         </TableCard>
       ) : (

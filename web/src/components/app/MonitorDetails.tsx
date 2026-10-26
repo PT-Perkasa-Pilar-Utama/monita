@@ -94,7 +94,7 @@ function HttpParts({ m }: { m: MonitorView }): ReactElement {
         />
         {!canEdit && (
           <p className="text-muted-foreground">
-            As a supervisor you see header names but not their values. The request body, the sign-in name and anything after <code>?</code> in the URL read (hidden), because they can hold credentials.
+            As a supervisor you see header names but not their values, and the request body, the sign-in name and anything after <code>?</code> in the URL read (hidden) because they can hold credentials.
           </p>
         )}
       </DetailPart>

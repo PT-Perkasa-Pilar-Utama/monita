@@ -23,8 +23,8 @@ type Form = { host: string; port: string; security: string; user: string; passwo
 
 const SOURCE: Record<MailView["source"], string> = {
   saved: "Monita sends alerts, digests and invites through the server saved here.",
-  env: "Monita uses MONITA_SMTP_URL from the server's settings file. Save a server here to replace it.",
-  none: "No mail server is set, so Monita writes each email to its log. Save a server here to send them.",
+  env: "Monita uses MONITA_SMTP_URL from the server's settings file until you save a server here to replace it.",
+  none: "No mail server is set, so Monita writes each email to its log until you save a server here to send them.",
 };
 
 /** The mail server form on the System page. The password never comes back from the server. */
@@ -61,7 +61,7 @@ export function MailServerSection({ mail, onSaved }: { mail: MailView; onSaved: 
     setError(null);
     try {
       await api("/admin/mail", "PUT", form);
-      toast.success("Mail server saved. The next email uses it.");
+      toast.success("Mail server saved, and the next email uses it.");
       onSaved();
     } catch (e) {
       setError(e instanceof ApiError ? e : new ApiError(0, "error", errorText(e)));

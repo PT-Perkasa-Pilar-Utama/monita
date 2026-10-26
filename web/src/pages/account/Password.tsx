@@ -31,7 +31,7 @@ export function Password(): ReactElement {
       setCurrent("");
       setNext("");
       setRepeat("");
-      toast.success("Password changed. Your other sessions are signed out.");
+      toast.success("Password changed, and your other sessions are signed out.");
     } catch (err) {
       if (err instanceof ApiError && Object.keys(err.fields).length > 0) setErrors(err.fields);
       else toast.error(errorText(err));
@@ -67,7 +67,7 @@ export function Password(): ReactElement {
         <SettingsSection
           id="password"
           title="Change your password"
-          description="Use at least 8 characters. Your other sessions sign out."
+          description="Your other sessions sign out when you save a new password of at least 8 characters."
           footer={
             <Button type="submit" disabled={busy || !current || !next || !repeat}>
               {busy && <Spinner data-icon="inline-start" />}

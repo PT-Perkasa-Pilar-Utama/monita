@@ -62,7 +62,7 @@ test("@US-23 @US-24 @US-25 @US-26 @US-28 @US-29 a reported bug goes public only 
   await expect(v2.getByRole("alert")).toHaveText("The description needs 1 to 10 000 characters.");
   await v2.getByLabel("What happened").fill("IDR shown as USD");
   await v2.getByRole("button", { name: "Send report" }).click();
-  await expect(v2.getByText("Thanks. Your report is ticket #2.")).toBeVisible();
+  await expect(v2.getByText("Thanks, your report is ticket #2.")).toBeVisible();
   await expect(v2.getByText("Receipt shows the wrong currency")).toBeVisible();
   await expect(v2.getByText(/In progress/)).toBeVisible();
   await fresh.close();

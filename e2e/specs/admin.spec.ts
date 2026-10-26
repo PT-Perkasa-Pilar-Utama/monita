@@ -82,7 +82,7 @@ test("a location is added with its token shown once, a monitor checks from it, a
   await page.getByRole("button", { name: "Add location" }).click();
   await page.getByLabel("Name").fill(name);
   await page.getByRole("dialog").getByRole("button", { name: "Add location" }).click();
-  await expect(page.getByText(`${name} is ready.`)).toBeVisible();
+  await expect(page.getByText(`${name} is ready`)).toBeVisible();
   await expect(page.locator("#probe-command")).toContainText("MONITA_PROBE_TOKEN='ml_");
   const row = page.getByRole("row").filter({ hasText: name });
   await expect(row).toContainText("Never");
@@ -108,5 +108,5 @@ test("the Telegram page refuses a token that is not a bot token, before asking T
   await expect(page.getByRole("heading", { name: "Telegram", level: 1 })).toBeVisible();
   await page.getByLabel("Bot token").fill("not-a-token");
   await page.getByRole("button", { name: "Save token" }).click();
-  await expect(page.getByText("Telegram refused this token. Copy it again from @BotFather.")).toBeVisible();
+  await expect(page.getByText("Telegram refused this token, so copy it again from @BotFather.")).toBeVisible();
 });

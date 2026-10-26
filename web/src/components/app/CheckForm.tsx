@@ -14,8 +14,8 @@ export function SeverityField({ value, onChange }: { value: Severity; onChange: 
       value={value}
       onChange={onChange}
       choices={[
-        { value: "critical", title: "Critical", description: "For an outage that needs someone now. Goes to every alert card that listens to critical." },
-        { value: "warning", title: "Warning", description: "For a problem that can wait for working hours. Goes to every alert card that listens to warning." },
+        { value: "critical", title: "Critical", description: "For an outage that needs someone now, sent to every alert card that listens to critical." },
+        { value: "warning", title: "Warning", description: "For a problem that can wait for working hours, sent to every alert card that listens to warning." },
       ]}
     />
   );

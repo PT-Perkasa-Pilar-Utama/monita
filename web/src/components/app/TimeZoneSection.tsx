@@ -59,7 +59,7 @@ export function TimeZoneSection({ initial, digestHour }: { initial: number; dige
     try {
       await api("/admin/time-zone", "PUT", { utc_offset_min: value });
       setSaved(value);
-      toast.success(`Times now show in ${zone(value)}. Reloading.`);
+      toast.success(`Times now show in ${zone(value)}, so the page is reloading.`);
       window.location.reload();
     } catch (err) {
       toast.error(errorText(err));
@@ -71,7 +71,7 @@ export function TimeZoneSection({ initial, digestHour }: { initial: number; dige
     <SettingsSection
       id="time-zone"
       title="Times on every page"
-      description="Every page, chart and status page shows times in this offset. Today and the status page days start at its midnight. Monita stores times in UTC and does not follow daylight saving."
+      description="Every page, chart and status page shows times in this offset, and Today and the status page days start at its midnight. Monita stores times in UTC and does not follow daylight saving."
       footerNote={`Now it is ${stamp(Math.floor(Date.now() / 1000), value)}. ${digestNote(digestHour, value)}`}
       footer={
         <Button onClick={() => void save()} disabled={busy || value === saved}>

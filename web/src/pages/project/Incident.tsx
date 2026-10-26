@@ -27,17 +27,17 @@ import { toast } from "sonner";
 const LABELS: { value: UpdateLabel; title: string; description: string }[] = [
   { value: "investigating", title: "Investigating", description: "Something is wrong and you are looking into it." },
   { value: "identified", title: "Identified", description: "You found the cause and are working on a fix." },
-  { value: "monitoring", title: "Monitoring", description: "A fix is out. You are watching to be sure it holds." },
-  { value: "resolved", title: "Resolved", description: "It is over. A reported incident closes with this update." },
+  { value: "monitoring", title: "Monitoring", description: "A fix is out and you are watching to be sure it holds." },
+  { value: "resolved", title: "Resolved", description: "It is over, and a reported incident closes with this update." },
 ];
 
 /** Why a label is off for this incident, in the words the server's rule uses. */
 function unavailable(label: UpdateLabel, allowed: UpdateLabel[]): string | undefined {
-  return allowed.includes(label) ? undefined : "The incident is over. Only a Resolved note can follow it.";
+  return allowed.includes(label) ? undefined : "The incident is over, so only a Resolved note can follow it.";
 }
 
 /** Resolved on an incident Monita opened closes it now; a check that still fails opens a new one. */
-const RESOLVE_AUTO = "Closes it now and tells the alert recipients. If it still fails, Monita opens a new incident.";
+const RESOLVE_AUTO = "Closes it now and tells the alert recipients, and if it still fails, Monita opens a new incident.";
 
 /** Post update, in the half-width panel: a label as cards, and the message the status page shows. */
 function PostUpdate({ path, labels, auto, onPosted }: { path: string; labels: UpdateLabel[]; auto: boolean; onPosted: () => void }): ReactElement {
@@ -239,7 +239,7 @@ export function Incident(): ReactElement {
               <Side title="How it closes">
                 <p className="text-sm text-muted-foreground">
                   {i.origin === "auto"
-                    ? "Monita closes it on the next passing check or heartbeat ping. You can also resolve it yourself, such as when you retire the job."
+                    ? "Monita closes it on the next passing check or heartbeat ping, or you can resolve it yourself, such as when you retire the job."
                     : "It stays open until you post an update labelled Resolved."}
                 </p>
               </Side>

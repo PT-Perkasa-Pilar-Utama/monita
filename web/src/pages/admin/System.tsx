@@ -21,7 +21,7 @@ export function System(): ReactElement {
             title="Server"
             description={
               <>
-                These come from Monita's settings file on the server. To change one, edit that file and restart Monita. Run{" "}
+                These come from Monita's settings file on the server, so to change one, edit that file and restart Monita. Run{" "}
                 <code className="font-mono">monita whereis</code> to find the file.
               </>
             }

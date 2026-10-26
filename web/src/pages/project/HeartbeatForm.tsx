@@ -84,7 +84,7 @@ function HeartbeatFormBody({ id, onClose, onSaved }: { id: string | undefined; o
                       </Button>
                     }
                     title="Delete this heartbeat?"
-                    description="Monita deletes the heartbeat and every ping it got. A job that still calls its URL gets 404. You cannot undo this."
+                    description="Monita deletes the heartbeat and every ping it got for good, and a job that still calls its URL gets 404."
                     action="Delete heartbeat"
                     onConfirm={async () => {
                       await api(`${base}/${id}`, "DELETE");

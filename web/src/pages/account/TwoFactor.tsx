@@ -85,7 +85,7 @@ export function TwoFactor(): ReactElement {
       {!s ? (
         <Skeleton className="h-56 rounded-xl" />
       ) : codes ? (
-        <SettingsSection id="codes" title="Save your recovery codes" description="Each code signs you in once when your phone is not at hand. Monita shows them only now.">
+        <SettingsSection id="codes" title="Save your recovery codes" description="Each code signs you in once when your phone is not at hand, and Monita shows them only now.">
           <div className="flex flex-col gap-5">
             <Alert>
               <AlertDescription>Store them in your password manager before you leave this page.</AlertDescription>
@@ -106,17 +106,17 @@ export function TwoFactor(): ReactElement {
           </div>
         </SettingsSection>
       ) : s.on ? (
-        <SettingsSection id="on" title="Two-factor sign-in is on" description={`Monita asks for a code after your password. ${s.codes_left} of 10 recovery codes left.`}>
+        <SettingsSection id="on" title="Two-factor sign-in is on" description={`Monita asks for a code after your password, and ${s.codes_left} of 10 recovery codes are left.`}>
           <FieldGroup className="gap-3">
             <p className="text-sm text-muted-foreground">To turn it off, enter a code from your app or a recovery code.</p>
             <CodeForm id="off-code" action="Turn off" danger onCode={turnOff} />
           </FieldGroup>
         </SettingsSection>
       ) : setup ? (
-        <SettingsSection id="setup" title="Add Monita to your authenticator app" description="Scan the code with your phone, then enter the 6 digits the app shows. This key works for 10 minutes.">
+        <SettingsSection id="setup" title="Add Monita to your authenticator app" description="Scan the code with your phone, then enter the 6 digits the app shows before this key expires in 10 minutes.">
           <FieldGroup className="gap-4">
             <img id="totp-qr" src={`data:image/svg+xml;utf8,${encodeURIComponent(setup.qr)}`} alt="QR code for your authenticator app" className="w-fit rounded-md border" />
-            <p className="text-sm text-muted-foreground">Cannot scan it? Type this key into the app, or open the link on the phone itself.</p>
+            <p className="text-sm text-muted-foreground">If you cannot scan it, type this key into the app or open the link on the phone itself.</p>
             <CopyField id="totp-secret" value={setup.secret} />
             <Button asChild variant="outline" className="w-fit">
               <a href={setup.link}>Open in authenticator app</a>

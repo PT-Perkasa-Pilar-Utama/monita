@@ -121,7 +121,7 @@ async function load() {
     document.getElementById("past").replaceChildren(...past.map(incident));
     document.getElementById("updated").textContent = "Updated " + new Date().toLocaleTimeString();
   } catch (err) {
-    document.getElementById("updated").textContent = "Could not reach the status service. Retrying in a minute.";
+    document.getElementById("updated").textContent = "Could not reach the status service and will retry in a minute.";
   }
 }
 

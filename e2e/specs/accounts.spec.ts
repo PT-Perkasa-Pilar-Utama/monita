@@ -117,7 +117,7 @@ test.describe("as a new tech lead", () => {
     await expect(me.getByText("This is not your current password.")).toBeVisible();
     await me.locator("#pw-current").fill("a-long-enough-password");
     await me.getByRole("button", { name: "Change password" }).click();
-    await expect(me.getByText("Password changed.")).toBeVisible();
+    await expect(me.getByText("Password changed")).toBeVisible();
 
     await ctx.clearCookies();
     await me.goto("/login");

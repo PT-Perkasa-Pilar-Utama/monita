@@ -74,7 +74,7 @@ export function Secrets(): ReactElement {
           {!list.data ? (
             <Skeleton className="m-5 h-20" />
           ) : rows.length === 0 ? (
-            <TableEmpty title="Keep tokens and passwords here" description="A monitor picks a secret under Authentication. Monita sends the value with each check and never shows it again." />
+            <TableEmpty title="Keep tokens and passwords here" description="A monitor picks a secret under Authentication, and Monita sends the value with each check and never shows it again." />
           ) : (
             <Table>
               <TableHeader>
@@ -102,12 +102,12 @@ export function Secrets(): ReactElement {
                         </Writable>
                         <ConfirmDialog
                           trigger={
-                            <Button variant="danger" size="sm" disabled={s.used_by > 0} title={s.used_by > 0 ? `${usedBy(s.used_by)} use it. Change them first.` : undefined}>
+                            <Button variant="danger" size="sm" disabled={s.used_by > 0} title={s.used_by > 0 ? `${usedBy(s.used_by)} use it, so change them first.` : undefined}>
                               Delete
                             </Button>
                           }
                           title={`Delete the secret ${s.name}?`}
-                          description="Its value is gone for good. No monitor uses it now."
+                          description="Its value is gone for good, and no monitor uses it now."
                           action="Delete"
                           onConfirm={async () => {
                             await api(`${base}/${s.id}`, "DELETE");
@@ -126,7 +126,7 @@ export function Secrets(): ReactElement {
       <FormSheet open={editing !== null} onClose={() => setEditing(null)}>
         <FormSheetBody
           title={editing === "new" || editing === null ? "New secret" : `Replace the value of ${editing.name}`}
-          description="Monita never shows the value again. You can replace it or delete it."
+          description="Monita never shows the value again, but you can replace it or delete it."
           onSubmit={(e) => void save(e)}
           footer={
             <div className="ml-auto flex gap-2">

@@ -67,7 +67,7 @@ export function DestinationFields({ prefix, slug, bot, kinds, value, errors, onC
         </Field>
       )}
       {global && errors.kind && <FieldError>{errors.kind}</FieldError>}
-      {global && bot === null && <p className="text-sm text-muted-foreground">No global Telegram bot is set up. Pick Custom.</p>}
+      {global && bot === null && <p className="text-sm text-muted-foreground">No global Telegram bot is set up, so pick Custom.</p>}
       {global && bot !== null && (
         <Field data-invalid={errors.key ? true : undefined}>
           {manual ? (

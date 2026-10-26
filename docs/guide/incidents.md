@@ -34,9 +34,9 @@ The update appears on the status page at once, without your name.
 
 | Label | Means | Starting message |
 | --- | --- | --- |
-| Investigating | Something is wrong and you are looking into it | We are looking into the problem. We will post an update when we know more. |
-| Identified | You found the cause and are working on a fix | We found the cause and are working on a fix. We will post an update when it is out. |
-| Monitoring | A fix is out. You are watching to be sure it holds. | A fix is out. We are watching to make sure it holds. |
+| Investigating | Something is wrong and you are looking into it | We are looking into the problem and will post an update when we know more. |
+| Identified | You found the cause and are working on a fix | We found the cause and are working on a fix, and we will post an update when it is out. |
+| Monitoring | A fix is out and you are watching to be sure it holds | A fix is out and we are watching to make sure it holds. |
 | Resolved | It is over | The problem is fixed and everything works again. |
 
 The panel opens on **Monitoring**. When you pick another label, the message changes to that label's template. Your own text stays. Reopening the panel resets the label and the message.

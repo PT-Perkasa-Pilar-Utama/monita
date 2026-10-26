@@ -36,7 +36,7 @@ export function IconPicker({
     try {
       onChange(await shrinkIcon(file));
     } catch {
-      setReadError("Monita could not read this picture. Pick a PNG, JPEG or WebP file.");
+      setReadError("Monita could not read this picture, so pick a PNG, JPEG or WebP file.");
     }
   };
   const message = readError || error;

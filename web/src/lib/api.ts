@@ -49,5 +49,5 @@ export async function api<T>(path: string, method: Method = "GET", body?: unknow
 
 /** The message to show for a failed call. */
 export function errorText(e: unknown): string {
-  return e instanceof Error ? e.message : "Something went wrong. Try again.";
+  return e instanceof Error ? e.message : "Something went wrong, so try again.";
 }

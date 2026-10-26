@@ -34,7 +34,7 @@ export function Allowlist(): ReactElement {
     <SettingsPage title="Allowlist">
       <SettingsSection
         title="Allowed IP addresses"
-        description="Only these addresses may use this project's API keys. An empty list allows any address."
+        description="Only these addresses may use this project's API keys, and an empty list allows any address."
         action={<Badge variant={p.ip_allowlist ? "up" : "unknown"}>{p.ip_allowlist ? "On" : "Off"}</Badge>}
         onSubmit={() => void save()}
         footer={

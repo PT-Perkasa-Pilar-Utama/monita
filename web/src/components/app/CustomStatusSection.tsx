@@ -43,11 +43,11 @@ export function CustomStatusSection(): ReactElement {
       id="custom"
       reference
       title="Custom status page"
-      description="Build your own page from the same data. Start from the template, or call the endpoints below."
+      description="Build your own page from the same data, either from the template or by calling the endpoints below."
     >
       <div className="flex flex-col gap-6">
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-paper px-4 py-3">
-          <span className="text-sm">One HTML file that shows your systems and incidents and reloads every minute. Open it, or host it anywhere.</span>
+          <span className="text-sm">One HTML file that shows your systems and incidents and reloads every minute, which you can open or host anywhere.</span>
           <Button variant="outline" onClick={() => download(origin, p.slug)}>
             <Download data-icon="inline-start" />
             Download template

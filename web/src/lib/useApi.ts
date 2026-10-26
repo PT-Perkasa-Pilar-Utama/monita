@@ -32,7 +32,7 @@ export function useApi<T>(path: string | null, pollMs?: number): Loaded<T> {
         setData(d);
         setError(undefined);
       })
-      .catch((e: unknown) => setError(e instanceof ApiError ? e : new ApiError(0, "network", "Monita did not answer. Check the connection.")))
+      .catch((e: unknown) => setError(e instanceof ApiError ? e : new ApiError(0, "network", "Monita did not answer, so check the connection.")))
       .finally(() => setRefreshing(false));
   }, [path]);
 
@@ -49,7 +49,7 @@ export function useApi<T>(path: string | null, pollMs?: number): Loaded<T> {
       })
       .catch((e: unknown) => {
         if (!live) return;
-        setError(e instanceof ApiError ? e : new ApiError(0, "network", "Monita did not answer. Check the connection."));
+        setError(e instanceof ApiError ? e : new ApiError(0, "network", "Monita did not answer, so check the connection."));
       })
       .finally(() => {
         if (live) setLoading(false);

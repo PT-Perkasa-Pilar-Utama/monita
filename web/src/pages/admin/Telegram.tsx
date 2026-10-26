@@ -76,7 +76,7 @@ export function Telegram(): ReactElement {
     const r = await api<{ bot: string | null }>("/admin/telegram", "PUT", { token: value });
     setReplacing(false);
     res.reload();
-    toast.success(r.bot ? `Saved. The global bot is @${r.bot}.` : "Global Telegram bot removed.");
+    toast.success(r.bot ? `Saved, and the global bot is @${r.bot}.` : "Global Telegram bot removed.");
   };
 
   return (

@@ -160,7 +160,7 @@ function Reassign({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boo
         <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-6">
           <DialogHeader>
             <DialogTitle>Reassign this project</DialogTitle>
-            <DialogDescription>The new owner gets the project with its monitors, keys and tickets. The old owner loses access to it.</DialogDescription>
+            <DialogDescription>The new owner gets the project with its monitors, keys and tickets, and the old owner loses access to it.</DialogDescription>
           </DialogHeader>
           <UserPicker label="New owner" required users={owners.data ?? []} value={owner} onChange={(v) => {
             setOwner(v);
@@ -210,7 +210,7 @@ function DeleteProject({ open, onOpenChange }: { open: boolean; onOpenChange: (o
           <DialogHeader>
             <DialogTitle>Delete {p.name}?</DialogTitle>
             <DialogDescription>
-              This deletes its monitors, heartbeats, incidents, tickets, API keys and status page. It cannot be undone.
+              This deletes its monitors, heartbeats, incidents, tickets, API keys and status page, and it cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <Field data-invalid={error ? true : undefined}>
@@ -257,7 +257,7 @@ export function General(): ReactElement {
       <SettingsSection
         id="owner"
         title="Owner"
-        description="The owner manages this project. Its monitors, keys and tickets stay when it moves to another tech lead."
+        description="The owner manages this project, and its monitors, keys and tickets stay when it moves to another tech lead."
         footer={
           me.is_admin && (
             <Button variant="outline" onClick={() => setReassigning(true)}>
@@ -273,7 +273,7 @@ export function General(): ReactElement {
           <div className="grid items-center gap-4 sm:grid-cols-[minmax(0,1fr)_auto]">
             <div className="flex min-w-0 flex-col gap-1">
               <strong className="text-sm font-semibold">Delete this project</strong>
-              <span className="text-sm text-muted-foreground">Its monitors, heartbeats, incidents, tickets and keys go with it. This cannot be undone.</span>
+              <span className="text-sm text-muted-foreground">Its monitors, heartbeats, incidents, tickets and keys go with it, and this cannot be undone.</span>
             </div>
             <Button variant="danger" onClick={() => setDeleting(true)}>
               Delete this project

@@ -46,7 +46,7 @@ function WindowAction({ w, base, onDone }: { w: MaintenanceWindow; base: string;
         </Button>
       }
       title={scheduled ? `Delete "${w.title}"?` : `End "${w.title}" now?`}
-      description={scheduled ? "The window will not start. You cannot undo this." : "Failures open incidents and send alerts again from now on."}
+      description={scheduled ? "The window will not start, and you cannot undo this." : "Failures open incidents and send alerts again from now on."}
       action={scheduled ? "Delete window" : "End now"}
       onConfirm={async () => {
         await (scheduled ? api(`${base}/${w.id}`, "DELETE") : api(`${base}/${w.id}/end`, "POST"));
@@ -206,7 +206,7 @@ export function Maintenance({ creating = false }: { creating?: boolean }): React
           ) : d.windows.length === 0 ? (
             <TableEmpty
               title="Plan maintenance before planned work"
-              description="During a window Monita still checks the items, but a failure opens no incident and sends no alert. The status page shows them as Maintenance."
+              description="During a window Monita still checks the items, but a failure opens no incident and sends no alert, and the status page shows them as Maintenance."
             />
           ) : (
             <Table>

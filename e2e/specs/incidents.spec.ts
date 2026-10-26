@@ -65,7 +65,7 @@ test("@US-14 @US-17 @US-18 @US-19 a failing job opens an incident, the TL update
   const dialog = page.getByRole("dialog");
   // Each label starts from its template until the TL writes their own words.
   await dialog.getByRole("radio", { name: "Monitoring" }).click();
-  await expect(dialog.getByLabel("Message")).toHaveValue("A fix is out. We are watching to make sure it holds.");
+  await expect(dialog.getByLabel("Message")).toHaveValue("A fix is out and we are watching to make sure it holds.");
   await dialog.getByLabel("Message").fill("Our own words.");
   await dialog.getByRole("radio", { name: "Identified" }).click();
   await expect(dialog.getByLabel("Message")).toHaveValue("Our own words.");
@@ -108,7 +108,7 @@ test("@US-20 TL reports an incident by hand and resolves it", async ({ page }) =
   const dialog = page.getByRole("dialog");
   // Each label starts from its template until the TL writes their own words.
   await dialog.getByRole("radio", { name: "Monitoring" }).click();
-  await expect(dialog.getByLabel("Message")).toHaveValue("A fix is out. We are watching to make sure it holds.");
+  await expect(dialog.getByLabel("Message")).toHaveValue("A fix is out and we are watching to make sure it holds.");
   await dialog.getByLabel("Message").fill("Our own words.");
   await dialog.getByRole("radio", { name: "Identified" }).click();
   await expect(dialog.getByLabel("Message")).toHaveValue("Our own words.");
@@ -158,7 +158,7 @@ test("a tech lead resolves an incident Monita opened, and it closes at once", as
   await page.getByRole("button", { name: "Post update" }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByRole("radio", { name: "Resolved" }).click();
-  await expect(dialog.getByText("Closes it now and tells the alert recipients.", { exact: false })).toBeVisible();
+  await expect(dialog.getByText("Closes it now and tells the alert recipients", { exact: false })).toBeVisible();
   await dialog.getByLabel("Message").fill("The disk was cleaned up by hand.");
   await dialog.getByRole("button", { name: "Post update" }).click();
   await expect(page.locator("#state")).toContainText("Resolved");

@@ -32,7 +32,7 @@ function Part({ title, children }: { title: string; children: ReactNode }): Reac
 function Severities(): ReactElement {
   return (
     <Part title="Critical and warning">
-      <p className="text-muted-foreground">You choose critical or warning on each monitor and heartbeat. Its incidents go to every alert card that listens to that level. If no card listens, nobody hears it. The incident still opens.</p>
+      <p className="text-muted-foreground">You choose critical or warning on each monitor and heartbeat, and its incidents go to every alert card that listens to that level. If no card listens, nobody hears it, but the incident still opens.</p>
       <Table>
         <TableHeader>
           <TableRow>
@@ -60,8 +60,8 @@ function Severities(): ReactElement {
       </Table>
       <p className="text-muted-foreground">
         An incident opens after a monitor fails the number of checks in a row you set (2 unless you change it), a missed heartbeat or a fail ping, and closes on the next good one. Each recipient gets one alert when it opens and one
-        when it closes. A monitor or heartbeat with incidents off sends a down alert and an up alert instead. One with alerts off sends nothing. A manual incident
-        sends no alert; it shows on the status page. New tickets and ticket moves have their own settings in Ticket alerts.
+        when it closes. A monitor or heartbeat with incidents off sends a down alert and an up alert instead, and one with alerts off sends nothing. A manual incident
+        sends no alert and only shows on the status page. New tickets and ticket moves have their own settings in Ticket alerts.
       </p>
     </Part>
   );
@@ -74,7 +74,7 @@ function Samples({ slug }: { slug: string }): ReactElement {
   const p = previews.data?.find((x) => x.event === kind);
   return (
     <Part title="What recipients get">
-      <p className="text-muted-foreground">Sample alerts for this project. The incident and the ticket are made up.</p>
+      <p className="text-muted-foreground">Sample alerts for this project, using a made-up incident and ticket.</p>
       {!previews.data || !p ? (
         <Skeleton className="h-64" />
       ) : (
@@ -97,9 +97,9 @@ function Samples({ slug }: { slug: string }): ReactElement {
           ) : (
             <p className="text-muted-foreground">
               {p.event === "ticket.created"
-                ? "Each ticket sends no email of its own. The owner's daily digest lists the new ones."
+                ? "Every ticket card that listens to new tickets gets this by email or webhook, and the owner's daily digest lists new ones too."
                 : p.event === "ticket.moved"
-                  ? "A move sends no email. Only the webhook gets it, when moves are on in Ticket alerts."
+                  ? "Every ticket card that listens to ticket moves gets this by email or webhook."
                   : "This alert sends no email."}
             </p>
           )}
@@ -130,9 +130,9 @@ function Delivery(): ReactElement {
         <li>
           Monita sends a POST with a JSON body. Slack and Google Chat show its <code className="font-mono">text</code> field.
         </li>
-        <li>A 2xx answer within 10 seconds counts as delivered. A redirect counts as a failure.</li>
-        <li>A failed call is tried again after 1, 5 and 15 minutes. After the fourth failure Monita gives up and writes the error to its log.</li>
-        <li>The webhook URL is a secret. Monita leaves it out of its logs and error messages.</li>
+        <li>A 2xx answer within 10 seconds counts as delivered, while a redirect counts as a failure.</li>
+        <li>A failed call is tried again after 1, 5 and 15 minutes, and after the fourth failure Monita gives up and writes the error to its log.</li>
+        <li>The webhook URL is a secret, so Monita leaves it out of its logs and error messages.</li>
       </ul>
     </Part>
   );

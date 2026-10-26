@@ -37,23 +37,23 @@ export function GuideSheet({ label, title, steps, note }: { label: string; title
 }
 
 const STATUS_EXAMPLES: [string, string][] = [
-  ["2xx", "Any code from 200 to 299. This is the default."],
+  ["2xx", "Any code from 200 to 299, which is the default."],
   ["200,204", "Exactly 200 or 204."],
   ["2xx,301", "Any 2xx code, or 301."],
-  ["3xx", "Any redirect. Monita does not follow it, so the redirect itself is the answer."],
+  ["3xx", "Any redirect, which Monita does not follow, so the redirect itself is the answer."],
 ];
 
 const TEXT_EXAMPLES: [string, string, string][] = [
   ['{"status": "ok"}', '"status": "ok"', "Passes."],
-  ['{"status": "ok"}', '"status":"ok"', "Fails. The space is missing."],
-  ['{"status": "OK"}', '"status": "ok"', "Fails. The capitals differ."],
+  ['{"status": "ok"}', '"status":"ok"', "Fails because the space is missing."],
+  ['{"status": "OK"}', '"status": "ok"', "Fails because the capitals differ."],
 ];
 
 /** What the "A check passes when" fields accept, with examples, so the form needs none. */
 function PassRules(): ReactElement {
   return (
     <span className="flex flex-col gap-3">
-      <span>A check passes when the answer comes within the timeout and the status code matches. Enter a class such as 2xx, a code, or a list separated by commas.</span>
+      <span>A check passes when the answer comes within the timeout and the status code matches, so enter a class such as 2xx, a code, or a list separated by commas.</span>
       <Table>
         <TableHeader>
           <TableRow>
@@ -71,10 +71,10 @@ function PassRules(): ReactElement {
         </TableBody>
       </Table>
       <span>
-        For an endpoint that needs a token, add a header such as Authorization: Bearer followed by the token. Pick POST or PUT to send a request body.
+        For an endpoint that needs a token, add a header such as Authorization: Bearer followed by the token, and pick POST or PUT to send a request body.
       </span>
       <span>
-        The response text is optional. Monita reads the first megabyte of the body as plain text and looks for your text anywhere in it, with the same capitals and spaces. It
+        The response text is optional. Monita reads the first megabyte of the body as plain text and looks for your text anywhere in it, with the same capitals and spaces, and it
         does not read JSON keys.
       </span>
       <Table>
@@ -107,9 +107,9 @@ export function MonitorGuide(): ReactElement {
       steps={[
         "Monita sends a request to the URL at the interval you choose, with the method you pick (GET unless you change it).",
         <PassRules />,
-        "A monitor counts as down after 2 failed checks in a row, or the count you enter, from 1 to 99. That opens an incident. The first passing check closes it.",
-        "A critical monitor alerts by email and webhook. A warning monitor alerts by email only.",
-        "With incidents off, a failure only sends a down alert, and recovery sends an up alert. The status page shows nothing.",
+        "A monitor counts as down after 2 failed checks in a row, or the count from 1 to 99 that you enter, and that opens an incident which the first passing check closes.",
+        "Its alerts go to every alert card that listens to its level, critical or warning.",
+        "With incidents off, a failure only sends a down alert, recovery sends an up alert, and the status page shows nothing.",
       ]}
       note="Monita keeps single checks for 7 days and daily summaries for good."
     />
@@ -123,9 +123,9 @@ export function HeartbeatGuide(): ReactElement {
       title="How a heartbeat works"
       steps={[
         "After you save, Monita gives the heartbeat a secret ping URL.",
-        "Your job calls that URL when it finishes. The next call must come within the time the job runs every, plus the time it can be late by. That moment is the deadline.",
-        "For example: a job runs every 1 day and can be late by 1 hour. It calls at 01:00. The next deadline is 02:00 the next day. A call at 01:40 is in time. No call by 02:00 is a miss.",
-        "If no call arrives by the deadline, Monita opens an incident. The next call closes it.",
+        "Your job calls that URL when it finishes, and the next call must arrive before the deadline, which is its period plus the time it can be late by.",
+        "For example, a job runs every 1 day and can be late by 1 hour. If it calls at 01:00, the next deadline is 02:00 the next day, so a call at 01:40 is in time and no call by 02:00 is a miss.",
+        "If no call arrives by the deadline, Monita opens an incident, and the next call closes it.",
         "A call to the URL with /fail at the end opens an incident at once.",
         "With incidents off, a miss or a fail call only sends a down alert, and the next call sends an up alert.",
       ]}
@@ -140,8 +140,8 @@ export function IncidentGuide(): ReactElement {
       label="When to report an incident"
       title="When to report an incident"
       steps={[
-        "Report a problem that no check catches, such as a slow sign-in for some users. Report one too when a monitor with incidents off goes down and users should know.",
-        "The items you pick show as Issue on the status page, not as down. Uptime does not change.",
+        "Report a problem that no check catches, such as a slow sign-in for some users, or when a monitor with incidents off goes down and users should know.",
+        "The items you pick show as Issue on the status page, not as down, and uptime does not change.",
         "The first update appears on the status page at once, without your name.",
         "A reported incident stays open until you post an update labelled Resolved.",
       ]}

@@ -39,7 +39,7 @@ export function Profile(): ReactElement {
       <SettingsSection
         id="picture"
         title="Picture"
-        description="The top bar shows it in place of your initial. Monita crops it to a square."
+        description="The top bar shows it in place of your initial, and Monita crops it to a square."
         footer={
           <>
             {current && !value && (

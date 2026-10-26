@@ -105,14 +105,14 @@ export function RateLimits(): ReactElement {
     <>
       <PageHeader title="Rate limits" />
       <p className="-mt-2 mb-6 max-w-3xl text-sm text-muted-foreground">
-        Limits keep Monita fast and stop one visitor or app from overloading it. The defaults suit most teams. Change one only when something hits it.
+        Limits keep Monita fast and stop one visitor or app from overloading it. The defaults suit most teams, so change one only when something hits it.
       </p>
       {!d ? (
         <Skeleton className="h-96 rounded-xl" />
       ) : (
         <div className="flex flex-col gap-6">
           <LimitsForm key={d.limits.map((l) => l.value).join()} d={d} onSaved={res.reload} />
-          <SettingsSection title="Built-in maximums" description="Monita stops at these numbers to stay quick. You cannot change them here. When a list reaches its maximum, adding one more is refused." flush>
+          <SettingsSection title="Built-in maximums" description="Monita refuses to add past these numbers so it stays quick, and they cannot be changed here." flush>
                 <Table>
                   <TableHeader>
                     <TableRow>

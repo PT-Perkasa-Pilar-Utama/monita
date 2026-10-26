@@ -167,7 +167,7 @@ export function AuthFields<F extends RequestPart>({ form, set, err, secrets, sec
       </div>
       {kind !== "none" && secrets?.length === 0 && (
         <p className="text-sm text-muted-foreground">
-          This project has no secrets yet. Add one in{" "}
+          This project has no secrets yet, so add one in{" "}
           <Link to={secretsHref} className="text-link underline-offset-4 hover:underline">
             Settings, Secrets
           </Link>
@@ -186,7 +186,7 @@ export function HeaderFields<F extends RequestPart>({ form, set, err }: Props<F>
     <FieldSet className="gap-3" data-invalid={err("headers") ? true : undefined}>
       <FieldLegend>Headers</FieldLegend>
       {rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No headers. A token goes under Authentication, so it stays sealed.</p>
+        <p className="text-sm text-muted-foreground">No headers yet, and a token belongs under Authentication so it stays sealed.</p>
       ) : (
         <div className="flex flex-col gap-2">
           {rows.map((r, i) => (

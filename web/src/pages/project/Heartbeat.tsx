@@ -84,7 +84,7 @@ export function Heartbeat({ editing = false }: { editing?: boolean }): ReactElem
               <Card>
                 <CardHeader>
                   <CardTitle>The job has not called yet</CardTitle>
-                  <CardDescription>Call this URL when the job succeeds. Details has commands to copy and a starter script.</CardDescription>
+                  <CardDescription>Call this URL when the job succeeds, and see Details for commands to copy and a starter script.</CardDescription>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center">
                   <div className="min-w-0 flex-1">

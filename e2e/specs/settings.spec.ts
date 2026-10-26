@@ -80,12 +80,12 @@ test("the allowlist saves, and with both owner cards off the page says no one he
   await page.goto(`/projects/${slug}/settings/alerts`);
   const owner = page.getByRole("list", { name: "Alert cards" }).getByRole("listitem");
   await owner.nth(0).getByRole("switch").click();
-  await expect(page.getByText("No card listens to critical alerts.", { exact: false })).toBeVisible();
+  await expect(page.getByText("No card listens to critical alerts", { exact: false })).toBeVisible();
   await owner.nth(1).getByRole("switch").click();
-  await expect(page.getByText("No card listens to warning alerts.", { exact: false })).toBeVisible();
+  await expect(page.getByText("No card listens to warning alerts", { exact: false })).toBeVisible();
   await page.reload();
   await expect(owner.nth(0).getByRole("switch")).not.toBeChecked();
-  await expect(page.getByText("No card listens to critical alerts.", { exact: false })).toBeVisible();
+  await expect(page.getByText("No card listens to critical alerts", { exact: false })).toBeVisible();
 });
 
 test("ticket alerts are cards: the owner's three start off, and a webhook card keeps its events", async ({ page }) => {

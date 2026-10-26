@@ -81,7 +81,7 @@ const SECTIONS: Record<CardSection, { title: string; description: string; add: s
   incidents: { title: "Alert cards", description: "Each card sends alerts for the levels it listens to.", add: "Add alert card" },
   tickets: {
     title: "Ticket alerts",
-    description: "Each card sends new bug reports from your users, each move on the board, or both. A ticket your team files sends no new-ticket alert.",
+    description: "Each card sends new bug reports from your users, each move on the board, or both, and a ticket your team files sends no new-ticket alert.",
     add: "Add ticket card",
   },
 };
@@ -134,7 +134,7 @@ export function Alerts(): ReactElement {
               {section === "incidents" &&
                 deaf.map((l) => (
                   <Alert key={l}>
-                    <AlertDescription>No card listens to {l} alerts. Nobody hears them.</AlertDescription>
+                    <AlertDescription>No card listens to {l} alerts, so nobody hears them.</AlertDescription>
                   </Alert>
                 ))}
               <ul aria-label={SECTIONS[section].title} className="grid gap-4 md:grid-cols-2">

@@ -15,9 +15,9 @@ import { toast } from "sonner";
 type TabKey = keyof PublicPages | "uptime";
 
 const TABS: CheckCard<TabKey>[] = [
-  { key: "uptime", title: "Uptime", description: "Shows how each public system has done over the last 90 days. This tab is always on.", locked: true },
+  { key: "uptime", title: "Uptime", description: "Shows how each public system has done over the last 90 days, and this tab is always on.", locked: true },
   { key: "incidents", title: "Incidents", description: "Shows current problems and past incidents, with the updates your team posts." },
-  { key: "known_issues", title: "Issues", description: "Shows the bugs your team is working on. Visitors see only the title." },
+  { key: "known_issues", title: "Issues", description: "Shows the bugs your team is working on, and visitors see only the title." },
   { key: "report", title: "Ticket", description: "Lets people report a bug and follow its progress with their ref ID." },
   { key: "changelog", title: "Changelog", description: "Shows what changed in each release, one version at a time." },
 ];
@@ -46,7 +46,7 @@ export function StatusPageSection(): ReactElement {
     <SettingsSection
       id="tabs"
       title="Public tabs"
-      description="Choose what people see on your status page. Only the monitors and heartbeats you mark as public appear there."
+      description="Choose what people see on your status page, where only the monitors and heartbeats you mark as public appear."
       footerNote={
         <a href={`/status/${p.slug}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-mono break-all text-link underline-offset-4 hover:underline">
           {origin}/status/{p.slug}

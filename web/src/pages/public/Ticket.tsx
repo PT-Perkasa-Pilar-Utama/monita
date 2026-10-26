@@ -92,7 +92,7 @@ export function Ticket(): ReactElement {
                 {made !== null && (
                   <Alert role="status">
                     <CheckCircle />
-                    <AlertTitle>Thanks. Your report is ticket #{made}.</AlertTitle>
+                    <AlertTitle>Thanks, your report is ticket #{made}.</AlertTitle>
                   </Alert>
                 )}
                 {formError && (

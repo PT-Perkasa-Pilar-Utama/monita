@@ -221,8 +221,8 @@ export function ProjectAbout({
           </Link>
           <span className="block text-muted-foreground">
             {allowlistSize(p.ip_allowlist) === 0
-              ? "Off. Every address can call the API."
-              : `On. ${allowlistSize(p.ip_allowlist) === 1 ? "1 address or range" : `${allowlistSize(p.ip_allowlist)} addresses or ranges`} may call the API.`}
+              ? "Off, so every address can call the API."
+              : `On, so only ${allowlistSize(p.ip_allowlist) === 1 ? "1 address or range" : `${allowlistSize(p.ip_allowlist)} addresses or ranges`} may call the API.`}
           </span>
         </Fact>
       </ul>

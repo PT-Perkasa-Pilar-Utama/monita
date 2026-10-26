@@ -36,11 +36,11 @@ export function Locations(): ReactElement {
         actions={<Writable><AddLocation disabled={full} onMade={(m) => (setMade(m), res.reload())} /></Writable>}
       />
       <p className="mb-5 max-w-3xl text-sm text-muted-foreground">
-        A location is another machine that runs checks for this Monita and reports the results. A monitor can check from this server and from any locations, and count as failed only when enough of them agree.
+        A location is another machine that runs checks for this Monita and reports the results, so a monitor can check from this server and from any locations, and count as failed only when enough of them agree.
       </p>
       {made && (
         <Alert role="status" className="mb-5">
-          <AlertTitle>{made.name} is ready. Copy its token now: Monita shows it only once.</AlertTitle>
+          <AlertTitle>{made.name} is ready, so copy its token now because Monita shows it only once.</AlertTitle>
           <AlertDescription className="mt-3 flex flex-col gap-3">
             <span>On the location's machine, download Monita as on the Install page, then run:</span>
             <CodeCopy id="probe-command" title="Start the probe" code={probeCommand(me.base_url, made.token)} />
@@ -80,7 +80,7 @@ export function Locations(): ReactElement {
                           </Button>
                         }
                         title={`Delete ${l.name}?`}
-                        description="Its probe stops working, its monitors check from the other places only, and its check results are deleted. You cannot undo this."
+                        description="Its probe stops working, its monitors check only from the other places, and its check results are deleted for good."
                         action="Delete location"
                         onConfirm={async () => {
                           await api(`/admin/locations/${l.id}`, "DELETE");
@@ -132,7 +132,7 @@ function AddLocation({ disabled, onMade }: { disabled: boolean; onMade: (m: { na
         <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-5">
           <DialogHeader>
             <DialogTitle>Add location</DialogTitle>
-            <DialogDescription>Name it after where the machine is. Monita shows its token once, after you add it.</DialogDescription>
+            <DialogDescription>Name it after where the machine is, because Monita shows its token only once, after you add it.</DialogDescription>
           </DialogHeader>
           <Field data-invalid={error ? true : undefined}>
             <FieldLabel htmlFor="loc-name" required>

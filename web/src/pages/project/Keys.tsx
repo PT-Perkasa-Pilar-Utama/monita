@@ -67,7 +67,7 @@ export function Keys(): ReactElement {
       <SettingsPage title="API keys" actions={<ApiKeysGuide />}>
       {newKey && (
         <Alert>
-          <AlertTitle>Key created. Copy it now: Monita shows it only once.</AlertTitle>
+          <AlertTitle>Key created, so copy it now because Monita shows it only once.</AlertTitle>
           <AlertDescription className="mt-2">
             <CopyField id="new-key" value={newKey} />
           </AlertDescription>
@@ -89,7 +89,7 @@ export function Keys(): ReactElement {
         ) : list.length === 0 ? (
           <TableEmpty
             title="Create a key for your backend"
-            description="Your backend sends the key with each call to the Monita API, for example to issue ref IDs. Monita shows each key once."
+            description="Your backend sends the key with each call to the Monita API, for example to issue ref IDs, and Monita shows each key only once."
           />
         ) : (
           <Table>
@@ -118,7 +118,7 @@ export function Keys(): ReactElement {
                           </Button>
                         }
                         title={`Revoke the key ${k.name}?`}
-                        description="Every call that sends this key gets 401 from now on. You cannot undo this."
+                        description="Every call that sends this key gets 401 from now on, and you cannot undo this."
                         action="Revoke"
                         onConfirm={async () => {
                           await api(`/projects/${p.slug}/keys/${k.id}/revoke`, "POST");
@@ -137,7 +137,7 @@ export function Keys(): ReactElement {
       <FormSheet open={open} onClose={() => setOpen(false)}>
         <FormSheetBody
           title="New API key"
-          description="Name the key after the program that uses it. Monita shows the key once, right after you create it."
+          description="Name the key after the program that uses it, because Monita shows the key once, right after you create it."
           onSubmit={(e) => void create(e)}
           footer={
             <div className="ml-auto flex gap-2">

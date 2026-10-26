@@ -34,7 +34,7 @@ function RefIdLine({ t, path, onChanged }: { t: TicketRow; path: string; onChang
               </Button>
             }
             title="Revoke this ref ID?"
-            description="The reporter can no longer file tickets with it. Their tickets stay. You cannot undo this."
+            description="The reporter can no longer file tickets with it, though their tickets stay, and you cannot undo this."
             action="Revoke"
             onConfirm={async () => {
               await api(`${path}/revoke-ref`, "POST");

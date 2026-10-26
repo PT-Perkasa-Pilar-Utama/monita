@@ -120,7 +120,7 @@ function MonitorFormBody({ id, onClose, onSaved }: { id: string | undefined; onC
                       </Button>
                     }
                     title="Delete this monitor?"
-                    description="Monita deletes the monitor and every check it ran. You cannot undo this."
+                    description="Monita deletes the monitor and every check it ran, and you cannot undo this."
                     action="Delete monitor"
                     onConfirm={async () => {
                       await api(`${base}/${id}`, "DELETE");

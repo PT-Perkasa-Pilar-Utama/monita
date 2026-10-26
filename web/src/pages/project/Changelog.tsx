@@ -99,7 +99,7 @@ export function Changelog(): ReactElement {
           ) : d.releases.length === 0 && q.filtered ? (
             <TableEmpty title="" filtered noun="releases" onClear={q.clear} />
           ) : d.releases.length === 0 ? (
-            <TableEmpty title="Write your first release" description="Each release lists what was added, changed, fixed or removed. Turn on the Changelog tab in Status page settings to show it." />
+            <TableEmpty title="Write your first release" description="Each release lists what was added, changed, fixed or removed, and you show it by turning on the Changelog tab in Status page settings." />
           ) : (
             <Table>
               <TableHeader>
@@ -144,7 +144,7 @@ export function Changelog(): ReactElement {
                     </Button>
                   }
                   title={`Delete release ${editing.version}?`}
-                  description="It leaves the public Changelog at once. You cannot undo this."
+                  description="It leaves the public Changelog at once, and you cannot undo this."
                   action="Delete release"
                   onConfirm={async () => {
                     await api(`${base}/${editing.id}`, "DELETE");

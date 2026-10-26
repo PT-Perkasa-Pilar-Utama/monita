@@ -19,8 +19,8 @@ export const reasonLabel = (r: CloseReason): string => REASONS.find(([k]) => k =
 
 /** What a column says under its name on the team's board. */
 export const STAGE_NOTES: Record<Stage, string> = {
-  triage: "New reports. Only your team sees them.",
-  backlog: "Accepted. Shown on the public board.",
+  triage: "New reports, which only your team sees.",
+  backlog: "Accepted and shown on the public board.",
   in_progress: "Someone is working on it.",
   done: "Fixed, won't fix or duplicate.",
 };

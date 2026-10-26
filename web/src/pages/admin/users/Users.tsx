@@ -108,7 +108,7 @@ export function Users(): ReactElement {
       <PageHeader title="User management" filtered={filtered} actions={<Writable><InviteSheet onInvited={(i) => (setInvited(i), res.reload())} /></Writable>} />
       {invited && (
         <Alert role="status" className="mb-5">
-          <AlertTitle>Invite sent to {invited.email}. The link works once and expires in 72 hours.</AlertTitle>
+          <AlertTitle>Invite sent to {invited.email} with a link that works once and expires in 72 hours.</AlertTitle>
           <AlertDescription className="mt-2">
             <CopyField id="invite-link" value={invited.link} />
           </AlertDescription>

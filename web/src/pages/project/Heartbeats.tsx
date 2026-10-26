@@ -72,7 +72,7 @@ export function Heartbeats({ creating = false }: { creating?: boolean }): ReactE
         <TableCard title="0 heartbeats">
           <TableEmpty
             title="Watch your first cron job"
-            description="A heartbeat tells you when a cron job stops running. Create one and add its URL to the end of the job."
+            description="A heartbeat tells you when a cron job stops running, so create one and add its URL to the end of the job."
           />
         </TableCard>
       ) : (

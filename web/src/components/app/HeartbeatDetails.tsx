@@ -25,11 +25,11 @@ export function HeartbeatDetails({ h, pingUrl, trigger }: { h: HeartbeatView; pi
   return (
     <DetailsSheet title={h.name} description="How the job calls Monita, and how this heartbeat is set up." trigger={trigger}>
           <DetailPart title="Ping URL">
-            <p className="text-muted-foreground">Call it with GET, HEAD or POST when the job succeeds; Monita ignores that body. Add /fail to the end when it fails, and send the reason as plain text in the body: Monita keeps the first 1 KB as the cause.</p>
+            <p className="text-muted-foreground">Call it with GET, HEAD or POST when the job succeeds, and Monita ignores that body. When it fails, add /fail to the end and send the reason as plain text in the body, and Monita keeps the first 1 KB as the cause.</p>
             <CopyField id="ping-url" value={pingUrl} />
           </DetailPart>
           <DetailPart title="Call it from your job">
-            <p className="text-muted-foreground">Any language works: an HTTP request to the URL is enough. The last example is a starting point to adapt.</p>
+            <p className="text-muted-foreground">Any language works, since an HTTP request to the URL is enough, and the last example is a starting point to adapt.</p>
             <ToggleGroup type="single" variant="outline" size="sm" aria-label="Language" value={lang} onValueChange={(v) => v && pick(v as Lang)} className="self-start">
               {LANGS.map((l) => (
                 <ToggleGroupItem key={l.lang} value={l.lang} className="px-3">

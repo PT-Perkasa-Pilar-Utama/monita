@@ -43,7 +43,7 @@ export function Invite(): ReactElement {
             <CardTitle>
             <h1 className="text-xl">Link not valid</h1>
           </CardTitle>
-            <CardDescription>This link is invalid, expired or already used. Ask a super admin for a new invite.</CardDescription>
+            <CardDescription>This link is invalid, expired or already used, so ask a super admin for a new invite.</CardDescription>
           </CardHeader>
         </Card>
       </BareLayout>
@@ -56,7 +56,7 @@ export function Invite(): ReactElement {
           <CardTitle>
             <h1 className="text-xl">Set your password</h1>
           </CardTitle>
-          <CardDescription>Use at least 8 characters. You sign in with your email and this password.</CardDescription>
+          <CardDescription>Use at least 8 characters for the password you sign in with.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-6">

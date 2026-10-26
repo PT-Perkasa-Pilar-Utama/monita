@@ -54,12 +54,12 @@ export function ConnectApp({ slug }: { slug: string }): ReactElement {
       <SheetContent size="half" aria-describedby={undefined}>
         <SheetHeader>
           <SheetTitle>Connect your app</SheetTitle>
-          <p className="text-sm text-muted-foreground">Your users report bugs from inside your app. Monita never learns who they are.</p>
+          <p className="text-sm text-muted-foreground">Your users report bugs from inside your app, and Monita never learns who they are.</p>
         </SheetHeader>
         <ol className="flex flex-col gap-8 overflow-y-auto px-6 py-6">
           <Step n={1} title="Make an API key">
             <p>
-              Open <Link className="text-link underline-offset-2 hover:underline" to={`${settings}/keys`}>API keys</Link> and select New API key. Keep the key on your server. Never put it in a browser.
+              Open <Link className="text-link underline-offset-2 hover:underline" to={`${settings}/keys`}>API keys</Link> and select New API key, then keep the key on your server and never put it in a browser.
             </p>
           </Step>
           <Step n={2} title="Your server issues a ref ID for each user">
@@ -68,7 +68,7 @@ export function ConnectApp({ slug }: { slug: string }): ReactElement {
   -H "Content-Type: application/json" \\
   -d '{"single_use": false}'`}</Code>
             <p className="text-muted-foreground">
-              The answer holds <code className="font-mono text-foreground">ref_id</code>. Store it on the user's record. With <code className="font-mono text-foreground">"single_use": true</code> the ref ID takes one ticket only.
+              The answer holds <code className="font-mono text-foreground">ref_id</code>. Store it on the user's record, and with <code className="font-mono text-foreground">"single_use": true</code> the ref ID takes one ticket only.
             </p>
           </Step>
           <Step n={3} title="The user files a ticket with it">
@@ -78,7 +78,7 @@ export function ConnectApp({ slug }: { slug: string }): ReactElement {
        "description": "I click Pay and nothing happens.",
        "page_url": "https://shop.example.com/cart"}'`}</Code>
             <p className="text-muted-foreground">
-              This call needs no key, so the user's browser can send it. The ticket lands in Triage. A ref ID files up to 5 tickets a day, and the project up to 100.
+              This call needs no key, so the user's browser can send it, and the ticket lands in Triage. A ref ID files up to 5 tickets a day and the project up to 100.
             </p>
           </Step>
           <Step n={4} title="Show the user their tickets">
