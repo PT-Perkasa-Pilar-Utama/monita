@@ -2033,6 +2033,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "turso",
+ "zstd",
 ]
 
 [[package]]

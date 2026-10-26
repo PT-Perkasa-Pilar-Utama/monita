@@ -1,4 +1,5 @@
-export {};
+import { readdir } from "node:fs/promises";
+import { brotliCompressSync, constants, gzipSync } from "node:zlib";
 
 // Builds the frontend into web/dist: hashed files under assets/, and index.html that names them.
 // Monita embeds the folder (src/platform/spa.rs) and serves index.html for every page path.
@@ -56,4 +57,14 @@ ${css.map((c) => `<link rel="stylesheet" href="${rel(c.path)}">`).join("\n")}
 </html>
 `;
 await Bun.write(`${OUT}/index.html`, html);
+
+// Each file also ships as .br and .gz, which Monita sends to a browser that takes them
+// (src/platform/spa.rs): the JS goes from 1 MB to about 240 KB.
+for (const name of await readdir(`${OUT}/assets`)) {
+  if (!/\.(js|css)$/.test(name)) continue;
+  const path = `${OUT}/assets/${name}`;
+  const raw = new Uint8Array(await Bun.file(path).arrayBuffer());
+  await Bun.write(`${path}.br`, brotliCompressSync(raw, { params: { [constants.BROTLI_PARAM_QUALITY]: 11 } }));
+  await Bun.write(`${path}.gz`, gzipSync(raw, { level: 9 }));
+}
 console.log(`web: ${result.outputs.length} files, entry ${rel(entry.path)}`);

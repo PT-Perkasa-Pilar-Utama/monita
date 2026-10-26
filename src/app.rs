@@ -111,7 +111,8 @@ pub fn router(state: AppState) -> Router {
     }
 
     // 128 KiB: the largest valid form is a ticket of 10 000 four-byte characters, percent-encoded.
-    r.layer(DefaultBodyLimit::max(MAX_BODY))
+    r.layer(middleware::from_fn(crate::platform::compress::json))
+        .layer(DefaultBodyLimit::max(MAX_BODY))
         .layer(middleware::from_fn_with_state(
             state.clone(),
             headers::origin_check,

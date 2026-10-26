@@ -3,7 +3,7 @@
 
 use axum::{
     extract::Path,
-    http::{Method, StatusCode, Uri, header},
+    http::{HeaderMap, HeaderValue, Method, StatusCode, Uri, header},
     response::{IntoResponse, Response},
 };
 use rust_embed::Embed;
@@ -13,21 +13,36 @@ use rust_embed::Embed;
 struct Web;
 
 /// `/assets/<name>-<hash>.<ext>`: the name carries the content hash, so caching is safe for a year.
-pub async fn asset(Path(path): Path<String>) -> Response {
-    let Some(file) = Web::get(&format!("assets/{path}")) else {
+/// The `.br` or `.gz` copy that `web/build.ts` made goes out when the browser takes it.
+pub async fn asset(Path(path): Path<String>, headers: HeaderMap) -> Response {
+    let name = format!("assets/{path}");
+    let Some(file) = Web::get(&name) else {
         return StatusCode::NOT_FOUND.into_response();
     };
-    (
+    let mime = file.metadata.mimetype().to_string();
+    let packed = super::compress::precompressed(&headers)
+        .find_map(|(suffix, coding)| Web::get(&format!("{name}{suffix}")).map(|f| (f, coding)));
+    let (data, coding) = match packed {
+        Some((f, coding)) => (f.data, Some(coding)),
+        None => (file.data, None),
+    };
+    let mut res = (
         [
-            (header::CONTENT_TYPE, file.metadata.mimetype().to_string()),
+            (header::CONTENT_TYPE, mime),
             (
                 header::CACHE_CONTROL,
                 "public, max-age=31536000, immutable".to_string(),
             ),
+            (header::VARY, "accept-encoding".to_string()),
         ],
-        file.data,
+        data,
     )
-        .into_response()
+        .into_response();
+    if let Some(coding) = coding {
+        res.headers_mut()
+            .insert(header::CONTENT_ENCODING, HeaderValue::from_static(coding));
+    }
+    res
 }
 
 /// The page shell for any GET no route claims. API and machine paths stay 404.
