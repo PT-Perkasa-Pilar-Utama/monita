@@ -45,7 +45,7 @@ site/                 landing page and docs site builder    docs/guide/ user doc
 | --- | --- | --- |
 | accounts | users, invites, sessions, recovery_codes, sign_in_challenges, user_avatars | `CurrentUser` (refuses a supervisor's or read key's writes; under `/api/v1/projects/` it is the key's principal, Q44) and `AdminUser` (super admin, or a supervisor reading) extractors, `purge_expired` |
 | projects | projects, project_icons, api_keys, project_secrets | `ApiProject` extractor, `find_for`, `can_view`, `owns_any` |
-| checks | monitors, heartbeats, check_results, pings, daily_summaries, locations, monitor_locations | `probe`, `Job`, `heartbeat::admit` and `record`, `scheduler::spawn`, `locations::record_at` |
+| checks | monitors, heartbeats, check_results, pings, check_slots, ping_slots, daily_summaries, locations, monitor_locations | `probe`, `Job`, `heartbeat::admit` and `record`, `scheduler::spawn`, `locations::record_at` |
 | incidents | incidents, incident_items, incident_sources, status_updates | `observe` (the only door for check results), `open_manual`, `post_update`, `states_for`, `source_deleted` |
 | notify | alert_cards, outbox, telegram_links | `send(Event)`: inserts outbox rows, never blocks; `create_alerts`, `cards::*`, `purge_delivered` |
 | status | none | public page and JSON |

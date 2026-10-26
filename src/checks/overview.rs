@@ -43,7 +43,9 @@ pub fn check_summary(c: &CheckRow) -> String {
 }
 
 pub async fn last_day(db: &Db, project_id: i64, now: i64) -> anyhow::Result<HashMap<i64, Day>> {
-    let from = now - 3600 * HOURS as i64;
+    // Ends with the slot that holds `now`, so the hours line up with the slot table.
+    let end = now - now.rem_euclid(store::SLOT_S) + store::SLOT_S;
+    let from = end - 3600 * HOURS as i64;
     let rows = store::project_buckets(&db.read().await?, project_id, from, 3600, HOURS).await?;
     let mut by_monitor: HashMap<i64, Vec<Bucket>> = HashMap::new();
     for (id, b) in rows {

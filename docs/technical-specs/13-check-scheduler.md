@@ -37,7 +37,7 @@ every 1 s:
           (up to caps::MISSED_BATCH = 50 per write; the sweep loops)
   outbox::deliver_due()          (spawned, one at a time)
   daily jobs, each once per UTC day:
-      00:10  rollup yesterday into daily_summaries, then delete check_results and pings older than 7 days,
+      00:10  rollup yesterday into daily_summaries, then delete check_results, pings and their slots older than 7 days,
              outbox rows older than 30 days, expired sessions and invites
       01:00  backup
       MONITA_DIGEST_UTC_HOUR  ticket digest

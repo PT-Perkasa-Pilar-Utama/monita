@@ -26,7 +26,8 @@ pub async fn check_counts(
 ) -> anyhow::Result<(i64, i64, Option<i64>)> {
     let mut rows = c
         .query(
-            "SELECT count(*), coalesce(sum(ok OR in_window), 0), CAST(avg(latency_ms) AS INTEGER) FROM check_results WHERE monitor_id = ?1 AND location_id IS NULL AND checked_at >= ?2 AND checked_at < ?3",
+            "SELECT coalesce(sum(total), 0), coalesce(sum(good), 0), CASE WHEN sum(timed) > 0 THEN sum(ms_sum) / sum(timed) END
+             FROM check_slots WHERE monitor_id = ?1 AND slot >= ?2 / 900 AND slot < ?3 / 900",
             (id, day, day + 86_400),
         )
         .await?;
@@ -45,7 +46,7 @@ pub async fn ping_counts(
 ) -> anyhow::Result<(i64, i64, Option<i64>)> {
     let mut rows = c
         .query(
-            "SELECT count(*), coalesce(sum(kind = 'ok' OR in_window), 0) FROM pings WHERE heartbeat_id = ?1 AND received_at >= ?2 AND received_at < ?3",
+            "SELECT coalesce(sum(total), 0), coalesce(sum(good), 0) FROM ping_slots WHERE heartbeat_id = ?1 AND slot >= ?2 / 900 AND slot < ?3 / 900",
             (id, day, day + 86_400),
         )
         .await?;
@@ -77,7 +78,7 @@ pub async fn upsert_summary(
     Ok(())
 }
 
-/// Deletes up to 5 000 raw rows of each table older than `raw_cutoff`. Returns how many went.
+/// Deletes up to 5 000 raw rows and slots of each table older than `raw_cutoff`. Returns how many went.
 pub async fn sweep_chunk(c: &Connection, raw_cutoff: i64) -> anyhow::Result<u64> {
     let results = c
         .execute(
@@ -91,7 +92,20 @@ pub async fn sweep_chunk(c: &Connection, raw_cutoff: i64) -> anyhow::Result<u64>
             [raw_cutoff],
         )
         .await?;
-    Ok(results + pings)
+    let slot_cutoff = raw_cutoff / 900;
+    let check_slots = c
+        .execute(
+            "DELETE FROM check_slots WHERE rowid IN (SELECT rowid FROM check_slots WHERE slot < ?1 LIMIT 5000)",
+            [slot_cutoff],
+        )
+        .await?;
+    let ping_slots = c
+        .execute(
+            "DELETE FROM ping_slots WHERE rowid IN (SELECT rowid FROM ping_slots WHERE slot < ?1 LIMIT 5000)",
+            [slot_cutoff],
+        )
+        .await?;
+    Ok(results + pings + check_slots + ping_slots)
 }
 
 pub async fn delete_summaries(c: &Connection, kind: SourceKind, id: i64) -> anyhow::Result<()> {

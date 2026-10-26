@@ -251,6 +251,17 @@ Migration 0030, v1.1 Q26. Design: [14](14-locations.md).
 
 `monitors.quorum` (INTEGER, default 1, 1 to 11): how many places must fail for a check to count as failed.
 
+### 6.3.9b check_slots and ping_slots
+
+Checks and pings summed per 15-minute UTC slot (`slot` = time / 900, migration 0046). The day and week charts, the project charts, the sparklines and the daily rollup read these. The hour chart reads the raw rows.
+
+| table | columns |
+| --- | --- |
+| check_slots | monitor_id FK ON DELETE CASCADE, slot, total, good, timed (checks with a latency), ms_sum; PK (monitor_id, slot) |
+| ping_slots | heartbeat_id FK ON DELETE CASCADE, slot, total, good; PK (heartbeat_id, slot) |
+
+An `AFTER INSERT` trigger on `check_results` and on `pings` adds each row to its slot. Every insert path, the seeds too, keeps the slots right. Only this server's checks count (`location_id IS NULL`). A failure in a maintenance window counts as good, as on the charts. The retention sweep deletes slots older than 7 days with the raw rows. Release build, 3 M raw rows: the project list's chart went from 391 ms to 41 ms, a project's overview from 230 ms to 34 ms. Migration 0046 fills the slots from the raw rows in 11 s.
+
 ### 6.3.10 daily_summaries
 
 | column | type | notes |

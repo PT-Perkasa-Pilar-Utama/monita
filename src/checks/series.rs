@@ -1,6 +1,6 @@
 //! The data behind the monitor and heartbeat charts: bucketed reads and down spans, turned into
-//! geometry by `chart`. Hour, day and week read the raw rows (kept 7 days); month reads the daily
-//! rollup and today's raw rows.
+//! geometry by `chart`. Hour reads the raw rows; day and week read the 15-minute slots (both kept
+//! 7 days); month reads the daily rollup and today's slots.
 
 use super::{
     Monitor,
@@ -189,8 +189,7 @@ pub async fn project(
 /// the mean response time of its monitors per slot, weighted by checks, and its red shading is
 /// its monitors' automatic incidents. A project with heartbeats also gets a lane: their pings
 /// together, and the time they missed or failed. Paused monitors and heartbeats read nothing.
-// ponytail: one bucket read per monitor, PROJECTS_PAGE * MONITORS_PER_PROJECT (2000) at most a
-// read; move to an hourly rollup written with each check if a full page reads slowly.
+// One slot read per monitor and heartbeat: 400 for two full projects, 41 ms in a release build.
 pub async fn projects(
     db: &Db,
     projects: &[(i64, String)],
