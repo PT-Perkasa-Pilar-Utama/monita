@@ -1,10 +1,16 @@
 import { useSearchParams } from "react-router-dom";
 import type { ListFilter } from "@/lib/filter";
 
-/** A list's filter, kept in the URL (`?q=&state=&severity=`) so a link or Back restores it. */
+/** A list's filter, kept in the URL (`?q=&state=&severity=&from=&to=`) so a link or Back restores it. */
 export function useListFilter(): [ListFilter, (patch: Partial<ListFilter>) => void, () => void] {
   const [params, setParams] = useSearchParams();
-  const f: ListFilter = { q: params.get("q") ?? "", state: params.get("state") ?? "", severity: params.get("severity") ?? "" };
+  const f: ListFilter = {
+    q: params.get("q") ?? "",
+    state: params.get("state") ?? "",
+    severity: params.get("severity") ?? "",
+    from: params.get("from") ?? "",
+    to: params.get("to") ?? "",
+  };
   // The filter's own keys change; anything else in the URL, such as the sort, stays.
   const write = (next: ListFilter): void => {
     const out = new URLSearchParams(params);
@@ -14,5 +20,5 @@ export function useListFilter(): [ListFilter, (patch: Partial<ListFilter>) => vo
     }
     setParams(out, { replace: true });
   };
-  return [f, (patch) => write({ ...f, ...patch }), () => write({ q: "", state: "", severity: "" })];
+  return [f, (patch) => write({ ...f, ...patch }), () => write({ q: "", state: "", severity: "", from: "", to: "" })];
 }

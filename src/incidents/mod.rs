@@ -252,12 +252,14 @@ pub async fn across(
 }
 
 /// `open`: Some(true) open only, Some(false) resolved only, None both.
+/// The project's newest 200 incidents: open, resolved or both, and open at some time in `range`.
 pub async fn list(
     db: &Db,
     project_id: i64,
     open: Option<bool>,
+    range: (Option<i64>, Option<i64>),
 ) -> anyhow::Result<Vec<IncidentRow>> {
-    store::list(&db.read().await?, project_id, open).await
+    store::list(&db.read().await?, project_id, open, range).await
 }
 
 pub async fn find(

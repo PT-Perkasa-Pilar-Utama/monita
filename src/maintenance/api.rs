@@ -95,12 +95,13 @@ async fn list(
     let p = projects::find_for(&state.db, &user, &slug).await?;
     let page = q.page.trim().parse().unwrap_or(1).max(1);
     let t = now();
+    let (from, to) = time::day_range(&q.from, &q.to, off);
     let filter = super::Filter {
         q: q.q,
         state: super::State::parse(&q.state),
         oldest: q.sort == "oldest",
-        from: time::parse_day_at(&q.from, off),
-        to: time::parse_day_at(&q.to, off).map(|d| d + 86_400),
+        from,
+        to,
     };
     let (windows, total) = super::page(&state.db, p.id, page, &filter, t).await?;
     let names = crate::checks::source_names(&state.db.read().await?, p.id).await?;

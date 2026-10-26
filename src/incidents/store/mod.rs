@@ -332,13 +332,15 @@ pub async fn list(
     c: &Connection,
     project_id: i64,
     open: Option<bool>,
+    (from, to): (Option<i64>, Option<i64>),
 ) -> anyhow::Result<Vec<IncidentRow>> {
     let filter = match open {
         Some(true) => "i.resolved_at IS NULL",
         Some(false) => "i.resolved_at IS NOT NULL",
         None => "1",
     };
-    crate::platform::db::query_all(c, format!("SELECT {COLS} FROM incidents i WHERE i.project_id = ?1 AND {filter} ORDER BY i.started_at DESC, i.id DESC LIMIT 200"), [project_id], row).await
+    let range = across::range_sql(2, 3);
+    crate::platform::db::query_all(c, format!("SELECT {COLS} FROM incidents i WHERE i.project_id = ?1 AND {filter} AND {range} ORDER BY i.started_at DESC, i.id DESC LIMIT 200"), (project_id, from, to), row).await
 }
 
 pub async fn find(c: &Connection, project_id: i64, id: i64) -> anyhow::Result<Option<IncidentRow>> {

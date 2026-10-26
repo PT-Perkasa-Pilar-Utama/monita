@@ -121,6 +121,16 @@ pub fn parse_day_at(s: &str, off: i64) -> Option<i64> {
     (civil_from_days(days) == (y, m, d)).then(|| days * 86_400 - off * 60)
 }
 
+/// A list's day range from `?from=` and `?to=` (`YYYY-MM-DD` on a clock `off` minutes east of
+/// UTC): the start of the first day and the end of the last. A value that is not a real date is
+/// no bound.
+pub fn day_range(from: &str, to: &str, off: i64) -> (Option<i64>, Option<i64>) {
+    (
+        parse_day_at(from, off),
+        parse_day_at(to, off).map(|d| d + 86_400),
+    )
+}
+
 /// Howard Hinnant's days-to-civil algorithm.
 fn civil_from_days(z: i64) -> (i64, u32, u32) {
     let z = z + 719_468;

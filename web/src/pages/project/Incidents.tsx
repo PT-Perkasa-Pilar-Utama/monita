@@ -9,6 +9,7 @@ import { TableCard } from "@/components/app/TableCard";
 import { LabelBadge, SeverityBadge } from "@/components/app/Tone";
 import { Plus } from "@/components/icons";
 import { PageHeader } from "@/components/layout/Page";
+import { DateRange } from "@/components/list/DateRange";
 import { TableEmpty } from "@/components/list/TableEmpty";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -40,7 +41,9 @@ export function Incidents({ creating = false }: { creating?: boolean }): ReactEl
   const base = `/projects/${p.slug}/incidents`;
   const [filter, setFilter, clear] = useListFilter();
   const resolved = filter.state === "resolved";
-  const res = useApi<{ incidents: IncidentRow[] }>(`${base}${filter.state ? `?state=${filter.state}` : ""}`);
+  // State and days go to the server, which reads the newest 200 that match; search and severity filter those here.
+  const query = new URLSearchParams(Object.entries({ state: filter.state, from: filter.from ?? "", to: filter.to ?? "" }).filter(([, v]) => v)).toString();
+  const res = useApi<{ incidents: IncidentRow[] }>(`${base}${query ? `?${query}` : ""}`);
   const all = res.data?.incidents ?? [];
   const [sort, onSort] = useSort(["title", "severity", "update", "started", "duration"]);
   const now = nowSecs();
@@ -50,8 +53,9 @@ export function Incidents({ creating = false }: { creating?: boolean }): ReactEl
     { title: (i) => i.title, severity: (i) => i.severity, update: (i) => i.last_label, started: (i) => i.started_at, duration: (i) => (i.resolved_at ?? now) - i.started_at },
   );
   const searching = filter.q.trim() !== "" || filter.severity !== "";
+  const ranged = !!filter.from || !!filter.to;
   // Open is the default list; Resolved or All counts as a filter, so Clear filters goes back to Open.
-  const filtered = searching || filter.state !== "";
+  const filtered = searching || ranged || filter.state !== "";
 
   return (
     <>
@@ -75,11 +79,16 @@ export function Incidents({ creating = false }: { creating?: boolean }): ReactEl
       <TableCard
         title={res.data ? countLabel(rows.length, all.length, NOUN[filter.state] ?? "incident") : "Incidents"}
         onClear={filtered ? clear : undefined}
-        tools={<ListFilters noun="incidents" filter={filter} onChange={setFilter} stateOptions={STATES} />}
+        tools={
+          <>
+            <ListFilters noun="incidents" filter={filter} onChange={setFilter} stateOptions={STATES} />
+            <DateRange from={filter.from ?? ""} to={filter.to ?? ""} onChange={setFilter} />
+          </>
+        }
       >
         {!res.data ? (
           <Skeleton className="m-5 h-24" />
-        ) : rows.length === 0 && searching && all.length > 0 ? (
+        ) : rows.length === 0 && ((searching && all.length > 0) || ranged) ? (
           <TableEmpty title="" filtered noun="incidents" onClear={clear} />
         ) : rows.length === 0 ? (
           resolved ? (

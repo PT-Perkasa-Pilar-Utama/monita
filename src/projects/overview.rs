@@ -38,7 +38,7 @@ pub async fn read(
         .iter()
         .find(|(k, _)| k == "triage")
         .map_or(0, |(_, n)| *n);
-    let mut open = incidents::list(db, project_id, Some(true)).await?;
+    let mut open = incidents::list(db, project_id, Some(true), (None, None)).await?;
     open.truncate(INCIDENTS);
     let keys = super::list_keys(db, project_id).await?;
     let chart = checks::series::project(db, project_id, viewer, now(), off).await?;

@@ -15,7 +15,7 @@ use crate::{
     incidents::IncidentRow,
     platform::{
         caps,
-        ui::{UiResult, data},
+        ui::{UiResult, ViewerOffset, data},
     },
     projects::{self, Project, api::ProjectView},
     tickets::TriageRow,
@@ -41,6 +41,9 @@ struct PageQuery {
     state: String,
     severity: String,
     sort: String,
+    /// `YYYY-MM-DD` on the viewer's clock; the Incidents list only.
+    from: String,
+    to: String,
 }
 
 impl PageQuery {
@@ -77,6 +80,7 @@ async fn with_projects<T: Serialize>(
 async fn incidents(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
+    ViewerOffset(off): ViewerOffset,
     Query(q): Query<PageQuery>,
 ) -> UiResult {
     let f = crate::incidents::AcrossFilter {
@@ -84,6 +88,7 @@ async fn incidents(
         state: &q.state,
         severity: &q.severity,
         sort: &q.sort,
+        range: crate::platform::time::day_range(&q.from, &q.to, off),
     };
     let (rows, total) = crate::incidents::across(&state.db, owner(&user), &f, q.page()).await?;
     let rows: Vec<WithProject<IncidentRow>> = with_projects(&state, rows).await?;

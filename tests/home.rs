@@ -88,3 +88,71 @@ async fn a_tech_lead_sees_their_own_projects_and_a_super_admin_sees_all() {
         "another owner's ticket stays out of a search"
     );
 }
+
+#[tokio::test]
+async fn both_incident_lists_keep_the_incidents_open_on_the_picked_days() {
+    let app = TestApp::spawn("test").await;
+    let rina = app.tl("rina@x.co").await;
+    app.project(&rina, "Payments", "payments").await;
+    // Without an x-utc-offset header the days are UTC, the default admin time zone.
+    // 1790848800 = 2026-10-01 10:00, 1790985600 = 2026-10-03 00:00, 1790553600 = 2026-09-28 00:00.
+    app.state
+        .db
+        .write(async |c| {
+            c.execute_batch(
+                "INSERT INTO incidents (id, project_id, origin, title, severity, started_at, resolved_at) VALUES
+                   (1, 1, 'manual', 'Short blip', 'warning', 1790848800, 1790852400),
+                   (2, 1, 'manual', 'Still open', 'critical', 1790985600, NULL),
+                   (3, 1, 'manual', 'Long outage', 'critical', 1790553600, 1790942400);",
+            )
+            .await?;
+            Ok(())
+        })
+        .await
+        .unwrap();
+    let across = async |range: &str| {
+        let rows = read(
+            &app,
+            &format!("/api/ui/incidents?state=all&sort=oldest&{range}"),
+            &rina,
+        )
+        .await;
+        titles(&rows["incidents"])
+    };
+    let project = async |range: &str| {
+        let rows = read(
+            &app,
+            &format!("/api/ui/projects/payments/incidents?state=all&{range}"),
+            &rina,
+        )
+        .await;
+        rows["incidents"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|r| r["title"].as_str().unwrap().to_string())
+            .collect::<Vec<_>>()
+    };
+    let one_day = "from=2026-10-02&to=2026-10-02";
+    assert_eq!(
+        across(one_day).await,
+        ["payments Long outage"],
+        "open across that day"
+    );
+    assert_eq!(project(one_day).await, ["Long outage"]);
+    assert_eq!(
+        across("from=2026-10-03").await,
+        ["payments Still open"],
+        "an open incident counts as open until now"
+    );
+    assert_eq!(across("to=2026-09-30").await, ["payments Long outage"]);
+    assert_eq!(
+        project("from=2026-10-01&to=2026-10-01").await,
+        ["Short blip", "Long outage"]
+    );
+    assert_eq!(
+        across("from=bad&to=").await.len(),
+        3,
+        "no real date, no bound"
+    );
+}

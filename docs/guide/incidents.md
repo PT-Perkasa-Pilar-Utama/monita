@@ -120,14 +120,14 @@ The old address `/projects/<project>/incidents/maintenance` still opens this pag
 
 ## The Incidents page
 
-A project's **Incidents** page lists its incidents with alert level, latest update, start and duration. Filter by **Open**, **Resolved** or **All**. Search by title and filter by severity. A reclassified incident shows its **Planned work** or **False alarm** tag under the title.
+A project's **Incidents** page lists its incidents with alert level, latest update, start and duration. Filter by **Open**, **Resolved** or **All**. Search by title and filter by severity. Pick a first and a last day to see the incidents that were open on any of those days, on your own clock. An incident still open counts as open until now. A reclassified incident shows its **Planned work** or **False alarm** tag under the title.
 
 ### Across projects
 
 **Incidents** in the top menu lists the incidents of every project you can open. A tech lead sees the projects they own. A super admin and a supervisor see all.
 
 - The list shows open incidents first. Critical ones come first.
-- Use the state filter for **Open**, **Resolved** or **Open and resolved**. Use **Search incidents** and the alert level filter to narrow the list.
+- Use the state filter for **Open**, **Resolved** or **Open and resolved**. Use **Search incidents**, the alert level filter and the two days to narrow the list.
 - Sort by **Alert level** or **Started**.
 - A reclassified incident shows its **Planned work** or **False alarm** tag under the title.
 - The list shows 25 a page. A count on the menu shows the open incidents.

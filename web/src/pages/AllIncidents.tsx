@@ -11,6 +11,7 @@ import { LabelBadge, SeverityBadge } from "@/components/app/Tone";
 import { PageHeader } from "@/components/layout/Page";
 import { Pager } from "@/components/list/Pager";
 import { SortHead } from "@/components/list/SortHead";
+import { DateRange } from "@/components/list/DateRange";
 import { TableEmpty } from "@/components/list/TableEmpty";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -45,12 +46,15 @@ export function AllIncidents(): ReactElement {
           title={d ? `${d.total} ${d.total === 1 ? noun : `${noun}s`}` : "Incidents"}
           onClear={list.filtered ? list.clear : undefined}
           tools={
-            <ListFilters
-              noun="incidents"
-              filter={{ q: list.draft, state: params.state, severity: params.severity }}
-              onChange={(p) => (p.q !== undefined ? list.setDraft(p.q) : list.set(p))}
-              stateOptions={STATES}
-            />
+            <>
+              <ListFilters
+                noun="incidents"
+                filter={{ q: list.draft, state: params.state, severity: params.severity }}
+                onChange={(p) => (p.q !== undefined ? list.setDraft(p.q) : list.set(p))}
+                stateOptions={STATES}
+              />
+              <DateRange from={params.from} to={params.to} onChange={list.set} />
+            </>
           }
         >
           {!d ? (

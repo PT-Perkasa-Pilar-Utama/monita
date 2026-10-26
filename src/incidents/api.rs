@@ -15,7 +15,7 @@ use crate::{
     app::AppState,
     platform::{
         now,
-        ui::{Body, UiError, UiResult, created, data},
+        ui::{Body, UiError, UiResult, ViewerOffset, created, data},
     },
     projects,
 };
@@ -115,11 +115,15 @@ impl From<UpdateError> for UiError {
 struct ListQuery {
     /// `resolved` lists resolved incidents, `all` lists both; anything else lists open ones.
     state: String,
+    /// `YYYY-MM-DD` on the viewer's clock: incidents open at some time in these days.
+    from: String,
+    to: String,
 }
 
 async fn list(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
+    ViewerOffset(off): ViewerOffset,
     Path(slug): Path<String>,
     Query(q): Query<ListQuery>,
 ) -> UiResult {
@@ -129,7 +133,8 @@ async fn list(
         "all" => None,
         _ => Some(true),
     };
-    let incidents = super::list(&state.db, p.id, open).await?;
+    let range = crate::platform::time::day_range(&q.from, &q.to, off);
+    let incidents = super::list(&state.db, p.id, open, range).await?;
     Ok(data(serde_json::json!({ "incidents": incidents })))
 }
 
