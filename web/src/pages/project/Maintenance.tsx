@@ -40,6 +40,12 @@ const STATE: Record<WindowState, [string, "outline" | "neutral" | "unknown"]> = 
   ended: ["Ended", "unknown"],
 };
 
+/** A covered item's page, from its `kind:id` value. */
+const itemPath = (slug: string, value: string): string => {
+  const [kind, id] = value.split(":");
+  return `/projects/${slug}/${kind}s/${id}`;
+};
+
 /** Delete while scheduled, End now while active; an ended window is a record. */
 function WindowAction({ w, base, onDone }: { w: MaintenanceWindow; base: string; onDone: () => void }): ReactElement | null {
   if (w.state === "ended") return null;
@@ -133,7 +139,19 @@ export function Maintenance({ creating = false }: { creating?: boolean }): React
                   <TableRow key={w.id} data-window={w.id}>
                     <TableCell className="max-w-56 whitespace-normal sm:max-w-96">
                       <div className="font-medium">{w.title}</div>
-                      <div className="text-xs text-muted-foreground">{w.items.map((i) => i.name).join(", ") || "Its items were deleted."}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {w.items.length === 0
+                          ? "Its items were deleted."
+                          : w.items.map((i, n) => (
+                              <span key={i.value}>
+                                {n > 0 && ", "}
+                                <Link to={itemPath(p.slug, i.value)} className="underline-offset-2 hover:text-foreground hover:underline">
+                                  {i.name}
+                                </Link>
+                              </span>
+                            ))}
+                      </div>
+                      {w.message && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{w.message}</p>}
                     </TableCell>
                     <TableCell className="font-mono text-[13px] text-muted-foreground max-md:hidden">{between(w.starts_at, w.ends_at)}</TableCell>
                     <TableCell>
