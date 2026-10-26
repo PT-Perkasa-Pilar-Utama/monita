@@ -1,3 +1,4 @@
+import { PausedNow } from "@/components/app/PausedNow";
 import { useState } from "react";
 import type { FormEvent, ReactElement } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -168,8 +169,8 @@ function WindowForm({ base, onClose, onSaved }: { base: string; onClose: () => v
   );
 }
 
-/** Project, Incidents, Maintenance: planned work. While a window is active its items still get
- * checked, but a failure opens no incident and sends no alert. */
+/** Project, Maintenance: planned work, then everything paused. While a window is active its items
+ * still get checked, but a failure opens no incident and sends no alert. */
 export function Maintenance({ creating = false }: { creating?: boolean }): ReactElement {
   const navigate = useNavigate();
   const { project: p } = useProject();
@@ -185,9 +186,6 @@ export function Maintenance({ creating = false }: { creating?: boolean }): React
         title="Maintenance"
         actions={
           <>
-            <Button asChild variant="outline">
-              <Link to={`/projects/${p.slug}/incidents`}>Incidents</Link>
-            </Button>
             <Writable>
               <Button asChild>
                 <Link to={`${here}/new`}>
@@ -241,6 +239,7 @@ export function Maintenance({ creating = false }: { creating?: boolean }): React
           )}
         </TableCard>
         {d && <Pager page={page} pageSize={d.page_size} total={d.total} noun="window" onPage={setPage} disabled={list.loading} />}
+        <PausedNow slug={p.slug} />
       </div>
       <FormSheet open={creating} onClose={() => navigate(here)}>
         <WindowForm

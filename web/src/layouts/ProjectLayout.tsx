@@ -3,7 +3,7 @@ import type { ReactElement } from "react";
 import { Link, Outlet, useLocation, useParams } from "react-router-dom";
 import { PrimitiveFooter } from "@/components/app/footers";
 import { ProjectBadge } from "@/components/app/ProjectBadge";
-import { AlertTriangle, ExternalLink, Globe, Heartbeat, LayoutGrid, Activity, ScrollText, Settings, Ticket } from "@/components/icons";
+import { AlertTriangle, ExternalLink, Globe, Heartbeat, LayoutGrid, Activity, ScrollText, Settings, Ticket, Wrench } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { PageFrame } from "@/components/layout/Page";
 import { PageTabs } from "@/components/layout/PageTabs";
@@ -69,6 +69,7 @@ function ProjectChrome(): ReactElement | null {
         { to: `${base}/monitors`, label: "Monitors", icon: Activity, count: counts.monitors_down, alarm: true },
         { to: `${base}/heartbeats`, label: "Heartbeats", icon: Heartbeat, count: counts.heartbeats_down, alarm: true },
         { to: `${base}/incidents`, label: "Incidents", icon: AlertTriangle, count: counts.incidents, alarm: true },
+        { to: `${base}/maintenance`, label: "Maintenance", icon: Wrench },
         { to: `${base}/tickets`, label: "Tickets", icon: Ticket, count: counts.triage },
         { to: `${base}/changelog`, label: "Changelog", icon: ScrollText },
         { to: `${base}/settings`, label: "Settings", icon: Settings },
