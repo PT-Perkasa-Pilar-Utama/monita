@@ -13,6 +13,8 @@ use crate::checks::{CheckResult, Clients, Job};
 pub const MAX_CONCURRENCY: u16 = 50;
 /// Results posted in one call (`caps::PROBE_BATCH`).
 const BATCH: usize = 50;
+/// How long the server may hold a poll for work while nothing is due (`caps::PROBE_WAIT_S`).
+const WAIT_S: u64 = crate::platform::caps::PROBE_WAIT_S;
 /// Wait after the server could not be reached.
 const BACKOFF: Duration = Duration::from_secs(5);
 
@@ -55,35 +57,53 @@ pub async fn run(server: &str, token: &str, concurrency: u16) -> anyhow::Result<
     let slots = Arc::new(Semaphore::new(usize::from(
         concurrency.clamp(1, MAX_CONCURRENCY),
     )));
-    let (done_tx, mut done_rx) = mpsc::unbounded_channel::<(i64, CheckResult)>();
+    let (done_tx, done_rx) = mpsc::unbounded_channel::<(i64, CheckResult)>();
     let auth = format!("Bearer {}", token.trim());
     tracing::info!(server = %server, concurrency, "probe started");
 
-    let mut tick = tokio::time::interval(Duration::from_secs(1));
-    tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+    // Results go out from their own task as checks finish, so a held poll never delays them.
+    let (refused_tx, mut refused) = tokio::sync::watch::channel(false);
+    let poster = tokio::spawn(post_loop(
+        api.clone(),
+        server.clone(),
+        auth.clone(),
+        done_rx,
+        refused_tx,
+    ));
     let stop = shutdown();
     tokio::pin!(stop);
+    let refused_msg =
+        "The server refused the token, because the location was deleted or the token is wrong.";
     loop {
+        // Ask only with a free slot, so every job handed out starts at once.
         tokio::select! {
             _ = &mut stop => break,
-            _ = tick.tick() => {}
+            _ = refused.wait_for(|r| *r) => bail!(refused_msg),
+            permit = slots.clone().acquire_owned() => drop(permit),
         }
-        post_finished(&api, &server, &auth, &mut done_rx).await?;
         let free = slots.available_permits();
-        if free == 0 {
-            continue;
-        }
-        let jobs = match fetch(&api, &server, &auth, free).await {
+        let asked = tokio::time::Instant::now();
+        let fetched = tokio::select! {
+            _ = &mut stop => break,
+            _ = refused.wait_for(|r| *r) => bail!(refused_msg),
+            f = fetch(&api, &server, &auth, free) => f,
+        };
+        let jobs = match fetched {
             Ok(jobs) => jobs,
-            Err(Fetch::Refused) => bail!(
-                "The server refused the token, because the location was deleted or the token is wrong."
-            ),
+            Err(Fetch::Refused) => bail!(refused_msg),
             Err(Fetch::Other(e)) => {
                 tracing::warn!(error = %e, "could not reach the server; trying again in 5 s");
                 tokio::time::sleep(BACKOFF).await;
                 continue;
             }
         };
+        // A server from before long polling answers at once: then wait a second, as before.
+        if jobs.is_empty() && asked.elapsed() < Duration::from_secs(1) {
+            tokio::select! {
+                _ = &mut stop => break,
+                _ = tokio::time::sleep(Duration::from_secs(1)) => {}
+            }
+        }
         for job in jobs {
             let Ok(permit) = slots.clone().try_acquire_owned() else {
                 break;
@@ -99,7 +119,10 @@ pub async fn run(server: &str, token: &str, concurrency: u16) -> anyhow::Result<
     tracing::info!("stopping: finishing the checks in flight");
     let all = u32::from(concurrency.clamp(1, MAX_CONCURRENCY));
     let _ = tokio::time::timeout(Duration::from_secs(35), slots.acquire_many(all)).await;
-    post_finished(&api, &server, &auth, &mut done_rx).await
+    // The poster ends once every sender is gone and the last results are out.
+    drop(done_tx);
+    let _ = tokio::time::timeout(Duration::from_secs(35), poster).await;
+    Ok(())
 }
 
 enum Fetch {
@@ -115,7 +138,7 @@ async fn fetch(
 ) -> Result<Vec<Job>, Fetch> {
     let res = api
         .get(format!(
-            "{server}/api/v1/probe/work?free={}",
+            "{server}/api/v1/probe/work?free={}&wait={WAIT_S}",
             free.min(BATCH)
         ))
         .header(reqwest::header::AUTHORIZATION, auth)
@@ -141,43 +164,42 @@ async fn fetch(
     Ok(body.data.jobs)
 }
 
-/// Posts every finished result, in batches. A batch the server cannot take is dropped: the server
-/// stamps a result with its arrival time, so a late result would be a wrong one.
-async fn post_finished(
-    api: &reqwest::Client,
-    server: &str,
-    auth: &str,
-    done: &mut mpsc::UnboundedReceiver<(i64, CheckResult)>,
-) -> anyhow::Result<()> {
-    loop {
-        let mut batch = Vec::new();
+/// Posts results as checks finish, up to `BATCH` a call, until every sender is gone. A batch the
+/// server cannot take is dropped: the server stamps a result with its arrival time, so a late
+/// result would be a wrong one. A refused token flips `refused`, which stops the probe.
+async fn post_loop(
+    api: reqwest::Client,
+    server: String,
+    auth: String,
+    mut done: mpsc::UnboundedReceiver<(i64, CheckResult)>,
+    refused: tokio::sync::watch::Sender<bool>,
+) {
+    let report = |(monitor_id, r): (i64, CheckResult)| Reported {
+        monitor_id,
+        ok: r.ok,
+        status_code: r.status_code,
+        latency_ms: r.latency_ms,
+        error: r.error,
+    };
+    while let Some(first) = done.recv().await {
+        let mut batch = vec![report(first)];
         while batch.len() < BATCH {
-            let Ok((monitor_id, r)) = done.try_recv() else {
-                break;
-            };
-            batch.push(Reported {
-                monitor_id,
-                ok: r.ok,
-                status_code: r.status_code,
-                latency_ms: r.latency_ms,
-                error: r.error,
-            });
-        }
-        if batch.is_empty() {
-            return Ok(());
+            match done.try_recv() {
+                Ok(next) => batch.push(report(next)),
+                Err(_) => break,
+            }
         }
         let sent = api
             .post(format!("{server}/api/v1/probe/results"))
-            .header(reqwest::header::AUTHORIZATION, auth)
+            .header(reqwest::header::AUTHORIZATION, &auth)
             .header(reqwest::header::CONTENT_TYPE, "application/json")
             .body(serde_json::json!({ "results": batch }).to_string())
             .send()
             .await;
         match sent {
             Ok(r) if r.status() == reqwest::StatusCode::UNAUTHORIZED => {
-                bail!(
-                    "The server refused the token, because the location was deleted or the token is wrong."
-                )
+                refused.send_replace(true);
+                return;
             }
             Ok(r) if r.status().is_success() => {}
             Ok(r) => tracing::warn!(

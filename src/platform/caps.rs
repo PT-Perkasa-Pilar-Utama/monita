@@ -22,6 +22,9 @@ pub const LOCATIONS: i64 = 10;
 pub const LOCATION_MONITORS_SHOWN: i64 = 50;
 /// Jobs in one work answer, and results in one post, of a probe.
 pub const PROBE_BATCH: i64 = 50;
+/// The longest a probe's long poll for work is held, in seconds; under the probe's 30 s timeout
+/// and every common proxy's read timeout.
+pub const PROBE_WAIT_S: u64 = 25;
 pub const KEYS_PER_PROJECT: i64 = 20;
 /// Sealed secrets in one project, and the longest value.
 pub const SECRETS_PER_PROJECT: i64 = 20;

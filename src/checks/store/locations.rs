@@ -138,6 +138,17 @@ pub async fn touch(c: &Connection, id: i64, at: i64) -> anyhow::Result<()> {
     Ok(())
 }
 
+/// When the location's next check falls due, or None when it has none to run.
+pub async fn next_due(c: &Connection, location_id: i64) -> anyhow::Result<Option<i64>> {
+    query_i64(
+        c,
+        "SELECT min(ml.next_check_at) FROM monitor_locations ml JOIN monitors m ON m.id = ml.monitor_id
+         WHERE ml.location_id = ?1 AND m.paused_at IS NULL",
+        [location_id],
+    )
+    .await
+}
+
 /// A read-only probe, so an idle poll never waits for the writer.
 pub async fn any_due(c: &Connection, location_id: i64, at: i64) -> anyhow::Result<bool> {
     Ok(query_i64(

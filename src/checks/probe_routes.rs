@@ -87,6 +87,9 @@ impl FromRequestParts<AppState> for ProbeLocation {
 #[derive(Deserialize)]
 struct WorkQuery {
     free: Option<String>,
+    /// Seconds to hold the request while nothing is due, 0 to `caps::PROBE_WAIT_S`. Missing is 0,
+    /// as probes before long polling ask.
+    wait: Option<String>,
 }
 
 async fn work(
@@ -102,8 +105,37 @@ async fn work(
             .filter(|n| (1..=caps::PROBE_BATCH).contains(n))
             .ok_or_else(|| UiError::field("free", "Ask for 1 to 50 jobs."))?,
     };
-    let jobs = locations::claim_work(&state.db, at.id, at.last_seen_at, free).await?;
-    Ok(data(serde_json::json!({ "jobs": jobs })))
+    let wait = match q.wait.as_deref().map(str::trim) {
+        None | Some("") => 0,
+        Some(n) => n
+            .parse::<u64>()
+            .ok()
+            .filter(|n| *n <= caps::PROBE_WAIT_S)
+            .ok_or_else(|| {
+                UiError::field("wait", format!("Wait 0 to {} seconds.", caps::PROBE_WAIT_S))
+            })?,
+    };
+    // Long poll: hold the request until a check is due, the wait runs out or shutdown starts, so
+    // an idle probe calls about twice a minute, not every second.
+    let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(wait);
+    let mut stopping = state.stopping.subscribe();
+    let mut seen = at.last_seen_at;
+    loop {
+        let jobs = locations::claim_work(&state.db, at.id, seen, free).await?;
+        let t = now();
+        if seen.is_none_or(|s| t - s >= 30) {
+            seen = Some(t);
+        }
+        let left = deadline.saturating_duration_since(tokio::time::Instant::now());
+        if !jobs.is_empty() || left.is_zero() || *stopping.borrow() {
+            return Ok(data(serde_json::json!({ "jobs": jobs })));
+        }
+        let nap = locations::nap(&state.db, at.id).await?.min(left);
+        tokio::select! {
+            _ = tokio::time::sleep(nap) => {}
+            _ = stopping.wait_for(|s| *s) => {}
+        }
+    }
 }
 
 #[derive(Deserialize)]

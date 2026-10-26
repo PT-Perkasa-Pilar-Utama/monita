@@ -29,6 +29,9 @@ pub struct AppState {
     /// Background work and a ping being stored hold a read guard; reset-state and shutdown take
     /// the write guard, so neither races a check, a delivery, a daily job or a ping mid-write.
     pub gate: Arc<tokio::sync::RwLock<()>>,
+    /// Turns true when shutdown starts, so a held request, such as a probe's long poll, answers
+    /// at once instead of holding the server open.
+    pub stopping: Arc<tokio::sync::watch::Sender<bool>>,
 }
 
 /// Opens the database, migrates it and starts the background loops, with a chosen mail
@@ -57,6 +60,7 @@ async fn start(
         http: crate::checks::Clients::new()?,
         limiter: Arc::default(),
         gate: Arc::default(),
+        stopping: Arc::new(tokio::sync::watch::channel(false).0),
     };
     let scheduler = crate::checks::scheduler::spawn(state.clone());
     Ok((router(state.clone()), state, scheduler))
@@ -138,7 +142,13 @@ pub async fn serve(config: Config) -> anyhow::Result<()> {
         listener,
         router.into_make_service_with_connect_info::<std::net::SocketAddr>(),
     )
-    .with_graceful_shutdown(shutdown_signal())
+    .with_graceful_shutdown({
+        let stopping = state.stopping.clone();
+        async move {
+            shutdown_signal().await;
+            stopping.send_replace(true);
+        }
+    })
     .await?;
     // Spec 13.4: the write guard stops the scheduler, whose next tick waits behind it, so it must
     // stay held until the process exits.

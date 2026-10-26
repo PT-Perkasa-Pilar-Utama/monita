@@ -704,3 +704,56 @@ async fn a_new_token_stops_the_old_probe_and_waits_for_the_new_one() {
     assert_eq!(monitors[0]["name"], "Checkout");
     assert_eq!(monitors[0]["slug"], "payments");
 }
+
+#[tokio::test]
+async fn a_long_poll_waits_while_nothing_is_due_and_answers_when_a_check_falls_due() {
+    let app = TestApp::spawn("test").await;
+    let (admin, tl) = setup(&app).await;
+    let (loc, token) = location(&app, &admin, "Jakarta").await;
+    let poll = |wait: &'static str| {
+        app.http
+            .get(app.url(&format!("/api/v1/probe/work?wait={wait}")))
+            .bearer_auth(token.clone())
+            .send()
+    };
+    let t = std::time::Instant::now();
+    let idle = json_of(poll("2").await.unwrap()).await;
+    assert!(idle["data"]["jobs"].as_array().unwrap().is_empty());
+    assert!(
+        t.elapsed() >= Duration::from_millis(1900),
+        "held for the wait"
+    );
+    assert!(
+        count(
+            &app,
+            "SELECT count(*) FROM locations WHERE last_seen_at IS NOT NULL"
+        )
+        .await
+            == 1,
+        "a held poll still counts as seen"
+    );
+
+    let made = app
+        .api_post(
+            MONITORS,
+            monitor("http://127.0.0.1:9/", &[loc], "1"),
+            Some(&tl),
+        )
+        .await;
+    assert_eq!(made.status(), 201);
+    let due = monita::platform::now() + 2;
+    sql(
+        &app,
+        &format!("UPDATE monitor_locations SET next_check_at = {due}"),
+    )
+    .await;
+    let t = std::time::Instant::now();
+    let work = json_of(poll("20").await.unwrap()).await;
+    assert_eq!(work["data"]["jobs"].as_array().unwrap().len(), 1, "{work}");
+    assert!(
+        t.elapsed() < Duration::from_secs(8),
+        "answered when due, not at the end of the wait"
+    );
+
+    assert_eq!(poll("99").await.unwrap().status(), 422);
+}

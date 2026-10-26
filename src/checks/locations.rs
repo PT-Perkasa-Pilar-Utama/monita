@@ -128,6 +128,14 @@ pub async fn claim_work(
     .await
 }
 
+/// How long a waiting poll naps before it looks again: until the next check is due, but at least
+/// 1 s and at most 5 s, so a monitor newly ticked for this location is picked up within 5 s.
+pub async fn nap(db: &Db, location_id: i64) -> anyhow::Result<std::time::Duration> {
+    let next = store::locations::next_due(&db.read().await?, location_id).await?;
+    let secs = next.map_or(5, |n| (n - now()).clamp(1, 5));
+    Ok(std::time::Duration::from_secs(secs as u64))
+}
+
 /// One result a probe reports. The server stamps the time.
 #[derive(serde::Deserialize)]
 pub struct Reported {
