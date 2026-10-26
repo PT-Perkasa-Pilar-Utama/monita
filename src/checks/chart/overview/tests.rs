@@ -138,3 +138,18 @@ fn among_healthy_heartbeats_the_one_closest_to_its_deadline_comes_first() {
     let c = overview(&window(), Vec::new(), vec![a, b]);
     assert_eq!(c.lanes[0].id, Some(2));
 }
+
+#[test]
+fn a_series_with_no_check_gives_its_line_to_one_that_has_data_unless_it_is_down() {
+    let mut empty = monitor(1, "unknown", 10, None);
+    empty.buckets.clear();
+    let mut down = monitor(2, "down", 10, None);
+    down.buckets.clear();
+    let c = overview(
+        &window(),
+        vec![empty, down, monitor(3, "up", 10, None)],
+        Vec::new(),
+    );
+    let ids: Vec<i64> = c.lines.iter().map(|l| l.id).collect();
+    assert_eq!(ids, [2, 3, 1]);
+}

@@ -26,7 +26,7 @@ pub use input::{CERT_WARN_DAYS, FieldErrors, MonitorInput, valid_expected_status
 pub use job::{Job, JobAuth};
 pub use pause::set_paused;
 pub use probe::{Auth, Clients, Target, probe, status_matches};
-pub use store::{CheckRow, Monitor};
+pub use store::{CheckRow, Monitor, projects_of};
 
 pub const INTERVALS_S: [i64; 4] = [30, 60, 180, 300];
 

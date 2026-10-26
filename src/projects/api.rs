@@ -18,6 +18,8 @@ use crate::{
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/api/ui/projects", get(list).post(create))
+        // Not under /projects/: a project may be called `chart`.
+        .route("/api/ui/projects-chart", get(chart))
         .route("/api/ui/projects/{slug}", get(detail).delete(delete))
         .route("/api/ui/projects/{slug}/overview", get(overview))
         .merge(super::settings_api::router())
@@ -91,6 +93,8 @@ struct ListQuery {
     owner: String,
     /// `name` or `oldest`; anything else is newest first.
     sort: String,
+    /// `down`, `issue` or `up`; anything else is every state.
+    state: String,
 }
 
 pub async fn owners(
@@ -110,19 +114,60 @@ pub async fn owners(
         .collect())
 }
 
+/// The page the list's query asks for.
+async fn page_of(
+    state: &AppState,
+    user: &crate::accounts::User,
+    q: &ListQuery,
+) -> anyhow::Result<super::ProjectPage> {
+    let sort = match q.sort.as_str() {
+        "name" => super::Sort::Name,
+        "oldest" => super::Sort::Oldest,
+        _ => super::Sort::Newest,
+    };
+    super::page_for(
+        &state.db,
+        user,
+        &q.q,
+        &q.owner,
+        sort,
+        super::StateFilter::parse(&q.state),
+        q.page.trim().parse().unwrap_or(1),
+    )
+    .await
+}
+
+/// The chart of the same page of projects (v1.1 Q39): a line each for its monitors' response time.
+async fn chart(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Query(q): Query<ListQuery>,
+) -> UiResult {
+    let found = page_of(&state, &user, &q).await?;
+    let projects: Vec<(i64, String)> = found
+        .projects
+        .iter()
+        .map(|p| (p.id, p.name.clone()))
+        .collect();
+    let off = crate::platform::settings::utc_offset(&state.db.read().await?).await?;
+    let chart =
+        crate::checks::series::projects(&state.db, &projects, crate::platform::now(), off).await?;
+    // The page links by slug; the chart names projects by id.
+    let slugs: std::collections::HashMap<i64, &str> = found
+        .projects
+        .iter()
+        .map(|p| (p.id, p.slug.as_str()))
+        .collect();
+    Ok(data(serde_json::json!({ "chart": chart, "slugs": slugs })))
+}
+
 /// One page: a tech lead's own projects, or every project for a super admin.
 async fn list(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
     Query(q): Query<ListQuery>,
 ) -> UiResult {
-    let page = q.page.trim().parse().unwrap_or(1);
-    let sort = match q.sort.as_str() {
-        "name" => super::Sort::Name,
-        "oldest" => super::Sort::Oldest,
-        _ => super::Sort::Newest,
-    };
-    let found = super::page_for(&state.db, &user, &q.q, &q.owner, sort, page).await?;
+    let found = page_of(&state, &user, &q).await?;
     let owner_options = if user.is_admin() {
         super::owner_emails(&state.db).await?
     } else {

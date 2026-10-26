@@ -3,6 +3,7 @@ import { Writable } from "@/lib/session";
 import { useEffect, useState } from "react";
 import type { ReactElement } from "react";
 import { NewProjectSheet } from "@/components/app/NewProjectSheet";
+import { OverviewChart } from "@/components/app/OverviewChart";
 import { ProjectCard, ProjectCardSkeletons, ProjectTable } from "@/components/app/ProjectTile";
 import { FilterCount, TableCard } from "@/components/app/TableCard";
 import { Plus } from "@/components/icons";
@@ -15,8 +16,9 @@ import { ViewToggle } from "@/components/list/ViewToggle";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { listQuery, pageCount, pageParam, skeletonCount } from "@/lib/page";
-import type { ProjectList } from "@/lib/types";
+import type { OverviewChart as ChartData, ProjectList } from "@/lib/types";
 import { LIVE_MS, useApi } from "@/lib/useApi";
 import { useRememberedQuery } from "@/lib/useRememberedQuery";
 import { useViewMode } from "@/lib/useViewMode";
@@ -31,16 +33,20 @@ export function Projects(): ReactElement {
   const owner = params.get("owner") ?? "";
   // Any other value reads newest first, as the server does.
   const sort = ["name", "oldest"].includes(params.get("sort") ?? "") ? params.get("sort")! : "";
+  const state = ["down", "issue", "up"].includes(params.get("state") ?? "") ? params.get("state")! : "";
   const page = pageParam(params.get("page"));
+  const query = listQuery({ q, owner, sort, state, page });
   // The cards and rows show live state, so the page reads again every 30 seconds.
-  const list = useApi<ProjectList>(`/projects${listQuery({ q, owner, sort, page })}`, LIVE_MS);
-  const [view, setView] = useViewMode("monita:projects:view");
+  const list = useApi<ProjectList>(`/projects${query}`, LIVE_MS);
+  // The chart is the first view (v1.1 Q39); the view picked last is remembered.
+  const [view, setView] = useViewMode("monita:projects:view", "chart");
+  const chart = useApi<{ chart: ChartData; slugs: Record<string, string> }>(view === "chart" ? `/projects-chart${query}` : null, LIVE_MS);
   const [draft, setDraft] = useState(q);
   const [creating, setCreating] = useState(false);
   const d = list.data;
   const projects = d?.projects ?? [];
-  const go = (next: { q?: string; owner?: string; sort?: string }, nextPage: number, replace: boolean): void =>
-    setSearch(listQuery({ q, owner, sort, ...next, page: nextPage }), replace);
+  const go = (next: { q?: string; owner?: string; sort?: string; state?: string }, nextPage: number, replace: boolean): void =>
+    setSearch(listQuery({ q, owner, sort, state, ...next, page: nextPage }), replace);
 
   // The search reads the server, so it waits for a pause in typing.
   useEffect(() => {
@@ -65,13 +71,13 @@ export function Projects(): ReactElement {
   };
   const clear = (): void => {
     setDraft("");
-    go({ q: "", owner: "" }, 1, true);
+    go({ q: "", owner: "", state: "" }, 1, true);
   };
 
   const loading = list.loading;
   const skeletons = skeletonCount(page, d?.page_size ?? 20, d?.total);
   const none = !loading && d !== undefined && d.total === 0;
-  const filtered = q !== "" || owner !== "";
+  const filtered = q !== "" || owner !== "" || state !== "";
   const countText = d ? `${d.total} ${d.total === 1 ? "project" : "projects"}` : "Projects";
   const onClear = filtered ? clear : undefined;
   const empty = filtered ? (
@@ -84,6 +90,18 @@ export function Projects(): ReactElement {
   );
   const filters = (
     <>
+      <FilterMenu
+        label="State"
+        heading="Filter by state"
+        value={state}
+        options={[
+          { value: "", label: "All states" },
+          { value: "down", label: "Down" },
+          { value: "issue", label: "Issue" },
+          { value: "up", label: "Up" },
+        ]}
+        onChange={(v) => go({ state: v }, 1, true)}
+      />
       {(d?.owner_options.length ?? 0) > 0 && (
         <FilterMenu
           label="Owner"
@@ -115,10 +133,16 @@ export function Projects(): ReactElement {
         actions={
           <>
             <div className="flex w-full items-center gap-2 sm:w-auto">
-              <ViewToggle value={view} onChange={setView} />
+              <ViewToggle value={view} onChange={setView} chart />
               <PageSearch value={draft} onChange={setDraft} placeholder="Search projects" />
             </div>
-            <RefreshButton onClick={list.refresh} busy={list.refreshing} />
+            <RefreshButton
+              onClick={() => {
+                list.refresh();
+                chart.refresh();
+              }}
+              busy={list.refreshing || chart.refreshing}
+            />
             <Writable>
               <Button onClick={() => setCreating(true)}>
                 <Plus data-icon="inline-start" />
@@ -134,7 +158,7 @@ export function Projects(): ReactElement {
         </Alert>
       )}
       <div className="flex flex-col gap-6 pb-4">
-        {view === "card" && (
+        {view !== "list" && (
           <div className="-mb-2 flex min-h-9 flex-wrap items-center justify-between gap-2">
             <span className="text-[13px] font-semibold">
               <FilterCount onClear={onClear}>{countText}</FilterCount>
@@ -142,14 +166,39 @@ export function Projects(): ReactElement {
             <div className="flex flex-wrap items-center gap-1">{filters}</div>
           </div>
         )}
-        {none && view === "card" ? (
+        {view === "chart" && !none && (
+          <Card className="gap-4 p-5">
+            <div className="flex flex-col gap-0.5">
+              <h2 className="font-semibold">Last 24 hours</h2>
+              <p className="text-[13px] text-muted-foreground">
+                A line for each project on this page: the mean response time of its monitors. Red where a monitor or heartbeat was down.
+              </p>
+            </div>
+            {!chart.data ? (
+              <Skeleton className="h-72 rounded-lg" />
+            ) : (
+              <OverviewChart
+                chart={chart.data.chart}
+                links={{
+                  line: (id) => `/projects/${chart.data!.slugs[String(id)] ?? ""}`,
+                  lane: (id) => `/projects/${chart.data!.slugs[String(id)] ?? ""}`,
+                  others: "/",
+                  noun: "project",
+                  empty: "No monitor checked in the last 24 hours",
+                }}
+              />
+            )}
+          </Card>
+        )}
+        {none && view !== "list" ? (
           <Card className="py-0">{empty}</Card>
         ) : view === "card" ? (
           <div className={GRID} aria-busy={loading}>
             {loading ? <ProjectCardSkeletons count={skeletons} /> : projects.map((p) => <ProjectCard key={p.slug} p={p} />)}
           </div>
         ) : (
-          <TableCard title={countText} onClear={onClear} tools={filters}>
+          // Under the chart the count and filters already sit above, so the table repeats neither.
+          <TableCard title={view === "chart" ? "On this page" : countText} onClear={view === "chart" ? undefined : onClear} tools={view === "chart" ? undefined : filters}>
             {none ? empty : <ProjectTable
                 projects={projects}
                 loading={loading}

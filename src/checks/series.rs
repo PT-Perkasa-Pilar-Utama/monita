@@ -179,3 +179,85 @@ pub async fn project(
     }
     Ok(overview(&w, ms, bs))
 }
+
+/// The project list's chart (v1.1 Q39): one series per project of the page. A project's line is
+/// the mean response time of its monitors per slot, weighted by checks. Its red shading is every
+/// automatic incident of its monitors and heartbeats. Paused monitors read nothing.
+// ponytail: one bucket read per monitor, PROJECTS_PAGE * MONITORS_PER_PROJECT (2000) at most a
+// read; move to an hourly rollup written with each check if a full page reads slowly.
+pub async fn projects(
+    db: &Db,
+    projects: &[(i64, String)],
+    now: i64,
+    off: i64,
+) -> anyhow::Result<chart::overview::OverviewChart> {
+    use chart::overview::{MonitorSeries, overview, rank};
+    let w = Window::new(Range::Day, now, off);
+    let mut series = Vec::with_capacity(projects.len());
+    for (id, name) in projects {
+        let states = crate::incidents::team_states_for(db, *id).await?;
+        let down = history::intervals(db, *id, w.from, now).await?;
+        let monitors = super::list_monitors(db, *id).await?;
+        let beats = super::heartbeat::list(db, *id).await?;
+        let mut state = "unknown";
+        let mut worse = |s: &'static str| {
+            if rank(s) < rank(state) {
+                state = s;
+            }
+        };
+        let c = db.read().await?;
+        let mut sums: Vec<(i64, i64, i64, i64)> = vec![(0, 0, 0, 0); w.buckets];
+        let mut interval_s = 300;
+        for m in &monitors {
+            let incident = states.get(&(SourceKind::Monitor, m.id)).copied();
+            worse(super::item_state(m.last.is_some(), m.paused_at.is_some(), incident).0);
+            if m.paused_at.is_some() {
+                continue;
+            }
+            interval_s = interval_s.min(m.interval_s);
+            for b in store::check_buckets(&c, m.id, w.from, w.step, w.buckets).await? {
+                let s = &mut sums[b.index.min(w.buckets - 1)];
+                s.0 += b.total;
+                s.1 += b.ok;
+                if let Some(v) = b.avg_ms {
+                    s.2 += v * b.total;
+                    s.3 += b.total;
+                }
+            }
+        }
+        for h in &beats {
+            worse(
+                h.state(states.get(&(SourceKind::Heartbeat, h.id)).copied())
+                    .0,
+            );
+        }
+        let buckets = sums
+            .into_iter()
+            .enumerate()
+            .filter(|(_, s)| s.0 > 0)
+            .map(|(index, (total, ok, ms, timed))| Bucket {
+                index,
+                total,
+                ok,
+                avg_ms: (timed > 0).then(|| ms / timed),
+            })
+            .collect();
+        // A project whose every system is paused reads as paused and is left out of the lines.
+        let any = !monitors.is_empty() || !beats.is_empty();
+        if any
+            && monitors.iter().all(|m| m.paused_at.is_some())
+            && beats.iter().all(|h| h.paused_at.is_some())
+        {
+            state = "paused";
+        }
+        series.push(MonitorSeries {
+            id: *id,
+            name: name.clone(),
+            state,
+            interval_s,
+            buckets,
+            down: down.into_values().flatten().collect(),
+        });
+    }
+    Ok(overview(&w, series, Vec::new()))
+}

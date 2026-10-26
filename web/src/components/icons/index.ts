@@ -21,6 +21,7 @@ export {
   SealCheck as BadgeCheck,
   Prohibit as Ban,
   ChartBar as BarChart3,
+  ChartLine,
   Bell,
   BellRinging,
   BoxArrowDown,

@@ -147,12 +147,18 @@ fn totals(b: &[Bucket]) -> (i64, i64, Option<i64>) {
 }
 
 /// The monitors that need the team first: by state, then the most failed checks, then the
-/// slowest, then by name.
+/// slowest, then by name. One with no check in the window draws nothing, so unless it is down or
+/// has an issue it goes after the ones that do.
 pub fn order_monitors(v: &mut [MonitorSeries]) {
     v.sort_by_cached_key(|m| {
         let (_, failed, mean) = totals(&m.buckets);
+        let state = rank(m.state);
         (
-            rank(m.state),
+            if m.buckets.is_empty() && state > 1 {
+                5
+            } else {
+                state
+            },
             -failed,
             -mean.unwrap_or(-1),
             m.name.to_lowercase(),

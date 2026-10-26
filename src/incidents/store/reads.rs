@@ -308,3 +308,34 @@ pub async fn down_without_incident(
     }
     Ok(out)
 }
+
+/// Each project with an open incident on one of its sources, and whether one of them is
+/// automatic: (project, automatic). One row per project.
+pub async fn open_item_projects(c: &Connection) -> anyhow::Result<Vec<(i64, bool)>> {
+    crate::platform::db::query_all(
+        c,
+        "SELECT i.project_id, max(i.origin = 'auto') FROM incidents i
+         JOIN incident_items it ON it.incident_id = i.id
+         WHERE i.resolved_at IS NULL GROUP BY i.project_id",
+        (),
+        |r| Ok((r.get(0)?, r.get::<i64>(1)? == 1)),
+    )
+    .await
+}
+
+/// Every source that is down with no incident open: its incident switch is off.
+pub async fn down_sources_without_incident(c: &Connection) -> anyhow::Result<Vec<ItemRef>> {
+    crate::platform::db::query_all(
+        c,
+        "SELECT source_kind, source_id FROM incident_sources
+         WHERE down_since IS NOT NULL AND open_incident_id IS NULL",
+        (),
+        |r| Ok((r.get::<String>(0)?, r.get::<i64>(1)?)),
+    )
+    .await
+    .map(|rows| {
+        rows.into_iter()
+            .filter_map(|(k, id)| SourceKind::parse(&k).map(|kind| ItemRef { kind, id }))
+            .collect()
+    })
+}

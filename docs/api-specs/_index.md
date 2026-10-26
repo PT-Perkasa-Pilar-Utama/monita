@@ -40,7 +40,7 @@ Legend: `OK` implemented and tested, `WIP` in progress, `TODO` not started, `SCA
 | Admin users: turn two-factor off | [02](02-authentication.md#23-admin-users) | OK |
 | Two-factor sign-in: code step, enroll (with `qr`), confirm, turn off | [02](02-authentication.md#24-two-factor-sign-in) | OK |
 | User settings: password, picture | [02](02-authentication.md#25-user-settings) | OK |
-| Projects: list (`owner`, `sort`, `pulse`), create, detail (`counts`), delete, overview, profile (`homepage_url`), icon, owners | [03](03-projects.md#31-frontend-routes) | OK |
+| Projects: list (`owner`, `sort`, `state`, `pulse`), the list's chart (`/api/ui/projects-chart`), create, detail (`counts`), delete, overview, profile (`homepage_url`), icon, owners | [03](03-projects.md#31-frontend-routes) | OK |
 | API keys, allowlist, public pages (`public-pages`) | [03](03-projects.md#31-frontend-routes) | OK |
 | Secrets: list, create, replace, delete | [03](03-projects.md#33-secrets) | OK |
 | Check options, monitors (method, headers, body, `fails_to_open`, `auth_*`), heartbeats (`last`, `alert`, `auto_incident`) | [04](04-checks.md#43-frontend-routes) | OK |

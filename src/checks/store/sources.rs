@@ -82,3 +82,38 @@ pub async fn secret_users(c: &Connection, secret_id: i64) -> anyhow::Result<i64>
     .await?
     .unwrap_or(0))
 }
+
+/// The projects that hold these sources.
+pub async fn projects_of(
+    c: &Connection,
+    refs: &[crate::incidents::ItemRef],
+) -> anyhow::Result<Vec<i64>> {
+    use crate::incidents::SourceKind;
+    let mut out = Vec::new();
+    for (kind, table) in [
+        (SourceKind::Monitor, "monitors"),
+        (SourceKind::Heartbeat, "heartbeats"),
+    ] {
+        let ids: Vec<String> = refs
+            .iter()
+            .filter(|r| r.kind == kind)
+            .map(|r| r.id.to_string())
+            .collect();
+        if ids.is_empty() {
+            continue;
+        }
+        out.extend(
+            crate::platform::db::query_all(
+                c,
+                format!(
+                    "SELECT DISTINCT project_id FROM {table} WHERE id IN ({})",
+                    ids.join(",")
+                ),
+                (),
+                |r| r.get::<i64>(0),
+            )
+            .await?,
+        );
+    }
+    Ok(out)
+}

@@ -64,10 +64,10 @@ test("the project list pages 20 at a time and searches on the server", async ({ 
   await pages.getByRole("button", { name: "Next" }).click();
   await expect(page).toHaveURL(/[?&]page=2/);
   // Newest first, so the oldest project is the one on page 2.
-  await expect(page.getByText(`${stamp} 01`)).toBeVisible();
+  await expect(page.getByRole("table").getByText(`${stamp} 01`)).toBeVisible();
   await page.getByLabel("Search projects").fill(`${stamp} 07`);
   await expect(pages).toHaveCount(0);
-  await expect(page.getByText(`${stamp} 07`)).toBeVisible();
+  await expect(page.getByRole("table").getByText(`${stamp} 07`)).toBeVisible();
 });
 
 test("outside a project, the header leads back to the project opened last", async ({ page }) => {
@@ -88,4 +88,19 @@ test("the overview charts the last day, and a heartbeat's lane opens it", async 
   await expect(chart.getByText("No monitor yet")).toBeVisible();
   await chart.getByText("nightly-export").click();
   await expect(page.getByRole("heading", { name: "nightly-export" })).toBeVisible();
+});
+
+test("the project list opens on its chart, filters by state, and remembers the view", async ({ page }) => {
+  const name = `Quiet ${Date.now()}`;
+  await apiProject(page, name);
+  await page.goto("/");
+  await expect(page.getByRole("radio", { name: "Chart view" })).toHaveAttribute("data-state", "on");
+  await expect(page.getByRole("heading", { name: "Last 24 hours" })).toBeVisible();
+  await page.getByRole("button", { name: "State" }).click();
+  await page.getByRole("menuitemradio", { name: "Down" }).click();
+  await expect(page).toHaveURL(/[?&]state=down/);
+  await expect(page.getByRole("table").getByText(name)).toHaveCount(0);
+  await page.getByRole("radio", { name: "Card view" }).click();
+  await page.reload();
+  await expect(page.getByRole("radio", { name: "Card view" })).toHaveAttribute("data-state", "on");
 });

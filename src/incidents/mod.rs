@@ -176,6 +176,29 @@ pub async fn team_states_for(
     Ok(out)
 }
 
+/// The projects that are down and the projects with an issue, as their cards show them: down
+/// when a source has an open automatic incident or is down with its incident switch off; an issue
+/// when a source is in an open manual incident and none is down. For the project list's filter.
+pub async fn troubled_projects(db: &Db) -> anyhow::Result<(Vec<i64>, Vec<i64>)> {
+    let c = db.read().await?;
+    let open = store::open_item_projects(&c).await?;
+    let quiet = store::down_sources_without_incident(&c).await?;
+    let mut down: Vec<i64> = open
+        .iter()
+        .filter(|(_, auto)| *auto)
+        .map(|(p, _)| *p)
+        .collect();
+    down.extend(crate::checks::projects_of(&c, &quiet).await?);
+    down.sort_unstable();
+    down.dedup();
+    let issue = open
+        .iter()
+        .filter(|(p, auto)| !auto && down.binary_search(p).is_err())
+        .map(|(p, _)| *p)
+        .collect();
+    Ok((down, issue))
+}
+
 /// Open incidents of a project, for the project's tab bar.
 pub async fn open_count(db: &Db, project_id: i64) -> anyhow::Result<i64> {
     store::open_count(&db.read().await?, project_id).await

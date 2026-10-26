@@ -224,10 +224,32 @@ pub struct Filter<'a> {
     pub q: &'a str,
     pub owner_email: &'a str,
     pub sort: Sort,
+    /// The state filter as project ids: only these, or all but these. `None` keeps every state.
+    pub ids: Option<Ids>,
+}
+
+/// Project ids the state filter keeps or drops.
+pub enum Ids {
+    Only(Vec<i64>),
+    Not(Vec<i64>),
+}
+
+impl Filter<'_> {
+    /// The state filter's clause. Only plain integers reach the SQL.
+    fn state_sql(&self) -> String {
+        let list = |ids: &[i64]| ids.iter().map(i64::to_string).collect::<Vec<_>>().join(",");
+        match &self.ids {
+            None => String::new(),
+            Some(Ids::Only(ids)) if ids.is_empty() => " AND 0".into(),
+            Some(Ids::Only(ids)) => format!(" AND p.id IN ({})", list(ids)),
+            Some(Ids::Not(ids)) if ids.is_empty() => String::new(),
+            Some(Ids::Not(ids)) => format!(" AND p.id NOT IN ({})", list(ids)),
+        }
+    }
 }
 
 pub async fn count_matching(c: &Connection, f: &Filter<'_>) -> anyhow::Result<i64> {
-    let sql = format!("SELECT count(*) {MATCHING}");
+    let sql = format!("SELECT count(*) {MATCHING}{}", f.state_sql());
     Ok(
         crate::platform::db::query_i64(c, &sql, (f.owner_id, f.q, f.owner_email))
             .await?
@@ -242,7 +264,8 @@ pub async fn page_matching(
     offset: i64,
 ) -> anyhow::Result<Vec<Project>> {
     let sql = format!(
-        "SELECT {COLS} {MATCHING} ORDER BY {} LIMIT ?4 OFFSET ?5",
+        "SELECT {COLS} {MATCHING}{} ORDER BY {} LIMIT ?4 OFFSET ?5",
+        f.state_sql(),
         f.sort.order_by()
     );
     many(c, sql, (f.owner_id, f.q, f.owner_email, limit, offset)).await

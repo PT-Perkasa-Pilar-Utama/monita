@@ -866,3 +866,143 @@ async fn a_homepage_with_a_password_in_it_is_refused() {
             .contains("no user name or password")
     );
 }
+
+/// v1.1 Q43: the list filters by the state its cards show.
+#[tokio::test]
+async fn the_project_list_filters_by_state_as_the_cards_show_it() {
+    let app = TestApp::spawn("test").await;
+    let tl = app.tl("rina@x.co").await;
+    for (name, slug) in [
+        ("Down", "down"),
+        ("Issue", "issue"),
+        ("Quiet", "quiet"),
+        ("Fine", "fine"),
+    ] {
+        project(&app, &tl, name, slug).await;
+    }
+    app.state
+        .db
+        .write(async |c| {
+            c.execute_batch(
+                "INSERT INTO monitors (id, project_id, name, url, next_check_at) VALUES
+                   (1, 1, 'A', 'https://x.invalid', 9999999999), (2, 2, 'B', 'https://x.invalid', 9999999999),
+                   (3, 3, 'C', 'https://x.invalid', 9999999999), (4, 4, 'D', 'https://x.invalid', 9999999999);
+                 INSERT INTO incidents (id, project_id, origin, title, severity, started_at) VALUES
+                   (1, 1, 'auto', 'A is down', 'critical', 1), (2, 2, 'manual', 'B is slow', 'warning', 1),
+                   (3, 2, 'manual', 'not on a source', 'warning', 1);
+                 INSERT INTO incident_items VALUES (1, 'monitor', 1), (2, 'monitor', 2);
+                 INSERT INTO incident_sources (source_kind, source_id, fail_streak, open_incident_id, down_since)
+                   VALUES ('monitor', 3, 3, NULL, 1);",
+            )
+            .await?;
+            Ok(())
+        })
+        .await
+        .unwrap();
+    let slugs = async |state: &str| {
+        let list = json_of(
+            app.api_get(
+                &format!("/api/ui/projects?state={state}&sort=name"),
+                Some(&tl),
+            )
+            .await,
+        )
+        .await;
+        list["data"]["projects"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|p| p["slug"].as_str().unwrap().to_string())
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(
+        slugs("down").await,
+        ["down", "quiet"],
+        "an incident switch off still reads down"
+    );
+    assert_eq!(slugs("issue").await, ["issue"]);
+    assert_eq!(slugs("up").await, ["fine"]);
+    assert_eq!(slugs("").await.len(), 4);
+    let list = json_of(app.api_get("/api/ui/projects?state=down", Some(&tl)).await).await;
+    assert_eq!(list["data"]["total"], 2, "the count follows the filter");
+    let kinds: Vec<String> = json_of(app.api_get("/api/ui/projects?sort=name", Some(&tl)).await)
+        .await["data"]["projects"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|p| {
+            format!(
+                "{} {}",
+                p["slug"].as_str().unwrap(),
+                p["pulse"]["kind"].as_str().unwrap()
+            )
+        })
+        .collect();
+    assert_eq!(
+        kinds,
+        ["down down", "fine unknown", "issue issue", "quiet down"],
+        "the badges agree with the filter"
+    );
+}
+
+/// v1.1 Q39: the list's chart draws a line a project, from its monitors' checks, for the same
+/// page and filter as the list.
+#[tokio::test]
+async fn the_project_chart_draws_a_line_a_project_for_the_page_and_filter() {
+    let app = TestApp::spawn("test").await;
+    let tl = app.tl("rina@x.co").await;
+    project(&app, &tl, "Shop", "shop").await;
+    project(&app, &tl, "Blog", "blog").await;
+    app.state
+        .db
+        .write(async |c| {
+            c.execute_batch(
+                "INSERT INTO monitors (id, project_id, name, url, next_check_at) VALUES
+                   (1, 1, 'Cart', 'https://x.invalid', 9999999999), (2, 1, 'Pay', 'https://x.invalid', 9999999999);
+                 INSERT INTO check_results (monitor_id, checked_at, ok, latency_ms) VALUES
+                   (1, unixepoch() - 60, 1, 100), (2, unixepoch() - 60, 1, 300), (2, unixepoch() - 30, 0, 300);
+                 INSERT INTO incidents (id, project_id, origin, title, severity, started_at) VALUES
+                   (1, 1, 'auto', 'Pay is down', 'critical', unixepoch() - 600);
+                 INSERT INTO incident_items VALUES (1, 'monitor', 2);",
+            )
+            .await?;
+            Ok(())
+        })
+        .await
+        .unwrap();
+    let got = json_of(
+        app.api_get("/api/ui/projects-chart?sort=name", Some(&tl))
+            .await,
+    )
+    .await;
+    let lines = got["data"]["chart"]["lines"].as_array().unwrap();
+    assert_eq!(lines[0]["name"], "Shop", "down first");
+    assert_eq!(lines[0]["state"], "down");
+    assert_eq!(
+        (&lines[0]["checks"], &lines[0]["failed"]),
+        (&json!(3), &json!(1))
+    );
+    assert_eq!(
+        lines[0]["mean_ms"], 233,
+        "weighted by checks: (100 + 300 + 300) / 3"
+    );
+    assert_eq!(
+        got["data"]["chart"]["lanes"],
+        json!([]),
+        "no heartbeat lanes for projects"
+    );
+    assert_eq!(got["data"]["chart"]["down"].as_array().unwrap().len(), 1);
+    assert_eq!(got["data"]["slugs"]["1"], "shop");
+    let up = json_of(
+        app.api_get("/api/ui/projects-chart?state=up", Some(&tl))
+            .await,
+    )
+    .await;
+    let names: Vec<&str> = up["data"]["chart"]["lines"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|l| l["name"].as_str().unwrap())
+        .collect();
+    assert_eq!(names, ["Blog"], "the filter applies");
+}

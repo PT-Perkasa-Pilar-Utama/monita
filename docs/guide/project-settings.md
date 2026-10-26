@@ -6,10 +6,11 @@ A project groups the monitors, heartbeats, incidents and tickets of one system. 
 
 **Projects** is the first page after sign-in. It lists your projects 20 at a time. A super admin and a supervisor see every project. A tech lead sees the projects they own.
 
-- Switch between the card view and the list view. Monita remembers your choice. Both show the project's state, open incidents and open tickets. The card also shows the owner, the creation date and a link to the status page.
+- Switch between the chart view (the default), the card view and the list view. Monita remembers your choice in this browser. The chart view draws the last 24 hours of the projects on the page in one chart, with the list under it. Each project's line is the mean response time of its monitors. The 5 that need you first are in colour: down, then issue, then the most failed checks, then the slowest. The rest are faint lines. Red shading shows when a monitor or heartbeat was down. Hover for every project in a 15-minute slot, and select a line or a name to open the project.
+- The card and the list show the project's state, open incidents and open tickets. The card also shows the owner, the creation date and a link to the status page.
 - Each project draws a bar for each of the last 24 hours. An hour before any monitor or heartbeat existed, or while all of them were paused, has no data and shows grey, not green.
 - **Search projects** runs on the server.
-- Filter by **Owner** (only when more than one owner exists). Sort by **Newest first** (the default), **Oldest first** or **Name**.
+- Filter by **State**: **Down** (a monitor or heartbeat is down), **Issue** (one is in an open manual incident and none is down) or **Up** (neither). The filter follows the badge each project shows. Filter by **Owner** (only when more than one owner exists). Sort by **Newest first** (the default), **Oldest first** or **Name**.
 - Monita reopens your last search and page when you return to the list.
 - **Refresh** reads the list again. The list also reads itself every 30 seconds.
 
