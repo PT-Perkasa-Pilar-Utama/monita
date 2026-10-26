@@ -6,7 +6,7 @@ use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
     response::IntoResponse,
-    routing::{delete, get, post},
+    routing::{get, post},
 };
 use serde::{Deserialize, Serialize};
 
@@ -14,6 +14,7 @@ use super::{MaintenanceError, State as WindowState, WindowInput};
 use crate::{
     accounts::CurrentUser,
     app::AppState,
+    incidents::SourceKind,
     platform::{
         caps, now,
         ui::{Body, UiError, UiResult, created, data},
@@ -30,7 +31,7 @@ pub fn router() -> Router<AppState> {
 pub fn project_routes() -> Router<AppState> {
     Router::new()
         .route("/maintenance", get(list).post(create))
-        .route("/maintenance/{id}", delete(remove))
+        .route("/maintenance/{id}", get(one).put(update).delete(remove))
         .route("/maintenance/{id}/end", post(end))
 }
 
@@ -44,9 +45,10 @@ impl From<MaintenanceError> for UiError {
             ),
             MaintenanceError::NotFound => UiError::NotFound,
             MaintenanceError::Other(e) => UiError::Internal(e),
-            MaintenanceError::Full | MaintenanceError::Started | MaintenanceError::NotActive => {
-                UiError::invalid(e.to_string())
-            }
+            MaintenanceError::Full
+            | MaintenanceError::Started
+            | MaintenanceError::NotActive
+            | MaintenanceError::Ended => UiError::invalid(e.to_string()),
         }
     }
 }
@@ -96,33 +98,59 @@ async fn list(
     };
     let (windows, total) = super::page(&state.db, p.id, page, &filter, t).await?;
     let names = crate::checks::source_names(&state.db.read().await?, p.id).await?;
-    let windows: Vec<WindowView> = windows
-        .into_iter()
-        .map(|w| WindowView {
-            state: super::state(w.starts_at, w.ends_at, t),
-            items: w
-                .items
-                .iter()
-                .filter_map(|r| {
-                    let (kind, id, name) =
-                        names.iter().find(|(k, i, _)| *k == r.kind && *i == r.id)?;
-                    Some(Item {
-                        value: format!("{}:{id}", kind.as_str()),
-                        kind: kind.as_str(),
-                        name: name.clone(),
-                    })
-                })
-                .collect(),
-            id: w.id,
-            title: w.title,
-            message: w.message,
-            starts_at: w.starts_at,
-            ends_at: w.ends_at,
-        })
-        .collect();
+    let windows: Vec<WindowView> = windows.into_iter().map(|w| view(w, &names, t)).collect();
     Ok(data(serde_json::json!({
         "windows": windows, "total": total, "page": page, "page_size": caps::WINDOWS_PAGE,
     })))
+}
+
+/// A window as the list and the edit form show it, with the names of the items that still exist.
+fn view(w: super::Window, names: &[(SourceKind, i64, String)], t: i64) -> WindowView {
+    WindowView {
+        state: super::state(w.starts_at, w.ends_at, t),
+        items: w
+            .items
+            .iter()
+            .filter_map(|r| {
+                let (kind, id, name) = names.iter().find(|(k, i, _)| *k == r.kind && *i == r.id)?;
+                Some(Item {
+                    value: format!("{}:{id}", kind.as_str()),
+                    kind: kind.as_str(),
+                    name: name.clone(),
+                })
+            })
+            .collect(),
+        id: w.id,
+        title: w.title,
+        message: w.message,
+        starts_at: w.starts_at,
+        ends_at: w.ends_at,
+    }
+}
+
+async fn one(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path((slug, id)): Path<(String, i64)>,
+) -> UiResult {
+    let p = projects::find_for(&state.db, &user, &slug).await?;
+    let w = super::one(&state.db, p.id, id)
+        .await?
+        .ok_or(UiError::NotFound)?;
+    let names = crate::checks::source_names(&state.db.read().await?, p.id).await?;
+    Ok(data(view(w, &names, now())))
+}
+
+/// Q50: a scheduled window changes every field, an active one its title, message and end.
+async fn update(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path((slug, id)): Path<(String, i64)>,
+    Body(f): Body<WindowInput>,
+) -> UiResult {
+    let p = projects::find_for(&state.db, &user, &slug).await?;
+    super::update(&state.db, p.id, id, &f, now()).await?;
+    Ok(StatusCode::NO_CONTENT.into_response())
 }
 
 async fn create(

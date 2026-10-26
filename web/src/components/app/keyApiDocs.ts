@@ -139,6 +139,8 @@ export function keyApiDocs(origin: string, slug: string): PrimitiveDoc[] {
       routes: [
         { method: "GET", path: "/maintenance", text: "Lists the windows, 20 a page with ?page=", write: false },
         { method: "POST", path: "/maintenance", text: "Plans a window with title, message, starts_at, ends_at and items", write: true },
+        { method: "GET", path: "/maintenance/{id}", text: "Reads one window", write: false },
+        { method: "PUT", path: "/maintenance/{id}", text: "Edits a window: every field while scheduled, the title, message and end while active", write: true },
         { method: "POST", path: "/maintenance/{id}/end", text: "Ends an active window now", write: true },
         { method: "DELETE", path: "/maintenance/{id}", text: "Deletes a window that has not started", write: true },
       ],

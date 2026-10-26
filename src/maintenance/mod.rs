@@ -7,6 +7,11 @@
 //! | scheduled | now < starts_at         | time; Delete                       | tech lead, super admin|
 //! | active    | starts_at <= now < ends | time; End now (ends_at = now)      | tech lead, super admin|
 //! | ended     | ends_at <= now          | never (terminal, read only)        | none                  |
+//!
+//! Edit (Q50) keeps the state unless the new times change it, and the state is read again inside
+//! the write. A scheduled window changes every field. An active one changes its title, message and
+//! end only: checks already stored in it carry `in_window`, so its start and items stay. An ended
+//! window refuses an edit.
 
 pub mod api;
 mod store;
@@ -69,6 +74,8 @@ pub enum MaintenanceError {
     Started,
     #[error("Only an active window can end now.")]
     NotActive,
+    #[error("This window has ended, so it stays as a record.")]
+    Ended,
     #[error("This window does not exist.")]
     NotFound,
     #[error(transparent)]
@@ -83,23 +90,12 @@ fn validate(
     now: i64,
 ) -> Result<(String, String, i64, i64, Vec<ItemRef>), MaintenanceError> {
     let mut bad = Vec::new();
-    let title = f.title.trim();
-    if title.is_empty() || title.chars().count() > TITLE_MAX {
-        bad.push(("title", "Enter a title of up to 120 characters."));
-    }
+    let title = check_title(f, &mut bad);
     let start = f.starts_at.map(|s| s.max(now));
     if start.is_none() {
         bad.push(("starts_at", "Pick when the work starts."));
     }
-    match (start, f.ends_at) {
-        (_, None) => bad.push(("ends_at", "Pick when the work ends.")),
-        (_, Some(end)) if end <= now => bad.push(("ends_at", "Pick an end in the future.")),
-        (Some(s), Some(end)) if end <= s => bad.push(("ends_at", "Pick an end after the start.")),
-        (Some(s), Some(end)) if end - s > LONGEST_S => {
-            bad.push(("ends_at", "A window lasts 30 days at most."))
-        }
-        _ => {}
-    }
+    check_end(start, f.ends_at, now, &mut bad);
     let items: Vec<ItemRef> = names
         .iter()
         .filter(|(kind, id, _)| f.items.contains(&format!("{}:{id}", kind.as_str())))
@@ -111,15 +107,116 @@ fn validate(
     if items.is_empty() {
         bad.push(("items", "Pick at least one monitor or heartbeat."));
     }
-    if f.message.trim().chars().count() > MESSAGE_MAX {
-        bad.push(("message", "Use at most 1000 characters."));
-    }
+    check_message(f, &mut bad);
     match (start, f.ends_at) {
         (Some(s), Some(e)) if bad.is_empty() => {
             Ok((title.into(), f.message.trim().into(), s, e, items))
         }
         _ => Err(MaintenanceError::Invalid(bad)),
     }
+}
+
+/// The edit of an active window: its title, message and end against the start it already has.
+/// The form's start and items are ignored.
+fn validate_active(
+    f: &WindowInput,
+    start: i64,
+    now: i64,
+) -> Result<(String, String, i64), MaintenanceError> {
+    let mut bad = Vec::new();
+    let title = check_title(f, &mut bad);
+    check_end(Some(start), f.ends_at, now, &mut bad);
+    check_message(f, &mut bad);
+    match f.ends_at {
+        Some(e) if bad.is_empty() => Ok((title.into(), f.message.trim().into(), e)),
+        _ => Err(MaintenanceError::Invalid(bad)),
+    }
+}
+
+fn check_title<'a>(f: &'a WindowInput, bad: &mut Vec<(&'static str, &'static str)>) -> &'a str {
+    let title = f.title.trim();
+    if title.is_empty() || title.chars().count() > TITLE_MAX {
+        bad.push(("title", "Enter a title of up to 120 characters."));
+    }
+    title
+}
+
+fn check_end(
+    start: Option<i64>,
+    end: Option<i64>,
+    now: i64,
+    bad: &mut Vec<(&'static str, &'static str)>,
+) {
+    match (start, end) {
+        (_, None) => bad.push(("ends_at", "Pick when the work ends.")),
+        (_, Some(end)) if end <= now => bad.push(("ends_at", "Pick an end in the future.")),
+        (Some(s), Some(end)) if end <= s => bad.push(("ends_at", "Pick an end after the start.")),
+        (Some(s), Some(end)) if end - s > LONGEST_S => {
+            bad.push(("ends_at", "A window lasts 30 days at most."))
+        }
+        _ => {}
+    }
+}
+
+fn check_message(f: &WindowInput, bad: &mut Vec<(&'static str, &'static str)>) {
+    if f.message.trim().chars().count() > MESSAGE_MAX {
+        bad.push(("message", "Use at most 1000 characters."));
+    }
+}
+
+/// A checked edit: title, message, start, end, and the new items (None keeps them).
+type Edit = (String, String, i64, i64, Option<Vec<ItemRef>>);
+
+/// Checks an edit of window `id` against its state at `now` on the caller's connection.
+async fn check_edit(
+    c: &Connection,
+    project_id: i64,
+    id: i64,
+    f: &WindowInput,
+    now: i64,
+) -> Result<Edit, MaintenanceError> {
+    let Some((s, e)) = store::times(c, project_id, id).await? else {
+        return Err(MaintenanceError::NotFound);
+    };
+    match state(s, e, now) {
+        State::Ended => Err(MaintenanceError::Ended),
+        State::Active => {
+            let (title, message, end) = validate_active(f, s, now)?;
+            Ok((title, message, s, end, None))
+        }
+        State::Scheduled => {
+            let names = crate::checks::source_names(c, project_id).await?;
+            let (title, message, s, e, items) = validate(f, &names, now)?;
+            Ok((title, message, s, e, Some(items)))
+        }
+    }
+}
+
+/// Edits a window (Q50). Checked on a read connection first, so a refused form never takes the
+/// writer, then again inside the write, where a scheduled window may have started meanwhile.
+pub async fn update(
+    db: &Db,
+    project_id: i64,
+    id: i64,
+    f: &WindowInput,
+    now: i64,
+) -> Result<(), MaintenanceError> {
+    check_edit(&db.read().await?, project_id, id, f, now).await?;
+    db.write(
+        async |c| match check_edit(c, project_id, id, f, now).await {
+            Ok((title, message, s, e, items)) => {
+                store::update(c, id, &title, &message, s, e, items.as_deref()).await?;
+                Ok(Ok(()))
+            }
+            Err(err) => Ok(Err(err)),
+        },
+    )
+    .await?
+}
+
+/// One window of the project, or None.
+pub async fn one(db: &Db, project_id: i64, id: i64) -> anyhow::Result<Option<Window>> {
+    store::one(&db.read().await?, project_id, id).await
 }
 
 /// Plans a window. The form is checked on a read connection first, so a refused form never takes
@@ -299,78 +396,4 @@ pub async fn active(c: &Connection, project_id: i64, at: i64) -> anyhow::Result<
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    const NOW: i64 = 1_000_000;
-
-    fn names() -> Vec<(SourceKind, i64, String)> {
-        vec![
-            (SourceKind::Monitor, 1, "api".into()),
-            (SourceKind::Heartbeat, 2, "nightly".into()),
-        ]
-    }
-
-    fn form() -> WindowInput {
-        WindowInput {
-            title: "Database upgrade".into(),
-            starts_at: Some(NOW + 60),
-            ends_at: Some(NOW + 3600),
-            items: vec!["monitor:1".into(), "monitor:9".into()],
-            ..WindowInput::default()
-        }
-    }
-
-    fn fields(f: &WindowInput) -> Vec<&'static str> {
-        match validate(f, &names(), NOW) {
-            Err(MaintenanceError::Invalid(bad)) => bad.into_iter().map(|b| b.0).collect(),
-            other => panic!("expected field errors, got {other:?}"),
-        }
-    }
-
-    #[test]
-    fn the_state_follows_from_the_times() {
-        assert_eq!(state(10, 20, 9), State::Scheduled);
-        assert_eq!(state(10, 20, 10), State::Active);
-        assert_eq!(state(10, 20, 19), State::Active);
-        assert_eq!(state(10, 20, 20), State::Ended);
-    }
-
-    #[test]
-    fn a_good_form_keeps_only_the_projects_items_and_a_past_start_starts_now() {
-        let (_, _, s, _, items) = validate(&form(), &names(), NOW).unwrap();
-        assert_eq!(s, NOW + 60);
-        assert_eq!(items.len(), 1, "monitor 9 is not in the project");
-        let past = WindowInput {
-            starts_at: Some(NOW - 600),
-            ..form()
-        };
-        assert_eq!(validate(&past, &names(), NOW).unwrap().2, NOW);
-    }
-
-    #[test]
-    fn a_bad_form_names_every_bad_field() {
-        let empty = WindowInput::default();
-        assert_eq!(fields(&empty), ["title", "starts_at", "ends_at", "items"]);
-        let ended = WindowInput {
-            ends_at: Some(NOW),
-            ..form()
-        };
-        assert_eq!(fields(&ended), ["ends_at"]);
-        let backwards = WindowInput {
-            starts_at: Some(NOW + 7200),
-            ..form()
-        };
-        assert_eq!(fields(&backwards), ["ends_at"]);
-        let long = WindowInput {
-            ends_at: Some(NOW + 60 + LONGEST_S + 1),
-            ..form()
-        };
-        assert_eq!(fields(&long), ["ends_at"]);
-        let loud = WindowInput {
-            message: "x".repeat(MESSAGE_MAX + 1),
-            ..form()
-        };
-        assert_eq!(fields(&loud), ["message"]);
-    }
-}
+mod tests;

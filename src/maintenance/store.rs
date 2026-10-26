@@ -63,6 +63,36 @@ pub async fn insert(
     Ok(id)
 }
 
+/// Sets every field of window `id`; `items` None keeps its items.
+#[allow(clippy::too_many_arguments)]
+pub async fn update(
+    c: &Connection,
+    id: i64,
+    title: &str,
+    message: &str,
+    starts_at: i64,
+    ends_at: i64,
+    items: Option<&[ItemRef]>,
+) -> anyhow::Result<()> {
+    c.execute(
+        "UPDATE maintenance_windows SET title = ?2, message = ?3, starts_at = ?4, ends_at = ?5 WHERE id = ?1",
+        (id, title, message, starts_at, ends_at),
+    )
+    .await?;
+    if let Some(items) = items {
+        c.execute("DELETE FROM maintenance_items WHERE window_id = ?1", (id,))
+            .await?;
+        for item in items {
+            c.execute(
+                "INSERT INTO maintenance_items (window_id, source_kind, source_id) VALUES (?1, ?2, ?3)",
+                (id, item.kind.as_str(), item.id),
+            )
+            .await?;
+        }
+    }
+    Ok(())
+}
+
 /// Windows not yet ended: what the per-project cap counts.
 pub async fn open_count(c: &Connection, project_id: i64, now: i64) -> anyhow::Result<i64> {
     Ok(query_i64(
@@ -185,6 +215,18 @@ pub async fn page(
     )
     .await?;
     with_items(c, windows).await
+}
+
+/// The project's window `id` with its items.
+pub async fn one(c: &Connection, project_id: i64, id: i64) -> anyhow::Result<Option<Window>> {
+    let windows = query_all(
+        c,
+        format!("SELECT {COLS} FROM maintenance_windows WHERE id = ?1 AND project_id = ?2"),
+        (id, project_id),
+        window,
+    )
+    .await?;
+    Ok(with_items(c, windows).await?.into_iter().next())
 }
 
 /// Active windows, soonest end first. Active windows are open windows, so the cap bounds them.

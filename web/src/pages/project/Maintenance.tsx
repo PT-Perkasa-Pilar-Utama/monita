@@ -1,12 +1,12 @@
 import { MaintenanceGuide } from "@/components/app/Guides";
 import { PausedNow } from "@/components/app/PausedNow";
 import type { ReactElement } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { ConfirmDialog } from "@/components/app/ConfirmDialog";
 import { FormSheet } from "@/components/app/FormSheet";
 import { ListFilters, type Option } from "@/components/app/ListFilters";
 import { TableCard } from "@/components/app/TableCard";
-import { Plus, Trash2 } from "@/components/icons";
+import { Pencil, Plus, Trash2 } from "@/components/icons";
 import { PageHeader } from "@/components/layout/Page";
 import { Pager } from "@/components/list/Pager";
 import { SortHead } from "@/components/list/SortHead";
@@ -23,7 +23,7 @@ import { between } from "@/lib/status";
 import type { MaintenancePage, MaintenanceWindow, WindowState } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 import { useServerList } from "@/lib/useServerList";
-import { WindowForm } from "@/pages/project/MaintenanceForm";
+import { EditWindow, WindowForm } from "@/pages/project/MaintenanceForm";
 import { toast } from "sonner";
 
 // The server works out each window's state from its times.
@@ -72,13 +72,18 @@ function WindowAction({ w, base, onDone }: { w: MaintenanceWindow; base: string;
 
 /** Project, Maintenance: planned work, then everything paused. While a window is active its items
  * still get checked, but a failure opens no incident and sends no alert. */
-export function Maintenance({ creating = false }: { creating?: boolean }): ReactElement {
+export function Maintenance({ creating = false, editing = false }: { creating?: boolean; editing?: boolean }): ReactElement {
   const navigate = useNavigate();
+  const { id = "" } = useParams();
   const { project: p } = useProject();
   const base = `/projects/${p.slug}/maintenance`;
-  const q = useServerList(`monita:maintenance:${p.slug}`, !creating);
+  const q = useServerList(`monita:maintenance:${p.slug}`, !creating && !editing);
   const list = useApi<MaintenancePage>(`${base}${q.query}`);
   const d = list.data;
+  const saved = (): void => {
+    list.reload();
+    navigate(base);
+  };
 
   return (
     <>
@@ -158,7 +163,19 @@ export function Maintenance({ creating = false }: { creating?: boolean }): React
                       <Badge variant={STATE[w.state][1]}>{STATE[w.state][0]}</Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <WindowAction w={w} base={base} onDone={list.reload} />
+                      <Writable>
+                        <span className="inline-flex gap-2">
+                          {w.state !== "ended" && (
+                            <Button asChild variant="outline" size="sm">
+                              <Link to={`${base}/${w.id}/edit`}>
+                                <Pencil data-icon="inline-start" />
+                                Edit
+                              </Link>
+                            </Button>
+                          )}
+                          <WindowAction w={w} base={base} onDone={list.reload} />
+                        </span>
+                      </Writable>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -169,15 +186,12 @@ export function Maintenance({ creating = false }: { creating?: boolean }): React
         {d && <Pager page={q.params.page} pageSize={d.page_size} total={d.total} noun="window" onPage={(page) => q.set({ page })} disabled={list.loading} />}
         <PausedNow slug={p.slug} />
       </div>
-      <FormSheet open={creating} onClose={() => navigate(base)}>
-        <WindowForm
-          base={base}
-          onClose={() => navigate(base)}
-          onSaved={() => {
-            list.reload();
-            navigate(base);
-          }}
-        />
+      <FormSheet open={creating || editing} onClose={() => navigate(base)}>
+        {editing ? (
+          <EditWindow base={base} id={id} onClose={() => navigate(base)} onSaved={saved} />
+        ) : (
+          <WindowForm base={base} onClose={() => navigate(base)} onSaved={saved} />
+        )}
       </FormSheet>
     </>
   );

@@ -37,12 +37,14 @@ The React page `/incidents` calls this route (conventions 1.10). A TL sees the i
 
 ## 5.3 Maintenance windows
 
-The React page `/projects/{slug}/maintenance` calls these routes (`/projects/{slug}/incidents/maintenance` redirects there) (v1.1 decision Q18). Access is as in 5.1. A window's state follows from its times: `scheduled` before `starts_at`, `active` until `ends_at`, then `ended`. A window has no edit route.
+The React page `/projects/{slug}/maintenance` calls these routes (`/projects/{slug}/incidents/maintenance` redirects there) (v1.1 decision Q18). Access is as in 5.1. A window's state follows from its times: `scheduled` before `starts_at`, `active` until `ends_at`, then `ended`. A window edits through `PUT` (Q50).
 
 | Method | Path | Access | Input | Behavior | AC |
 | --- | --- | --- | --- | --- | --- |
 | GET | `/api/ui/projects/{slug}/maintenance` | owner, super_admin, supervisor | `?page=`, `?q=` (title search, any case), `?state=` (`scheduled`, `active` or `ended`; any other value lists every state), `?sort=oldest` | One page of 20, latest start first, or earliest with `sort=oldest`. `total` counts what matches. `windows`: `id`, `title`, `message`, `starts_at`, `ends_at`, `state`, and `items` (`value`, `kind`, `name` of each covered source that still exists). `total`, `page`, `page_size`. | #11 |
 | POST | `/api/ui/projects/{slug}/maintenance` | owner, super_admin | `title` (1 to 120 chars), `message` (up to 1000 chars, shown on the status page), `starts_at` and `ends_at` (Unix seconds), `items` (as in 5.1) | A start in the past becomes now. The end must be in the future, after the start, and at most 30 days after it. Errors in form order: title, starts_at, ends_at, items, message. A project with 20 windows scheduled or active is 422 with no field. 201 `{id}`. | #11 |
+| GET | `/api/ui/projects/{slug}/maintenance/{id}` | owner, super_admin, supervisor | | One window, as in the list. An unknown window is 404. | Q50 |
+| PUT | `/api/ui/projects/{slug}/maintenance/{id}` | owner, super_admin | The form, as on POST | Edits a window, 204. A scheduled window changes every field, checked as on POST. An active window changes `title`, `message` and `ends_at` only; it ignores `starts_at` and `items`, and its end must be in the future and at most 30 days after its start. An ended window is 422 with no field. The state is read again inside the write. An unknown window is 404. | Q50 |
 | DELETE | `/api/ui/projects/{slug}/maintenance/{id}` | owner, super_admin | | Deletes a scheduled window, 204. An active or ended window is 422 with no field. An unknown window is 404. | #11 |
 | POST | `/api/ui/projects/{slug}/maintenance/{id}/end` | owner, super_admin | | End now: an active window's end becomes now, 204. A scheduled or ended window is 422 with no field. An unknown window is 404. | #11 |
 

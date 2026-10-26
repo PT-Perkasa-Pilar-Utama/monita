@@ -132,6 +132,17 @@ test("a maintenance window holds back the incident until the tech lead ends it",
   await expect(page.getByText("Maintenance planned.")).toBeVisible();
   const row = page.getByRole("row", { name: /Bank API upgrade/ });
   await expect(row.getByText("Active")).toBeVisible();
+  await expect(row.getByRole("link", { name: "nightly-settlement" })).toBeVisible();
+
+  // An active window edits its title, message and end; its start and items stay (Q50).
+  await row.getByRole("link", { name: "Edit" }).click();
+  const form = page.getByRole("dialog");
+  await expect(form.getByLabel("Starts")).toBeDisabled();
+  await expect(form.getByText("An active window keeps its items", { exact: false })).toBeVisible();
+  await form.getByLabel("Title").fill("Bank API upgrade, longer");
+  await form.getByRole("button", { name: "Save window" }).click();
+  await expect(page.getByText("Window saved.")).toBeVisible();
+  await expect(row.getByText("Bank API upgrade, longer")).toBeVisible();
 
   expect((await page.request.post(`${pingUrl}/fail`, { data: "planned" })).status()).toBe(200);
   await page.goto(`/projects/${slug}/heartbeats`);

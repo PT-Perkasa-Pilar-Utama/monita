@@ -474,3 +474,108 @@ async fn the_list_filters_by_state_and_title_and_sorts_by_start() {
         "an unknown state lists every window"
     );
 }
+
+#[tokio::test]
+async fn a_scheduled_window_edits_every_field_and_an_active_one_its_title_message_and_end() {
+    let app = TestApp::spawn("test").await;
+    let tl = setup(&app, 2).await;
+    let active = plan(&app, &tl, &["monitor:1"], "").await;
+    let t = now();
+    let put = async |id: i64, body: Value| {
+        let res = app
+            .api_send(
+                reqwest::Method::PUT,
+                &format!("{LIST}/{id}"),
+                body,
+                Some(&tl),
+            )
+            .await;
+        let status = res.status();
+        let body = if status == 204 {
+            Value::Null
+        } else {
+            json_of(res).await
+        };
+        (status, body)
+    };
+    let one = async |id: i64| {
+        json_of(app.api_get(&format!("{LIST}/{id}"), Some(&tl)).await).await["data"].clone()
+    };
+    let before = one(active).await;
+
+    let (status, _) = put(
+        active,
+        json!({ "title": "Longer upgrade", "message": "Back by noon", "starts_at": t + 5000,
+                "ends_at": t + 7200, "items": [] }),
+    )
+    .await;
+    assert_eq!(
+        status, 204,
+        "the start and items of an active window are ignored"
+    );
+    let after = one(active).await;
+    assert_eq!(after["title"], "Longer upgrade");
+    assert_eq!(after["message"], "Back by noon");
+    assert_eq!(after["ends_at"], t + 7200);
+    assert_eq!(after["starts_at"], before["starts_at"], "the start stays");
+    assert_eq!(after["items"], before["items"], "the items stay");
+    assert_eq!(after["state"], "active");
+
+    let (status, body) = put(active, json!({ "title": "x", "ends_at": t - 10 })).await;
+    assert_eq!(status, 422);
+    assert!(body["error"]["fields"]["ends_at"].is_string(), "{body}");
+
+    let later = json_of(
+        app.api_post(
+            LIST,
+            json!({ "title": "Network move", "starts_at": t + 7200, "ends_at": t + 9000, "items": ["monitor:1"] }),
+            Some(&tl),
+        )
+        .await,
+    )
+    .await["data"]["id"]
+        .as_i64()
+        .unwrap();
+    let (status, body) = put(
+        later,
+        json!({ "title": "Network move", "starts_at": t + 3600, "ends_at": t + 4000, "items": [] }),
+    )
+    .await;
+    assert_eq!(status, 422, "a scheduled window still needs an item");
+    assert!(body["error"]["fields"]["items"].is_string(), "{body}");
+    let (status, _) = put(
+        later,
+        json!({ "title": "Network move, part 1", "starts_at": t + 3600, "ends_at": t + 4000, "items": ["monitor:1"] }),
+    )
+    .await;
+    assert_eq!(status, 204);
+    let moved = one(later).await;
+    assert_eq!(
+        moved["starts_at"],
+        t + 3600,
+        "a scheduled window moves its start"
+    );
+    assert_eq!(moved["title"], "Network move, part 1");
+
+    assert_eq!(
+        app.api_post(&format!("{LIST}/{active}/end"), json!({}), Some(&tl))
+            .await
+            .status(),
+        204
+    );
+    let (status, body) = put(active, json!({ "title": "Too late", "ends_at": t + 9000 })).await;
+    assert_eq!(status, 422, "an ended window is a record");
+    assert!(
+        body["error"]["message"].as_str().unwrap().contains("ended"),
+        "{body}"
+    );
+    assert_eq!(put(999, json!({})).await.0, 404);
+
+    let other = app.tl("omar@x.co").await;
+    assert_eq!(
+        app.api_get(&format!("{LIST}/{later}"), Some(&other))
+            .await
+            .status(),
+        404
+    );
+}

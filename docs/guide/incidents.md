@@ -99,19 +99,22 @@ While a window is active:
 - A failed check or ping counts as held. It stays in the checks and pings tables, but the charts, the response-time sparklines and the daily summary count it as good, so planned work leaves no red. The monitor and heartbeat charts draw the window as grey stripes. Hover a stripe to read the window's title and length.
 - A heartbeat's `/fail` ping in the window opens nothing then. If the job still has not sent a success ping when the window ends, the incident opens then, with the failure text the job sent.
 - The items show **Maintenance** on the team's pages and on the status page. The status page shows the title, the times and the message.
-- A window adds no downtime. An incident that was open before the window stays open, closes as usual, and counts as downtime.
+- A window adds no downtime. An incident that was open before the window stays open, closes as usual, and counts as downtime. Until then the item reads **Down**, but its list row still has the yellow stripes and its page still shows the **In maintenance** stamp.
+- A paused item in a window stays paused: Monita checks nothing, so the window has nothing to hold. Resume it inside the window, and the window holds its failures from then on. Pause an item in a window, and Monita stops watching it at once, as any pause does.
 
 When the window ends, a check that still fails opens an incident at once. A heartbeat that stayed silent opens one when the window ends.
 
 | State | What you can do |
 | --- | --- |
-| Scheduled | **Delete** it. |
-| Active | **End now**. Failures open incidents again from that moment. |
+| Scheduled | **Edit** any field, or **Delete** it. |
+| Active | **Edit** the title, the message and the end, or **End now**. Failures open incidents again from that moment. |
 | Ended | Read it. It cannot change. |
 
-A project has at most 20 windows scheduled or active. A window cannot be edited: delete it and plan a new one.
+An active window keeps its start and its items, because the checks it already holds count as maintenance. To cover one more system, plan a second window for it.
 
-The **Maintenance** page lists the windows 20 a page. **Search windows** finds a title. The state filter shows **Scheduled**, **Active** or **Ended**. Select **When** to sort by start, newest first or oldest first. Below the list, a second card shows the count of paused systems. It lists every paused monitor and heartbeat with a **Resume** button. The number on the **Maintenance** tab counts the monitors and heartbeats that are paused or in an active window now, each once.
+A project has at most 20 windows scheduled or active.
+
+The **Maintenance** page lists the windows 20 a page. Each row names the systems it covers, with links to their pages, and its message. **Search windows** finds a title. The state filter shows **Scheduled**, **Active** or **Ended**. Select **When** to sort by start, newest first or oldest first. Below the list, a second card shows the count of paused systems. It lists every paused monitor and heartbeat with a **Resume** button. The number on the **Maintenance** tab counts the monitors and heartbeats that are paused or in an active window now, each once.
 
 The old address `/projects/<project>/incidents/maintenance` still opens this page.
 
