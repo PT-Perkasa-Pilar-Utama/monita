@@ -963,7 +963,10 @@ async fn the_project_chart_draws_a_line_a_project_for_the_page_and_filter() {
                    (1, unixepoch() - 60, 1, 100), (2, unixepoch() - 60, 1, 300), (2, unixepoch() - 30, 0, 300);
                  INSERT INTO incidents (id, project_id, origin, title, severity, started_at) VALUES
                    (1, 1, 'auto', 'Pay is down', 'critical', unixepoch() - 600);
-                 INSERT INTO incident_items VALUES (1, 'monitor', 2);",
+                 INSERT INTO incident_items VALUES (1, 'monitor', 2);
+                 INSERT INTO heartbeats (id, project_id, name, token, period_s, grace_s, last_ping_at, deadline_at) VALUES
+                   (1, 2, 'Backup', 'tok-b', 3600, 300, unixepoch() - 60, unixepoch() + 3600);
+                 INSERT INTO pings (heartbeat_id, received_at, kind) VALUES (1, unixepoch() - 60, 'ok');",
             )
             .await?;
             Ok(())
@@ -986,12 +989,17 @@ async fn the_project_chart_draws_a_line_a_project_for_the_page_and_filter() {
         lines[0]["mean_ms"], 233,
         "weighted by checks: (100 + 300 + 300) / 3"
     );
+    let lanes = got["data"]["chart"]["lanes"].as_array().unwrap();
+    assert_eq!(lanes.len(), 1, "a lane for the project with heartbeats");
     assert_eq!(
-        got["data"]["chart"]["lanes"],
-        json!([]),
-        "no heartbeat lanes for projects"
+        (&lanes[0]["name"], &lanes[0]["id"]),
+        (&json!("Blog"), &json!(2))
     );
-    assert_eq!(got["data"]["chart"]["down"].as_array().unwrap().len(), 1);
+    assert_eq!(
+        got["data"]["chart"]["down"].as_array().unwrap().len(),
+        1,
+        "monitor down time shades the plot"
+    );
     assert_eq!(got["data"]["slugs"]["1"], "shop");
     let up = json_of(
         app.api_get("/api/ui/projects-chart?state=up", Some(&tl))

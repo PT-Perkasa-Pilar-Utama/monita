@@ -197,27 +197,28 @@ export function OverviewChart({ chart, links }: { chart: ChartData; links: Chart
           </div>
         )}
       </div>
-      <ul className="flex flex-wrap gap-x-5 gap-y-2 text-xs">
-        {chart.down.length > 0 && (
-          <li className="inline-flex items-center gap-1.5 text-muted-foreground">
-            <i className="inline-block size-2.5 rounded-xs bg-down/25" />
-            Down
-          </li>
-        )}
+      {/* Monitors are lines and full-height shading; heartbeats are dots in the lanes. */}
+      <ul className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground">
+        {(chart.lines.length > 0 || chart.others.length > 0) && <Key mark={<i className="inline-block h-0.5 w-3 bg-foreground/60" />} label="Monitor response time" />}
+        {chart.down.length > 0 && <Key mark={<i className="inline-block h-3 w-2.5 rounded-xs bg-down/25" />} label="Monitor down" />}
         {chart.lanes.length > 0 && (
-          <li className="inline-flex items-center gap-3 text-muted-foreground">
-            <span className="inline-flex items-center gap-1.5">
-              <i className="inline-block size-2 rounded-full bg-up" />
-              Ping
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <i className="inline-block size-2 rounded-full bg-down" />
-              Failed ping
-            </span>
-          </li>
+          <>
+            <Key mark={<i className="inline-block size-2 rounded-full bg-up" />} label="Heartbeat ping" />
+            <Key mark={<i className="inline-block size-2 rounded-full bg-down" />} label="Failed ping" />
+            {chart.lanes.some((l) => l.marks.some((m) => m.tone === "down")) && <Key mark={<i className="inline-block h-2 w-3 rounded-xs bg-down/25" />} label="Heartbeat missed or failed" />}
+          </>
         )}
-        {chart.paused > 0 && <li className="text-muted-foreground">{chart.paused} paused, not shown</li>}
+        {chart.paused > 0 && <li>{chart.paused} paused, not shown</li>}
       </ul>
     </div>
+  );
+}
+
+function Key({ mark, label }: { mark: ReactElement; label: string }): ReactElement {
+  return (
+    <li className="inline-flex items-center gap-1.5">
+      {mark}
+      {label}
+    </li>
   );
 }

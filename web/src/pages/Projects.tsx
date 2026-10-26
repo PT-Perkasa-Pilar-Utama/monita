@@ -170,9 +170,7 @@ export function Projects(): ReactElement {
           <Card className="gap-4 p-5">
             <div className="flex flex-col gap-0.5">
               <h2 className="font-semibold">Last 24 hours</h2>
-              <p className="text-[13px] text-muted-foreground">
-                A line for each project on this page: the mean response time of its monitors. Red where a monitor or heartbeat was down.
-              </p>
+              <p className="text-[13px] text-muted-foreground">How each project did in the last 24 hours. Lines show how fast its monitors answered. Dots show its heartbeats calling in. Red marks trouble.</p>
             </div>
             {!chart.data ? (
               <Skeleton className="h-72 rounded-lg" />

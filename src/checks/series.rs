@@ -181,8 +181,9 @@ pub async fn project(
 }
 
 /// The project list's chart (v1.1 Q39): one series per project of the page. A project's line is
-/// the mean response time of its monitors per slot, weighted by checks. Its red shading is every
-/// automatic incident of its monitors and heartbeats. Paused monitors read nothing.
+/// the mean response time of its monitors per slot, weighted by checks, and its red shading is
+/// its monitors' automatic incidents. A project with heartbeats also gets a lane: their pings
+/// together, and the time they missed or failed. Paused monitors and heartbeats read nothing.
 // ponytail: one bucket read per monitor, PROJECTS_PAGE * MONITORS_PER_PROJECT (2000) at most a
 // read; move to an hourly rollup written with each check if a full page reads slowly.
 pub async fn projects(
@@ -191,9 +192,10 @@ pub async fn projects(
     now: i64,
     off: i64,
 ) -> anyhow::Result<chart::overview::OverviewChart> {
-    use chart::overview::{MonitorSeries, overview, rank};
+    use chart::overview::{BeatSeries, MonitorSeries, overview, rank};
     let w = Window::new(Range::Day, now, off);
     let mut series = Vec::with_capacity(projects.len());
+    let mut lanes = Vec::new();
     for (id, name) in projects {
         let states = crate::incidents::team_states_for(db, *id).await?;
         let down = history::intervals(db, *id, w.from, now).await?;
@@ -225,11 +227,53 @@ pub async fn projects(
                 }
             }
         }
+        let mut beat_state = "unknown";
+        let mut pings: Vec<(i64, i64)> = vec![(0, 0); w.buckets];
+        let mut due = 0;
         for h in &beats {
-            worse(
-                h.state(states.get(&(SourceKind::Heartbeat, h.id)).copied())
-                    .0,
-            );
+            let s = h
+                .state(states.get(&(SourceKind::Heartbeat, h.id)).copied())
+                .0;
+            worse(s);
+            if rank(s) < rank(beat_state) {
+                beat_state = s;
+            }
+            if h.paused_at.is_some() {
+                continue;
+            }
+            let since = h.last_ping_at.unwrap_or(h.created_at);
+            due = due.max((now - since) * 100 / (h.period_s + h.grace_s).max(1));
+            for b in store::ping_buckets(&c, h.id, w.from, w.step, w.buckets).await? {
+                let p = &mut pings[b.index.min(w.buckets - 1)];
+                p.0 += b.total;
+                p.1 += b.ok;
+            }
+        }
+        let down_of = |kind| {
+            down.iter()
+                .filter(|((k, _), _)| *k == kind)
+                .flat_map(|(_, spans)| spans.iter().copied())
+                .collect::<Vec<(i64, i64)>>()
+        };
+        if beats.iter().any(|h| h.paused_at.is_none()) {
+            lanes.push(BeatSeries {
+                id: *id,
+                name: name.clone(),
+                state: beat_state,
+                buckets: pings
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, p)| p.0 > 0)
+                    .map(|(index, &(total, ok))| Bucket {
+                        index,
+                        total,
+                        ok,
+                        avg_ms: None,
+                    })
+                    .collect(),
+                down: down_of(SourceKind::Heartbeat),
+                due,
+            });
         }
         let buckets = sums
             .into_iter()
@@ -256,8 +300,8 @@ pub async fn projects(
             state,
             interval_s,
             buckets,
-            down: down.into_values().flatten().collect(),
+            down: down_of(SourceKind::Monitor),
         });
     }
-    Ok(overview(&w, series, Vec::new()))
+    Ok(overview(&w, series, lanes))
 }
