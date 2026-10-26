@@ -3,6 +3,8 @@ import { Link, useLocation } from "react-router-dom";
 import { LinkRow, ROW_LINK } from "@/components/app/LinkRow";
 import { ListFilters, type Option } from "@/components/app/ListFilters";
 import { ProjectBadge } from "@/components/app/ProjectBadge";
+import { CLASS_LABEL } from "@/components/app/Reclassify";
+import { Badge } from "@/components/ui/badge";
 import { RefreshButton } from "@/components/app/RefreshButton";
 import { TableCard } from "@/components/app/TableCard";
 import { LabelBadge, SeverityBadge } from "@/components/app/Tone";
@@ -81,6 +83,11 @@ export function AllIncidents(): ReactElement {
                           {i.title}
                         </Link>
                         <div className="font-mono text-xs text-muted-foreground">INC-{i.id}</div>
+                        {i.excluded && (
+                          <Badge variant="outline" className="mt-1">
+                            {CLASS_LABEL[i.excluded]}
+                          </Badge>
+                        )}
                       </TableCell>
                       <TableCell className="max-md:hidden">
                         <span className="flex items-center gap-2">

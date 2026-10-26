@@ -200,3 +200,20 @@ test("a pinned monitor leads its list and the Overview chart, and unpins with Un
   await page.getByRole("button", { name: "Undo" }).click();
   await expect(page.getByRole("button", { name: "Unpin Zulu" })).toBeVisible();
 });
+
+test("two monitors go in one batch delete after typing the confirmation", async ({ page }) => {
+  const slug = await apiProject(page, "Batch");
+  for (const name of ["Old A", "Old B", "Keeper"]) await apiMonitor(page, slug, { name });
+  await page.goto(`/projects/${slug}/monitors`);
+  await page.getByRole("checkbox", { name: "Select Old A" }).check();
+  await page.getByRole("checkbox", { name: "Select Old B" }).check();
+  await page.getByRole("button", { name: "Delete", exact: true }).click();
+  const dialog = page.getByRole("alertdialog");
+  const go = dialog.getByRole("button", { name: "Delete 2 monitors" });
+  await expect(go).toBeDisabled();
+  await dialog.getByLabel(/Type delete 2 to confirm/).fill("delete 2");
+  await go.click();
+  await expect(page.getByText("2 monitors deleted.")).toBeVisible();
+  await expect(page.locator("tbody tr")).toHaveCount(1);
+  await expect(page.locator("tbody tr")).toContainText("Keeper");
+});

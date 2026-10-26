@@ -187,3 +187,22 @@ test("a tech lead pauses a heartbeat, plans maintenance from its row menu, and r
   await page.getByRole("button", { name: "Resume" }).click();
   await expect(page.locator("#state")).not.toHaveText("Paused");
 });
+
+test("a tech lead marks an incident as a false alarm, the cross-project list tags it, and it counts again", async ({ page }) => {
+  const { slug, pingUrl } = await projectWithHeartbeat(page);
+  expect((await page.request.post(`${pingUrl}/fail`, { data: "disk full" })).status()).toBe(200);
+  await page.goto(`/projects/${slug}/incidents`);
+  await page.getByRole("link", { name: /nightly-settlement/ }).first().click();
+  await page.getByRole("button", { name: "Reclassify" }).click();
+  await page.getByRole("menuitem", { name: "False alarm" }).click();
+  await page.getByRole("alertdialog").getByRole("button").last().click();
+  await expect(page.getByText("Marked as false alarm.")).toBeVisible();
+  const id = page.url().split("/").pop();
+  await page.goto("/incidents?state=all");
+  await expect(page.locator("tbody tr").filter({ hasText: `INC-${id}` }).getByText("False alarm")).toBeVisible();
+  await page.goBack();
+  await page.getByRole("button", { name: "Reclassify" }).click();
+  await page.getByRole("menuitem", { name: "Count it again" }).click();
+  await page.getByRole("alertdialog").getByRole("button").last().click();
+  await expect(page.getByText("The incident counts again.")).toBeVisible();
+});
