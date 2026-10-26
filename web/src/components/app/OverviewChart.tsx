@@ -4,10 +4,12 @@ import { useNavigate } from "react-router-dom";
 import { columnAt } from "@/lib/chart";
 import type { OverviewChart as ChartData } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { Pin } from "@/components/icons";
 
-const SERIES = ["stroke-series-1", "stroke-series-2", "stroke-series-3", "stroke-series-4", "stroke-series-5"];
-const SWATCH = ["bg-series-1", "bg-series-2", "bg-series-3", "bg-series-4", "bg-series-5"];
-const SWATCH_FILL = ["fill-series-1", "fill-series-2", "fill-series-3", "fill-series-4", "fill-series-5"];
+// Six, so six pinned monitors each get their own colour (Q48).
+const SERIES = ["stroke-series-1", "stroke-series-2", "stroke-series-3", "stroke-series-4", "stroke-series-5", "stroke-series-6"];
+const SWATCH = ["bg-series-1", "bg-series-2", "bg-series-3", "bg-series-4", "bg-series-5", "bg-series-6"];
+const SWATCH_FILL = ["fill-series-1", "fill-series-2", "fill-series-3", "fill-series-4", "fill-series-5", "fill-series-6"];
 const WIDTH = 1000;
 const f = (n: number): string => n.toFixed(1);
 
@@ -99,6 +101,7 @@ export function OverviewChart({ chart, links }: { chart: ChartData; links: Chart
               >
                 <title>{l.name}</title>
                 <rect x={8} y={y - 4} width={14} height={3} rx={1.5} className={SWATCH_FILL[i]} />
+                {l.pinned && <Pin x={9} y={y + 11} size={11} weight="fill" aria-label="Pinned" className="fill-muted-foreground" />}
                 <text x={28} y={y} dominantBaseline="middle" className={cn("fill-foreground text-[13px] font-medium", focus === i && "underline")}>
                   {short(l.name, 17)}
                 </text>
@@ -146,7 +149,7 @@ export function OverviewChart({ chart, links }: { chart: ChartData; links: Chart
             <g key={lane.id ?? "more"}>
               <line x1={left} x2={right} y1={f(lane.y + 12)} y2={f(lane.y + 12)} className="stroke-border" />
               <text
-                x={8}
+                x={lane.pinned ? 22 : 8}
                 y={f(lane.y + 12)}
                 dominantBaseline="middle"
                 className={cn("text-[13px]", lane.id === null ? "fill-muted-foreground" : "cursor-pointer fill-foreground hover:underline")}
@@ -154,6 +157,7 @@ export function OverviewChart({ chart, links }: { chart: ChartData; links: Chart
               >
                 {lane.name}
               </text>
+              {lane.pinned && <Pin x={7} y={f(lane.y + 6.5)} size={11} weight="fill" aria-label="Pinned" className="fill-muted-foreground" />}
               {lane.marks.map((m, i) => (
                 <rect
                   key={i}

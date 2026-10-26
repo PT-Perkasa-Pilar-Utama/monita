@@ -125,6 +125,12 @@ export function Projects(): ReactElement {
     </>
   );
 
+  // A pin reorders the list and the chart, so both read again.
+  const repin = (): void => {
+    list.refresh();
+    chart.refresh();
+  };
+
   return (
     <>
       <PageHeader
@@ -192,7 +198,7 @@ export function Projects(): ReactElement {
           <Card className="py-0">{empty}</Card>
         ) : view === "card" ? (
           <div className={GRID} aria-busy={loading}>
-            {loading ? <ProjectCardSkeletons count={skeletons} /> : projects.map((p) => <ProjectCard key={p.slug} p={p} />)}
+            {loading ? <ProjectCardSkeletons count={skeletons} /> : projects.map((p) => <ProjectCard key={p.slug} p={p} onPin={repin} />)}
           </div>
         ) : (
           // Under the chart the count and filters already sit above, so the table repeats neither.
@@ -203,6 +209,7 @@ export function Projects(): ReactElement {
                 skeletons={skeletons}
                 sort={sort === "name" ? { by: "name", dir: "asc" } : sort === "oldest" ? { by: "created", dir: "asc" } : { by: "created", dir: "desc" }}
                 onSort={(by) => go({ sort: by === "name" ? "name" : sort === "oldest" ? "" : "oldest" }, 1, true)}
+                onPin={repin}
               />}
           </TableCard>
         )}

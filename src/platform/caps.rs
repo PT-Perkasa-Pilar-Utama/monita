@@ -25,6 +25,8 @@ pub const PROBE_BATCH: i64 = 50;
 /// The longest a probe's long poll for work is held, in seconds; under the probe's 30 s timeout
 /// and every common proxy's read timeout.
 pub const PROBE_WAIT_S: u64 = 25;
+/// Pinned projects per user; pinned monitors, and pinned heartbeats, per project per user (Q48).
+pub const PINS: i64 = 6;
 pub const KEYS_PER_PROJECT: i64 = 20;
 /// Sealed secrets in one project, and the longest value.
 pub const SECRETS_PER_PROJECT: i64 = 20;

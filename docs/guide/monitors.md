@@ -112,6 +112,10 @@ A tech lead can also open an incident by hand. See [Incidents](incidents.md).
 | Paused | A tech lead paused it |
 | No data yet | No check has run |
 
+## Pin a monitor
+
+Select the pin at the start of a monitor's row to keep it at the top of the list and on the project's Overview chart, where every pinned monitor gets its own line. Each person pins their own, up to 6 monitors and 6 heartbeats in a project and 6 projects, and the pin on a project's card or row keeps that project first in the project list. Select it again, or Undo in the message, to unpin.
+
 ## Pause a monitor
 
 Select **Pause** on the monitor page and confirm. Use it when you take a system out of service and want to keep its history. While a monitor is paused:

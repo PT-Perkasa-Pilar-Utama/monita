@@ -129,10 +129,12 @@ fn series(chart: Chart, range: Range, buckets: &[Bucket]) -> Series {
 }
 
 /// The Overview's chart (v1.1 Q39): every monitor and heartbeat of the project over the last day,
-/// in 15-minute slots. Paused ones read nothing; the chart counts them apart.
+/// in 15-minute slots. Paused ones read nothing; the chart counts them apart. The viewer's pins
+/// come first (Q48).
 pub async fn project(
     db: &Db,
     project_id: i64,
+    viewer: Option<i64>,
     now: i64,
     off: i64,
 ) -> anyhow::Result<chart::overview::OverviewChart> {
@@ -143,6 +145,8 @@ pub async fn project(
     let down_of = |kind, id| down.get(&(kind, id)).cloned().unwrap_or_default();
     let monitors = super::list_monitors(db, project_id).await?;
     let beats = super::heartbeat::list(db, project_id).await?;
+    let pinned_m = super::pins::ids(db, viewer, project_id, SourceKind::Monitor).await?;
+    let pinned_h = super::pins::ids(db, viewer, project_id, SourceKind::Heartbeat).await?;
     let c = db.read().await?;
     let mut ms = Vec::with_capacity(monitors.len());
     for m in monitors {
@@ -154,6 +158,7 @@ pub async fn project(
             store::check_buckets(&c, m.id, w.from, w.step, w.buckets).await?
         };
         ms.push(MonitorSeries {
+            pinned: pinned_m.contains(&m.id),
             id: m.id,
             state,
             interval_s: m.interval_s,
@@ -174,6 +179,7 @@ pub async fn project(
         };
         let since = h.last_ping_at.unwrap_or(h.created_at);
         bs.push(BeatSeries {
+            pinned: pinned_h.contains(&h.id),
             id: h.id,
             state,
             buckets,
@@ -185,7 +191,8 @@ pub async fn project(
     Ok(overview(&w, ms, bs))
 }
 
-/// The project list's chart (v1.1 Q39): one series per project of the page. A project's line is
+/// The project list's chart (v1.1 Q39): one series per project of the page, the viewer's pinned
+/// projects first (Q48). A project's line is
 /// the mean response time of its monitors per slot, weighted by checks, and its red shading is
 /// its monitors' automatic incidents. A project with heartbeats also gets a lane: their pings
 /// together, and the time they missed or failed. Paused monitors and heartbeats read nothing.
@@ -193,6 +200,7 @@ pub async fn project(
 pub async fn projects(
     db: &Db,
     projects: &[(i64, String)],
+    pinned: &[i64],
     now: i64,
     off: i64,
 ) -> anyhow::Result<chart::overview::OverviewChart> {
@@ -267,6 +275,7 @@ pub async fn projects(
         };
         if beats.iter().any(|h| h.paused_at.is_none()) {
             lanes.push(BeatSeries {
+                pinned: pinned.contains(id),
                 id: *id,
                 name: name.clone(),
                 state: beat_state,
@@ -305,6 +314,7 @@ pub async fn projects(
             state = "paused";
         }
         series.push(MonitorSeries {
+            pinned: pinned.contains(id),
             id: *id,
             name: name.clone(),
             state,

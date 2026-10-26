@@ -4,13 +4,13 @@ use axum::response::IntoResponse;
 use axum::{
     Router,
     extract::{Path, Query, State},
-    routing::get,
+    routing::{get, put},
 };
 use serde::{Deserialize, Serialize};
 
 use super::{Project, ProjectError, ProjectInput, TabCounts};
 use crate::{
-    accounts::{AdminUser, CurrentUser},
+    accounts::{AccountUser, AdminUser, CurrentUser},
     app::AppState,
     platform::ui::{Body, UiError, UiResult, ViewerOffset, created, data},
 };
@@ -22,6 +22,7 @@ pub fn router() -> Router<AppState> {
         .route("/api/ui/projects-chart", get(chart))
         .route("/api/ui/projects/{slug}", get(detail).delete(delete))
         .route("/api/ui/projects/{slug}/overview", get(overview))
+        .route("/api/ui/projects/{slug}/pin", put(pin).delete(unpin))
         .merge(super::settings_api::router())
 }
 
@@ -158,8 +159,10 @@ async fn chart(
         .iter()
         .map(|p| (p.id, p.name.clone()))
         .collect();
+    let pinned = super::pins::ids(&state.db, user.pin_owner()).await?;
     let chart =
-        crate::checks::series::projects(&state.db, &projects, crate::platform::now(), off).await?;
+        crate::checks::series::projects(&state.db, &projects, &pinned, crate::platform::now(), off)
+            .await?;
     // The page links by slug; the chart names projects by id.
     let slugs: std::collections::HashMap<i64, &str> = found
         .projects
@@ -182,8 +185,9 @@ async fn list(
     } else {
         Vec::new()
     };
+    let pinned = super::pins::ids(&state.db, user.pin_owner()).await?;
     Ok(data(ProjectList {
-        projects: rows(&state, &found.projects, off).await?,
+        projects: rows(&state, &found.projects, &pinned, off).await?,
         total: found.total,
         page: found.page,
         page_size: crate::platform::caps::PROJECTS_PAGE,
@@ -198,16 +202,24 @@ struct ProjectRow {
     #[serde(flatten)]
     project: ProjectView,
     pulse: super::Pulse,
+    /// The viewer pinned it (Q48).
+    pinned: bool,
 }
 
 /// One page of projects, `caps::PROJECTS_PAGE` at most, each with its pulse.
 // ponytail: one pulse read per project, 20 a page; batch them into grouped queries if the list gets slow.
-async fn rows(state: &AppState, projects: &[Project], off: i64) -> anyhow::Result<Vec<ProjectRow>> {
+async fn rows(
+    state: &AppState,
+    projects: &[Project],
+    pinned: &[i64],
+    off: i64,
+) -> anyhow::Result<Vec<ProjectRow>> {
     let mut out = Vec::with_capacity(projects.len());
     for p in projects {
         out.push(ProjectRow {
             project: ProjectView::from(p),
             pulse: super::pulse(&state.db, p.id, off).await?,
+            pinned: pinned.contains(&p.id),
         });
     }
     Ok(out)
@@ -277,7 +289,9 @@ async fn overview(
     ViewerOffset(off): ViewerOffset,
 ) -> UiResult {
     let p = super::find_for(&state.db, &user, &slug).await?;
-    Ok(data(super::overview::read(&state.db, p.id, off).await?))
+    Ok(data(
+        super::overview::read(&state.db, p.id, user.pin_owner(), off).await?,
+    ))
 }
 
 #[derive(Deserialize, Default)]
@@ -299,4 +313,34 @@ async fn delete(
         .await
         .map_err(form_error)?;
     Ok(axum::http::StatusCode::NO_CONTENT.into_response())
+}
+
+/// Pins the project for the signed-in user (Q48). A supervisor may: a pin is a personal setting.
+/// 204, or 422 with the cap's message once 6 are pinned.
+async fn pin(
+    State(state): State<AppState>,
+    AccountUser(user): AccountUser,
+    Path(slug): Path<String>,
+) -> UiResult {
+    set_pin(&state, &user, &slug, true).await
+}
+
+/// Unpins the project for the signed-in user. 204.
+async fn unpin(
+    State(state): State<AppState>,
+    AccountUser(user): AccountUser,
+    Path(slug): Path<String>,
+) -> UiResult {
+    set_pin(&state, &user, &slug, false).await
+}
+
+async fn set_pin(state: &AppState, user: &crate::accounts::User, slug: &str, on: bool) -> UiResult {
+    let p = super::find_for(&state.db, user, slug).await?;
+    match super::pins::set(&state.db, user.id, &p, on).await {
+        Ok(()) => Ok(axum::http::StatusCode::NO_CONTENT.into_response()),
+        Err(super::pins::PinError::Full(_)) => Err(UiError::invalid(
+            super::pins::PinError::Full(p.name).to_string(),
+        )),
+        Err(super::pins::PinError::Other(e)) => Err(UiError::Internal(e)),
+    }
 }

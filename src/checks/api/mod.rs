@@ -4,6 +4,7 @@ mod batch;
 mod heartbeats;
 mod locations;
 mod monitors;
+mod pins;
 mod views;
 
 use axum::{Router, extract::State, routing::get};
@@ -21,6 +22,7 @@ pub fn router() -> Router<AppState> {
         .route("/api/ui/check-options", get(options))
         .nest("/api/ui/projects/{slug}", project_routes())
         .merge(locations::router())
+        .merge(pins::router())
 }
 
 /// The routes below `/api/ui/projects/{slug}` that a project API key also reaches under

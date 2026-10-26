@@ -25,7 +25,7 @@ export type Owner = { email: string; role: string };
 /** How a project is doing right now, for the project list. `hours` holds the last 24, oldest first. */
 export type Pulse = { kind: StateKind; monitors: Summary; heartbeats: Summary; incidents: number; tickets: number; hours: UptimeDay[] };
 
-export type ProjectRow = Project & { pulse: Pulse };
+export type ProjectRow = Project & { pulse: Pulse; pinned: boolean };
 
 export type ProjectList = {
   projects: ProjectRow[];
@@ -81,11 +81,11 @@ export type OverviewChart = {
   height: number;
   /** left, top, right, bottom of the latency plot. */
   plot: [number, number, number, number];
-  lines: { id: number; name: string; state: StateKind; path: string; mean_ms: number | null; checks: number; failed: number }[];
+  lines: { id: number; name: string; state: StateKind; pinned: boolean; path: string; mean_ms: number | null; checks: number; failed: number }[];
   /** The other monitors, drawn faint behind the lines. */
   others: { id: number; name: string; path: string }[];
   down: ChartRect[];
-  lanes: { id: number | null; name: string; state: StateKind; y: number; marks: ChartRect[] }[];
+  lanes: { id: number | null; name: string; state: StateKind; pinned: boolean; y: number; marks: ChartRect[] }[];
   y_ticks: { at: number; label: string }[];
   x_ticks: { at: number; label: string }[];
   /** A 15-minute slot and a row per series: name, text, tone. */
@@ -187,7 +187,7 @@ export type MonitorView = {
 /** One monitor's last 24 hours, drawn in a 160 x 32 view box. */
 export type Day = { path: string; fails: number[]; uptime: string | null; mean_ms: number | null };
 
-export type MonitorRow = MonitorView & { day: Day | null };
+export type MonitorRow = MonitorView & { day: Day | null; pinned: boolean };
 
 export type ListSummary = { kind: StateKind; text: string };
 
@@ -292,7 +292,7 @@ export type HeartbeatView = {
   due: Due;
 };
 
-export type HeartbeatList = { heartbeats: HeartbeatView[]; summary: ListSummary };
+export type HeartbeatList = { heartbeats: (HeartbeatView & { pinned: boolean })[]; summary: ListSummary };
 
 export type PingRow = { id: number; received_at: number; kind: "ok" | "fail"; source_ip: string | null; cause: string | null };
 

@@ -12,6 +12,7 @@ More ways to check, alert and plan: TCP, DNS and ping monitors, certificate warn
 
 ### Added
 
+- Pin up to 6 projects, and up to 6 monitors and 6 heartbeats in each project, with the pin on any row or card. Pinned ones lead their lists and the charts: every pinned monitor gets its own line on the Overview. Migration 0048.
 - The Maintenance tab lists windows as the other lists do: search by title, filter by Scheduled, Active or Ended, and sort by start.
 - Locations: checks from more than one place. A super admin adds a location and runs `monita probe` on another machine with its token. A monitor checks from this server and any locations, and counts a check as failed only when a chosen number of places agree ([#6](https://github.com/PT-Perkasa-Pilar-Utama/monita/issues/6)). Migrations 0030 and 0031. Design: `docs/technical-specs/14-locations.md`.
 - Ping monitors: one ICMP echo per check through an unprivileged socket, with no root and no capability. Where the system refuses that socket, and on Windows, Monita runs the system `ping` instead. Docker opens the socket by default ([#7](https://github.com/PT-Perkasa-Pilar-Utama/monita/issues/7)). Migration 0029 rebuilds `monitors`.

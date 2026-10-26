@@ -5,6 +5,7 @@ mod allowlist;
 pub mod api;
 mod api_key;
 mod overview;
+pub mod pins;
 mod profile;
 mod pulse;
 pub mod routes;
@@ -107,6 +108,7 @@ pub async fn page_for(
         owner_email: owner.trim(),
         sort,
         ids,
+        viewer: user.pin_owner(),
     };
     let page = page.max(1);
     let offset = (page - 1).saturating_mul(caps::PROJECTS_PAGE);

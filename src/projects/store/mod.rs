@@ -1,6 +1,7 @@
 //! SQL for projects. API keys are in `keys`.
 
 mod keys;
+pub mod pins;
 
 pub use keys::*;
 
@@ -228,6 +229,8 @@ pub struct Filter<'a> {
     pub sort: Sort,
     /// The state filter as project ids: only these, or all but these. `None` keeps every state.
     pub ids: Option<Ids>,
+    /// Whose pinned projects come first (Q48); `None` for an API key.
+    pub viewer: Option<i64>,
 }
 
 /// Project ids the state filter keeps or drops.
@@ -266,11 +269,16 @@ pub async fn page_matching(
     offset: i64,
 ) -> anyhow::Result<Vec<Project>> {
     let sql = format!(
-        "SELECT {COLS} {MATCHING}{} ORDER BY {} LIMIT ?4 OFFSET ?5",
+        "SELECT {COLS} {MATCHING}{} ORDER BY p.id IN (SELECT project_id FROM project_pins WHERE user_id = ?6) DESC, {} LIMIT ?4 OFFSET ?5",
         f.state_sql(),
         f.sort.order_by()
     );
-    many(c, sql, (f.owner_id, f.q, f.owner_email, limit, offset)).await
+    many(
+        c,
+        sql,
+        (f.owner_id, f.q, f.owner_email, limit, offset, f.viewer),
+    )
+    .await
 }
 
 /// Who owns at least one project, for the owner filter. Bounded by the account cap.

@@ -147,6 +147,7 @@ const MIGRATIONS: &[(i64, &str)] = &[
         47,
         include_str!("../../../migrations/0047_drop_turso_tables.sql"),
     ),
+    (48, include_str!("../../../migrations/0048_pins.sql")),
 ];
 
 pub async fn run(db: &Db) -> anyhow::Result<()> {

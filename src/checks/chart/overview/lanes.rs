@@ -8,7 +8,11 @@ pub(super) fn lanes(w: &Window, mut beats: Vec<BeatSeries>) -> Vec<Lane> {
     let mut out: Vec<Lane> = beats
         .iter()
         .enumerate()
-        .map(|(n, b)| lane(w, n, Some(b.id), short(&b.name), b.state, &[b]))
+        .map(|(n, b)| {
+            let mut l = lane(w, n, Some(b.id), short(&b.name), b.state, &[b]);
+            l.pinned = b.pinned;
+            l
+        })
         .collect();
     if !rest.is_empty() {
         let refs: Vec<&BeatSeries> = rest.iter().collect();
@@ -77,6 +81,7 @@ fn lane(
         id,
         name,
         state,
+        pinned: false,
         y: top,
         marks,
         slots,

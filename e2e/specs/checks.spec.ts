@@ -179,3 +179,24 @@ test("a heartbeat page shows its four numbers: the streak, the next ping, the la
   for (const label of ["Up for", "Next ping due", "Last ping", "Incidents, 30 days"]) await expect(page.getByText(label, { exact: true })).toBeVisible();
   await expect(page.getByText("the job reported success", { exact: true })).toBeVisible();
 });
+
+test("a pinned monitor leads its list and the Overview chart, and unpins with Undo", async ({ page }) => {
+  const slug = await apiProject(page, "Pinning");
+  await apiMonitor(page, slug, { name: "Alpha" });
+  await apiMonitor(page, slug, { name: "Zulu" });
+  await page.goto(`/projects/${slug}/monitors?sort=name`);
+  const names = page.locator("tbody tr").getByRole("link");
+  await expect(names.first()).toHaveText("Alpha");
+  const pin = page.getByRole("button", { name: "Pin Zulu" });
+  await expect(pin).toHaveAttribute("aria-pressed", "false");
+  await pin.click();
+  await expect(page.getByText("Zulu is pinned to the top.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Unpin Zulu" })).toHaveAttribute("aria-pressed", "true");
+  await expect(names.first()).toHaveText("Zulu");
+  await page.goto(`/projects/${slug}`);
+  await expect(page.getByRole("img", { name: /last 24 hours/ }).locator("g title").first()).toHaveText("Zulu");
+  await page.goto(`/projects/${slug}/monitors?sort=name`);
+  await page.getByRole("button", { name: "Unpin Zulu" }).click();
+  await page.getByRole("button", { name: "Undo" }).click();
+  await expect(page.getByRole("button", { name: "Unpin Zulu" })).toBeVisible();
+});

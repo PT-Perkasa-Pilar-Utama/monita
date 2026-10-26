@@ -67,6 +67,11 @@ impl User {
         self.key.is_none() && matches!(self.role, Role::SuperAdmin | Role::Supervisor)
     }
 
+    /// Whose pins shape what this user sees (Q48): their own, and none for an API key.
+    pub fn pin_owner(&self) -> Option<i64> {
+        self.key.is_none().then_some(self.id)
+    }
+
     /// Reads only: a supervisor or a read key. `CurrentUser` refuses every request from them that
     /// would change something.
     pub fn is_read_only(&self) -> bool {

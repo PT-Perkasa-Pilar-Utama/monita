@@ -4,6 +4,7 @@ pub mod charts;
 pub mod heartbeats;
 pub mod locations;
 mod monitors;
+pub mod pins;
 mod results;
 pub mod rollup;
 mod sources;

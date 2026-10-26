@@ -32,6 +32,8 @@ import { HeartbeatGuide } from "@/components/app/Guides";
 import { HeartbeatFormSheet } from "@/pages/project/HeartbeatForm";
 import type { Picked } from "@/lib/sources";
 import { useSelection } from "@/lib/useSelection";
+import { PinButton } from "@/components/app/PinButton";
+import { pinnedFirst } from "@/lib/pins";
 
 /** A project's heartbeats: one sentence on their state, then a row per job with its deadline. */
 export function Heartbeats({ creating = false }: { creating?: boolean }): ReactElement {
@@ -43,11 +45,11 @@ export function Heartbeats({ creating = false }: { creating?: boolean }): ReactE
   const filtered = filter.q.trim() !== "" || filter.state !== "" || filter.severity !== "";
   const all = res.data?.heartbeats ?? [];
   const [sort, onSort] = useSort(["name", "state", "deadline", "every", "severity", "last"]);
-  const rows = sortRows(
+  const rows = pinnedFirst(sortRows(
     all.filter((h) => keeps(filter, [h.name], h.state, h.severity)),
     sort,
     { name: (h) => h.name, state: (h) => h.state, deadline: (h) => h.deadline_at, every: (h) => h.period_s, severity: (h) => h.severity, last: (h) => h.last?.at ?? null },
-  );
+  ));
   const canEdit = useCanEdit();
   const { selected, toggle, toggleShown, headerBox, clear: clearPicked } = useSelection(rows);
   const [deleting, setDeleting] = useState<Picked[] | null>(null);
@@ -123,10 +125,15 @@ export function Heartbeats({ creating = false }: { creating?: boolean }): ReactE
                         </TableCell>
                       )}
                       <TableCell className="max-w-44 whitespace-normal sm:max-w-80">
-                        <Link to={`${base}/${h.id}`} className={ROW_LINK}>
-                          {h.name}
-                        </Link>
-                        <div className="text-xs text-muted-foreground">Can be late by {h.grace}</div>
+                        <div className="flex items-start gap-1">
+                          <PinButton path={`${base}/${h.id}`} name={h.name} pinned={h.pinned} onChange={res.reload} className="-my-1 -ml-1.5" />
+                          <div className="min-w-0">
+                            <Link to={`${base}/${h.id}`} className={ROW_LINK}>
+                              {h.name}
+                            </Link>
+                            <div className="text-xs text-muted-foreground">Can be late by {h.grace}</div>
+                          </div>
+                        </div>
                       </TableCell>
                       <TableCell>
                         <StateBadge kind={h.state} />

@@ -85,8 +85,16 @@ fn view(h: Heartbeat, last: Option<LastPing>, state: &'static str, now: i64) -> 
 
 #[derive(Serialize)]
 struct ListView {
-    heartbeats: Vec<HeartbeatView>,
+    heartbeats: Vec<Listed>,
     summary: serde_json::Value,
+}
+
+/// A heartbeat in the list, and whether the viewer pinned it (Q48).
+#[derive(Serialize)]
+struct Listed {
+    #[serde(flatten)]
+    heartbeat: HeartbeatView,
+    pinned: bool,
 }
 
 async fn list(
@@ -105,13 +113,18 @@ async fn list(
     let kinds: Vec<&str> = all.iter().map(state_of).collect();
     let (kind, text) = overview::summary(&kinds, "heartbeat");
     let t = now();
+    let pinned =
+        super::super::pins::ids(&state.db, user.pin_owner(), p.id, SourceKind::Heartbeat).await?;
     Ok(data(ListView {
         heartbeats: all
             .into_iter()
             .map(|h| {
                 let s = state_of(&h);
                 let last = lasts.remove(&h.id);
-                view(h, last, s, t)
+                Listed {
+                    pinned: pinned.contains(&h.id),
+                    heartbeat: view(h, last, s, t),
+                }
             })
             .collect(),
         summary: serde_json::json!({ "kind": kind, "text": text }),

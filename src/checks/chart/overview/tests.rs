@@ -26,6 +26,7 @@ fn monitor(id: i64, state: &'static str, ms: i64, failed_at: Option<usize>) -> M
         interval_s: 60,
         buckets: checks(ms, failed_at),
         down: Vec::new(),
+        pinned: false,
     }
 }
 
@@ -45,6 +46,7 @@ fn beat(id: i64, state: &'static str, fail_at: Option<usize>) -> BeatSeries {
             .collect(),
         down: Vec::new(),
         due: 0,
+        pinned: false,
     }
 }
 
@@ -183,4 +185,25 @@ fn a_down_monitor_with_no_check_reads_down_and_the_rest_count_their_down_ones() 
         c.columns[10].rows[0].1, "10 ms",
         "before the incident the check reads as usual"
     );
+}
+
+#[test]
+fn pinned_monitors_and_heartbeats_come_first_and_six_pins_get_six_lines() {
+    let mut monitors: Vec<MonitorSeries> =
+        (1..=10).map(|id| monitor(id, "down", 10, None)).collect();
+    for id in [7, 8, 9, 10, 1, 2] {
+        monitors[id as usize - 1].state = "up";
+        monitors[id as usize - 1].pinned = true;
+    }
+    let mut beats: Vec<BeatSeries> = (1..=8).map(|id| beat(id, "down", None)).collect();
+    beats[7].state = "up";
+    beats[7].pinned = true;
+    let c = overview(&window(), monitors, beats);
+    assert_eq!(c.lines.len(), 6, "six pins draw six lines");
+    assert!(
+        c.lines.iter().all(|l| l.pinned),
+        "healthy pins still come before down monitors"
+    );
+    assert_eq!(c.lanes[0].id, Some(8));
+    assert!(c.lanes[0].pinned);
 }

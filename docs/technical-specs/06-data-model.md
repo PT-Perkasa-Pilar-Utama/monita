@@ -262,6 +262,10 @@ Checks and pings summed per 15-minute UTC slot (`slot` = time / 900, migration 0
 
 An `AFTER INSERT` trigger on `check_results` and on `pings` adds each row to its slot. Every insert path, the seeds too, keeps the slots right. Only this server's checks count (`location_id IS NULL`). A failure in a maintenance window counts as good, as on the charts. The retention sweep deletes slots older than 7 days with the raw rows. Release build, 3 M raw rows: the project list's chart went from 391 ms to 41 ms, a project's overview from 230 ms to 34 ms. Migration 0046 fills the slots from the raw rows in 11 s.
 
+### 6.3.9c project_pins, monitor_pins and heartbeat_pins
+
+A user's pins (decision Q48, migration 0048). Each table is `user_id` FK ON DELETE CASCADE, the target's id FK ON DELETE CASCADE, and `pinned_at`; PK (user_id, target id), with an index on the target. At most 6 project pins per user, and 6 monitor pins and 6 heartbeat pins per project per user (`caps::PINS`), checked inside the write that adds one. `project_pins` belongs to projects, the other two to checks.
+
 ### 6.3.10 daily_summaries
 
 | column | type | notes |

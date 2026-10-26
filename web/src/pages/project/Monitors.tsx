@@ -32,6 +32,8 @@ import { MonitorGuide } from "@/components/app/Guides";
 import { MonitorFormSheet } from "@/pages/project/MonitorForm";
 import type { Picked } from "@/lib/sources";
 import { useSelection } from "@/lib/useSelection";
+import { PinButton } from "@/components/app/PinButton";
+import { pinnedFirst } from "@/lib/pins";
 
 /** A project's monitors: one sentence on their state, then a row per monitor with its last day. */
 export function Monitors({ creating = false }: { creating?: boolean }): ReactElement {
@@ -43,11 +45,11 @@ export function Monitors({ creating = false }: { creating?: boolean }): ReactEle
   const filtered = filter.q.trim() !== "" || filter.state !== "" || filter.severity !== "";
   const all = res.data?.monitors ?? [];
   const [sort, onSort] = useSort(["name", "state", "every", "severity", "last"]);
-  const rows = sortRows(
+  const rows = pinnedFirst(sortRows(
     all.filter((m) => keeps(filter, [m.name, m.url], m.state, m.severity)),
     sort,
     { name: (m) => m.name, state: (m) => m.state, every: (m) => m.interval_s, severity: (m) => m.severity, last: (m) => m.last?.checked_at },
-  );
+  ));
   const canEdit = useCanEdit();
   const { selected, toggle, toggleShown, headerBox, clear: clearPicked } = useSelection(rows);
   const [deleting, setDeleting] = useState<Picked[] | null>(null);
@@ -123,10 +125,15 @@ export function Monitors({ creating = false }: { creating?: boolean }): ReactEle
                         </TableCell>
                       )}
                       <TableCell className="max-w-44 whitespace-normal sm:max-w-80">
-                        <Link to={`${base}/${m.id}`} className={ROW_LINK}>
-                          {m.name}
-                        </Link>
-                        <div className="truncate font-mono text-xs text-muted-foreground">{m.url}</div>
+                        <div className="flex items-start gap-1">
+                          <PinButton path={`${base}/${m.id}`} name={m.name} pinned={m.pinned} onChange={res.reload} className="-my-1 -ml-1.5" />
+                          <div className="min-w-0">
+                            <Link to={`${base}/${m.id}`} className={ROW_LINK}>
+                              {m.name}
+                            </Link>
+                            <div className="truncate font-mono text-xs text-muted-foreground">{m.url}</div>
+                          </div>
+                        </div>
                       </TableCell>
                       <TableCell>
                         <StateBadge kind={m.state} />

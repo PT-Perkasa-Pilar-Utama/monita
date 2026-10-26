@@ -55,6 +55,7 @@
   --color-series-3: var(--series-3);
   --color-series-4: var(--series-4);
   --color-series-5: var(--series-5);
+  --color-series-6: var(--series-6);
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 8px;
@@ -104,6 +105,7 @@
   --series-3: #7b5bd6;
   --series-4: #0e7f9c;
   --series-5: #8a5a2b;
+  --series-6: #6b7a1f;
   /* Moni looks the same in both themes, so these are set once here and not under .dark. */
   --mascot-body: #fbe4f2;
   --mascot-line: #c4258f;
@@ -149,6 +151,7 @@
   --series-3: #a58cf0;
   --series-4: #4fb6d1;
   --series-5: #c99a6b;
+  --series-6: #b5c45a;
 }
 
 @layer base {

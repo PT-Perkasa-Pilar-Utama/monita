@@ -29,6 +29,8 @@ pub struct MonitorSeries {
     pub buckets: Vec<Bucket>,
     /// Automatic incident spans, clipped by the caller to the window.
     pub down: Vec<(i64, i64)>,
+    /// The viewer pinned it (Q48): it is drawn first, as a line, whatever its state.
+    pub pinned: bool,
 }
 
 /// One heartbeat's last day.
@@ -41,6 +43,8 @@ pub struct BeatSeries {
     /// How much of its period and grace has passed since its last good ping, in percent. A healthy
     /// heartbeat close to its deadline ranks first among the healthy ones.
     pub due: i64,
+    /// The viewer pinned it (Q48): its lane comes first.
+    pub pinned: bool,
 }
 
 /// One of the other monitors, drawn faint behind the lines.
@@ -61,6 +65,7 @@ pub struct Line {
     pub mean_ms: Option<i64>,
     pub checks: i64,
     pub failed: i64,
+    pub pinned: bool,
 }
 
 #[derive(Serialize, Debug, PartialEq)]
@@ -80,6 +85,7 @@ pub struct Lane {
     pub id: Option<i64>,
     pub name: String,
     pub state: &'static str,
+    pub pinned: bool,
     pub y: f64,
     pub marks: Vec<Rect>,
     /// (slot, tone, text) of each slot that heard a ping, for the readout.
@@ -146,14 +152,15 @@ fn totals(b: &[Bucket]) -> (i64, i64, Option<i64>) {
     (checks, failed, (timed > 0).then(|| weighted / timed))
 }
 
-/// The monitors that need the team first: by state, then the most failed checks, then the
-/// slowest, then by name. One with no check in the window draws nothing, so unless it is down or
-/// has an issue it goes after the ones that do.
+/// Pinned monitors first (Q48), then the ones that need the team: by state, then the most
+/// failed checks, then the slowest, then by name. One with no check in the window draws nothing,
+/// so unless it is down or has an issue it goes after the ones that do.
 pub fn order_monitors(v: &mut [MonitorSeries]) {
     v.sort_by_cached_key(|m| {
         let (_, failed, mean) = totals(&m.buckets);
         let state = rank(m.state);
         (
+            !m.pinned,
             if m.buckets.is_empty() && state > 1 {
                 5
             } else {
@@ -166,13 +173,20 @@ pub fn order_monitors(v: &mut [MonitorSeries]) {
     });
 }
 
-/// Heartbeats by state, then the most trouble (failed pings and time down), then the closest to
-/// its deadline, then by name.
+/// Pinned heartbeats first (Q48), then by state, then the most trouble (failed pings and time
+/// down), then the closest to its deadline, then by name.
 pub fn order_beats(v: &mut [BeatSeries]) {
     v.sort_by_cached_key(|b| {
         let (_, failed, _) = totals(&b.buckets);
         let down: i64 = b.down.iter().map(|(s, e)| e - s).sum();
-        (rank(b.state), -failed, -down, -b.due, b.name.to_lowercase())
+        (
+            !b.pinned,
+            rank(b.state),
+            -failed,
+            -down,
+            -b.due,
+            b.name.to_lowercase(),
+        )
     });
 }
 
@@ -236,7 +250,9 @@ pub fn overview(w: &Window, monitors: Vec<MonitorSeries>, beats: Vec<BeatSeries>
     let mut beats: Vec<BeatSeries> = beats.into_iter().filter(|b| b.state != "paused").collect();
     order_monitors(&mut monitors);
     order_beats(&mut beats);
-    let others = monitors.split_off(monitors.len().min(LINES));
+    // Every pinned monitor gets a line, up to `caps::PINS`, even past the usual five.
+    let shown = LINES.max(monitors.iter().filter(|m| m.pinned).count());
+    let others = monitors.split_off(monitors.len().min(shown));
 
     let means = monitors
         .iter()
@@ -311,6 +327,7 @@ fn line(w: &Window, m: &MonitorSeries, y: &impl Fn(i64) -> f64) -> Line {
         id: m.id,
         name: m.name.clone(),
         state: m.state,
+        pinned: m.pinned,
         path: path.trim().to_string(),
         mean_ms,
         checks,

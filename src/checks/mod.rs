@@ -13,6 +13,7 @@ pub mod locations;
 pub(crate) mod overview;
 mod pause;
 pub mod ping_routes;
+pub mod pins;
 mod probe;
 pub mod probe_routes;
 pub mod retention;
