@@ -60,9 +60,12 @@ export function OverviewChart({ chart, links }: { chart: ChartData; links: Chart
           onPointerDown={move}
           onPointerLeave={() => setX(null)}
         >
-          {chart.down.map((d, i) => (
-            <rect key={`d${i}`} x={f(d.x)} y={f(d.y)} width={f(d.w)} height={f(d.h)} className="fill-down/12" />
-          ))}
+          {/* The opacity sits on the group, so many monitors down at once stay one light tint and the lines show through. */}
+          <g className="fill-down opacity-12 dark:opacity-20">
+            {chart.down.map((d, i) => (
+              <rect key={`d${i}`} x={f(d.x)} y={f(d.y)} width={f(d.w)} height={f(d.h)} />
+            ))}
+          </g>
           {chart.y_ticks.map((t) => (
             <g key={`y${t.label}`}>
               <line x1={left} x2={right} y1={f(t.at)} y2={f(t.at)} className="stroke-border [stroke-dasharray:2_4]" />
@@ -158,17 +161,16 @@ export function OverviewChart({ chart, links }: { chart: ChartData; links: Chart
                 {lane.name}
               </text>
               {lane.pinned && <Pin x={7} y={f(lane.y + 6.5)} size={11} weight="fill" aria-label="Pinned" className="fill-muted-foreground" />}
-              {lane.marks.map((m, i) => (
-                <rect
-                  key={i}
-                  x={f(m.x)}
-                  y={f(m.y)}
-                  width={f(m.w)}
-                  height={f(m.h)}
-                  rx={m.tone === "down" ? 2 : f(m.w / 2)}
-                  className={m.tone === "ok" ? "fill-up/85" : m.tone === "fail" ? "fill-down" : "fill-down/20"}
-                />
-              ))}
+              {/* "N more" holds many heartbeats, so their missed spans overlap: same group opacity as the monitors' band. */}
+              <g className="fill-down opacity-20 dark:opacity-30">
+                {lane.marks.map((m, i) => m.tone === "down" && <rect key={i} x={f(m.x)} y={f(m.y)} width={f(m.w)} height={f(m.h)} rx={2} />)}
+              </g>
+              {lane.marks.map(
+                (m, i) =>
+                  m.tone !== "down" && (
+                    <rect key={i} x={f(m.x)} y={f(m.y)} width={f(m.w)} height={f(m.h)} rx={f(m.w / 2)} className={m.tone === "ok" ? "fill-up/85" : "fill-down"} />
+                  ),
+              )}
             </g>
           ))}
           {col && (
@@ -204,12 +206,12 @@ export function OverviewChart({ chart, links }: { chart: ChartData; links: Chart
       {/* Monitors are lines and full-height shading; heartbeats are dots in the lanes. */}
       <ul className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground">
         {(chart.lines.length > 0 || chart.others.length > 0) && <Key mark={<i className="inline-block h-0.5 w-3 bg-foreground/60" />} label="Monitor response time" />}
-        {chart.down.length > 0 && <Key mark={<i className="inline-block h-3 w-2.5 rounded-xs bg-down/25" />} label="Monitor down" />}
+        {chart.down.length > 0 && <Key mark={<i className="inline-block h-3 w-2.5 rounded-xs bg-down/20 dark:bg-down/30" />} label="Monitor down" />}
         {chart.lanes.length > 0 && (
           <>
             <Key mark={<i className="inline-block size-2 rounded-full bg-up" />} label="Heartbeat ping" />
             <Key mark={<i className="inline-block size-2 rounded-full bg-down" />} label="Failed ping" />
-            {chart.lanes.some((l) => l.marks.some((m) => m.tone === "down")) && <Key mark={<i className="inline-block h-2 w-3 rounded-xs bg-down/25" />} label="Heartbeat missed or failed" />}
+            {chart.lanes.some((l) => l.marks.some((m) => m.tone === "down")) && <Key mark={<i className="inline-block h-2 w-3 rounded-xs bg-down/25 dark:bg-down/35" />} label="Heartbeat missed or failed" />}
           </>
         )}
         {chart.paused > 0 && <li>{chart.paused} paused, not shown</li>}
