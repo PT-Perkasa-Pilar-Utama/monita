@@ -2,13 +2,13 @@
  * section 7.1 and 08 sections 8.1 to 8.3. */
 export type EndpointDoc = {
   tab: string;
-  method: "GET" | "POST";
+  method: "GET" | "POST" | "PUT";
   path: string;
   purpose: string;
   /** Who may call it and what they send to prove it, in plain words. */
   access: string;
   request: string;
-  /** A response as the endpoint sends it, with a sample of each field. */
+  /** A response as the endpoint sends it, with a sample of each field; empty when it has no body. */
   response: string;
   responseTitle: string;
   /** Rows under the example, each a label and one or two plain sentences. */
@@ -16,9 +16,9 @@ export type EndpointDoc = {
 };
 
 /** The error shape every endpoint shares. */
-const ERRORS = 'An error answers {"error": {"code": "...", "message": "..."}} with its HTTP status, and a 429 carries Retry-After in seconds.';
+export const ERRORS = 'An error answers {"error": {"code": "...", "message": "..."}} with its HTTP status, and a 429 carries Retry-After in seconds.';
 
-const json = (v: unknown): string => JSON.stringify(v, null, 2);
+export const json = (v: unknown): string => JSON.stringify(v, null, 2);
 
 export function endpointDocs(origin: string, slug: string, name: string): EndpointDoc[] {
   return [
@@ -116,7 +116,7 @@ export function endpointDocs(origin: string, slug: string, name: string): Endpoi
       method: "POST",
       path: "/api/v1/ref-ids",
       purpose: "Gives one of your users a ref ID, the code they file and follow tickets with.",
-      access: "Your server only, with an API key from Settings, API keys, sent as a Bearer token, and never put the key in a browser page.",
+      access: "Your server only, with a Ref IDs only or a Read and write key sent as a Bearer token, and never put the key in a browser page.",
       request: `curl -s -X POST "${origin}/api/v1/ref-ids" \\
   -H "Authorization: Bearer $MONITA_API_KEY" \\
   -H "Content-Type: application/json" \\
