@@ -3,7 +3,7 @@ import type { ReactElement, ReactNode } from "react";
 import { CodeCopy } from "@/components/app/CopyField";
 import { EndpointRows } from "@/components/app/CustomStatusSection";
 import { endpointDocs, type EndpointDoc } from "@/components/app/customStatusDocs";
-import { KEY_ERRORS, keyApiDocs } from "@/components/app/keyApiDocs";
+import { KEY_ERRORS, keyApiDocs, type PrimitiveDoc } from "@/components/app/keyApiDocs";
 import { BookOpen, ExternalLink } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -36,12 +36,8 @@ function Calls({ id, docs }: { id: string; docs: EndpointDoc[] }): ReactElement 
       </TabsList>
       {docs.map((d, n) => (
         <TabsContent key={d.tab} value={d.tab} className="flex flex-col gap-4">
-          <p className="flex flex-col gap-1 font-mono text-[13px] break-all">
-            {[d.path, d.alsoPath].filter(Boolean).map((path) => (
-              <span key={path}>
-                <span className="font-semibold">{d.method}</span> {path}
-              </span>
-            ))}
+          <p className="font-mono text-[13px] break-all">
+            <span className="font-semibold">{d.method}</span> {d.path}
           </p>
           <p className="text-muted-foreground">{d.purpose}</p>
           <EndpointRows rows={[{ label: "Who can call it", text: d.access }]} />
@@ -51,6 +47,48 @@ function Calls({ id, docs }: { id: string; docs: EndpointDoc[] }): ReactElement 
           ) : (
             <p className="rounded-lg border bg-paper px-3 py-2.5 text-muted-foreground">{d.responseTitle}</p>
           )}
+          <EndpointRows rows={d.details} />
+        </TabsContent>
+      ))}
+    </Tabs>
+  );
+}
+
+/** One tab per primitive: every route a key may call on it, which scope each needs, then examples. */
+function Primitives({ docs }: { docs: PrimitiveDoc[] }): ReactElement {
+  return (
+    <Tabs defaultValue={docs[0]?.tab} className="gap-4">
+      <TabsList className="h-auto flex-wrap">
+        {docs.map((d) => (
+          <TabsTrigger key={d.tab} value={d.tab}>
+            {d.tab}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+      {docs.map((d) => (
+        <TabsContent key={d.tab} value={d.tab} className="flex flex-col gap-4">
+          <p className="text-muted-foreground">{d.purpose}</p>
+          <ul className="divide-y rounded-lg border">
+            {d.routes.map((r) => (
+              <li key={`${r.method} ${r.path}`} className="grid gap-1 px-4 py-2.5 sm:grid-cols-[minmax(0,15rem)_1fr_auto] sm:items-baseline sm:gap-4">
+                <span className="font-mono text-[13px] break-all">
+                  <span className="font-semibold">{r.method}</span> {r.path}
+                </span>
+                <span className="text-muted-foreground">{r.text}</span>
+                <span className="text-[13px] text-muted-foreground sm:text-right">{r.write ? "Read and write" : "Read"}</span>
+              </li>
+            ))}
+          </ul>
+          {d.examples.map((e, n) => (
+            <div key={e.title} className="flex flex-col gap-2">
+              <CodeCopy id={`key-${d.tab}-${n}`} title={e.title} code={e.request} />
+              {e.response ? (
+                <CodeCopy id={`key-${d.tab}-${n}-res`} title={e.responseTitle} code={e.response} lang="js" />
+              ) : (
+                <p className="rounded-lg border bg-paper px-3 py-2.5 text-muted-foreground">{e.responseTitle}</p>
+              )}
+            </div>
+          ))}
           <EndpointRows rows={d.details} />
         </TabsContent>
       ))}
@@ -110,9 +148,9 @@ export function ApiKeysGuide(): ReactElement {
           </Part>
           <Part title="Managing the project">
             <p className="text-muted-foreground">
-              A Read or a Read and write key calls the same routes as these pages, under <span className="font-mono text-[13px]">/api/v1/projects/{p.slug}</span>, and it reaches this project only.
+              A Read or a Read and write key calls the paths below after <span className="font-mono text-[13px]">/api/v1/projects/{p.slug}</span>, the same routes these pages use, and it reaches this project only. A GET on that path itself reads the project.
             </p>
-            <Calls id="key-manage" docs={keyApiDocs(origin, p.slug)} />
+            <Primitives docs={keyApiDocs(origin, p.slug)} />
           </Part>
           <Part title="The ticket flow">
             <p className="text-muted-foreground">Your users file and follow bug reports from inside your app with a ref ID, and only the first call sends a key.</p>

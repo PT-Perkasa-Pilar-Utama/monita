@@ -80,7 +80,7 @@ An API key lets your backend or your scripts call the Monita API for this projec
 3. Pick the scope. You cannot change it later. Revoke the key and create another.
 4. Copy the key. Monita shows it only once.
 
-Select **How API keys work** for a guide. It shows what each scope may do and how to send a key (`Authorization: Bearer mk_…`, from your server only). It gives a request and an answer for each call: monitors, pause, heartbeats, incident updates, maintenance, and the three calls of the ticket flow. It ends with what a failed call answers. A revoked key gets 401. A key has 120 calls a minute by default. The routes are listed on [API](api.md#manage-a-project).
+Select **How API keys work** for a guide. It shows what each scope may do and how to send a key (`Authorization: Bearer mk_…`, from your server only). It has a tab for each primitive a key manages: monitors, heartbeats, incidents and maintenance. Each tab lists every route with the scope it needs, then gives examples with real answers. The three calls of the ticket flow follow. It ends with what a failed call answers. A revoked key gets 401. A key has 120 calls a minute by default. The routes are listed on [API](api.md#manage-a-project).
 
 The table lists each key's name, a short form of the key, **Scope**, **Last used** and **Status**. Select **Revoke** to stop a key. A revoked key gets 401 on every call. This cannot be undone. A project holds 20 live keys.
 
