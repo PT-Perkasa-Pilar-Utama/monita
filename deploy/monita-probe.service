@@ -1,0 +1,19 @@
+[Unit]
+Description=Monita probe: runs checks for one location of another Monita
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+DynamicUser=yes
+EnvironmentFile=/etc/monita/probe.env
+ExecStart=/usr/local/bin/monita probe
+Restart=always
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

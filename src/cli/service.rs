@@ -178,7 +178,7 @@ fn id_of(flag: &str) -> anyhow::Result<u32> {
         .with_context(|| format!("`id {flag} {USER}` gave no number"))
 }
 
-fn checked(cmd: &mut Command) -> anyhow::Result<()> {
+pub(super) fn checked(cmd: &mut Command) -> anyhow::Result<()> {
     let status = cmd
         .status()
         .with_context(|| format!("could not run {:?}", cmd.get_program()))?;
