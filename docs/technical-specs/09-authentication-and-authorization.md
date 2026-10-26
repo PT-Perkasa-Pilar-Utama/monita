@@ -37,12 +37,13 @@ Roles: `super_admin`, `tl` and `supervisor`. A supervisor sees every project and
 | Turn your own two-factor on or off | yes | yes | yes | yes | no | no |
 | Change your own password or picture (User settings) | yes | yes | yes | yes | no | no |
 | Create project | yes | no | yes | yes | no | no |
-| View a project and its pages | yes (all) | yes (all) | yes | no (404) | no | no |
-| Manage monitors, heartbeats, alert cards, ticket cards, keys, allowlist, secrets, status page tabs | yes | no | yes | no | no | no |
-| Post status update, open manual incident, resolve an automatic incident by hand | yes | no | yes | no | no | no |
+| View a project and its pages | yes (all) | yes (all) | yes | no (404) | `read` or `write`: its own project's detail, monitors, heartbeats, incidents and maintenance | no |
+| Manage monitors and heartbeats (pause too), plan or end maintenance | yes | no | yes | no | `write` (own project) | no |
+| Manage alert cards, ticket cards, keys, allowlist, secrets, status page tabs | yes | no | yes | no | no | no |
+| Post status update, open manual incident, resolve an automatic incident by hand | yes | no | yes | no | `write` (own project) | no |
 | Move tickets, rewrite public title, revoke ref ID, file a ticket from the board | yes | no | yes | no | no | no |
 | Issue ref ID from the ticket board | yes | no | yes | no | no | no |
-| Issue ref ID with `POST /api/v1/ref-ids` | no | no | no | no | yes (own project) | no |
+| Issue ref ID with `POST /api/v1/ref-ids` | no | no | no | no | `ref_ids` or `write` (own project) | no |
 | Write a changelog release | yes | no | yes | no | no | no |
 | Submit ticket | no | no | no | no | yes | with a ref ID |
 | Ping heartbeat | no | no | no | no | no | with the token |
@@ -50,7 +51,9 @@ Roles: `super_admin`, `tl` and `supervisor`. A supervisor sees every project and
 
 A TL who is not the owner gets 404 on another project's admin pages, so project names do not leak.
 
-What a supervisor does not see: a heartbeat's ping URL, monitor header values, the request body, the sign-in user name, a monitor URL's query (Q23), and the alert card and ticket card webhook URLs (SEC-22). A sealed secret's value is never shown to anyone (SEC-23).
+An API key has a scope (v1.1 Q44): `ref_ids`, `read` or `write`. A `read` or `write` key works only under `/api/v1/projects/{slug}/`. `CurrentUser` turns it into a principal bound to the key's project, and a session cookie counts for nothing there. A slug of another project is 404 before the route runs. A `read` key is read-only as a supervisor is, and `CurrentUser` answers 403 to its writes. Routes list: api-specs 03 section 3.4.
+
+What a supervisor or a `read` key does not see: a heartbeat's ping URL, monitor header values, the request body, the sign-in user name, a monitor URL's query (Q23), and the alert card and ticket card webhook URLs (SEC-22). A sealed secret's value is never shown to anyone (SEC-23).
 
 Rules for roles:
 

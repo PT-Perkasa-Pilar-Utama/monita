@@ -100,6 +100,8 @@ v1 sends no request ID. A 500 is matched to its log line by time and path.
 
 A `super_admin` changes anything. A `tl` manages only the projects they own; a project of another owner is 404. A `supervisor` sees every project and the admin pages and changes nothing.
 
+A project backend's key has a scope (v1.1 Q44). A `ref_ids` key issues ref IDs only. A `read` key reads its own project under `/api/v1/projects/{slug}/` (3.4) and sees what a supervisor sees. A `write` key also changes it and issues ref IDs. A session cookie counts for nothing under `/api/v1/projects/`, and a key counts for nothing under `/api/ui/`.
+
 ### The supervisor rule
 
 Every signed-in route takes the `CurrentUser` extractor. For a supervisor it answers 403 `forbidden` to any method but GET and HEAD, before the handler runs. So a write by a supervisor is 403 on every route, whatever its body. A page request (not under `/api/`) gets the 403 page instead.

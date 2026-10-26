@@ -31,8 +31,8 @@ A project as every route shows it (`project`):
 | GET | `/projects/{slug}/icon` | owner, super_admin, supervisor | `?v={icon_at}` | The icon with its stored type and `Cache-Control: private, max-age=31536000, immutable`. 404 when there is none. | AC-06.04 |
 | GET | `/api/ui/projects/{slug}/owners` | super_admin | | Who may own the project: the acting super admin first, then every active TL (email, role). A supervisor is never listed. | AC-05.01 |
 | PUT | `/api/ui/projects/{slug}/owner` | super_admin | `owner_email` | Reassign to the eligible owner with that email. Data unchanged. 204; an unknown email is 422 on `owner_email`. | AC-05.01 to AC-05.03 |
-| GET | `/api/ui/projects/{slug}/keys` | owner, super_admin, supervisor | | The keys: `id`, `name`, `prefix`, `last_used_at`, `revoked_at`, `created_at`. Never the key itself. | AC-07.01, AC-07.02 |
-| POST | `/api/ui/projects/{slug}/keys` | owner, super_admin | `name` (1 to 60 chars) | Create, 201 `{key}`: the full key, this once. A bad name is 422 on `name`; a project with 20 live keys is 422 with the cap in the message. | AC-07.01 |
+| GET | `/api/ui/projects/{slug}/keys` | owner, super_admin, supervisor | | The keys: `id`, `name`, `prefix`, `scope`, `last_used_at`, `revoked_at`, `created_at`. Never the key itself. | AC-07.01, AC-07.02 |
+| POST | `/api/ui/projects/{slug}/keys` | owner, super_admin | `name` (1 to 60 chars), `scope` (`ref_ids`, `read` or `write`; missing or blank is `ref_ids`, v1.1 Q44) | Create, 201 `{key}`: the full key, this once. A bad name is 422 on `name`, an unknown scope 422 on `scope`; a project with 20 live keys is 422 with the cap in the message. A key's scope never changes: revoke it and create another. | AC-07.01 |
 | POST | `/api/ui/projects/{slug}/keys/{id}/revoke` | owner, super_admin | | Set `revoked_at`, 204. | AC-07.02 |
 | PUT | `/api/ui/projects/{slug}/allowlist` | owner, super_admin | `cidrs` (one per line; empty turns it off) | Validate each CIDR. Save, 204, or 422 on `cidrs`. | AC-08.01, AC-08.02 |
 | PUT | `/api/ui/projects/{slug}/public-pages` | owner, super_admin | `incidents`, `known_issues`, `report`, `changelog` (booleans) | Choose the public tabs besides Uptime, which always shows. A missing field means on, as for a new project (v1.1 Q28). 204. A tab off answers 404 on its public routes (7.2, 8.5, 11.2). `report` switches both the Report a bug form and the reporter's own tickets. | |
@@ -58,6 +58,12 @@ Keys belong to the project, not the owner. Disabling a TL leaves their projects 
 | Revoked key | 401 `unauthorized` (AC-07.02) |
 | Allowlist on and client IP outside it | 403 `forbidden` (AC-08.02) |
 | Over 120 requests per minute for the key | 429 `rate_limited` |
+| A `read` key on `POST /api/v1/ref-ids` | 403 `forbidden` |
+| A `ref_ids` key under `/api/v1/projects/` | 403 `forbidden` |
+| A `read` key on any method but GET and HEAD under `/api/v1/projects/` | 403 `forbidden` |
+| A slug under `/api/v1/projects/` that is not the key's project | 404 `not_found`, before the route is read |
+
+Keys made before v1.1 are `ref_ids` keys, so no deployed key gains power.
 
 ## 3.3 Secrets
 
@@ -69,3 +75,25 @@ The page `/projects/{slug}/settings/secrets` holds the project's sealed secrets:
 | POST | `/api/ui/projects/{slug}/secrets` | owner, super_admin | `name` (1 to 60 letters, digits, `_` or `-`), `value` (1 byte to 4 KB) | Create, 201 `{id}`. The value is not echoed. 422 on `name` for a bad or taken name, on `value` for a blank or long value; with 20 secrets 422 with the cap in the message and no field. | |
 | PUT | `/api/ui/projects/{slug}/secrets/{id}` | owner, super_admin | `value` | Replace the value, 204. A bad value is 422 on `value`; an unknown id is 404. | |
 | DELETE | `/api/ui/projects/{slug}/secrets/{id}` | owner, super_admin | | Delete, 204. Refused while a monitor uses it: 422 with the message "N monitors use it, so change them first." and no field. An unknown id is 404. | |
+
+## 3.4 The key API
+
+A `read` or `write` key manages its own project from a script or a deploy pipeline (v1.1 Q44). The routes are the team's own, with `/api/v1/projects/{slug}` in place of `/api/ui/projects/{slug}`. They take the same input and give the same answers, in the envelope of 1.2. The rules of 3.2 come first, then the route's own.
+
+| Path below `/api/v1/projects/{slug}` | Methods | Same as |
+| --- | --- | --- |
+| (none) | GET | `/api/ui/projects/{slug}` (3.1) |
+| `/overview` | GET | 3.1 |
+| `/monitors`, `/monitors/{id}`, `/monitors/{id}/paused` | GET, POST, PUT, DELETE as on the page | 4.3 |
+| `/heartbeats`, `/heartbeats/{id}`, `/heartbeats/{id}/paused` | GET, POST, PUT, DELETE as on the page | 4.3 |
+| `/incidents`, `/incidents/{id}`, `/incident-items`, `/incidents/{id}/updates` | GET, POST | 5.1 |
+| `/maintenance`, `/maintenance/{id}`, `/maintenance/{id}/end` | GET, POST, DELETE | 5.3 |
+
+- A `read` key sees what a supervisor sees: no ping URL, no header values, no request body and no sign-in name.
+- A `write` key sees them, since it may set them.
+- A status update or manual incident from a key shows the key's name as its author to the team (`author_key`, 5.1). The public page never shows an author (SEC-21).
+- Keys, the allowlist, secrets, alert cards, the Telegram link, tickets, the changelog, project delete and profile are not on this API. A path there is 404.
+- Writes need no `Origin` header, because no cookie counts here.
+- The same 120 calls a minute per key cover this API and `POST /api/v1/ref-ids`.
+
+Within v1 a field may be added to an answer, never removed or renamed. A client must ignore fields it does not know.

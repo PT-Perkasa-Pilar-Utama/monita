@@ -67,15 +67,22 @@ Set who gets critical, warning and ticket alerts. See [Alerts](alerts.md).
 
 ### API keys
 
-An API key lets your backend call the Monita API, for example to issue ref IDs. See [Tickets](tickets.md#get-an-api-key).
+An API key lets your backend or your scripts call the Monita API for this project. Its scope sets what it may do:
+
+| Scope | What the key may do |
+| --- | --- |
+| **Ref IDs only** | Issue ref IDs. See [Tickets](tickets.md#get-an-api-key). |
+| **Read** | Read monitors, heartbeats, incidents and maintenance. It never sees a ping URL, a header value or a request body. |
+| **Read and write** | Also change them, post incident updates, and issue ref IDs. |
 
 1. Select **New API key**.
 2. Name it after the program that uses it, up to 60 characters.
-3. Copy the key. Monita shows it only once.
+3. Pick the scope. You cannot change it later. Revoke the key and create another.
+4. Copy the key. Monita shows it only once.
 
-Select **How API keys work** for a guide. It says what a key is for: your own server issues ref IDs. A key cannot read or change monitors, incidents or settings. It shows the three steps of the ticket flow, and how to send a key: `Authorization: Bearer mk_…`, from your server only. A key is shown once. A revoked key gets 401. A key has 120 calls a minute by default. Tabs show the calls to **Issue a ref ID**, **File a ticket** and **Reporter's tickets**.
+Select **How API keys work** for a guide. It shows what each scope may do, how to send a key (`Authorization: Bearer mk_…`, from your server only), the routes a read or write key reaches, and the calls of the ticket flow. A revoked key gets 401. A key has 120 calls a minute by default. The routes are listed on [Public API](api.md#manage-a-project).
 
-The table lists each key's name, a short form of the key, **Last used** and **Status**. Select **Revoke** to stop a key. A revoked key gets 401 on every call. This cannot be undone. A project holds 20 live keys.
+The table lists each key's name, a short form of the key, **Scope**, **Last used** and **Status**. Select **Revoke** to stop a key. A revoked key gets 401 on every call. This cannot be undone. A project holds 20 live keys.
 
 The key starts with `mk_`. Monita stores only its hash.
 

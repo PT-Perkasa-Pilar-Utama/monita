@@ -1,6 +1,6 @@
 # Public API
 
-Every way a project's own code talks to Monita: the status JSON, bug tickets, ref IDs and heartbeat pings. None of them needs a sign-in.
+Every way a project's own code talks to Monita: the status JSON, bug tickets, ref IDs, heartbeat pings, and the key API that manages a project. None of them needs a sign-in.
 
 ## At a glance
 
@@ -10,6 +10,7 @@ Every way a project's own code talks to Monita: the status JSON, bug tickets, re
 | `POST /api/v1/tickets` | Anyone with a ref ID, in the body | Files a bug report |
 | `GET /api/v1/tickets/mine` | Anyone with a ref ID, in the `X-Ref-Id` header | Lists that reporter's tickets |
 | `POST /api/v1/ref-ids` | Your server, with a project API key | Issues a ref ID for one of your users |
+| `/api/v1/projects/{slug}/...` | Your scripts, with a read or write key | Reads or changes the project's monitors, heartbeats, incidents and maintenance |
 | `GET`, `HEAD` or `POST /ping/{token}` | Whoever holds the heartbeat URL | Reports that a job succeeded |
 | `POST /ping/{token}/fail` | Whoever holds the heartbeat URL | Reports that a job failed, with a reason |
 
@@ -130,7 +131,57 @@ curl -s -X POST "https://monita.example.com/api/v1/ref-ids" \
 { "data": { "ref_id": "rf_5k2m9q7w3x8p1t6v4y0z2a8bcd", "single_use": false, "created_at": 1792137600 } }
 ```
 
-Store the ref ID with your user: Monita shows it only in this answer. A single-use ref ID files one ticket. A missing, unknown or revoked key is 401 `unauthorized`. The board's **Issue a ref ID** button does the same without code. See [Tickets](tickets.md#issue-a-ref-id).
+Store the ref ID with your user: Monita shows it only in this answer. A single-use ref ID files one ticket. A missing, unknown or revoked key is 401 `unauthorized`. A read key gets 403 here. Use a **Ref IDs only** or a **Read and write** key. The board's **Issue a ref ID** button does the same without code. See [Tickets](tickets.md#issue-a-ref-id).
+
+## Manage a project
+
+A script or a deploy pipeline manages its own project with a project API key. Pick the key's scope when you create it in **Settings**, **API keys**:
+
+| Scope | What the key may do |
+| --- | --- |
+| Ref IDs only | Issue ref IDs. Every key made before v1.1 has this scope. |
+| Read | Read the project, its monitors, heartbeats, incidents and maintenance. It never sees a ping URL, a header value or a request body. |
+| Read and write | Also create, change, pause and delete monitors and heartbeats, open incidents, post updates and plan maintenance. It issues ref IDs too. |
+
+The routes are the ones the team's pages use, with `/api/v1/projects/{slug}` in front:
+
+| Path after `/api/v1/projects/{slug}` | What it does |
+| --- | --- |
+| (nothing), `/overview` | The project and its numbers |
+| `/monitors`, `/monitors/{id}` | List, create, read, change and delete monitors |
+| `/heartbeats`, `/heartbeats/{id}` | The same for heartbeats |
+| `/monitors/{id}/paused`, `/heartbeats/{id}/paused` | `PUT {"paused": true}` pauses, `false` resumes |
+| `/incidents`, `/incidents/{id}`, `/incidents/{id}/updates` | List and open incidents, and post updates |
+| `/maintenance`, `/maintenance/{id}`, `/maintenance/{id}/end` | List, plan, delete and end maintenance windows |
+
+Pause a monitor while you deploy, then resume it:
+
+```sh
+curl -s -X PUT "https://monita.example.com/api/v1/projects/payments/monitors/3/paused" \
+  -H "Authorization: Bearer $MONITA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"paused": true}'
+```
+
+Post an update to an open incident:
+
+```sh
+curl -s -X POST "https://monita.example.com/api/v1/projects/payments/incidents/12/updates" \
+  -H "Authorization: Bearer $MONITA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"label": "monitoring", "message": "The rollback is out, and we are watching the error rate."}'
+```
+
+The team sees the key's name as the update's author. The public page shows no author.
+
+| Answer | When |
+| --- | --- |
+| 401 `unauthorized` | No key, an unknown key or a revoked key |
+| 403 `forbidden` | A Ref IDs only key, a read key that tries to change something, or a caller outside the allowlist |
+| 404 `not_found` | Another project's slug, or a route the key API does not have: keys, secrets, alert cards, tickets and project delete |
+| 422 `validation_failed` | A refused form, with each bad field in `error.fields` |
+
+Fields may be added to an answer within v1, but none is removed or renamed. Ignore fields you do not know. The full contract is in `docs/api-specs/03-projects.md` section 3.4.
 
 ## Heartbeat pings
 

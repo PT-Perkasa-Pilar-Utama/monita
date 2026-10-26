@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [1.1.0] - 2026-10-21
 
-More ways to check, alert and plan: TCP, DNS and ping monitors, certificate warnings, checks from more than one place, Discord, Telegram, ntfy and PagerDuty alerts, maintenance windows, and two-factor sign-in. Migrations 0024 to 0040 run on start; 0029 rebuilds the `monitors` table, and 0039 rebuilds `alert_cards`.
+More ways to check, alert and plan: TCP, DNS and ping monitors, certificate warnings, checks from more than one place, Discord, Telegram, ntfy and PagerDuty alerts, maintenance windows, and two-factor sign-in. Migrations 0024 to 0042 run on start; 0029 rebuilds the `monitors` table, and 0039 rebuilds `alert_cards`.
 
 ### Added
 
@@ -25,6 +25,7 @@ More ways to check, alert and plan: TCP, DNS and ping monitors, certificate warn
 - The Overview charts the last 24 hours of every monitor and heartbeat on one time axis. The 5 monitors that need you first draw as response-time lines on a log scale, the rest faint behind them. Heartbeats draw as lanes of ping dots, failures in red. Hover for every value in a 15-minute slot; select a line or lane to open it. It reads again every 30 seconds and has a Refresh button.
 - `monita admin reset-sign-in --email` is the way back in for anyone who lost both the authenticator and the recovery codes. It turns two-factor off, stops the old password, and emails a link to set a new one. It prints the link too.
 - **How API keys work** on the API keys page: what a key is for, how to send it, and each endpoint it opens.
+- A project API key has a scope: ref IDs only, read, or read and write. A read or write key manages its own project under `/api/v1/projects/{slug}/`: monitors, heartbeats, pause, incidents and their updates, and maintenance. A read key never sees a ping URL, a header value or a request body. An update a key posts names the key. Keys you already have stay ref IDs only. Migrations 0041 and 0042.
 - Pictures show in the user list and beside a project's owner.
 - TCP port and DNS name monitors beside HTTP ([#9](https://github.com/PT-Perkasa-Pilar-Utama/monita/issues/9)). Migration 0024.
 - **User settings**, **Password**: change your own password with the current one. Your other sessions sign out.

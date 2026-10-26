@@ -131,6 +131,7 @@ The icon's bytes, apart from `projects` so a project list never reads them.
 | name | TEXT | no | | | `backend-prod` |
 | key_hash | TEXT | no | | UNIQUE | |
 | key_prefix | TEXT | no | | | First 10 chars, for display. `mk_7hq2kz` |
+| scope | TEXT | no | `ref_ids` | | `ref_ids`, `read` or `write` (v1.1 Q44, migration 0041) |
 | last_used_at | INTEGER | yes | | | |
 | revoked_at | INTEGER | yes | | | |
 | created_at | INTEGER | no | | | |
@@ -271,7 +272,7 @@ Uptime % for a day = `1 - downtime_s / 86400`. The status page computes the same
 | incidents | id, project_id FK, origin (`auto`, `manual`), title, severity, cause NULL, started_at, resolved_at NULL, created_by NULL FK users |
 | incident_items | incident_id FK, source_kind, source_id. PK all three |
 | incident_sources | source_kind, source_id (PK), fail_streak INTEGER default 0, open_incident_id NULL FK incidents, down_since INTEGER NULL |
-| status_updates | id, incident_id FK, label (`investigating`, `identified`, `monitoring`, `resolved`), message, author_id NULL (NULL = Monita), created_at |
+| status_updates | id, incident_id FK, label (`investigating`, `identified`, `monitoring`, `resolved`), message, author_id NULL, author_key NULL (the API key's name, v1.1 Q44, migration 0042; both NULL = Monita), created_at |
 
 `down_since` is when the source went down. A source with `auto_incident` off is down with no incident, so this column is the only record of it. A source counts as down while `open_incident_id` or `down_since` is set. A hand resolve and a passing check clear all three columns.
 

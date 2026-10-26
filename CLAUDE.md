@@ -43,7 +43,7 @@ site/                 landing page and docs site builder    docs/guide/ user doc
 
 | Module | Owns tables | Interface others call |
 | --- | --- | --- |
-| accounts | users, invites, sessions, recovery_codes, sign_in_challenges, user_avatars | `CurrentUser` (refuses a supervisor's writes) and `AdminUser` (super admin, or a supervisor reading) extractors, `purge_expired` |
+| accounts | users, invites, sessions, recovery_codes, sign_in_challenges, user_avatars | `CurrentUser` (refuses a supervisor's or read key's writes; under `/api/v1/projects/` it is the key's principal, Q44) and `AdminUser` (super admin, or a supervisor reading) extractors, `purge_expired` |
 | projects | projects, project_icons, api_keys, project_secrets | `ApiProject` extractor, `find_for`, `can_view`, `owns_any` |
 | checks | monitors, heartbeats, check_results, pings, daily_summaries, locations, monitor_locations | `probe`, `Job`, `heartbeat::admit` and `record`, `scheduler::spawn`, `locations::record_at` |
 | incidents | incidents, incident_items, incident_sources, status_updates | `observe` (the only door for check results), `open_manual`, `post_update`, `states_for`, `source_deleted` |
@@ -55,7 +55,7 @@ site/                 landing page and docs site builder    docs/guide/ user doc
 | tickets | ref_ids, tickets | `issue_ref_id`, `submit` |
 | platform | settings, schema_migrations | `Db`, `ui` (envelope, `Body`, `public_cache`), `now`, config |
 
-Roles: `super_admin`, `tl`, `supervisor`. A TL manages only projects they own; a non-owner gets 404. A supervisor sees what a super admin sees and changes nothing: `CurrentUser` answers 403 to any method but GET and HEAD, and a supervisor never gets a heartbeat ping URL, a webhook URL, a check's header values, sign-in name or request body. A project owner cannot become a supervisor. Matrix: technical-specs 09 section 9.3.
+Roles: `super_admin`, `tl`, `supervisor`. A TL manages only projects they own; a non-owner gets 404. A supervisor sees what a super admin sees and changes nothing: `CurrentUser` answers 403 to any method but GET and HEAD, and a supervisor never gets a heartbeat ping URL, a webhook URL, a check's header values, sign-in name or request body. A project owner cannot become a supervisor. A project API key has a scope (Q44): `ref_ids`, `read` (sees what a supervisor sees) or `write`; a `read` or `write` key reaches only its own project, under `/api/v1/projects/{slug}/`, and only the routes in `app::key_routes`. Matrix: technical-specs 09 section 9.3.
 
 ## Work model
 
@@ -175,7 +175,7 @@ Each line was argued in review and decided. Do not reopen one without a new fact
 - [ ] Monitor kinds: `http`, `tcp` (`host:port`), `dns` (host name, optional expected address), `ping` (host; one echo over an unprivileged ICMP datagram socket, Q24; where it is refused and on Windows, the system `ping`, a reply is a `TTL=` line, Q40); non-HTTP kinds keep none of the HTTP fields (`MonitorInput::for_kind`). Intervals: 30, 60, 180, 300 s. Default timeout 10 s, expected `2xx`.
 - [ ] Certificate warning (Q25): an `https://` monitor may warn 7, 14 or 30 days before `notAfter` (read through reqwest `tls_info`); one `certificate.expiring` alert per certificate to the cards that listen to warning; no incident; alert switch off sends none.
 - [ ] Locations (Q26, technical-specs 14): a super admin adds one (cap 10) and gets an `ml_` token once; `monita probe` pulls `/api/v1/probe/work` and posts `/api/v1/probe/results` (server time, 300/min per location). A monitor checks from this server plus picked locations; a location result is stored only when it answers a claim (one per claim); at each check from this server a check fails when `failing >= min(quorum, fresh)` and at least one failed (fresh: 2 intervals + 30 s), so the streak still counts checks in a row. Charts and summaries read local results only.
-- [ ] Ref IDs: `POST /api/v1/ref-ids`, project from the API key, `single_use` flag. Caps: 5 per ref ID per day, 100 per project per day.
+- [ ] Ref IDs: `POST /api/v1/ref-ids`, project from a `ref_ids` or `write` API key, `single_use` flag. Caps: 5 per ref ID per day, 100 per project per day.
 - [ ] Rate limits: 60/min per IP (public, ticket form, invite links, wrong API keys; login in its own `login:` bucket), 120/min per API key, 1/s per heartbeat (extra pings return 429 and are not stored; the ping accepted in that second keeps the heartbeat alive); `/fail` has its own 1/s bucket `pingfail:{id}`. Request bodies are capped at 128 KiB (413), except the ping routes (see Settled trade-offs).
 - [ ] API key format `mk_` + 26 base32 chars; heartbeat tokens stored raw; everything else hashed.
 - [ ] Scheduler: one 1 s loop; claim by setting `next_check_at` before probing; 50 concurrent checks. Each tick holds one shared read guard on `AppState.gate`; reset-state takes the write guard.

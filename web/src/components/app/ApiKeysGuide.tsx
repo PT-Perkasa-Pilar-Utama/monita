@@ -44,13 +44,15 @@ export function ApiKeysGuide(): ReactElement {
         <div className="flex flex-col gap-10 overflow-y-auto px-6 py-6">
           <Part title="What a key is for">
             <p className="text-muted-foreground">
-              A key lets your own server issue ref IDs for this project, the codes your users file and follow bug reports with from inside your app, but it cannot read or change monitors, incidents or settings.
+              A key lets your own server or scripts call Monita for this project, and the scope you pick when you create it decides how far it reaches.
             </p>
-            <ol className="list-decimal space-y-1 pl-5 text-muted-foreground">
-              <li>Your server issues a ref ID for a signed-in user, with the key.</li>
-              <li>Your app files that user's tickets with the ref ID, without the key.</li>
-              <li>Your app lists that user's tickets with the same ref ID.</li>
-            </ol>
+            <EndpointRows
+              rows={[
+                { label: "Ref IDs only", text: "Issues the ref IDs your users file and follow bug reports with, and nothing else." },
+                { label: "Read", text: "Reads monitors, heartbeats, incidents and maintenance, but never sees a ping URL, a header value or a request body." },
+                { label: "Read and write", text: "Also creates, changes and pauses them, opens incidents and posts updates, plans maintenance and issues ref IDs." },
+              ]}
+            />
           </Part>
           <Part title="How to send it">
             <EndpointRows
@@ -64,6 +66,25 @@ export function ApiKeysGuide(): ReactElement {
             />
             <CodeCopy id="key-env" title="Keep it in your server's environment" code={"MONITA_API_KEY=mk_…"} />
           </Part>
+          <Part title="Managing the project">
+            <p className="text-muted-foreground">
+              A read or write key calls the same routes as these pages, under <span className="font-mono text-[13px]">/api/v1/projects/{p.slug}</span>, and the team sees the key's name on any incident update it posts.
+            </p>
+            <EndpointRows
+              rows={[
+                { label: "Project", text: "GET the path itself, or /overview for its numbers." },
+                { label: "Monitors", text: "/monitors and /monitors/{id}, with PUT /monitors/{id}/paused to pause or resume one." },
+                { label: "Heartbeats", text: "/heartbeats and /heartbeats/{id}, with PUT /heartbeats/{id}/paused the same way." },
+                { label: "Incidents", text: "/incidents, /incidents/{id} and POST /incidents/{id}/updates." },
+                { label: "Maintenance", text: "/maintenance, /maintenance/{id} and POST /maintenance/{id}/end." },
+              ]}
+            />
+            <CodeCopy
+              id="key-pause"
+              title="Pause a monitor while you deploy"
+              code={`curl -s -X PUT "${origin}/api/v1/projects/${p.slug}/monitors/1/paused" \\\n  -H "Authorization: Bearer $MONITA_API_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '{"paused": true}'`}
+            />
+          </Part>
           <Part title="The ticket flow">
             <p className="text-muted-foreground">
               Only <strong className="font-medium text-foreground">Issue a ref ID</strong> takes the key, while the other two calls take the ref ID your server issued, and the{" "}
@@ -72,6 +93,11 @@ export function ApiKeysGuide(): ReactElement {
               </a>{" "}
               page lists every endpoint Monita has.
             </p>
+            <ol className="list-decimal space-y-1 pl-5 text-muted-foreground">
+              <li>Your server issues a ref ID for a signed-in user, with a Ref IDs only or a Read and write key.</li>
+              <li>Your app files that user's tickets with the ref ID, without the key.</li>
+              <li>Your app lists that user's tickets with the same ref ID.</li>
+            </ol>
             <Tabs defaultValue={FLOW[0]} className="gap-4">
               <TabsList className="flex-wrap">
                 {docs.map((d) => (
