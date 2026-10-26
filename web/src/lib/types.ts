@@ -91,10 +91,14 @@ export type OverviewChart = {
 
 export type ChartRect = { x: number; w: number; y: number; h: number; tone: "ok" | "fail" | "down"; title: string };
 
+export type KeyScope = "ref_ids" | "read" | "write";
+
 export type ApiKey = {
   id: number;
   name: string;
   prefix: string;
+  /** What the key may do (v1.1 Q44). */
+  scope: KeyScope;
   last_used_at: number | null;
   revoked_at: number | null;
   created_at: number;

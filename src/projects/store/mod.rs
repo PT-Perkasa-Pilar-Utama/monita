@@ -33,6 +33,8 @@ pub struct ApiKeyRow {
     pub id: i64,
     pub name: String,
     pub prefix: String,
+    /// `ref_ids`, `read` or `write` (v1.1 Q44).
+    pub scope: String,
     pub last_used_at: Option<i64>,
     pub revoked_at: Option<i64>,
     pub created_at: i64,

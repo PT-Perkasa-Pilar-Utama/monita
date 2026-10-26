@@ -284,7 +284,42 @@ pub async fn reassign(
 }
 
 /// US-07: returns the raw key once. Only its hash is stored.
-pub async fn create_key(db: &Db, project_id: i64, name: &str) -> Result<String, ProjectError> {
+/// What a project API key may do (v1.1 Q44).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum KeyScope {
+    /// Issue ref IDs only, as every key did before scopes.
+    RefIds,
+    /// Read the project's monitors, heartbeats, incidents and maintenance.
+    Read,
+    /// Read and change them, and issue ref IDs.
+    Write,
+}
+
+impl KeyScope {
+    pub fn parse(raw: &str) -> Option<Self> {
+        match raw {
+            "ref_ids" => Some(Self::RefIds),
+            "read" => Some(Self::Read),
+            "write" => Some(Self::Write),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::RefIds => "ref_ids",
+            Self::Read => "read",
+            Self::Write => "write",
+        }
+    }
+}
+
+pub async fn create_key(
+    db: &Db,
+    project_id: i64,
+    name: &str,
+    scope: KeyScope,
+) -> Result<String, ProjectError> {
     let name = name.trim();
     if name.is_empty() || name.chars().count() > 60 {
         return Err(ProjectError::InvalidName);
@@ -299,7 +334,7 @@ pub async fn create_key(db: &Db, project_id: i64, name: &str) -> Result<String, 
                 caps::KEYS_PER_PROJECT
             ))));
         }
-        store::insert_key(c, project_id, name, &hash, &prefix).await?;
+        store::insert_key(c, project_id, name, &hash, &prefix, scope.as_str()).await?;
         Ok(Ok(()))
     })
     .await??;

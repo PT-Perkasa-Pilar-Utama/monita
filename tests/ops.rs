@@ -65,9 +65,10 @@ async fn an_api_key_is_limited_per_minute() {
     let app = TestApp::spawn("test").await;
     let tl = app.tl("rina@x.co").await;
     app.project(&tl, "P", "pp").await;
-    let key = monita::projects::create_key(&app.state.db, 1, "k")
-        .await
-        .unwrap();
+    let key =
+        monita::projects::create_key(&app.state.db, 1, "k", monita::projects::KeyScope::RefIds)
+            .await
+            .unwrap();
     set(&app, "rl_key_per_min", 2).await;
     let call = || {
         app.http

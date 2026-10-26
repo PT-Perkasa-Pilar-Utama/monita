@@ -64,9 +64,16 @@ pub(super) struct RefIdRequest {
 
 pub(super) async fn issue_ref_id(
     State(state): State<AppState>,
-    ApiProject(project): ApiProject,
+    ApiProject(project, scope): ApiProject,
     body: Bytes,
 ) -> Response {
+    if scope == projects::KeyScope::Read {
+        return api_error(
+            StatusCode::FORBIDDEN,
+            "forbidden",
+            "A read-only key cannot issue ref IDs.",
+        );
+    }
     // The body is optional: no body, `null` and `{}` all mean the defaults.
     let req = if body.iter().all(u8::is_ascii_whitespace) {
         RefIdRequest::default()

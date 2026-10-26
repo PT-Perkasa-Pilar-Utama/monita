@@ -91,6 +91,9 @@ async fn keys(
 #[derive(Deserialize)]
 struct KeyInput {
     name: String,
+    /// `ref_ids` (the default), `read` or `write`.
+    #[serde(default)]
+    scope: String,
 }
 
 /// The full key travels once, in this answer; only its hash is stored.
@@ -106,7 +109,13 @@ async fn create_key(
     Body(f): Body<KeyInput>,
 ) -> UiResult {
     let p = super::find_for(&state.db, &user, &slug).await?;
-    let key = super::create_key(&state.db, p.id, &f.name)
+    let scope = match f.scope.trim() {
+        "" => super::KeyScope::RefIds,
+        s => super::KeyScope::parse(s).ok_or_else(|| {
+            UiError::field("scope", "Pick ref IDs only, read, or read and write.")
+        })?,
+    };
+    let key = super::create_key(&state.db, p.id, &f.name, scope)
         .await
         .map_err(form_error)?;
     Ok(created(NewKey { key }))

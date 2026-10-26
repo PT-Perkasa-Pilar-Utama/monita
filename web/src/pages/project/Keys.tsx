@@ -1,4 +1,5 @@
 import { ApiKeysGuide } from "@/components/app/ApiKeysGuide";
+import { ChoiceCards } from "@/components/app/ChoiceCards";
 import { useState } from "react";
 import { Writable } from "@/lib/session";
 import type { FormEvent, ReactElement } from "react";
@@ -12,7 +13,7 @@ import { TableEmpty } from "@/components/list/TableEmpty";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { FormSheet, FormSheetBody } from "@/components/app/FormSheet";
-import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
@@ -20,11 +21,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { api, ApiError, dropField, errorText } from "@/lib/api";
 import { useProject } from "@/lib/project";
 import { ago } from "@/lib/time";
-import type { ApiKey } from "@/lib/types";
+import type { ApiKey, KeyScope } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 import { SortHead } from "@/components/list/SortHead";
 import { sortRows } from "@/lib/sort";
 import { useSort } from "@/lib/useSort";
+
+const SCOPES: Record<KeyScope, { title: string; description: string }> = {
+  ref_ids: { title: "Ref IDs only", description: "Issues ref IDs for your users and nothing else." },
+  read: { title: "Read", description: "Reads monitors, heartbeats, incidents and maintenance, but changes nothing." },
+  write: { title: "Read and write", description: "Also creates, changes and pauses them, posts incident updates and issues ref IDs." },
+};
 
 /** Settings, API keys: a project's keys, a new one shown once, and revoke behind a confirm. */
 export function Keys(): ReactElement {
@@ -32,6 +39,7 @@ export function Keys(): ReactElement {
   const keys = useApi<ApiKey[]>(`/projects/${p.slug}/keys`);
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
+  const [scope, setScope] = useState<KeyScope>("ref_ids");
   const [error, setError] = useState<ApiError | null>(null);
   const [busy, setBusy] = useState(false);
   const [newKey, setNewKey] = useState("");
@@ -43,9 +51,10 @@ export function Keys(): ReactElement {
     setBusy(true);
     setError(null);
     try {
-      const made = await api<{ key: string }>(`/projects/${p.slug}/keys`, "POST", { name });
+      const made = await api<{ key: string }>(`/projects/${p.slug}/keys`, "POST", { name, scope });
       setNewKey(made.key);
       setName("");
+      setScope("ref_ids");
       setOpen(false);
       keys.reload();
     } catch (err) {
@@ -55,10 +64,11 @@ export function Keys(): ReactElement {
     }
   };
 
-  const [sort, onSort] = useSort(["name", "key", "used", "status"]);
+  const [sort, onSort] = useSort(["name", "key", "scope", "used", "status"]);
   const list = sortRows(keys.data ?? [], sort, {
     name: (k) => k.name,
     key: (k) => k.prefix,
+    scope: (k) => SCOPES[k.scope].title,
     used: (k) => k.last_used_at,
     status: (k) => (k.revoked_at ? "revoked" : "active"),
   });
@@ -89,7 +99,7 @@ export function Keys(): ReactElement {
         ) : list.length === 0 ? (
           <TableEmpty
             title="Create a key for your backend"
-            description="Your backend sends the key with each call to the Monita API, for example to issue ref IDs, and Monita shows each key only once."
+            description="Your backend sends the key with each call to the Monita API, to issue ref IDs or to manage this project's monitors and incidents, and Monita shows each key only once."
           />
         ) : (
           <Table>
@@ -97,6 +107,7 @@ export function Keys(): ReactElement {
               <TableRow>
                 <SortHead by="name" label="Name" sort={sort} onSort={onSort} />
                 <SortHead by="key" label="Key" sort={sort} onSort={onSort} />
+                <SortHead by="scope" label="Scope" sort={sort} onSort={onSort} className="max-sm:hidden" />
                 <SortHead by="used" label="Last used" sort={sort} onSort={onSort} className="max-sm:hidden" />
                 <SortHead by="status" label="Status" sort={sort} onSort={onSort} className="text-right" />
               </TableRow>
@@ -106,6 +117,7 @@ export function Keys(): ReactElement {
                 <TableRow key={k.id}>
                   <TableCell className="font-medium">{k.name}</TableCell>
                   <TableCell className="font-mono">{k.prefix}…</TableCell>
+                  <TableCell className="max-sm:hidden">{SCOPES[k.scope].title}</TableCell>
                   <TableCell className="max-sm:hidden">{k.last_used_at ? ago(k.last_used_at) : "never"}</TableCell>
                   <TableCell className="text-right">
                     {k.revoked_at ? (
@@ -151,7 +163,8 @@ export function Keys(): ReactElement {
             </div>
           }
         >
-            <Field data-invalid={error ? true : undefined}>
+            <FieldGroup>
+            <Field data-invalid={error && !error.fields.scope ? true : undefined}>
               <FieldLabel htmlFor="key-name" required>
                 Key name
               </FieldLabel>
@@ -159,8 +172,20 @@ export function Keys(): ReactElement {
                 setName(e.target.value);
                 clear("name");
               }} />
-              {error && <FieldError>{error.fields.name ?? error.message}</FieldError>}
+              {error && !error.fields.scope && <FieldError>{error.fields.name ?? error.message}</FieldError>}
             </Field>
+            <ChoiceCards
+              id="key-scope"
+              legend="What the key may do"
+              value={scope}
+              onChange={(v) => {
+                setScope(v);
+                clear("scope");
+              }}
+              choices={(Object.keys(SCOPES) as KeyScope[]).map((value) => ({ value, ...SCOPES[value] }))}
+            />
+            {error?.fields.scope && <FieldError>{error.fields.scope}</FieldError>}
+            </FieldGroup>
         </FormSheetBody>
       </FormSheet>
     </>

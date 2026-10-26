@@ -12,8 +12,9 @@ use crate::{
     platform::{api_error, now, token},
 };
 
-/// The project behind `Authorization: Bearer mk_...`. Contract: api-specs 03 section 3.2.
-pub struct ApiProject(pub Project);
+/// The project behind `Authorization: Bearer mk_...`, and what the key may do. Contract:
+/// api-specs 03 section 3.2.
+pub struct ApiProject(pub Project, pub super::KeyScope);
 
 impl FromRequestParts<AppState> for ApiProject {
     type Rejection = Response;
@@ -61,7 +62,7 @@ impl FromRequestParts<AppState> for ApiProject {
                 retry,
             ));
         }
-        let Some((key_id, project, last_used)) =
+        let Some((key_id, project, last_used, scope)) =
             store::find_live_key(&conn, &token::hash(raw.trim()))
                 .await
                 .map_err(internal)?
@@ -101,6 +102,8 @@ impl FromRequestParts<AppState> for ApiProject {
         {
             tracing::warn!(key_id, error = %e, "could not record the key's last use");
         }
-        Ok(ApiProject(project))
+        // A scope the code does not know reads as the narrowest.
+        let scope = super::KeyScope::parse(&scope).unwrap_or(super::KeyScope::RefIds);
+        Ok(ApiProject(project, scope))
     }
 }

@@ -20,9 +20,14 @@ struct Setup {
 async fn setup(app: &TestApp) -> Setup {
     let tl = app.tl("rina@x.co").await;
     app.project(&tl, "Payments", "payments").await;
-    let key = monita::projects::create_key(&app.state.db, 1, "backend")
-        .await
-        .unwrap();
+    let key = monita::projects::create_key(
+        &app.state.db,
+        1,
+        "backend",
+        monita::projects::KeyScope::RefIds,
+    )
+    .await
+    .unwrap();
     Setup { tl, key }
 }
 
