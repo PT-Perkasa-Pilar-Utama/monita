@@ -474,16 +474,13 @@ async fn an_ok_ping_with_megabytes_of_body_is_answered_200() {
 }
 
 #[tokio::test]
-async fn guessing_tokens_from_one_ip_gets_429() {
+async fn unknown_tokens_are_404_and_never_limited_per_address() {
+    // v1.1 Q45: a token is random, and a limit per address would hold up every job behind it.
     let app = TestApp::spawn("test").await;
-    // 121 misses span at most two minute windows, so one window sees more than 60.
-    let mut statuses = Vec::new();
-    for i in 0..121 {
+    for i in 0..70 {
         let res = ping(&app, reqwest::Method::GET, &format!("/ping/guess{i}")).await;
-        statuses.push(res.status().as_u16());
+        assert_eq!(res.status(), 404);
     }
-    assert_eq!(statuses[0], 404);
-    assert!(statuses.contains(&429), "misses are throttled per IP");
 }
 
 #[tokio::test]

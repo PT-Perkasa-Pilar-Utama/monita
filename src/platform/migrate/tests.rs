@@ -16,7 +16,7 @@ async fn migrations_apply_once_and_rerun_cleanly() {
     let settings = query_i64(&conn, "SELECT count(*) FROM settings", ())
         .await
         .unwrap();
-    assert_eq!(settings, Some(6));
+    assert_eq!(settings, Some(crate::platform::settings::KEYS.len() as i64));
 }
 
 #[tokio::test]

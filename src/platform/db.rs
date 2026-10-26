@@ -338,7 +338,7 @@ mod tests {
         let n = query_i64(&conn, "SELECT count(*) FROM settings", ())
             .await
             .unwrap();
-        assert_eq!(n, Some(6));
+        assert_eq!(n, Some(crate::platform::settings::KEYS.len() as i64));
     }
 
     #[tokio::test]
