@@ -161,6 +161,7 @@ pub async fn run(db: &Db) -> anyhow::Result<()> {
     })
     .await?;
 
+    let mut applied_any = false;
     for &(version, sql) in MIGRATIONS {
         let conn = db.read().await?;
         let applied = query_i64(
@@ -186,8 +187,43 @@ pub async fn run(db: &Db) -> anyhow::Result<()> {
         })
         .await?;
         tracing::info!(version, "migration applied");
+        applied_any = true;
+    }
+    // A migration runs with foreign keys off, so a broken reference would pass unseen. Checked
+    // only after a migration ran: a full check reads every row, which slows a big database.
+    if applied_any {
+        check_references(db).await?;
     }
     Ok(())
+}
+
+/// Refuses to go on when a row points at a row that does not exist, and names the first ones.
+pub(crate) async fn check_references(db: &Db) -> anyhow::Result<()> {
+    let broken = crate::platform::db::query_all(
+        &db.read().await?,
+        "SELECT \"table\", rowid, parent FROM pragma_foreign_key_check LIMIT 20",
+        (),
+        |r| {
+            Ok(format!(
+                "{} row {} points at a missing {}",
+                r.get::<String>(0)?,
+                r.get::<Option<i64>>(1)?
+                    .map_or("?".into(), |id| id.to_string()),
+                r.get::<String>(2)?
+            ))
+        },
+    )
+    .await?;
+    if broken.is_empty() {
+        return Ok(());
+    }
+    for b in &broken {
+        tracing::error!(reference = %b, "broken reference after a migration");
+    }
+    anyhow::bail!(
+        "the database has broken references after a migration, first: {}; restore the backup taken before the upgrade",
+        broken[0]
+    )
 }
 
 #[cfg(test)]

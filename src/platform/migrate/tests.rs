@@ -449,3 +449,28 @@ async fn migration_39_turns_ticket_alerts_into_cards() {
         .is_empty()
     );
 }
+
+#[tokio::test]
+async fn a_broken_reference_after_migrating_stops_the_start_and_is_named() {
+    let dir = tempfile::tempdir().unwrap();
+    let db = Db::open(&dir.path().join("t.db")).await.unwrap();
+    run(&db).await.unwrap();
+    check_references(&db)
+        .await
+        .expect("a fresh database is whole");
+    db.write_without_fk(async |c| {
+        c.execute(
+            "INSERT INTO check_results (monitor_id, checked_at, ok) VALUES (999, 1, 1)",
+            (),
+        )
+        .await?;
+        Ok(())
+    })
+    .await
+    .unwrap();
+    let err = check_references(&db).await.unwrap_err().to_string();
+    assert!(
+        err.contains("check_results row 1 points at a missing monitors"),
+        "{err}"
+    );
+}
