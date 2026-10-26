@@ -9,11 +9,12 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Spinner } from "@/components/ui/spinner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { api } from "@/lib/api";
+import { api, errorText } from "@/lib/api";
 import { setupCommands } from "@/lib/locations";
 import { useCanEdit } from "@/lib/session";
 import type { LocationList } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
+import { toast } from "sonner";
 
 /** A token to set up, from Add location or New token. */
 export type Setup = { id: number; name: string; token: string };
@@ -27,6 +28,7 @@ const WAIT_MS = 3000;
  * first calls. The token shows only here.
  */
 export function LocationSetup({ setup, server, onClose }: { setup: Setup | null; server: string; onClose: () => void }): ReactElement {
+  const [removing, setRemoving] = useState(false);
   const list = useApi<LocationList>(setup ? "/admin/locations" : null, WAIT_MS);
   const row = list.data?.locations.find((l) => l.id === setup?.id);
   const connected = row?.last_seen_at != null;
@@ -74,6 +76,30 @@ export function LocationSetup({ setup, server, onClose }: { setup: Setup | null;
                 </>
               )}
             </div>
+            {!connected && (
+              <p className="text-muted-foreground">
+                You can close this and set it up later from the location's Set up button, which makes a fresh token, or{" "}
+                <Button
+                  variant="link"
+                  className="h-auto p-0 text-down"
+                  disabled={removing}
+                  onClick={() => {
+                    if (!setup) return;
+                    setRemoving(true);
+                    void api(`/admin/locations/${setup.id}`, "DELETE")
+                      .then(() => {
+                        toast.success(`${setup.name} is removed.`);
+                        onClose();
+                      })
+                      .catch((err: unknown) => toast.error(errorText(err)))
+                      .finally(() => setRemoving(false));
+                  }}
+                >
+                  remove {setup?.name}
+                </Button>{" "}
+                if you changed your mind.
+              </p>
+            )}
           </div>
         )}
       </SheetContent>
@@ -118,11 +144,49 @@ export function LocationMonitors({ id, count }: { id: number; count: number }): 
 }
 
 /** A location's ⋯ menu: a new token for its machine, or delete it. */
-export function LocationMenu({ id, name, onToken, onDeleted }: { id: number; name: string; onToken: (s: Setup) => void; onDeleted: () => void }): ReactElement | null {
+export function LocationMenu({
+  id,
+  name,
+  running,
+  everSeen,
+  onToken,
+  onDeleted,
+}: {
+  id: number;
+  name: string;
+  running: boolean;
+  /** A probe called with the current token at least once, so a new token would cut it off. */
+  everSeen: boolean;
+  onToken: (s: Setup) => void;
+  onDeleted: () => void;
+}): ReactElement | null {
   const [confirm, setConfirm] = useState<"token" | "delete" | null>(null);
+  const [busy, setBusy] = useState(false);
   if (!useCanEdit()) return null;
+  const newToken = async (): Promise<void> => {
+    const r = await api<{ token: string }>(`/admin/locations/${id}/token`, "POST");
+    onToken({ id, name, token: r.token });
+  };
+  // Never seen: no probe holds the token, so a new one breaks nothing and needs no question.
+  const setUp = async (): Promise<void> => {
+    if (everSeen) return setConfirm("token");
+    setBusy(true);
+    try {
+      await newToken();
+    } catch (err) {
+      toast.error(errorText(err));
+    } finally {
+      setBusy(false);
+    }
+  };
   return (
-    <>
+    <div className="flex items-center justify-end gap-2">
+      {!running && (
+        <Button size="sm" variant="secondary" disabled={busy} onClick={() => void setUp()}>
+          {busy && <Spinner data-icon="inline-start" />}
+          Set up
+        </Button>
+      )}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="icon" className="size-8" aria-label={`Actions for ${name}`}>
@@ -147,10 +211,7 @@ export function LocationMenu({ id, name, onToken, onDeleted }: { id: number; nam
         title={`Give ${name} a new token?`}
         description="The old token stops working at once, so the probe that uses it stops until you set it up again with the new one, which is how you move the probe or recover a lost token."
         action="New token"
-        onConfirm={async () => {
-          const r = await api<{ token: string }>(`/admin/locations/${id}/token`, "POST");
-          onToken({ id, name, token: r.token });
-        }}
+        onConfirm={newToken}
       />
       <ConfirmDialog
         open={confirm === "delete"}
@@ -163,6 +224,6 @@ export function LocationMenu({ id, name, onToken, onDeleted }: { id: number; nam
           onDeleted();
         }}
       />
-    </>
+    </div>
   );
 }

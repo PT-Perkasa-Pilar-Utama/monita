@@ -83,7 +83,7 @@ export function Locations(): ReactElement {
                     </TableCell>
                     <TableCell className="font-mono text-muted-foreground max-md:hidden">ml_{l.token_prefix}…</TableCell>
                     <TableCell className="text-right">
-                      <LocationMenu id={l.id} name={l.name} onToken={setSetup} onDeleted={res.reload} />
+                      <LocationMenu id={l.id} name={l.name} running={state.running} everSeen={l.last_seen_at !== null} onToken={setSetup} onDeleted={res.reload} />
                     </TableCell>
                   </TableRow>
                 );
