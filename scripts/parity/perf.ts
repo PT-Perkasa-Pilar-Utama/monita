@@ -17,7 +17,7 @@ if (!args.base || !args.new || !args.fixture) {
 const OUT = resolve(args.out ?? "target/parity-perf");
 const PORT = 18191;
 const URL_ = `http://127.0.0.1:${PORT}`;
-const RUNS = 7;
+const RUNS = 15;
 
 rmSync(OUT, { recursive: true, force: true });
 mkdirSync(OUT, { recursive: true });
@@ -49,56 +49,68 @@ const READS = [
 
 const median = (xs: number[]): number => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)]!;
 
-async function measure(label: string, bin: string): Promise<Record<string, number>> {
+type Server = { label: string; url: string; proc: Bun.Subprocess; headers: Record<string, string>; out: Record<string, number> };
+
+async function launch(label: string, bin: string, port: number): Promise<Server> {
   const dir = join(OUT, label);
   cpSync(seed, dir, { recursive: true });
+  const url = `http://127.0.0.1:${port}`;
   const t0 = performance.now();
   const proc = Bun.spawn([resolve(bin), "serve"], {
-    env: { ...process.env, MONITA_ENV: "dev", MONITA_BIND: `127.0.0.1:${PORT}`, MONITA_BASE_URL: URL_, MONITA_DB_PATH: join(dir, "monita.db"), MONITA_LOG: "warn" },
+    env: { ...process.env, MONITA_ENV: "dev", MONITA_BIND: `127.0.0.1:${port}`, MONITA_BASE_URL: url, MONITA_DB_PATH: join(dir, "monita.db"), MONITA_LOG: "warn" },
     stdout: "ignore",
     stderr: Bun.file(join(dir, "server.log")),
   });
-  const out: Record<string, number> = {};
-  try {
-    while (!(await fetch(`${URL_}/healthz`).then((r) => r.ok).catch(() => false))) await Bun.sleep(20);
-    out["start to /healthz"] = performance.now() - t0;
-    const login = await fetch(`${URL_}/api/ui/login`, { method: "POST", headers: { "content-type": "application/json", origin: URL_ }, body: JSON.stringify({ email: "admin@monita.test", password: "monita-dev-password" }) });
-    const cookie = login.headers.getSetCookie().map((c) => c.split(";")[0]).join("; ");
-    const headers = { cookie, "x-utc-offset": "420", "accept-encoding": "identity" };
-    for (const path of READS) {
-      await (await fetch(URL_ + path, { headers })).arrayBuffer();
-      const times: number[] = [];
-      for (let i = 0; i < RUNS; i++) {
+  while (!(await fetch(`${url}/healthz`).then((r) => r.ok).catch(() => false))) await Bun.sleep(5);
+  const started = performance.now() - t0;
+  const login = await fetch(`${url}/api/ui/login`, { method: "POST", headers: { "content-type": "application/json", origin: url }, body: JSON.stringify({ email: "admin@monita.test", password: "monita-dev-password" }) });
+  const cookie = login.headers.getSetCookie().map((c) => c.split(";")[0]).join("; ");
+  return { label, url, proc, headers: { cookie, "x-utc-offset": "420", "accept-encoding": "identity" }, out: { "start to /healthz": started } };
+}
+
+/** Every sample asks base, new and base again in turn, the order rotating, so a busy machine
+ * slows all three alike. */
+async function measure(servers: Server[]): Promise<void> {
+  for (const path of READS) {
+    for (const s of servers) await (await fetch(s.url + path, { headers: s.headers })).arrayBuffer();
+    const times: number[][] = servers.map(() => []);
+    for (let i = 0; i < RUNS; i++) {
+      for (let k = 0; k < servers.length; k++) {
+        const j = (i + k) % servers.length;
+        const s = servers[j]!;
         const t = performance.now();
-        const res = await fetch(URL_ + path, { headers });
+        const res = await fetch(s.url + path, { headers: s.headers });
         await res.arrayBuffer();
-        if (!res.ok) throw new Error(`${label} ${path}: ${res.status}`);
-        times.push(performance.now() - t);
+        if (!res.ok) throw new Error(`${s.label} ${path}: ${res.status}`);
+        times[j]!.push(performance.now() - t);
       }
-      out[path] = median(times);
     }
-    const pings: number[] = [];
-    for (const token of tokens) {
-      const t = performance.now();
-      const res = await fetch(`${URL_}/ping/${token}`);
-      await res.arrayBuffer();
-      pings.push(performance.now() - t);
-    }
-    out["a heartbeat ping (write)"] = median(pings);
-    const rss = Number((await Bun.$`ps -o rss= -p ${proc.pid}`.text()).trim());
-    out["server memory after (MiB)"] = rss / 1024;
-  } finally {
-    proc.kill("SIGTERM");
-    await proc.exited;
+    servers.forEach((s, j) => (s.out[path] = median(times[j]!)));
   }
-  return out;
+  const pings: number[][] = servers.map(() => []);
+  for (const token of tokens) {
+    for (const [j, s] of servers.entries()) {
+      const t = performance.now();
+      await (await fetch(`${s.url}/ping/${token}`)).arrayBuffer();
+      pings[j]!.push(performance.now() - t);
+    }
+  }
+  servers.forEach((s, j) => (s.out["a heartbeat ping (write)"] = median(pings[j]!)));
+  for (const s of servers) s.out["server memory after (MiB)"] = Number((await Bun.$`ps -o rss= -p ${s.proc.pid}`.text()).trim()) / 1024;
 }
 
 // Base, new, base again: the spread between the two base runs is the noise. A measure is slower
 // only when the new run is above both base runs by more than 20% and 1 ms.
-const base = await measure("base", args.base);
-const next = await measure("new", args.new);
-const again = await measure("base-2", args.base);
+const servers = [await launch("base", args.base, PORT), await launch("new", args.new, PORT + 1), await launch("base-2", args.base, PORT + 2)];
+try {
+  await measure(servers);
+} finally {
+  for (const s of servers) {
+    s.proc.kill("SIGTERM");
+    await s.proc.exited;
+  }
+}
+const [base, next, again] = servers.map((s) => s.out) as [Record<string, number>, Record<string, number>, Record<string, number>];
 const size = (p: string): string => `${(statSync(resolve(p)).size / 1e6).toFixed(1)} MB`;
 let slower = 0;
 const lines = [

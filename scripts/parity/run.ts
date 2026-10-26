@@ -4,9 +4,11 @@
 //
 // 1. The base binary builds a fixture: the demo seed, a read key and a write key, every check
 //    and deadline pushed far out so nothing runs on its own.
-// 2. Three runs, each on its own copy of the fixture: base, new, base again. Each run reads every
-//    GET route as six callers, plays a write scenario that touches every module, reads again,
-//    stops, and dumps every table.
+// 2. Three servers at once, each on its own copy of the fixture: base, new, base again. Every
+//    request goes to all three in the same moment, so an answer that depends on the clock is
+//    computed in the same second everywhere. Each server is read on every GET route as six
+//    callers, plays a write scenario that touches every module, is read again, stops, and has
+//    every table dumped.
 // 3. A value that differs between the two base runs is noise (a clock, a random token). A value
 //    where the new run differs from both base runs is a regression. The report lists each one.
 // See README.md beside this file.
@@ -28,7 +30,8 @@ const BASE_BIN = resolve(args.base ?? "(from disk)");
 const NEW_BIN = resolve(args.new ?? "(from disk)");
 const OUT = resolve(args.out ?? "target/parity");
 const PORT = Number(args.port ?? 18190);
-const URL_ = `http://127.0.0.1:${PORT}`;
+// One public address for every server, so a ping URL or an invite link reads the same on each.
+const PUBLIC_URL = "http://parity.monita.test";
 const PASSWORD = "monita-dev-password";
 const SLUG = "portal";
 
@@ -38,22 +41,24 @@ type Ids = Record<string, string | number>;
 
 const sql = async (db: string, q: string): Promise<string> => (await Bun.$`sqlite3 ${db} ${q}`.text()).trim();
 
-async function start(bin: string, db: string): Promise<Bun.Subprocess> {
+async function start(bin: string, db: string, port: number): Promise<Bun.Subprocess> {
+  const url = `http://127.0.0.1:${port}`;
   const proc = Bun.spawn([bin, "serve"], {
     env: {
       ...process.env,
       MONITA_ENV: "dev",
-      MONITA_BIND: `127.0.0.1:${PORT}`,
-      MONITA_BASE_URL: URL_,
+      MONITA_BIND: `127.0.0.1:${port}`,
+      MONITA_BASE_URL: PUBLIC_URL,
       MONITA_DB_PATH: db,
       MONITA_RESET_TOKEN: "parity-kit",
       MONITA_LOG: "warn",
+      MONITA_TELEGRAM_API: "http://127.0.0.1:1",
     },
     stdout: "ignore",
     stderr: Bun.file(`${db}.log`),
   });
   for (let i = 0; i < 300; i++) {
-    if (await fetch(`${URL_}/healthz`).then((r) => r.ok).catch(() => false)) return proc;
+    if (await fetch(`${url}/healthz`).then((r) => r.ok).catch(() => false)) return proc;
     if (proc.exitCode !== null) throw new Error(`${bin} exited with ${proc.exitCode}; see ${db}.log`);
     await Bun.sleep(100);
   }
@@ -66,22 +71,23 @@ async function stop(proc: Bun.Subprocess): Promise<void> {
   await proc.exited;
 }
 
-async function login(email: string): Promise<string> {
-  const res = await fetch(`${URL_}/api/ui/login`, {
+async function login(url: string, email: string): Promise<string> {
+  const res = await fetch(`${url}/api/ui/login`, {
     method: "POST",
-    headers: { "content-type": "application/json", origin: URL_ },
+    headers: { "content-type": "application/json", origin: PUBLIC_URL },
     body: JSON.stringify({ email, password: PASSWORD }),
   });
   if (res.status !== 204) throw new Error(`login ${email}: ${res.status} ${await res.text()}`);
   return res.headers.getSetCookie().map((c) => c.split(";")[0]).join("; ");
 }
 
-type Who = { name: string; headers: Record<string, string> };
+/** A caller of one server: `url` is that server's own address. */
+type Who = { name: string; url: string; headers: Record<string, string> };
 
 async function call(who: Who, method: string, path: string, body?: Json): Promise<{ status: number; body: Json }> {
-  const headers: Record<string, string> = { origin: URL_, "x-utc-offset": "420", "accept-encoding": "identity", ...who.headers };
+  const headers: Record<string, string> = { origin: PUBLIC_URL, "x-utc-offset": "420", "accept-encoding": "identity", ...who.headers };
   if (body !== undefined) headers["content-type"] = "application/json";
-  const res = await fetch(URL_ + path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body), redirect: "manual" });
+  const res = await fetch(who.url + path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body), redirect: "manual" });
   const type = res.headers.get("content-type") ?? "";
   const raw = new Uint8Array(await res.arrayBuffer());
   let parsed: Json;
@@ -96,15 +102,16 @@ async function fixture(dir: string): Promise<Ids> {
   rmSync(dir, { recursive: true, force: true });
   mkdirSync(dir, { recursive: true });
   const db = join(dir, "monita.db");
-  const proc = await start(BASE_BIN, db);
+  const url = `http://127.0.0.1:${PORT}`;
+  const proc = await start(BASE_BIN, db, PORT);
   try {
-    const seeded = await fetch(`${URL_}/admin/reset-state`, {
+    const seeded = await fetch(`${url}/admin/reset-state`, {
       method: "POST",
       headers: { "x-reset-token": "parity-kit", "content-type": "application/json" },
       body: JSON.stringify({ seed: "demo" }),
     });
     if (seeded.status !== 204) throw new Error(`reset-state: ${seeded.status}`);
-    const tl: Who = { name: "tl", headers: { cookie: await login("tl@monita.test") } };
+    const tl: Who = { name: "tl", url, headers: { cookie: await login(url, "tl@monita.test") } };
     const key = async (scope: string): Promise<string> => {
       const r = await call(tl, "POST", `/api/ui/projects/${SLUG}/keys`, { name: `parity ${scope}`, scope });
       const k = (r.body as { data?: { key?: string } }).data?.key;
@@ -115,8 +122,10 @@ async function fixture(dir: string): Promise<Ids> {
     const secret = await call(tl, "POST", `/api/ui/projects/${SLUG}/secrets`, { name: "PARITY_SECRET", value: "parity" });
     if (secret.status !== 201) throw new Error(`secret: ${secret.status} ${JSON.stringify(secret.body)}`);
     await stop(proc);
-    // Nothing runs on its own during a capture: checks, deadlines and outbox retries move out.
-    await sql(db, "UPDATE monitors SET next_check_at = 4000000000; UPDATE heartbeats SET deadline_at = 4000000000 WHERE deadline_at IS NOT NULL; UPDATE monitor_locations SET next_check_at = 4000000000; UPDATE outbox SET next_attempt_at = 4000000000 WHERE sent_at IS NULL AND failed_at IS NULL;");
+    // Nothing runs on its own during a capture: checks, deadlines and outbox retries move out,
+    // checks run one at a time, and every webhook points at a closed local port, so no run calls
+    // the internet and three servers never meet a remote rate limit.
+    await sql(db, "UPDATE monitors SET next_check_at = 4000000000; UPDATE heartbeats SET deadline_at = 4000000000 WHERE deadline_at IS NOT NULL; UPDATE monitor_locations SET next_check_at = 4000000000; UPDATE outbox SET next_attempt_at = 4000000000 WHERE sent_at IS NULL AND failed_at IS NULL; UPDATE settings SET value = '1' WHERE key = 'check_concurrency'; UPDATE alert_cards SET url = 'http://127.0.0.1:1/hook' WHERE url IS NOT NULL;");
     const one = async (q: string): Promise<string> => {
       const v = await sql(db, q);
       if (!v) throw new Error(`fixture has no row for: ${q}`);
@@ -179,17 +188,18 @@ function variants(path: string): string[] {
   return [""];
 }
 
-async function reads(cap: Capture, tag: string, people: Who[], ids: Ids, assets: { js: string }): Promise<void> {
+/** Reads every GET route as each of `names`, the same request to every server at once. */
+async function reads(servers: Server[], tag: string, names: string[], ids: Ids, assets: { js: string }): Promise<void> {
   for (const r of await routes()) {
     if (!r.methods.includes("GET") || NOT_READS.some((x) => x.test(r.path))) continue;
     const path = fill(r.path, ids, assets);
     if (!path) {
-      cap[`SKIP ${r.path}`] = { status: 0, body: "no value for a path parameter" };
+      for (const s of servers) s.cap[`SKIP ${r.path}`] = { status: 0, body: "no value for a path parameter" };
       continue;
     }
     for (const v of variants(path)) {
-      for (const who of people) {
-        cap[`${tag} GET ${who.name} ${path}${v}`] = await call(who, "GET", path + v);
+      for (const name of names) {
+        await Promise.all(servers.map(async (s) => (s.cap[`${tag} GET ${name} ${path}${v}`] = await call(s.people[name]!, "GET", path + v))));
       }
     }
   }
@@ -220,7 +230,7 @@ async function writes(cap: Capture, p: Record<string, Who>, ids: Ids): Promise<v
     cap[`W${String(++n).padStart(3, "0")} ${method} ${who.name} ${route}`] = r;
     // A write that makes a check or a ping due waits for the 1 s scheduler tick, so each run
     // stores its check rows at the same point of the scenario.
-    if (/\/(monitors|heartbeats|incidents|maintenance|ping)\b/.test(route) && method !== "GET") await Bun.sleep(1300);
+    if (/\/(monitors|heartbeats|incidents|maintenance|ping)\b/.test(route) && method !== "GET") await Bun.sleep(2500);
     return r.body;
   };
   const idOf = (b: Json): number => (b as { data?: { id?: number } }).data?.id ?? -1;
@@ -288,7 +298,7 @@ async function writes(cap: Capture, p: Record<string, Who>, ids: Ids): Promise<v
   const refId = ref.data?.ref_id;
   if (refId) {
     const filed = (await step(p.anon!, "POST", "/api/v1/tickets", { ref_id: refId, title: "Kit report", description: "Card 4111 failed", page_url: "https://shop.example/pay" })) as { data?: { number?: number } };
-    await step({ name: "reporter", headers: { "x-ref-id": refId } }, "GET", "/api/v1/tickets/mine");
+    await step({ ...p.anon!, name: "reporter", headers: { "x-ref-id": refId } }, "GET", "/api/v1/tickets/mine");
     const num = filed.data?.number;
     if (num) {
       await step(tl!, "PUT", `${ui}/tickets/${num}/stage`, { stage: "in_progress" });
@@ -319,7 +329,7 @@ async function writes(cap: Capture, p: Record<string, Who>, ids: Ids): Promise<v
   await step(admin!, "PUT", "/api/ui/admin/time-zone", { utc_offset_min: 0 });
   const loc = (await step(admin!, "POST", "/api/ui/admin/locations", { name: "Kit place" })) as { data?: { id?: number; token?: string } };
   if (loc.data?.token) {
-    const probe: Who = { name: "probe", headers: { authorization: `Bearer ${loc.data.token}` } };
+    const probe: Who = { ...p.anon!, name: "probe", headers: { authorization: `Bearer ${loc.data.token}` } };
     await step(probe, "GET", "/api/v1/probe/work?free=10&wait=0");
     await step(probe, "POST", "/api/v1/probe/results", { results: [] });
     await step(admin!, "GET", `/api/ui/admin/locations/${loc.data.id}/monitors`);
@@ -328,7 +338,9 @@ async function writes(cap: Capture, p: Record<string, Who>, ids: Ids): Promise<v
   }
 
   // Deletes last: a monitor by key, a heartbeat, the kit's project.
+  // Both kit monitors go, so the reads after the scenario hold no timing of their own checks.
   await step(write!, "DELETE", `${v1}/monitors/${tcp}`);
+  await step(tl!, "DELETE", `${ui}/monitors/${http}`);
   await step(tl!, "DELETE", `${ui}/heartbeats/${hb}`);
   await step(admin!, "DELETE", `/api/ui/projects/${made.data?.slug ?? "missing"}`, { confirm: "Parity Kit" }, "/api/ui/projects/{slug}");
   await step(admin!, "POST", "/api/ui/logout", {});
@@ -347,34 +359,12 @@ async function settle(admin: Who): Promise<void> {
   await Bun.sleep(1500);
 }
 
-// ---------------------------------------------------------------- one run
+// ---------------------------------------------------------------- the three servers
 
-async function run(label: string, bin: string, fixtureDir: string, ids: Ids): Promise<{ cap: Capture; dump: Record<string, Json[]> }> {
-  const dir = join(OUT, label);
-  rmSync(dir, { recursive: true, force: true });
-  cpSync(fixtureDir, dir, { recursive: true });
-  const db = join(dir, "monita.db");
-  const proc = await start(bin, db);
-  const cap: Capture = {};
-  try {
-    const index = await (await fetch(`${URL_}/`)).text();
-    const assets = { js: index.match(/\/assets\/(main-[^"]+\.js)/)?.[1] ?? "missing.js" };
-    const people: Record<string, Who> = {
-      anon: { name: "anon", headers: {} },
-      admin: { name: "admin", headers: { cookie: await login("admin@monita.test") } },
-      tl: { name: "tl", headers: { cookie: await login("tl@monita.test") } },
-      supervisor: { name: "supervisor", headers: { cookie: await login("supervisor@monita.test") } },
-      read: { name: "read", headers: { authorization: `Bearer ${ids.read_key}` } },
-      write: { name: "write", headers: { authorization: `Bearer ${ids.write_key}` } },
-    };
-    await settle(people.admin!);
-    await reads(cap, "before", Object.values(people), ids, assets);
-    await writes(cap, people, ids);
-    await settle(people.admin!);
-    await reads(cap, "after", [people.tl!, people.supervisor!, people.anon!], ids, assets);
-  } finally {
-    await stop(proc);
-  }
+type Server = { label: string; bin: string; dir: string; port: number; proc?: Bun.Subprocess; people: Record<string, Who>; cap: Capture };
+type Result = { cap: Capture; dump: Record<string, Json[]> };
+
+async function dumpOf(db: string): Promise<Record<string, Json[]>> {
   const integrity = await sql(db, "PRAGMA integrity_check;");
   const fk = await sql(db, "PRAGMA foreign_key_check;");
   const dump: Record<string, Json[]> = { _checks: [{ integrity, foreign_keys: fk }] };
@@ -383,28 +373,119 @@ async function run(label: string, bin: string, fixtureDir: string, ids: Ids): Pr
     dump[t] = rows.trim() ? JSON.parse(rows) : [];
   }
   dump._schema = (await sql(db, "SELECT type || ' ' || name FROM sqlite_schema WHERE name NOT LIKE 'sqlite_%' ORDER BY 1")).split("\n");
-  writeFileSync(join(dir, "capture.json"), JSON.stringify(cap, null, 1));
-  writeFileSync(join(dir, "dump.json"), JSON.stringify(dump, null, 1));
-  return { cap, dump };
+  return dump;
+}
+
+/** Base, new and base again, side by side, each on its own copy of the fixture. */
+async function runAll(fixtureDir: string, ids: Ids): Promise<Result[]> {
+  const servers: Server[] = [
+    ["base-1", BASE_BIN],
+    ["new", NEW_BIN],
+    ["base-2", BASE_BIN],
+  ].map(([label, bin], i) => ({ label: label!, bin: bin!, dir: join(OUT, label!), port: PORT + 1 + i, people: {}, cap: {} }));
+  try {
+    await Promise.all(
+      servers.map(async (s) => {
+        rmSync(s.dir, { recursive: true, force: true });
+        cpSync(fixtureDir, s.dir, { recursive: true });
+        s.proc = await start(s.bin, join(s.dir, "monita.db"), s.port);
+        const url = `http://127.0.0.1:${s.port}`;
+        s.people = {
+          anon: { name: "anon", url, headers: {} },
+          admin: { name: "admin", url, headers: { cookie: await login(url, "admin@monita.test") } },
+          tl: { name: "tl", url, headers: { cookie: await login(url, "tl@monita.test") } },
+          supervisor: { name: "supervisor", url, headers: { cookie: await login(url, "supervisor@monita.test") } },
+          read: { name: "read", url, headers: { authorization: `Bearer ${ids.read_key}` } },
+          write: { name: "write", url, headers: { authorization: `Bearer ${ids.write_key}` } },
+        };
+      }),
+    );
+    const index = await (await fetch(`${servers[0]!.people.anon!.url}/`)).text();
+    const assets = { js: index.match(/\/assets\/(main-[^"]+\.js)/)?.[1] ?? "missing.js" };
+    await Promise.all(servers.map((s) => settle(s.people.admin!)));
+    console.log("reading every route");
+    await reads(servers, "before", Object.keys(servers[0]!.people), ids, assets);
+    console.log("writing");
+    await Promise.all(servers.map((s) => writes(s.cap, s.people, ids)));
+    await Promise.all(servers.map((s) => settle(s.people.admin!)));
+    console.log("reading again");
+    await reads(servers, "after", ["tl", "supervisor", "anon"], ids, assets);
+  } finally {
+    await Promise.all(servers.filter((s) => s.proc).map((s) => stop(s.proc!)));
+  }
+  return Promise.all(
+    servers.map(async (s) => {
+      const dump = await dumpOf(join(s.dir, "monita.db"));
+      writeFileSync(join(s.dir, "capture.json"), JSON.stringify(s.cap, null, 1));
+      writeFileSync(join(s.dir, "dump.json"), JSON.stringify(dump, null, 1));
+      return { cap: s.cap, dump };
+    }),
+  );
 }
 
 // ---------------------------------------------------------------- compare
 
 type Finding = { where: string; base: Json; new: Json };
 
-function walk(a: Json, b: Json, c: Json, at: string, noise: string[], bad: Finding[], ignore: (p: string) => boolean): void {
+/** Monitors the write scenario creates check a closed local port, and how long a refused
+ * connection takes (0 to 12 ms) is the machine's timing, not the code's. Inside such a monitor's
+ * object or rows, these measured values and the chart geometry drawn from them are compared by
+ * type only. Every fixture monitor is compared in full. */
+const MEASURED = new Set(["latency_ms", "ms_sum", "mean_ms", "avg_latency_ms", "path", "area", "dots", "title", "y", "h"]);
+let kitMonitors = new Set<number>();
+
+/** The three servers answer the same request within milliseconds, but a second can turn between
+ * them. A Unix time within 2 s, or a chart coordinate (a fraction) within 0.5 of the 960-wide
+ * view box, is the same moment. Every other number, and every word, must match exactly. */
+const CLOCK_S = 2;
+const CHART_PX = 0.5;
+
+function sameMoment(x: Json, y: Json): boolean {
+  if (typeof x === "number" && typeof y === "number") {
+    if (x > 1e9 && x < 1e10 && y > 1e9 && y < 1e10) return Math.abs(x - y) <= CLOCK_S;
+    if (!Number.isInteger(x) || !Number.isInteger(y)) return Math.abs(x - y) <= CHART_PX;
+    return x === y;
+  }
+  if (typeof x === "string" && typeof y === "string") {
+    const num = /-?\d+(?:\.\d+)?/g;
+    if (x.replace(num, "#") !== y.replace(num, "#")) return false;
+    const xs = x.match(num) ?? [];
+    const ys = y.match(num) ?? [];
+    return xs.every((v, i) => {
+      const [p, q] = [Number(v), Number(ys[i])];
+      return v === ys[i] || ((v.includes(".") || ys[i]!.includes(".")) && Math.abs(p - q) <= CHART_PX);
+    });
+  }
+  return false;
+}
+
+function kitObject(x: Record<string, Json>): boolean {
+  return (typeof x.name === "string" && x.name.startsWith("Kit ")) || kitMonitors.has(x.monitor_id as number);
+}
+
+function walk(a: Json, b: Json, c: Json, at: string, noise: string[], bad: Finding[], ignore: (p: string) => boolean, measured = false): void {
   if (ignore(at)) return;
   const same = (x: Json, y: Json): boolean => JSON.stringify(x) === JSON.stringify(y);
   if (same(a, c) || same(b, c)) return;
   const obj = (x: Json): x is Record<string, Json> => typeof x === "object" && x !== null;
+  const kind = (x: Json): string => (x === null ? "null" : Array.isArray(x) ? "array" : typeof x);
   if (obj(a) && obj(b) && obj(c) && Array.isArray(a) === Array.isArray(c)) {
+    const inside = measured || (!Array.isArray(c) && kitObject(c));
     const keys = new Set([...Object.keys(a), ...Object.keys(c)]);
-    for (const k of keys) walk(a[k], b[k], c[k], `${at}.${k}`, noise, bad, ignore);
+    for (const k of keys) walk(a[k], b[k], c[k], `${at}.${k}`, noise, bad, ignore, inside);
+    return;
+  }
+  const key = at.slice(at.lastIndexOf(".") + 1);
+  if (measured && MEASURED.has(key) && kind(c) === kind(a)) {
+    noise.push(at);
+    return;
+  }
+  if (sameMoment(a, c) || sameMoment(b, c)) {
+    noise.push(at);
     return;
   }
   // A value that moves between two base runs (a clock, a token) is not compared, but its type
   // still is: an integer that comes back as text or null is a regression.
-  const kind = (x: Json): string => (x === null ? "null" : Array.isArray(x) ? "array" : typeof x);
   if (!same(a, b) && kind(a) === kind(c)) noise.push(at);
   else if (!same(a, b) && kind(b) === kind(c)) noise.push(at);
   else bad.push({ where: at, base: a, new: c });
@@ -419,10 +500,15 @@ const EXPECTED: ((p: string) => boolean)[] = [
   (p) => /^dump\.schema_migrations\.\d+$/.test(p),
 ];
 
-function compare(b1: { cap: Capture; dump: Record<string, Json[]> }, nw: typeof b1, b2: typeof b1): { report: string; bad: number } {
+function compare(b1: Result, nw: Result, b2: Result): { report: string; bad: number } {
   const noise: string[] = [];
   const bad: Finding[] = [];
   const ignore = (p: string): boolean => EXPECTED.some((f) => f(p));
+  kitMonitors = new Set(
+    Object.entries(nw.cap)
+      .filter(([k]) => /^W\d+ POST \S+ \/api\/(ui|v1)\/projects\/[^/]+\/monitors$/.test(k))
+      .map(([, v]) => (v.body as { data?: { id?: number } }).data?.id ?? -1),
+  );
   walk(b1.cap, b2.cap, nw.cap, "capture", noise, bad, ignore);
   walk(b1.dump, b2.dump, nw.dump, "dump", noise, bad, ignore);
   const reqs = Object.keys(nw.cap).filter((k) => !k.startsWith("SKIP"));
@@ -458,7 +544,7 @@ function compare(b1: { cap: Capture; dump: Record<string, Json[]> }, nw: typeof 
 
 // --compare-only reads the three runs already in --out: it tests the comparison itself, for
 // example after planting a wrong value in new/capture.json (README.md).
-const load = (label: string): { cap: Capture; dump: Record<string, Json[]> } => ({
+const load = (label: string): Result => ({
   cap: JSON.parse(readFileSync(join(OUT, label, "capture.json"), "utf8")),
   dump: JSON.parse(readFileSync(join(OUT, label, "dump.json"), "utf8")),
 });
@@ -470,12 +556,7 @@ if (args["compare-only"]) {
   const fixtureDir = join(OUT, "fixture");
   console.log(`fixture from ${BASE_BIN}`);
   const ids = await fixture(fixtureDir);
-  console.log("run 1: base");
-  b1 = await run("base-1", BASE_BIN, fixtureDir, ids);
-  console.log("run 2: new");
-  nw = await run("new", NEW_BIN, fixtureDir, ids);
-  console.log("run 3: base");
-  b2 = await run("base-2", BASE_BIN, fixtureDir, ids);
+  [b1, nw, b2] = await runAll(fixtureDir, ids);
 }
 const { report, bad } = compare(b1, nw, b2);
 writeFileSync(join(OUT, "report.md"), report);
