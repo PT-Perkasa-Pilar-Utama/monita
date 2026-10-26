@@ -117,3 +117,25 @@ pub async fn projects_of(
     }
     Ok(out)
 }
+
+/// Every monitor and heartbeat of the project as (kind, id), at most `caps::SOURCES_PER_PROJECT`.
+pub async fn source_keys(
+    c: &Connection,
+    project_id: i64,
+) -> anyhow::Result<std::collections::HashSet<(crate::incidents::SourceKind, i64)>> {
+    use crate::incidents::SourceKind;
+    let mut rows = c
+        .query(
+            "SELECT 'monitor', id FROM monitors WHERE project_id = ?1
+             UNION ALL SELECT 'heartbeat', id FROM heartbeats WHERE project_id = ?1 LIMIT ?2",
+            (project_id, crate::platform::caps::SOURCES_PER_PROJECT),
+        )
+        .await?;
+    let mut out = std::collections::HashSet::new();
+    while let Some(r) = rows.next().await? {
+        if let Some(kind) = SourceKind::parse(&r.get::<String>(0)?) {
+            out.insert((kind, r.get(1)?));
+        }
+    }
+    Ok(out)
+}

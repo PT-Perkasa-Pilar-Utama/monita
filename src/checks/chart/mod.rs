@@ -118,6 +118,8 @@ pub struct Chart {
     pub dots: Vec<(f64, f64)>,
     pub up: Vec<Mark>,
     pub down: Vec<Mark>,
+    /// Maintenance windows over the source, where a failure counts as held, not failed.
+    pub held: Vec<Mark>,
     pub fails: Vec<Mark>,
     pub oks: Vec<Mark>,
     pub hovers: Vec<Mark>,
@@ -198,6 +200,7 @@ fn blank(range: Range, w: &Window) -> Chart {
         dots: Vec::new(),
         up: Vec::new(),
         down: Vec::new(),
+        held: Vec::new(),
         fails: Vec::new(),
         oks: Vec::new(),
         hovers: Vec::new(),
@@ -343,6 +346,7 @@ pub fn pings(
 
 mod marks;
 pub mod overview;
+pub use marks::held;
 use marks::{bands, hovers, plural};
 
 #[cfg(test)]

@@ -140,7 +140,15 @@ pub async fn post_results(
                 error: r.error.as_deref().map(|e| cut(e, 1024)),
                 cert_expires_at: None,
             };
-            store::insert_check(c, r.monitor_id, Some(location_id), &result).await?;
+            let held = crate::maintenance::covers(
+                c,
+                crate::incidents::SourceKind::Monitor,
+                r.monitor_id,
+                result.checked_at,
+            )
+            .await?
+            .is_some();
+            store::insert_check(c, r.monitor_id, Some(location_id), &result, held).await?;
             stored += 1;
         }
         store::locations::touch(c, location_id, t).await?;
@@ -159,7 +167,15 @@ pub async fn record_local(
     result: &CheckResult,
 ) -> anyhow::Result<()> {
     db.write(async |c| {
-        store::insert_check(c, monitor.id, None, result).await?;
+        let held = crate::maintenance::covers(
+            c,
+            crate::incidents::SourceKind::Monitor,
+            monitor.id,
+            result.checked_at,
+        )
+        .await?
+        .is_some();
+        store::insert_check(c, monitor.id, None, result, held).await?;
         let signal = signal(c, monitor, result).await?;
         if let Some(ev) =
             crate::incidents::observe(c, &monitor.source(), &signal, result.checked_at).await?

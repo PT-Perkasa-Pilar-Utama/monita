@@ -41,9 +41,11 @@ pub async fn monitor(
         id: m.id,
     };
     let down = history::spans(&c, item, w.from, w.end(), now).await?;
+    let windows = crate::maintenance::spans(&c, SourceKind::Monitor, m.id, w.from, w.end()).await?;
     // Bridge the empty buckets between two checks; break where checks stopped.
     let max_gap = (m.interval_s / w.step).max(1) as usize + 1;
-    let chart = chart::latency(range, &w, &buckets, max_gap, m.created_at, now, &down);
+    let mut chart = chart::latency(range, &w, &buckets, max_gap, m.created_at, now, &down);
+    chart.held = chart::held(&w, now, &windows);
     Ok(series(chart, range, &buckets))
 }
 
@@ -65,7 +67,10 @@ pub async fn heartbeat(
         id: hb.id,
     };
     let down = history::spans(&c, item, w.from, w.end(), now).await?;
-    let chart = chart::pings(range, &w, &buckets, hb.created_at, now, &down);
+    let windows =
+        crate::maintenance::spans(&c, SourceKind::Heartbeat, hb.id, w.from, w.end()).await?;
+    let mut chart = chart::pings(range, &w, &buckets, hb.created_at, now, &down);
+    chart.held = chart::held(&w, now, &windows);
     Ok(series(chart, range, &buckets))
 }
 
@@ -249,9 +254,15 @@ pub async fn projects(
                 p.1 += b.ok;
             }
         }
+        // A deleted monitor's or heartbeat's incidents stay in the list but leave the chart.
+        let live: std::collections::HashSet<(SourceKind, i64)> = monitors
+            .iter()
+            .map(|m| (SourceKind::Monitor, m.id))
+            .chain(beats.iter().map(|h| (SourceKind::Heartbeat, h.id)))
+            .collect();
         let down_of = |kind| {
             down.iter()
-                .filter(|((k, _), _)| *k == kind)
+                .filter(|(key, _)| key.0 == kind && live.contains(key))
                 .flat_map(|(_, spans)| spans.iter().copied())
                 .collect::<Vec<(i64, i64)>>()
         };
@@ -304,4 +315,13 @@ pub async fn projects(
         });
     }
     Ok(overview(&w, series, lanes))
+}
+
+/// The project's monitors and heartbeats that exist now, so a chart can drop a deleted one's
+/// incidents.
+pub async fn source_keys(
+    db: &Db,
+    project_id: i64,
+) -> anyhow::Result<std::collections::HashSet<(crate::incidents::SourceKind, i64)>> {
+    super::store::source_keys(&db.read().await?, project_id).await
 }

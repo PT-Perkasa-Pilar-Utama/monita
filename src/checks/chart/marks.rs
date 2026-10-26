@@ -38,6 +38,24 @@ pub(super) fn bands(
     (ups, downs)
 }
 
+/// One band per maintenance window over the source, clipped to the chart and to `now`.
+pub fn held(w: &Window, now: i64, windows: &[(i64, i64, String)]) -> Vec<Mark> {
+    let end = now.min(w.end());
+    windows
+        .iter()
+        .map(|(s, e, title)| ((*s).max(w.from), (*e).min(end), title))
+        .filter(|(s, e, _)| s < e)
+        .map(|(s, e, title)| {
+            band(
+                w,
+                s,
+                e,
+                &format!("Maintenance: {title}, {}", time::duration(e - s)),
+            )
+        })
+        .collect()
+}
+
 fn band(w: &Window, s: i64, e: i64, title: &str) -> Mark {
     let x = x_of(w, s);
     Mark {

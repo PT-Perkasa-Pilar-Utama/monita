@@ -26,7 +26,7 @@ pub async fn check_counts(
 ) -> anyhow::Result<(i64, i64, Option<i64>)> {
     let mut rows = c
         .query(
-            "SELECT count(*), coalesce(sum(ok), 0), CAST(avg(latency_ms) AS INTEGER) FROM check_results WHERE monitor_id = ?1 AND location_id IS NULL AND checked_at >= ?2 AND checked_at < ?3",
+            "SELECT count(*), coalesce(sum(ok OR in_window), 0), CAST(avg(latency_ms) AS INTEGER) FROM check_results WHERE monitor_id = ?1 AND location_id IS NULL AND checked_at >= ?2 AND checked_at < ?3",
             (id, day, day + 86_400),
         )
         .await?;
@@ -45,7 +45,7 @@ pub async fn ping_counts(
 ) -> anyhow::Result<(i64, i64, Option<i64>)> {
     let mut rows = c
         .query(
-            "SELECT count(*), coalesce(sum(kind = 'ok'), 0) FROM pings WHERE heartbeat_id = ?1 AND received_at >= ?2 AND received_at < ?3",
+            "SELECT count(*), coalesce(sum(kind = 'ok' OR in_window), 0) FROM pings WHERE heartbeat_id = ?1 AND received_at >= ?2 AND received_at < ?3",
             (id, day, day + 86_400),
         )
         .await?;

@@ -205,6 +205,8 @@ export type Chart = {
   dots: [number, number][];
   up: Mark[];
   down: Mark[];
+  /** Maintenance windows over the source: a failure there counts as held, not failed. */
+  held: Mark[];
   fails: Mark[];
   oks: Mark[];
   hovers: Mark[];

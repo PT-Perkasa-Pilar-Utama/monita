@@ -65,9 +65,17 @@ function ChartSvg({ chart, title, range }: { chart: Chart; title: string; range:
           <stop offset="0" className="[stop-color:var(--primary)] [stop-opacity:0.38]" />
           <stop offset="1" className="[stop-color:var(--primary)] [stop-opacity:0]" />
         </linearGradient>
+        <pattern id="chart-held" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+          <rect width="5" height="10" className="fill-neutral-strong/25" />
+        </pattern>
       </defs>
       {chart.up.map(rect("fill-up/10"))}
       {chart.down.map(rect("fill-down/20"))}
+      {chart.held.map((m, i) => (
+        <rect key={`held${i}`} x={f(m.x)} y={f(m.y)} width={f(m.w)} height={f(m.h)} fill="url(#chart-held)">
+          <title>{m.title}</title>
+        </rect>
+      ))}
       {chart.y_ticks.map((t) => (
         <g key={`y${t.label}`}>
           <line x1={56} x2={952} y1={f(t.at)} y2={f(t.at)} className="stroke-border [stroke-dasharray:2_4]" />

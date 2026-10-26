@@ -16,7 +16,7 @@ pub async fn check_buckets(
     let until = from + step * buckets as i64;
     crate::platform::db::query_all(
         c,
-        "SELECT (checked_at - ?2) / ?3 AS b, count(*), sum(ok), CAST(avg(latency_ms) AS INTEGER) FROM check_results
+        "SELECT (checked_at - ?2) / ?3 AS b, count(*), sum(ok OR in_window), CAST(avg(latency_ms) AS INTEGER) FROM check_results
          WHERE monitor_id = ?1 AND location_id IS NULL AND checked_at >= ?2 AND checked_at < ?4 GROUP BY b ORDER BY b LIMIT ?5",
         (monitor_id, from, step, until, buckets as i64),
         |r| {
@@ -42,7 +42,7 @@ pub async fn ping_buckets(
     let until = from + step * buckets as i64;
     crate::platform::db::query_all(
         c,
-        "SELECT (received_at - ?2) / ?3 AS b, count(*), sum(kind = 'ok') FROM pings
+        "SELECT (received_at - ?2) / ?3 AS b, count(*), sum(kind = 'ok' OR in_window) FROM pings
          WHERE heartbeat_id = ?1 AND received_at >= ?2 AND received_at < ?4 GROUP BY b ORDER BY b LIMIT ?5",
         (heartbeat_id, from, step, until, buckets as i64),
         |r| {
@@ -100,7 +100,7 @@ pub async fn project_buckets(
     for id in ids {
         let rows = crate::platform::db::query_all(
             c,
-            "SELECT (checked_at - ?2) / ?3 AS b, count(*), sum(ok), CAST(avg(latency_ms) AS INTEGER)
+            "SELECT (checked_at - ?2) / ?3 AS b, count(*), sum(ok OR in_window), CAST(avg(latency_ms) AS INTEGER)
              FROM check_results
              WHERE monitor_id = ?1 AND checked_at >= ?2 AND checked_at < ?4 AND location_id IS NULL
              GROUP BY b ORDER BY b LIMIT ?5",

@@ -141,6 +141,7 @@ const MIGRATIONS: &[(i64, &str)] = &[
         44,
         include_str!("../../../migrations/0044_incident_class.sql"),
     ),
+    (45, include_str!("../../../migrations/0045_in_window.sql")),
 ];
 
 pub async fn run(db: &Db) -> anyhow::Result<()> {

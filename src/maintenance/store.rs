@@ -186,3 +186,27 @@ pub async fn covers(
     )
     .await
 }
+
+/// (starts_at, ends_at, title) of the windows over one source that overlap `[from, to)`, oldest
+/// first, at most `caps::SPANS`.
+pub async fn spans(
+    c: &Connection,
+    kind: SourceKind,
+    id: i64,
+    from: i64,
+    to: i64,
+) -> anyhow::Result<Vec<(i64, i64, String)>> {
+    let mut rows = c
+        .query(
+            "SELECT w.starts_at, w.ends_at, w.title FROM maintenance_items i JOIN maintenance_windows w ON w.id = i.window_id
+             WHERE i.source_kind = ?1 AND i.source_id = ?2 AND w.starts_at < ?4 AND w.ends_at > ?3
+             ORDER BY w.starts_at LIMIT ?5",
+            (kind.as_str(), id, from, to, crate::platform::caps::SPANS),
+        )
+        .await?;
+    let mut out = Vec::new();
+    while let Some(r) = rows.next().await? {
+        out.push((r.get(0)?, r.get(1)?, r.get(2)?));
+    }
+    Ok(out)
+}

@@ -16,16 +16,17 @@ pub struct CheckRow {
     pub place: Option<String>,
 }
 
-/// `location_id` None: this server ran it.
+/// `location_id` None: this server ran it. `in_window`: an active maintenance window covered it.
 pub async fn insert_check(
     c: &Connection,
     monitor_id: i64,
     location_id: Option<i64>,
     r: &CheckResult,
+    in_window: bool,
 ) -> anyhow::Result<()> {
     c.execute(
-        "INSERT INTO check_results (monitor_id, checked_at, ok, status_code, latency_ms, error, location_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
-        (monitor_id, r.checked_at, r.ok, r.status_code.map(i64::from), r.latency_ms, r.error.clone(), location_id),
+        "INSERT INTO check_results (monitor_id, checked_at, ok, status_code, latency_ms, error, location_id, in_window) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        (monitor_id, r.checked_at, r.ok, r.status_code.map(i64::from), r.latency_ms, r.error.clone(), location_id, in_window),
     )
     .await?;
     Ok(())

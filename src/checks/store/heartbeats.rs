@@ -169,14 +169,15 @@ pub async fn insert_ping(
     source_ip: Option<&str>,
     cause: Option<&str>,
     at: i64,
+    in_window: bool,
 ) -> anyhow::Result<()> {
     let kind_str = match kind {
         PingKind::Ok => "ok",
         PingKind::Fail => "fail",
     };
     c.execute(
-        "INSERT INTO pings (heartbeat_id, received_at, kind, source_ip, cause) VALUES (?1, ?2, ?3, ?4, ?5)",
-        (id, at, kind_str, source_ip, cause),
+        "INSERT INTO pings (heartbeat_id, received_at, kind, source_ip, cause, in_window) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        (id, at, kind_str, source_ip, cause, in_window),
     )
     .await?;
     if kind == PingKind::Ok {

@@ -322,7 +322,19 @@ pub async fn record(
         let Some(hb) = store::find_by_token(c, &token).await? else {
             return Ok(false);
         };
-        store::insert_ping(c, hb.id, kind, source_ip.as_deref(), cause.as_deref(), t).await?;
+        let held = crate::maintenance::covers(c, incidents::SourceKind::Heartbeat, hb.id, t)
+            .await?
+            .is_some();
+        store::insert_ping(
+            c,
+            hb.id,
+            kind,
+            source_ip.as_deref(),
+            cause.as_deref(),
+            t,
+            held,
+        )
+        .await?;
         // Paused (v1.1 Q38): the ping is kept, but it opens and closes nothing.
         if hb.paused_at.is_some() {
             return Ok(true);

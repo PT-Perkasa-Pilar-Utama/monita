@@ -75,11 +75,14 @@ pub async fn pulse(db: &Db, project_id: i64) -> anyhow::Result<Pulse> {
     let t = now();
     let off = crate::platform::settings::utc_offset(&db.read().await?).await?;
     let [monitors, heartbeats] = crate::checks::summaries(db, project_id).await?;
+    // A deleted monitor's or heartbeat's incidents stay in the list but leave the bars.
+    let live = crate::checks::series::source_keys(db, project_id).await?;
     let spans: Vec<(i64, i64)> =
         crate::incidents::history::intervals(db, project_id, t - HOURS * 3600, t)
             .await?
-            .into_values()
-            .flatten()
+            .into_iter()
+            .filter(|(k, _)| live.contains(k))
+            .flat_map(|(_, s)| s)
             .collect();
     Ok(Pulse {
         kind: worse(monitors.kind, heartbeats.kind),

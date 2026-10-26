@@ -221,6 +221,17 @@ pub async fn covering(
         .max_by_key(|w| w.ends_at))
 }
 
+/// The windows over one source in `[from, to)`, for its chart: (starts_at, ends_at, title).
+pub async fn spans(
+    c: &Connection,
+    kind: SourceKind,
+    id: i64,
+    from: i64,
+    to: i64,
+) -> anyhow::Result<Vec<(i64, i64, String)>> {
+    store::spans(c, kind, id, from, to).await
+}
+
 /// The project's active windows with their items, at most `caps::OPEN_WINDOWS_PER_PROJECT`.
 pub async fn active(c: &Connection, project_id: i64, at: i64) -> anyhow::Result<Vec<Window>> {
     store::active(c, project_id, at).await
