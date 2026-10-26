@@ -1,3 +1,4 @@
+import { MaintenanceGuide } from "@/components/app/Guides";
 import { PausedNow } from "@/components/app/PausedNow";
 import { useState } from "react";
 import type { FormEvent, ReactElement } from "react";
@@ -190,6 +191,7 @@ export function Maintenance({ creating = false }: { creating?: boolean }): React
         title="Maintenance"
         actions={
           <>
+            <MaintenanceGuide />
             <Writable>
               <Button asChild>
                 <Link to={`${here}/new`}>

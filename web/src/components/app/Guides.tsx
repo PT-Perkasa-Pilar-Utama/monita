@@ -149,3 +149,38 @@ export function IncidentGuide(): ReactElement {
     />
   );
 }
+
+export function MaintenanceGuide(): ReactElement {
+  return (
+    <GuideSheet
+      label="How maintenance works"
+      title="How maintenance works"
+      steps={[
+        "Plan a window with a start, an end and the monitors and heartbeats the work touches, in your own time, and it reads Scheduled until it starts, Active while it runs and Ended after.",
+        "While a window is active Monita still checks its items, but a failure opens no incident and sends no alert, and it counts as held, so it leaves no red marks or downtime in the charts.",
+        "A heartbeat that misses its deadline or reports a failure inside a window waits until the window ends, and opens an incident then only if it is still failing.",
+        "The status page shows the items as Maintenance, with the message you write for visitors.",
+        "End now finishes an active window early, and Delete removes one that has not started.",
+        "Pause is different: a paused monitor or heartbeat is not watched at all until you resume it, and this page lists everything paused below the windows.",
+      ]}
+      note="If an outage was planned work after all, open the incident and reclassify it as planned work, so it leaves uptime and the status page."
+    />
+  );
+}
+
+export function ChangelogGuide(): ReactElement {
+  return (
+    <GuideSheet
+      label="How the changelog works"
+      title="How the changelog works"
+      steps={[
+        "Each release has a version such as 1.4.0, a date, a title and its changes, sorted into Added, Changed, Fixed and Removed, one change per line.",
+        "A version is unique in the project, and latest is not allowed because the public address uses it for the newest release.",
+        "Select a release to edit it, and a change or a delete shows on the public page at once.",
+        "Visitors read the releases on the Changelog tab of the status page, one at a time with the newest first, and each release has its own address.",
+        "Turn the public Changelog tab on or off in Settings, Status page.",
+      ]}
+      note="Write the changes for the people who use the product, because the status page shows them as written."
+    />
+  );
+}

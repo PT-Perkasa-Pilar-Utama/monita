@@ -1,3 +1,4 @@
+import { ChangelogGuide } from "@/components/app/Guides";
 import { useState } from "react";
 import { Writable } from "@/lib/session";
 import type { FormEvent, ReactElement } from "react";
@@ -80,12 +81,15 @@ export function Changelog(): ReactElement {
         title="Changelog"
         filtered={q.filtered}
         actions={
+          <>
+          <ChangelogGuide />
           <Writable>
             <Button onClick={() => open("new")}>
               <Plus data-icon="inline-start" />
               New release
             </Button>
           </Writable>
+          </>
         }
       />
       <div className="flex flex-col gap-6 pb-4">
