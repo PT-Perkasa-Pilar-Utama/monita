@@ -1,12 +1,13 @@
 import { useState } from "react";
 import type { PointerEvent, ReactElement } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { columnAt } from "@/lib/chart";
 import type { OverviewChart as ChartData } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const SERIES = ["stroke-series-1", "stroke-series-2", "stroke-series-3", "stroke-series-4", "stroke-series-5"];
 const SWATCH = ["bg-series-1", "bg-series-2", "bg-series-3", "bg-series-4", "bg-series-5"];
+const SWATCH_FILL = ["fill-series-1", "fill-series-2", "fill-series-3", "fill-series-4", "fill-series-5"];
 const WIDTH = 1000;
 const f = (n: number): string => n.toFixed(1);
 
@@ -17,7 +18,20 @@ const toneText = { ok: "", fail: "text-down", none: "text-muted-foreground" } as
  * lines on a log scale, the other monitors as faint lines behind them, red where a monitor was down, and a
  * lane of ping marks per heartbeat under it. A line, a lane or a legend entry opens its page.
  */
-export function OverviewChart({ base, chart, monitorsTotal }: { base: string; chart: ChartData; monitorsTotal: number }): ReactElement {
+/** What a chart's series link to and are called: a project's monitors and heartbeats, or projects. */
+export type ChartLinks = {
+  line: (id: number) => string;
+  lane: (id: number) => string;
+  others: string;
+  /** "monitor" or "project", for "45 other monitors". */
+  noun: string;
+  /** Shown in the plot when there are no lines. */
+  empty: string;
+};
+
+const short = (name: string, n: number): string => (name.length > n ? `${name.slice(0, n - 1)}…` : name);
+
+export function OverviewChart({ chart, links }: { chart: ChartData; links: ChartLinks }): ReactElement {
   const navigate = useNavigate();
   const [x, setX] = useState<number | null>(null);
   const [focus, setFocus] = useState<number | null>(null);
@@ -66,12 +80,46 @@ export function OverviewChart({ base, chart, monitorsTotal }: { base: string; ch
                 vectorEffect="non-scaling-stroke"
                 onPointerEnter={() => setFaint(o.id)}
                 onPointerLeave={() => setFaint(null)}
-                onClick={() => navigate(`${base}/monitors/${o.id}`)}
+                onClick={() => navigate(links.line(o.id))}
               >
                 <title>{o.name}</title>
               </path>
             </g>
           ))}
+          {/* The lines' legend fills the column left of the plot, where the lanes' names sit below. */}
+          {chart.lines.map((l, i) => {
+            const y = top + 14 + i * 40;
+            return (
+              <g
+                key={`k${l.id}`}
+                className="cursor-pointer"
+                onPointerEnter={() => setFocus(i)}
+                onPointerLeave={() => setFocus(null)}
+                onClick={() => navigate(links.line(l.id))}
+              >
+                <title>{l.name}</title>
+                <rect x={8} y={y - 4} width={14} height={3} rx={1.5} className={SWATCH_FILL[i]} />
+                <text x={28} y={y} dominantBaseline="middle" className={cn("fill-foreground text-[13px] font-medium", focus === i && "underline")}>
+                  {short(l.name, 17)}
+                </text>
+                <text x={28} y={y + 17} dominantBaseline="middle" className="fill-muted-foreground font-mono text-[11px]">
+                  {l.mean_ms === null ? "no check" : `${l.mean_ms} ms`}
+                  {l.failed > 0 && <tspan className="fill-down">{`, ${l.failed} failed`}</tspan>}
+                </text>
+              </g>
+            );
+          })}
+          {chart.others.length > 0 && (
+            <text
+              x={8}
+              y={f(top + 14 + chart.lines.length * 40)}
+              dominantBaseline="middle"
+              className="cursor-pointer fill-muted-foreground text-[12px] hover:underline"
+              onClick={() => navigate(links.others)}
+            >
+              {faint !== null ? short(chart.others.find((o) => o.id === faint)?.name ?? "", 20) : `${chart.others.length} other ${links.noun}${chart.others.length === 1 ? "" : "s"}`}
+            </text>
+          )}
           {chart.lines.map((l, i) => (
             <g key={l.id} className={cn("transition-opacity", focus !== null && focus !== i && "opacity-20")}>
               <path d={l.path} className={cn("fill-none [stroke-linecap:round] [stroke-linejoin:round]", SERIES[i])} strokeWidth={1.8} vectorEffect="non-scaling-stroke" />
@@ -83,7 +131,7 @@ export function OverviewChart({ base, chart, monitorsTotal }: { base: string; ch
                 vectorEffect="non-scaling-stroke"
                 onPointerEnter={() => setFocus(i)}
                 onPointerLeave={() => setFocus(null)}
-                onClick={() => navigate(`${base}/monitors/${l.id}`)}
+                onClick={() => navigate(links.line(l.id))}
               >
                 <title>{l.name}</title>
               </path>
@@ -91,7 +139,7 @@ export function OverviewChart({ base, chart, monitorsTotal }: { base: string; ch
           ))}
           {empty && (
             <text x={(left + right) / 2} y={(top + bottom) / 2} textAnchor="middle" className="fill-muted-foreground text-[13px]">
-              {monitorsTotal === 0 ? "No monitor yet" : "No check in the last 24 hours"}
+              {links.empty}
             </text>
           )}
           {chart.lanes.map((lane) => (
@@ -102,7 +150,7 @@ export function OverviewChart({ base, chart, monitorsTotal }: { base: string; ch
                 y={f(lane.y + 12)}
                 dominantBaseline="middle"
                 className={cn("text-[13px]", lane.id === null ? "fill-muted-foreground" : "cursor-pointer fill-foreground hover:underline")}
-                onClick={lane.id === null ? undefined : () => navigate(`${base}/heartbeats/${lane.id}`)}
+                onClick={lane.id === null ? undefined : () => navigate(links.lane(lane.id!))}
               >
                 {lane.name}
               </text>
@@ -150,25 +198,6 @@ export function OverviewChart({ base, chart, monitorsTotal }: { base: string; ch
         )}
       </div>
       <ul className="flex flex-wrap gap-x-5 gap-y-2 text-xs">
-        {chart.lines.map((l, i) => (
-          <li key={l.id} onPointerEnter={() => setFocus(i)} onPointerLeave={() => setFocus(null)}>
-            <Link to={`${base}/monitors/${l.id}`} className="inline-flex items-center gap-1.5 hover:underline">
-              <i className={cn("inline-block h-0.5 w-3", SWATCH[i])} />
-              <span className="font-medium">{l.name}</span>
-              <span className="font-mono text-muted-foreground">{l.mean_ms === null ? "no check" : `${l.mean_ms} ms`}</span>
-              {l.failed > 0 && <span className="text-down">{l.failed} failed</span>}
-            </Link>
-          </li>
-        ))}
-        {chart.others.length > 0 && (
-          <li className="inline-flex items-center gap-1.5 text-muted-foreground">
-            <i className="inline-block h-0.5 w-3 bg-muted-foreground/40" />
-            <Link to={`${base}/monitors`} className="hover:underline">
-              {chart.others.length} other {chart.others.length === 1 ? "monitor" : "monitors"}
-            </Link>
-          </li>
-        )}
-        {faint !== null && <li className="font-medium">{chart.others.find((o) => o.id === faint)?.name}</li>}
         {chart.down.length > 0 && (
           <li className="inline-flex items-center gap-1.5 text-muted-foreground">
             <i className="inline-block size-2.5 rounded-xs bg-down/25" />

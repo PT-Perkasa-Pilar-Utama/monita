@@ -68,7 +68,16 @@ export function Overview(): ReactElement {
               </div>
               <RefreshButton onClick={o.refresh} busy={o.refreshing} />
             </div>
-            {!d ? <Skeleton className="h-72 rounded-lg" /> : <OverviewChart base={base} chart={d.chart} monitorsTotal={d.monitors.total} />}
+            {!d ? <Skeleton className="h-72 rounded-lg" /> : <OverviewChart
+                chart={d.chart}
+                links={{
+                  line: (id) => `${base}/monitors/${id}`,
+                  lane: (id) => `${base}/heartbeats/${id}`,
+                  others: `${base}/monitors`,
+                  noun: "monitor",
+                  empty: d.monitors.total === 0 ? "No monitor yet" : "No check in the last 24 hours",
+                }}
+              />}
           </Card>
           <TableCard
             title="Open incidents"

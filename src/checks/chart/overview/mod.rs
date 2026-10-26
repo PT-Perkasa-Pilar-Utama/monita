@@ -13,7 +13,7 @@ pub const LINES: usize = 5;
 pub const LANES: usize = 6;
 
 /// The view box: 1000 wide. Names and y labels sit left of the plot.
-const PL: f64 = 170.0;
+const PL: f64 = 200.0;
 const PR: f64 = 990.0;
 const PT: f64 = 10.0;
 const PB: f64 = 250.0;
@@ -129,7 +129,7 @@ fn x_at(w: &Window, t: i64) -> f64 {
     PL + (PR - PL) * ((t - w.from) as f64 / span).clamp(0.0, 1.0)
 }
 
-fn slot(w: &Window, i: usize) -> (f64, f64) {
+pub(super) fn slot(w: &Window, i: usize) -> (f64, f64) {
     let x = x_at(w, w.from + i as i64 * w.step);
     (x, x_at(w, w.from + (i as i64 + 1) * w.step) - x)
 }
@@ -211,7 +211,7 @@ fn ms(v: i64) -> String {
     }
 }
 
-fn short(name: &str) -> String {
+pub(super) fn short(name: &str) -> String {
     let mut s: String = name.chars().take(22).collect();
     if name.chars().count() > 22 {
         s.push('…');
@@ -312,7 +312,7 @@ fn line(w: &Window, m: &MonitorSeries, y: &impl Fn(i64) -> f64) -> Line {
     }
 }
 
-fn down_rect(w: &Window, s: i64, e: i64, top: f64, h: f64, name: &str) -> Rect {
+pub(super) fn down_rect(w: &Window, s: i64, e: i64, top: f64, h: f64, name: &str) -> Rect {
     let x = x_at(w, s.max(w.from));
     Rect {
         x,
@@ -324,145 +324,10 @@ fn down_rect(w: &Window, s: i64, e: i64, top: f64, h: f64, name: &str) -> Rect {
     }
 }
 
-fn lanes(w: &Window, mut beats: Vec<BeatSeries>) -> Vec<Lane> {
-    let rest = beats.split_off(beats.len().min(LANES));
-    let mut out: Vec<Lane> = beats
-        .iter()
-        .enumerate()
-        .map(|(n, b)| lane(w, n, Some(b.id), short(&b.name), b.state, &[b]))
-        .collect();
-    if !rest.is_empty() {
-        let refs: Vec<&BeatSeries> = rest.iter().collect();
-        let state = rest
-            .iter()
-            .map(|b| b.state)
-            .min_by_key(|s| rank(s))
-            .unwrap_or("up");
-        out.push(lane(
-            w,
-            out.len(),
-            None,
-            format!("{} more", rest.len()),
-            state,
-            &refs,
-        ));
-    }
-    out
-}
-
-fn lane(
-    w: &Window,
-    n: usize,
-    id: Option<i64>,
-    name: String,
-    state: &'static str,
-    beats: &[&BeatSeries],
-) -> Lane {
-    let top = LANE_TOP + LANE_H * n as f64;
-    let mut marks = Vec::new();
-    let mut slots = Vec::new();
-    for b in beats {
-        for &(s, e) in &b.down {
-            let mut r = down_rect(w, s, e, top + 3.0, LANE_H - 6.0, &b.name);
-            r.title = format!("{} missed or failed for {}", b.name, time::duration(e - s));
-            marks.push(r);
-        }
-    }
-    for i in 0..w.buckets {
-        let (ok, total) = beats
-            .iter()
-            .filter_map(|b| b.buckets.iter().find(|x| x.index == i))
-            .fold((0, 0), |(o, t), x| (o + x.ok, t + x.total));
-        if total == 0 {
-            continue;
-        }
-        let (x, bw) = slot(w, i);
-        let size = 8.0f64.min(bw - 1.0).max(3.0);
-        let failed = total - ok;
-        let text = if failed > 0 {
-            format!("{failed} failed of {total} pings")
-        } else {
-            format!("{total} ok")
-        };
-        slots.push((i, if failed > 0 { "fail" } else { "ok" }, text.clone()));
-        marks.push(Rect {
-            x: x + (bw - size) / 2.0,
-            w: size,
-            y: top + (LANE_H - size) / 2.0,
-            h: size,
-            tone: if failed > 0 { "fail" } else { "ok" },
-            title: format!("{name}: {text}"),
-        });
-    }
-    Lane {
-        id,
-        name,
-        state,
-        y: top,
-        marks,
-        slots,
-    }
-}
-
-fn columns(
-    w: &Window,
-    shown: &[MonitorSeries],
-    others: &[MonitorSeries],
-    lanes: &[Lane],
-) -> Vec<Column> {
-    (0..w.buckets)
-        .map(|i| {
-            let (x, bw) = slot(w, i);
-            let start = w.from + i as i64 * w.step;
-            let mut rows = Vec::new();
-            for m in shown {
-                let b = m.buckets.iter().find(|b| b.index == i);
-                let (text, tone) = match b {
-                    Some(b) if b.ok < b.total => {
-                        (format!("{} of {} failed", b.total - b.ok, b.total), "fail")
-                    }
-                    Some(Bucket {
-                        avg_ms: Some(v), ..
-                    }) => (format!("{v} ms"), "ok"),
-                    _ => ("no check".to_string(), "none"),
-                };
-                rows.push((m.name.clone(), text, tone));
-            }
-            let vals: Vec<i64> = others
-                .iter()
-                .filter_map(|m| {
-                    m.buckets
-                        .iter()
-                        .find(|b| b.index == i)
-                        .and_then(|b| b.avg_ms)
-                })
-                .collect();
-            if let (Some(lo), Some(hi)) = (vals.iter().min(), vals.iter().max()) {
-                rows.push((
-                    format!("{} other monitors", others.len()),
-                    format!("{lo} to {hi} ms"),
-                    "ok",
-                ));
-            }
-            for l in lanes {
-                if let Some((_, tone, text)) = l.slots.iter().find(|(at, _, _)| *at == i) {
-                    rows.push((l.name.clone(), text.clone(), tone));
-                }
-            }
-            Column {
-                x,
-                w: bw,
-                label: format!(
-                    "{} to {}",
-                    &time::local(start, w.off)[11..16],
-                    &time::local(start + w.step, w.off)[11..16]
-                ),
-                rows,
-            }
-        })
-        .collect()
-}
+mod columns;
+mod lanes;
+use columns::columns;
+use lanes::lanes;
 
 #[cfg(test)]
-#[path = "overview_tests.rs"]
 mod tests;
