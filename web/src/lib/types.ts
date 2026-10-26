@@ -254,6 +254,8 @@ export type MonitorDetail = {
   location_ids: number[];
   /** Each place's newest result, this server first; empty without locations. */
   places: PlaceView[];
+  /** The active maintenance window over it, or null. */
+  maintenance: MaintenanceRef | null;
 };
 
 export type LocationRow = { id: number; name: string; token_prefix: string; last_seen_at: number | null; monitors: number; created_at: number };
@@ -296,6 +298,8 @@ export type HeartbeatDetail = {
   insight: Insight;
   pings: PingRow[];
   older: string | null;
+  /** The active maintenance window over it, or null. */
+  maintenance: MaintenanceRef | null;
 };
 
 export type Choice = { value: number; label: string };
@@ -482,3 +486,6 @@ export type ReleaseHead = { version: string; title: string; released_on: string 
 export type PublicReleaseIndex = { releases: ReleaseHead[]; older: string | null };
 
 export type PublicRelease = { release: Omit<Release, "id">; newer: ReleaseHead | null; older: ReleaseHead | null };
+
+/** The active maintenance window over a monitor or heartbeat. */
+export type MaintenanceRef = { id: number; title: string; ends_at: number };

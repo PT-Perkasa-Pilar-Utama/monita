@@ -1,4 +1,4 @@
-import type { MouseEvent, ReactElement, ReactNode } from "react";
+import type { CSSProperties, MouseEvent, ReactElement, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
@@ -10,7 +10,7 @@ const OWN_CLICK = "a, button, input, select, textarea, label, [role=checkbox], [
  * A table row that opens `to` from a click anywhere on it. The row's first cell still holds a
  * real link, for the keyboard and for a screen reader; Cmd or Ctrl opens a new tab.
  */
-export function LinkRow({ to, state, className, children }: { to: string; state?: unknown; className?: string; children: ReactNode }): ReactElement {
+export function LinkRow({ to, state, className, style, children }: { to: string; state?: unknown; className?: string; style?: CSSProperties | undefined; children: ReactNode }): ReactElement {
   const navigate = useNavigate();
   const open = (e: MouseEvent<HTMLTableRowElement>): void => {
     if (e.target instanceof Element && e.target.closest(OWN_CLICK)) return;
@@ -18,7 +18,7 @@ export function LinkRow({ to, state, className, children }: { to: string; state?
     else navigate(to, { state });
   };
   return (
-    <TableRow className={cn("cursor-pointer hover:bg-accent", className)} onClick={open}>
+    <TableRow className={cn("cursor-pointer hover:bg-accent", className)} style={style} onClick={open}>
       {children}
     </TableRow>
   );

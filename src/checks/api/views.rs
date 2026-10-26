@@ -50,3 +50,27 @@ impl From<Insight> for InsightView {
         }
     }
 }
+
+/// The active maintenance window over a monitor or heartbeat, for its page's stamp.
+#[derive(Serialize)]
+pub struct MaintenanceView {
+    pub id: i64,
+    pub title: String,
+    pub ends_at: i64,
+}
+
+pub async fn maintenance_of(
+    db: &crate::platform::db::Db,
+    project_id: i64,
+    kind: crate::incidents::SourceKind,
+    id: i64,
+) -> anyhow::Result<Option<MaintenanceView>> {
+    let now = crate::platform::now();
+    Ok(crate::maintenance::covering(db, project_id, kind, id, now)
+        .await?
+        .map(|w| MaintenanceView {
+            id: w.id,
+            title: w.title,
+            ends_at: w.ends_at,
+        }))
+}

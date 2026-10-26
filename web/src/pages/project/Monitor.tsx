@@ -1,5 +1,6 @@
 import { RefreshButton } from "@/components/app/RefreshButton";
 import { SourceActions } from "@/components/app/SourceActions";
+import { StateStamp } from "@/components/app/StateStamp";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Writable } from "@/lib/session";
 import { PlacesCard } from "@/components/app/PlacesCard";
@@ -79,11 +80,7 @@ export function Monitor({ editing = false }: { editing?: boolean }): ReactElemen
             }
           />
           <div className="flex flex-col gap-6">
-            {m.paused_at !== null && (
-              <Alert>
-                <AlertDescription>Paused since {stamp(m.paused_at)}, so Monita is not checking it or sending alerts.</AlertDescription>
-              </Alert>
-            )}
+            <StateStamp kind="monitor" pausedAt={m.paused_at} maintenance={d.maintenance} slug={p.slug} />
             <StatCards stats={d.stats} />
             <ChartCard insight={d.insight} />
             <AvailabilityCard insight={d.insight} />

@@ -206,6 +206,21 @@ pub async fn covers(
     store::covers(c, kind, id, at).await
 }
 
+/// The active window that covers one source and ends last, for its page's stamp, or None.
+pub async fn covering(
+    db: &Db,
+    project_id: i64,
+    kind: SourceKind,
+    id: i64,
+    at: i64,
+) -> anyhow::Result<Option<Window>> {
+    let windows = store::active(&db.read().await?, project_id, at).await?;
+    Ok(windows
+        .into_iter()
+        .filter(|w| w.items.iter().any(|i| i.kind == kind && i.id == id))
+        .max_by_key(|w| w.ends_at))
+}
+
 /// The project's active windows with their items, at most `caps::OPEN_WINDOWS_PER_PROJECT`.
 pub async fn active(c: &Connection, project_id: i64, at: i64) -> anyhow::Result<Vec<Window>> {
     store::active(c, project_id, at).await

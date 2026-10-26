@@ -128,6 +128,8 @@ struct DetailView {
     insight: views::InsightView,
     pings: Vec<PingRow>,
     older: Option<String>,
+    /// The active maintenance window over it, or null.
+    maintenance: Option<views::MaintenanceView>,
 }
 
 async fn detail(
@@ -178,7 +180,9 @@ async fn detail(
         last,
         insight.incidents_stat(),
     ]);
+    let maintenance = views::maintenance_of(&state.db, p.id, SourceKind::Heartbeat, id).await?;
     Ok(data(DetailView {
+        maintenance,
         ping_url: (!user.is_read_only())
             .then(|| format!("{}/ping/{}", state.config.base_url, hb.token)),
         heartbeat: view(hb, newest, s, insight.now),

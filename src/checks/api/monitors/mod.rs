@@ -128,6 +128,8 @@ struct DetailView {
     location_ids: Vec<i64>,
     /// Each place's newest result, this server first; empty without locations.
     places: Vec<checks::locations::PlaceView>,
+    /// The active maintenance window over it, or null.
+    maintenance: Option<views::MaintenanceView>,
 }
 
 async fn detail(
@@ -181,7 +183,9 @@ async fn detail(
         Some(sid) => projects::secrets::name_of(&state.db.read().await?, p.id, sid).await?,
         None => None,
     };
+    let maintenance = views::maintenance_of(&state.db, p.id, SourceKind::Monitor, id).await?;
     Ok(data(DetailView {
+        maintenance,
         monitor: MonitorView {
             auth_secret_name: secret_name,
             ..view(m, s, user.is_read_only())

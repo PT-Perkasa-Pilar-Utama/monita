@@ -1,5 +1,6 @@
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { SourceActions } from "@/components/app/SourceActions";
+import { StateStamp } from "@/components/app/StateStamp";
 import { RefreshButton } from "@/components/app/RefreshButton";
 import { Writable } from "@/lib/session";
 import type { ReactElement } from "react";
@@ -75,11 +76,7 @@ export function Heartbeat({ editing = false }: { editing?: boolean }): ReactElem
             }
           />
           <div className="flex flex-col gap-6">
-            {h.paused_at !== null && (
-              <Alert>
-                <AlertDescription>Paused since {stamp(h.paused_at)}, so Monita keeps its pings but is not watching its deadline or sending alerts.</AlertDescription>
-              </Alert>
-            )}
+            <StateStamp kind="heartbeat" pausedAt={h.paused_at} maintenance={d.maintenance} slug={p.slug} />
             {fresh && d.ping_url && (
               <Card>
                 <CardHeader>
