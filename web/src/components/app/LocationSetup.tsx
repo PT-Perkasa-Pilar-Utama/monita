@@ -28,7 +28,6 @@ const WAIT_MS = 3000;
  * first calls. The token shows only here.
  */
 export function LocationSetup({ setup, server, onClose }: { setup: Setup | null; server: string; onClose: () => void }): ReactElement {
-  const [removing, setRemoving] = useState(false);
   const list = useApi<LocationList>(setup ? "/admin/locations" : null, WAIT_MS);
   const row = list.data?.locations.find((l) => l.id === setup?.id);
   const connected = row?.last_seen_at != null;
@@ -81,23 +80,22 @@ export function LocationSetup({ setup, server, onClose }: { setup: Setup | null;
         {setup && (
           <div className="mt-auto flex flex-wrap items-center gap-2 border-t bg-paper px-6 py-3">
             {!connected && (
-              <Button
-                variant="danger"
-                disabled={removing}
-                onClick={() => {
-                  setRemoving(true);
-                  void api(`/admin/locations/${setup.id}`, "DELETE")
-                    .then(() => {
-                      toast.success(`${setup.name} is removed.`);
-                      onClose();
-                    })
-                    .catch((err: unknown) => toast.error(errorText(err)))
-                    .finally(() => setRemoving(false));
+              <ConfirmDialog
+                trigger={
+                  <Button variant="danger">
+                    <Trash2 data-icon="inline-start" />
+                    Remove {setup.name}
+                  </Button>
+                }
+                title={`Remove ${setup.name}?`}
+                description="Its token stops working, its monitors check only from the other places, and its check results are deleted for good."
+                action={`Remove ${setup.name}`}
+                onConfirm={async () => {
+                  await api(`/admin/locations/${setup.id}`, "DELETE");
+                  toast.success(`${setup.name} is removed.`);
+                  onClose();
                 }}
-              >
-                {removing ? <Spinner data-icon="inline-start" /> : <Trash2 data-icon="inline-start" />}
-                Remove {setup.name}
-              </Button>
+              />
             )}
             <Button className="ml-auto" variant={connected ? "default" : "secondary"} onClick={onClose}>
               {connected ? "Done" : "Set up later"}
