@@ -12,6 +12,7 @@ export const BRAND_COLORS: Record<string, string> = {
   "mascot-shine": "#ffffff",
   "mascot-cheek": "#f2a7d4",
   up: "#23784e",
+  issue: "#8a6300",
   input: "#c9cbce",
   "muted-foreground": "#7a7f87",
   muted: "#8a8f9840",

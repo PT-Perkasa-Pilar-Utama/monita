@@ -118,6 +118,7 @@ const BRAND_TILES: Record<string, Tile[]> = {
     { file: "scene-monitors", name: "Monitors" },
     { file: "scene-heartbeats", name: "Heartbeats" },
     { file: "scene-incidents", name: "Incidents" },
+    { file: "scene-maintenance", name: "Maintenance" },
     { file: "scene-tickets", name: "Tickets" },
     { file: "scene-changelog", name: "Changelog" },
   ],

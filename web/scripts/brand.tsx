@@ -10,6 +10,7 @@ import { PlaygroundScene } from "@/components/brand/Playground";
 import { ChangelogFooter } from "@/components/app/footers/Changelog";
 import { HeartbeatsFooter } from "@/components/app/footers/Heartbeats";
 import { IncidentsFooter } from "@/components/app/footers/Incidents";
+import { MaintenanceFooter } from "@/components/app/footers/Maintenance";
 import { MonitorsFooter } from "@/components/app/footers/Monitors";
 import { TicketsFooter } from "@/components/app/footers/Tickets";
 import { BRAND_COLORS, inlineClasses, KEYFRAMES, THEMED_COLORS } from "./brandSvg";
@@ -90,6 +91,7 @@ function scene(kind: string, el: ReactElement, label: string): void {
 scene("monitors", <MonitorsFooter />, "Moni checks a website on a timer, and it answers 200 OK");
 scene("heartbeats", <HeartbeatsFooter />, "Moni hears a scheduled job ping on time");
 scene("incidents", <IncidentsFooter />, "Moni follows an incident from open to resolved and sends the alert");
+scene("maintenance", <MaintenanceFooter />, "Moni works inside a planned maintenance window behind a barrier");
 scene("tickets", <TicketsFooter />, "Moni sorts a bug report on the ticket board");
 scene("changelog", <ChangelogFooter />, "Moni publishes a release on the changelog");
 

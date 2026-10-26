@@ -169,7 +169,7 @@
 .lp-parts h3 { color: var(--fg); font-size: var(--t-20); font-weight: 650; letter-spacing: -0.01em; }
 .lp-parts p { margin: var(--s2) 0 var(--s3); max-width: 52ch; color: var(--fg-muted); line-height: 1.6; }
 /* The scenes' colours: the app's tokens, mapped to this site's. Moni's own colours are fixed. */
-.landing { --art-primary: var(--accent); --art-up: var(--green); --art-input: color-mix(in srgb, var(--fg) 22%, var(--bg)); --art-muted-foreground: var(--fg-muted); --art-muted: color-mix(in srgb, var(--fg) 6%, transparent); --art-foreground: var(--fg); --art-card: var(--bg-2); --art-paper: color-mix(in srgb, var(--fg) 3%, var(--bg-2)); --phone-bezel: color-mix(in srgb, var(--fg) 88%, var(--bg)); }
+.landing { --art-primary: var(--accent); --art-up: var(--green); --art-issue: var(--yellow); --art-input: color-mix(in srgb, var(--fg) 22%, var(--bg)); --art-muted-foreground: var(--fg-muted); --art-muted: color-mix(in srgb, var(--fg) 6%, transparent); --art-foreground: var(--fg); --art-card: var(--bg-2); --art-paper: color-mix(in srgb, var(--fg) 3%, var(--bg-2)); --phone-bezel: color-mix(in srgb, var(--fg) 88%, var(--bg)); }
 @keyframes monita-ping { to { stroke-dashoffset: -22; } }
 @keyframes monita-blink { 0%, 94%, 100% { transform: scaleY(1); } 97% { transform: scaleY(0.1); } }
 @keyframes monita-beat { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
