@@ -15,7 +15,7 @@ mod updates;
 
 use std::collections::HashMap;
 
-use turso::Connection;
+use crate::platform::sql::Connection;
 
 use crate::platform::{caps, db::Db};
 

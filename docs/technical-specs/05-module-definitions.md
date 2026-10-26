@@ -190,15 +190,17 @@ When `MONITA_PING_URL` is set, a loop sends `GET` to it every 60 s. A failure lo
 
 ### 5.8.4 Backup
 
-Daily at 01:00 UTC. Writes `monita-YYYYMMDD.db` to `MONITA_BACKUP_DIR` with `VACUUM INTO` on its own reading connection, so writes go on during the copy, and keeps the newest `MONITA_BACKUP_KEEP` files. The spike on 2026-10-16 confirmed `VACUUM INTO` on turso 0.8.3; `sqlite3` reads the copy with a clean `integrity_check`.
+Daily at 01:00 UTC. Writes `monita-YYYYMMDD.db` to `MONITA_BACKUP_DIR` with `VACUUM INTO` on its own connection on a blocking thread, so writes and requests go on during the copy, and keeps the newest `MONITA_BACKUP_KEEP` files. `sqlite3` reads the copy with a clean `integrity_check`.
 
 ### 5.8.5 Database access
 
 | Item | Contract |
 | --- | --- |
-| `Db::write(f)` | Locks the single writer connection (`tokio::sync::Mutex<turso::Connection>`), runs `f` inside `BEGIN IMMEDIATE ... COMMIT`, rolls back on error. Every write in Monita goes through it. |
-| `Db::read()` | Returns a new `turso::Connection` for reads. |
-| Every connection | `PRAGMA busy_timeout = 5000` and `PRAGMA foreign_keys = ON` at open. |
+| `Db::write(f)` | Locks the single writer connection (`tokio::sync::Mutex`), runs `f` inside `BEGIN IMMEDIATE ... COMMIT`, rolls back on error. Every write in Monita goes through it. |
+| `Db::read()` | Returns a reading connection from a pool of up to 8 idle ones; it goes back when dropped. |
+| `platform::sql` | The connection the stores use: rusqlite underneath, called as `c.query(sql, params).await?`. A call runs to its end on the calling thread; `query` collects its rows, which every `LIMIT` bounds. |
+| Every connection | A 5 s busy timeout. The writer also sets WAL, `synchronous = FULL` and `foreign_keys = ON`. |
+| Lock | `Db::open` holds `<database>.lock` while the process runs, so a second Monita process on the same database stops at open with "is open in another Monita process". |
 
 Spike result (50 tasks, 2 000 inserts): one writer behind a mutex took 75 ms; 50 connections with `busy_timeout` took 834 ms; 50 connections without it hit 161 000 busy errors. Rule: no module opens its own writing connection.
 

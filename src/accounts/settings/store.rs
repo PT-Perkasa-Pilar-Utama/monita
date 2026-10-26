@@ -1,6 +1,6 @@
 //! SQL for a user's own settings.
 
-use turso::Connection;
+use crate::platform::sql::Connection;
 
 pub async fn password_hash(c: &Connection, user_id: i64) -> anyhow::Result<Option<String>> {
     let mut rows = c
@@ -52,7 +52,7 @@ pub async fn set_avatar(
     c.execute(
         "INSERT INTO user_avatars (user_id, mime, data) VALUES (?1, ?2, ?3)
          ON CONFLICT (user_id) DO UPDATE SET mime = excluded.mime, data = excluded.data",
-        (user_id, mime, turso::Value::from(data)),
+        (user_id, mime, data),
     )
     .await?;
     c.execute(
@@ -81,7 +81,7 @@ pub async fn avatar(c: &Connection, user_id: i64) -> anyhow::Result<Option<(Stri
         "SELECT mime, data FROM user_avatars WHERE user_id = ?1",
         [user_id],
         |r| {
-            let data = r.get_value(1)?.as_blob().cloned().unwrap_or_default();
+            let data = r.get::<Option<Vec<u8>>>(1)?.unwrap_or_default();
             Ok((r.get(0)?, data))
         },
     )

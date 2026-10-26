@@ -11,8 +11,8 @@
 pub mod api;
 mod store;
 
+use crate::platform::sql::Connection;
 use serde::{Deserialize, Serialize};
-use turso::Connection;
 
 use crate::{
     incidents::{ItemRef, SourceKind},

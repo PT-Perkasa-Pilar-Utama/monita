@@ -1,7 +1,7 @@
 //! Bucketed reads for the charts. Each is a `GROUP BY` over a fixed window, so it returns at most
 //! one row per bucket, whatever the check interval or ping rate.
 
-use turso::Connection;
+use crate::platform::sql::Connection;
 
 use crate::{checks::chart::Bucket, incidents::SourceKind};
 

@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- Monita reads and writes its database with SQLite itself, through rusqlite, instead of Turso (decision Q47). The file does not change: an existing database opens as it is, and migration 0047 drops Turso's unused counter tables. Answers, rows and speed match the Turso build in the parity kit (`scripts/parity/`). A second Monita process on the same database still stops at open, now through `monita.db.lock` beside it.
+- The charts read 15-minute summaries instead of every check (migration 0046), and JSON and the web bundle go out compressed. On 3 million checks the project list's chart answers in 41 ms instead of 391 ms. Status pages load the public pages alone.
+
 ## [1.1.0] - 2026-10-21
 
 More ways to check, alert and plan: TCP, DNS and ping monitors, certificate warnings, checks from more than one place, Discord, Telegram, ntfy and PagerDuty alerts, maintenance windows, and two-factor sign-in. Migrations 0024 to 0043 run on start; 0029 rebuilds the `monitors` table, and 0039 rebuilds `alert_cards`.

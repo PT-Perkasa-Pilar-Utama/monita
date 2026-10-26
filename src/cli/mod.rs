@@ -227,8 +227,8 @@ fn load(env_file: Option<PathBuf>) -> anyhow::Result<(Config, Option<PathBuf>)> 
     Ok((config, path))
 }
 
-/// Opens the database without the server, migrates it and runs `f`. turso locks the file
-/// while `serve` runs, so the service must be stopped first.
+/// Opens the database without the server, migrates it and runs `f`. `serve` holds the lock file
+/// beside the database while it runs (`Db::open`), so the service must be stopped first.
 async fn offline(
     config: &Config,
     f: impl AsyncFnOnce(&Db) -> anyhow::Result<()>,
@@ -260,6 +260,7 @@ fn own_like_folder(db_path: &Path) {
             name.to_string(),
             format!("{name}-wal"),
             format!("{name}-shm"),
+            format!("{name}.lock"),
         ] {
             let Ok(m) = std::fs::metadata(&path) else {
                 continue;

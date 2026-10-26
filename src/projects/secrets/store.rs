@@ -1,6 +1,6 @@
 //! SQL for project_secrets. Only `value_of` reads a value; nothing lists one.
 
-use turso::Connection;
+use crate::platform::sql::Connection;
 
 use super::SecretRow;
 use crate::platform::{caps, db::query_all};

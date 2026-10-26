@@ -1,6 +1,6 @@
 //! Runtime limits in the `settings` table. Keys: technical-specs 06 section 6.3.14.
 
-use turso::Connection;
+use crate::platform::sql::Connection;
 
 pub const KEYS: &[(&str, &str)] = &[
     ("check_concurrency", "Checks at the same time"),

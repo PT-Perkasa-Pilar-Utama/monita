@@ -76,7 +76,7 @@ pub async fn heartbeat(
 
 /// One bucket per day: the rollup for the days before today, the raw rows for today.
 async fn month(
-    c: &turso::Connection,
+    c: &crate::platform::sql::Connection,
     kind: SourceKind,
     id: i64,
     w: &Window,

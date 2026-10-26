@@ -4,7 +4,7 @@ mod keys;
 
 pub use keys::*;
 
-use turso::Connection;
+use crate::platform::sql::Connection;
 
 use super::PublicPages;
 use crate::platform::caps;
@@ -42,7 +42,7 @@ pub struct ApiKeyRow {
 
 const COLS: &str = "p.id, p.owner_id, u.email, p.name, p.slug, p.ip_allowlist, p.created_at, u.disabled_at IS NULL, p.description, p.icon_at, p.show_known_issues, p.show_report, p.show_incidents, p.homepage_url, p.show_changelog, u.avatar_at";
 
-fn row(r: &turso::Row) -> turso::Result<Project> {
+fn row(r: &crate::platform::sql::Row) -> crate::platform::sql::Result<Project> {
     Ok(Project {
         id: r.get(0)?,
         owner_id: r.get(1)?,
@@ -68,7 +68,7 @@ fn row(r: &turso::Row) -> turso::Result<Project> {
 async fn many(
     c: &Connection,
     sql: String,
-    params: impl turso::params::IntoParams,
+    params: impl crate::platform::sql::IntoParams,
 ) -> anyhow::Result<Vec<Project>> {
     crate::platform::db::query_all(c, sql, params, row).await
 }
@@ -116,7 +116,7 @@ pub async fn set_icon(
     c.execute(
         "INSERT INTO project_icons (project_id, mime, data) VALUES (?1, ?2, ?3)
          ON CONFLICT (project_id) DO UPDATE SET mime = excluded.mime, data = excluded.data",
-        (project_id, mime, turso::Value::from(data)),
+        (project_id, mime, data),
     )
     .await?;
     c.execute(
@@ -148,7 +148,7 @@ pub async fn icon(c: &Connection, project_id: i64) -> anyhow::Result<Option<(Str
         "SELECT mime, data FROM project_icons WHERE project_id = ?1",
         [project_id],
         |r| {
-            let data = r.get_value(1)?.as_blob().cloned().unwrap_or_default();
+            let data = r.get::<Option<Vec<u8>>>(1)?.unwrap_or_default();
             Ok((r.get(0)?, data))
         },
     )

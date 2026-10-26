@@ -9,7 +9,7 @@ pub use reads::*;
 
 use std::collections::HashMap;
 
-use turso::Connection;
+use crate::platform::sql::Connection;
 
 use super::{ItemState, Source, SourceKind, engine::SourceState};
 use crate::platform::time;
@@ -295,7 +295,7 @@ pub(super) const COLS: &str = "i.id, i.origin, i.title, i.severity, i.cause, i.s
     (SELECT label FROM status_updates WHERE incident_id = i.id ORDER BY created_at DESC, id DESC LIMIT 1),
     i.excluded, i.excluded_at, i.excluded_by";
 
-pub(super) fn row(r: &turso::Row) -> turso::Result<IncidentRow> {
+pub(super) fn row(r: &crate::platform::sql::Row) -> crate::platform::sql::Result<IncidentRow> {
     Ok(IncidentRow {
         id: r.get(0)?,
         origin: r.get(1)?,

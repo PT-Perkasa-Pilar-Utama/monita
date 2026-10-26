@@ -20,6 +20,7 @@ pub mod rate_limit;
 pub mod reset_state;
 pub mod settings;
 pub mod spa;
+pub mod sql;
 pub mod time;
 pub mod token;
 pub mod ui;

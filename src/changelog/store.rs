@@ -1,7 +1,7 @@
 //! SQL for changelog_entries. Newest first everywhere: `released_on DESC, id DESC`.
 
+use crate::platform::sql::Connection;
 use serde::Serialize;
-use turso::Connection;
 
 use super::{ReleaseInput, Section};
 use crate::platform::db::{query_all, query_i64};
@@ -28,7 +28,7 @@ pub struct ReleaseHead {
 
 const COLS: &str = "id, version, released_on, title, sections";
 
-fn release(r: &turso::Row) -> turso::Result<Release> {
+fn release(r: &crate::platform::sql::Row) -> crate::platform::sql::Result<Release> {
     let raw: String = r.get(4)?;
     Ok(Release {
         id: r.get(0)?,
@@ -40,7 +40,7 @@ fn release(r: &turso::Row) -> turso::Result<Release> {
     })
 }
 
-fn head(r: &turso::Row) -> turso::Result<ReleaseHead> {
+fn head(r: &crate::platform::sql::Row) -> crate::platform::sql::Result<ReleaseHead> {
     Ok(ReleaseHead {
         id: r.get(0)?,
         version: r.get(1)?,

@@ -271,7 +271,11 @@ pub async fn reset_sign_in_by_email(
     }
 }
 
-async fn queue_invite_email(c: &turso::Connection, email: &str, link: &str) -> anyhow::Result<()> {
+async fn queue_invite_email(
+    c: &crate::platform::sql::Connection,
+    email: &str,
+    link: &str,
+) -> anyhow::Result<()> {
     let body = format!(
         "You are invited to Monita.\n\nSet your password here:\n{link}\n\nThe link works once and expires in 72 hours."
     );
@@ -316,22 +320,34 @@ pub async fn list_users(db: &Db) -> anyhow::Result<Vec<UserRow>> {
 }
 
 /// Does an active user sign in with this address? Emails are stored lowercase.
-pub async fn email_is_active_user(c: &turso::Connection, email: &str) -> anyhow::Result<bool> {
+pub async fn email_is_active_user(
+    c: &crate::platform::sql::Connection,
+    email: &str,
+) -> anyhow::Result<bool> {
     store::email_is_active_user(c, &email.trim().to_lowercase()).await
 }
 
 /// The email of a user who is not disabled.
-pub async fn active_email(c: &turso::Connection, user_id: i64) -> anyhow::Result<Option<String>> {
+pub async fn active_email(
+    c: &crate::platform::sql::Connection,
+    user_id: i64,
+) -> anyhow::Result<Option<String>> {
     store::active_email(c, user_id).await
 }
 
-pub async fn is_active_tl(c: &turso::Connection, user_id: i64) -> anyhow::Result<bool> {
+pub async fn is_active_tl(
+    c: &crate::platform::sql::Connection,
+    user_id: i64,
+) -> anyhow::Result<bool> {
     Ok(store::active_tl_email(c, user_id).await?.is_some())
 }
 
 /// May own a project now: an active tech lead or an active super admin, never a supervisor.
 /// Read on the caller's write, so a role changed since the request began counts.
-pub async fn can_own_projects(c: &turso::Connection, user_id: i64) -> anyhow::Result<bool> {
+pub async fn can_own_projects(
+    c: &crate::platform::sql::Connection,
+    user_id: i64,
+) -> anyhow::Result<bool> {
     Ok(store::active_tl_email(c, user_id).await?.is_some()
         || store::is_active_super_admin(c, user_id).await?)
 }
@@ -339,7 +355,11 @@ pub async fn can_own_projects(c: &turso::Connection, user_id: i64) -> anyhow::Re
 /// Retention (US-32): runs inside the caller's write.
 /// Deletes up to `limit` each of sessions, invites and sign-in challenges; returns how many. The
 /// caller loops.
-pub async fn purge_expired(c: &turso::Connection, now: i64, limit: i64) -> anyhow::Result<u64> {
+pub async fn purge_expired(
+    c: &crate::platform::sql::Connection,
+    now: i64,
+    limit: i64,
+) -> anyhow::Result<u64> {
     Ok(store::purge_expired(c, now, limit).await? + two_factor::purge(c, now, limit).await?)
 }
 

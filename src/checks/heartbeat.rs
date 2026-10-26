@@ -359,7 +359,7 @@ pub async fn record(
 /// `read` answers the cheap "anything missed?" question before the writer is taken.
 pub async fn sweep_missed(
     db: &Db,
-    read: &turso::Connection,
+    read: &crate::platform::sql::Connection,
     base_url: &str,
     at: i64,
 ) -> anyhow::Result<usize> {

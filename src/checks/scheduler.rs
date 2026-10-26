@@ -107,7 +107,7 @@ pub fn spawn(state: AppState) -> JoinHandle<()> {
 }
 
 /// Grows or shrinks the slot pool to `check_concurrency`. Returns the new cap.
-async fn resize(conn: &turso::Connection, slots: &Semaphore, cap: usize) -> usize {
+async fn resize(conn: &crate::platform::sql::Connection, slots: &Semaphore, cap: usize) -> usize {
     let wanted = settings::get_or(conn, "check_concurrency", 50)
         .await
         .clamp(1, 500) as usize;
@@ -129,7 +129,7 @@ fn reshape(slots: &Semaphore, cap: usize, wanted: usize) -> usize {
 /// Only this loop takes permits, so every claimed monitor gets one.
 async fn run_due_monitors(
     state: &AppState,
-    conn: &turso::Connection,
+    conn: &crate::platform::sql::Connection,
     slots: &Arc<Semaphore>,
     pass: &Arc<OwnedRwLockReadGuard<()>>,
 ) -> anyhow::Result<()> {

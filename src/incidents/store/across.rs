@@ -1,7 +1,7 @@
 //! SQL for the cross-project Incidents page: one page of incidents from every project, or from
 //! the projects one tech lead owns, with the list's search, filters and sort.
 
-use turso::Connection;
+use crate::platform::sql::Connection;
 
 use super::{COLS, IncidentRow, row};
 

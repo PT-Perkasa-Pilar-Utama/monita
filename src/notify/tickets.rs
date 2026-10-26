@@ -1,7 +1,7 @@
 //! Ticket alerts go to the ticket cards (v1.1 Q37): one per new ticket from a reporter and one
 //! per column move, each to the cards that listen to it. The daily digest is `digest`.
 
-use turso::Connection;
+use crate::platform::sql::Connection;
 
 use super::{
     card::{Card, Tone},

@@ -1,6 +1,6 @@
 //! SQL for the two-factor columns of users, recovery_codes and sign_in_challenges.
 
-use turso::Connection;
+use crate::platform::sql::Connection;
 
 use crate::platform::db::{query_all, query_i64};
 

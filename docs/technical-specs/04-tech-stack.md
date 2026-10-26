@@ -7,7 +7,7 @@ Every row was confirmed in the design grill on 2026-10-16.
 | Component | Technology | Justification |
 | --- | --- | --- |
 | Language | Rust 1.97, edition 2024 | One static binary. No runtime to install. |
-| Async runtime | tokio 1.53 | Required by axum, reqwest, lettre and turso. |
+| Async runtime | tokio 1.53 | Required by axum, reqwest and lettre. |
 
 ## 4.2 Backend
 
@@ -40,7 +40,7 @@ Every row was confirmed in the design grill on 2026-10-16.
 
 | Component | Technology | Justification |
 | --- | --- | --- |
-| Database | turso 0.8 (SQLite file format) | User choice. Standard SQLite features only. |
+| Database | SQLite through rusqlite 0.41, SQLite compiled in (`bundled`) | The most tested database engine; one file, no server. Standard SQLite features only (decision Q47). |
 | Migrations | `platform::migrate`, numbered `.sql` files embedded with `include_str!` | No sqlx. See [06 section 6.6](06-data-model.md#66-migrations-and-seeding). |
 
 ## 4.5 Testing and CI
@@ -67,8 +67,9 @@ Every row was confirmed in the design grill on 2026-10-16.
 
 | Tool | Reason |
 | --- | --- |
-| sqlx | No Turso support. Third-party `sqlx-turso` is alpha. |
+| sqlx | Async over a worker thread, compile-time macros; nothing Monita needs over rusqlite with one writer. |
 | ORMs (Diesel, SeaORM) | Plain SQL is enough for 15 tables. |
+| Turso | Monita used it until decision Q47. Its async API ran on blocking reads, and its concurrent writes and encryption are experimental by its own manual. |
 | Leptos, Dioxus | WASM UI frameworks. React has the shadcn components and the Beaverflow base (4.3). |
 | Pico CSS | Archived. Tailwind 4 with Monita's tokens replaces hand-written CSS. |
 | A JS chart library | The server lays out chart geometry; React draws SVG. |

@@ -35,8 +35,9 @@ thiserror = "2.0"
 tokio = { version = "1.53", features = ["macros", "rt-multi-thread", "net", "process", "signal", "sync", "time"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
-turso = "=0.8.3"
-# Already in the tree through turso: compresses JSON answers (platform::compress).
+# SQLite itself, compiled in (`bundled`), so the binary needs no system library.
+rusqlite = { version = "0.41", features = ["bundled"] }
+# Compresses JSON answers (platform::compress).
 zstd = { version = "0.13", default-features = false }
 
 [dev-dependencies]

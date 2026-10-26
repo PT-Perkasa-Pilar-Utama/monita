@@ -1,6 +1,6 @@
 //! SQL for users, invites, sessions.
 
-use turso::Connection;
+use crate::platform::sql::Connection;
 
 use crate::platform::caps;
 
@@ -29,7 +29,7 @@ pub struct Invite {
 const USER_COLS: &str =
     "id, email, role, password_hash, disabled_at, created_at, totp_secret IS NOT NULL, avatar_at";
 
-fn user_row(r: &turso::Row) -> turso::Result<UserRow> {
+fn user_row(r: &crate::platform::sql::Row) -> crate::platform::sql::Result<UserRow> {
     Ok(UserRow {
         id: r.get(0)?,
         email: r.get(1)?,

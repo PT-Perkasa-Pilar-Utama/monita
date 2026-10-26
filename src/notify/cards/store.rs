@@ -1,6 +1,6 @@
 //! SQL for alert_cards.
 
-use turso::Connection;
+use crate::platform::sql::Connection;
 
 use crate::platform::{caps, db::query_all};
 
@@ -81,7 +81,7 @@ pub fn split_emails(raw: &str) -> Vec<String> {
         .collect()
 }
 
-fn row(r: &turso::Row) -> turso::Result<AlertCard> {
+fn row(r: &crate::platform::sql::Row) -> crate::platform::sql::Result<AlertCard> {
     let kind: String = r.get(1)?;
     let flag = |i: usize| r.get::<i64>(i).map(|v| v == 1);
     let (critical, warning) = (flag(3)?, flag(4)?);

@@ -1,6 +1,6 @@
 //! `observe` and `source_deleted`: check results and deletions into the incident lifecycle.
 
-use turso::Connection;
+use crate::platform::sql::Connection;
 
 use super::{Ended, Event, Signal, Source, engine, store};
 use engine::Effect;

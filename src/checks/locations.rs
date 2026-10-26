@@ -91,7 +91,7 @@ pub async fn delete(db: &Db, id: i64) -> anyhow::Result<bool> {
 
 /// The location a token belongs to, and when it last called. None for an unknown token.
 pub async fn authenticate(
-    c: &turso::Connection,
+    c: &crate::platform::sql::Connection,
     raw: &str,
 ) -> anyhow::Result<Option<(i64, Option<i64>)>> {
     store::locations::by_token(c, &token::hash(raw.trim())).await
@@ -224,7 +224,7 @@ pub async fn record_local(
 /// What a check from this server means for the monitor. A monitor with no locations reads it
 /// directly, as before 1.1, with no query.
 async fn signal(
-    c: &turso::Connection,
+    c: &crate::platform::sql::Connection,
     monitor: &Monitor,
     result: &CheckResult,
 ) -> anyhow::Result<crate::incidents::Signal> {

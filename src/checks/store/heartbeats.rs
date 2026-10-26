@@ -1,13 +1,13 @@
 //! SQL for heartbeats and pings.
 
-use turso::Connection;
+use crate::platform::sql::Connection;
 
 use crate::checks::heartbeat::{Heartbeat, HeartbeatInput, LastPing, PingKind, PingRow};
 use crate::platform::caps;
 
 const COLS: &str = "h.id, h.project_id, h.name, h.token, h.period_s, h.grace_s, h.severity, h.is_public, h.last_ping_at, h.deadline_at, h.created_at, h.alert, h.auto_incident, h.paused_at";
 
-fn row(r: &turso::Row) -> turso::Result<Heartbeat> {
+fn row(r: &crate::platform::sql::Row) -> crate::platform::sql::Result<Heartbeat> {
     Ok(Heartbeat {
         id: r.get(0)?,
         project_id: r.get(1)?,
@@ -29,7 +29,7 @@ fn row(r: &turso::Row) -> turso::Result<Heartbeat> {
 async fn many(
     c: &Connection,
     sql: String,
-    params: impl turso::params::IntoParams,
+    params: impl crate::platform::sql::IntoParams,
 ) -> anyhow::Result<Vec<Heartbeat>> {
     crate::platform::db::query_all(c, sql, params, row).await
 }

@@ -27,7 +27,7 @@ pub fn per_day(intervals: &[(i64, i64)], first_day: i64, days: usize) -> Vec<i64
 /// One item's automatic-incident intervals overlapping `[since, until)`, open ones ending at
 /// `now`, newest first. At most `caps::SPANS`.
 pub async fn spans(
-    c: &turso::Connection,
+    c: &crate::platform::sql::Connection,
     item: ItemRef,
     since: i64,
     until: i64,

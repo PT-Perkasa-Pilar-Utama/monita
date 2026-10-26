@@ -341,14 +341,14 @@ pub async fn revoke_ref(db: &Db, project_id: i64, number: i64) -> anyhow::Result
 /// US-30: tickets still in Triage with an id above `after_id`, for the digest. An id
 /// watermark, not a time, so a ticket written in the digest's own second is neither lost nor repeated.
 pub async fn new_in_triage_after(
-    c: &turso::Connection,
+    c: &crate::platform::sql::Connection,
     project_id: i64,
     after_id: i64,
 ) -> anyhow::Result<(Vec<(i64, String)>, i64)> {
     store::new_in_triage_after(c, project_id, after_id).await
 }
 
-pub async fn max_id(c: &turso::Connection) -> anyhow::Result<i64> {
+pub async fn max_id(c: &crate::platform::sql::Connection) -> anyhow::Result<i64> {
     store::max_id(c).await
 }
 

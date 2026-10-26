@@ -30,7 +30,7 @@ pub async fn paused_keys(
 
 /// `set_paused` inside the caller's write, so a batch changes all of its sources or none.
 pub(super) async fn set_paused_on(
-    c: &turso::Connection,
+    c: &crate::platform::sql::Connection,
     project_id: i64,
     kind: SourceKind,
     id: i64,

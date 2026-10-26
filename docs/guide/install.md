@@ -93,7 +93,7 @@ volumes:
 
 [deploy/nginx/compose.yaml](../../deploy/nginx/compose.yaml) runs the same with nginx in front for HTTPS. Only nginx publishes ports there, so no one outside can forge `X-Forwarded-For`.
 
-Create the first super admin with `docker compose run --rm monita admin create --email you@company.co.id` before the first `docker compose up -d`. It asks for the password, at least 8 characters. If Monita is already running, run `docker compose stop` first: the running server holds the database, and `admin create` fails with "File is locked by another process". Then start it again with `docker compose up -d`. Each variable is in [Configuration](configuration.md). `monita service` does not apply in a container: Docker restarts it.
+Create the first super admin with `docker compose run --rm monita admin create --email you@company.co.id` before the first `docker compose up -d`. It asks for the password, at least 8 characters. If Monita is already running, run `docker compose stop` first: the running server holds the database, and `admin create` fails with "is open in another Monita process". Then start it again with `docker compose up -d`. Each variable is in [Configuration](configuration.md). `monita service` does not apply in a container: Docker restarts it.
 
 #### Upgrade from v1.0
 

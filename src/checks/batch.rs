@@ -86,7 +86,7 @@ pub async fn apply(
 
 /// Deletes one source inside the caller's write. False when it is not in the project.
 pub(super) async fn delete_on(
-    c: &turso::Connection,
+    c: &crate::platform::sql::Connection,
     base_url: &str,
     project_id: i64,
     kind: SourceKind,

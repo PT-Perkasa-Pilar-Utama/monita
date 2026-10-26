@@ -1,6 +1,6 @@
 //! SQL for the outbox and ticket alerts. Alert cards keep theirs in `cards/store.rs`.
 
-use turso::Connection;
+use crate::platform::sql::Connection;
 
 pub struct OutboxRow {
     pub id: i64,

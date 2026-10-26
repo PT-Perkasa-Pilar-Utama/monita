@@ -1,6 +1,6 @@
 //! SQL for check_results.
 
-use turso::Connection;
+use crate::platform::sql::Connection;
 
 use crate::checks::CheckResult;
 

@@ -158,7 +158,10 @@ pub enum Saved {
 }
 
 /// Whether every location the form names exists, on the writer's connection.
-async fn known_locations(c: &turso::Connection, input: &MonitorInput) -> anyhow::Result<bool> {
+async fn known_locations(
+    c: &crate::platform::sql::Connection,
+    input: &MonitorInput,
+) -> anyhow::Result<bool> {
     if input.location_ids.is_empty() {
         return Ok(true);
     }
@@ -171,7 +174,7 @@ async fn known_locations(c: &turso::Connection, input: &MonitorInput) -> anyhow:
 
 /// Whether the form's secret belongs to the project, on the writer's connection.
 async fn own_secret(
-    c: &turso::Connection,
+    c: &crate::platform::sql::Connection,
     project_id: i64,
     input: &MonitorInput,
 ) -> anyhow::Result<bool> {
@@ -274,7 +277,7 @@ pub async fn record_check(
 /// Keeps the certificate expiry an HTTPS check saw, and warns once per certificate when the
 /// monitor asks for it and its alerts are on (v1.1 Q25).
 async fn record_cert(
-    c: &turso::Connection,
+    c: &crate::platform::sql::Connection,
     base_url: &str,
     monitor: &Monitor,
     expires_at: i64,
@@ -304,7 +307,7 @@ async fn record_cert(
 /// The names of a project's monitors and heartbeats, on the caller's connection, so a writer can
 /// read them inside its own transaction.
 pub async fn source_names(
-    c: &turso::Connection,
+    c: &crate::platform::sql::Connection,
     project_id: i64,
 ) -> anyhow::Result<Vec<(crate::incidents::SourceKind, i64, String)>> {
     store::source_names(c, project_id).await
@@ -312,18 +315,22 @@ pub async fn source_names(
 
 /// After a tech lead resolves a heartbeat's incident by hand: a new deadline from `now`, so a job
 /// that stays silent opens the next incident one period plus grace later.
-pub async fn rearm_heartbeat(c: &turso::Connection, id: i64, now: i64) -> anyhow::Result<()> {
+pub async fn rearm_heartbeat(
+    c: &crate::platform::sql::Connection,
+    id: i64,
+    now: i64,
+) -> anyhow::Result<()> {
     store::heartbeats::rearm(c, id, now).await
 }
 
 /// How many monitors authenticate with project secret `id`.
-pub async fn secret_users(c: &turso::Connection, id: i64) -> anyhow::Result<i64> {
+pub async fn secret_users(c: &crate::platform::sql::Connection, id: i64) -> anyhow::Result<i64> {
     store::secret_users(c, id).await
 }
 
 /// Whether a source's failures alert, on the caller's connection. A deleted source counts as on.
 pub async fn alert_on(
-    c: &turso::Connection,
+    c: &crate::platform::sql::Connection,
     kind: crate::incidents::SourceKind,
     id: i64,
 ) -> anyhow::Result<bool> {
@@ -360,7 +367,7 @@ pub async fn recent_checks(
 /// monitors and heartbeats, which have no foreign key, and returns those sources so the incident
 /// engine can forget them too. The project's rows cascade with it.
 pub async fn forget_project(
-    c: &turso::Connection,
+    c: &crate::platform::sql::Connection,
     project_id: i64,
 ) -> anyhow::Result<Vec<(crate::incidents::SourceKind, i64)>> {
     use crate::incidents::SourceKind;

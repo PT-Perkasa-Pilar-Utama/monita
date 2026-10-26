@@ -1,6 +1,6 @@
 //! SQL for the daily rollup and the retention sweep.
 
-use turso::Connection;
+use crate::platform::sql::Connection;
 
 use crate::incidents::SourceKind;
 

@@ -1,14 +1,22 @@
 //! SQL that reads monitors and heartbeats together, or a column other modules ask about.
 
-use turso::Connection;
+use crate::platform::sql::Connection;
 
 use crate::platform::caps;
 
 /// Reads the `'monitor'` or `'heartbeat'` literal in column `i`.
-fn kind_at(r: &turso::Row, i: usize) -> turso::Result<crate::incidents::SourceKind> {
+fn kind_at(
+    r: &crate::platform::sql::Row,
+    i: usize,
+) -> crate::platform::sql::Result<crate::incidents::SourceKind> {
     let raw = r.get::<String>(i)?;
-    crate::incidents::SourceKind::parse(&raw)
-        .ok_or_else(|| turso::Error::ConversionFailure(format!("unknown source kind {raw}")))
+    crate::incidents::SourceKind::parse(&raw).ok_or_else(|| {
+        crate::platform::sql::Error::FromSqlConversionFailure(
+            i,
+            rusqlite::types::Type::Text,
+            format!("unknown source kind {raw}").into(),
+        )
+    })
 }
 
 /// The project's public monitors and heartbeats, monitors first (the last column orders them).

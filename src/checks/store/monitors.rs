@@ -1,6 +1,6 @@
 //! SQL for monitors.
 
-use turso::Connection;
+use crate::platform::sql::Connection;
 
 use super::CheckRow;
 use crate::checks::MonitorInput;
@@ -67,7 +67,7 @@ impl Monitor {
 const COLS: &str = "m.id, m.project_id, m.name, m.url, m.interval_s, m.timeout_ms, m.expected_status, m.keyword, m.skip_tls_verify, m.severity, m.is_public, m.next_check_at, c.checked_at, c.ok, c.status_code, c.latency_ms, c.error, m.created_at, c.id, m.alert, m.auto_incident, m.method, m.headers, m.body, m.fails_to_open, m.auth_kind, m.auth_secret_id, m.auth_user, m.auth_header, m.kind, m.expected_address, m.cert_warn_days, m.cert_expires_at, m.cert_warned_for, m.quorum, (SELECT count(*) FROM monitor_locations WHERE monitor_id = m.id), m.paused_at";
 const FROM: &str = "FROM monitors m LEFT JOIN check_results c ON c.id = (SELECT id FROM check_results WHERE monitor_id = m.id AND location_id IS NULL ORDER BY checked_at DESC, id DESC LIMIT 1)";
 
-fn monitor(r: &turso::Row) -> turso::Result<Monitor> {
+fn monitor(r: &crate::platform::sql::Row) -> crate::platform::sql::Result<Monitor> {
     let last = match r.get::<Option<i64>>(12)? {
         Some(at) => Some(CheckRow {
             id: r.get(18)?,
@@ -247,7 +247,7 @@ pub async fn delete_monitor(c: &Connection, project_id: i64, id: i64) -> anyhow:
 async fn many(
     c: &Connection,
     sql: String,
-    params: impl turso::params::IntoParams,
+    params: impl crate::platform::sql::IntoParams,
 ) -> anyhow::Result<Vec<Monitor>> {
     crate::platform::db::query_all(c, sql, params, monitor).await
 }

@@ -1,6 +1,6 @@
 //! SQL for api_keys.
 
-use turso::Connection;
+use crate::platform::sql::Connection;
 
 use super::{ApiKeyRow, COLS, Project, row};
 use crate::platform::caps;

@@ -3,7 +3,7 @@
 
 use std::collections::HashMap;
 
-use turso::Connection;
+use crate::platform::sql::Connection;
 
 use crate::{
     incidents::{ItemRef, SourceKind},
@@ -25,7 +25,7 @@ pub struct Window {
 
 const COLS: &str = "id, title, message, starts_at, ends_at";
 
-fn window(r: &turso::Row) -> turso::Result<Window> {
+fn window(r: &crate::platform::sql::Row) -> crate::platform::sql::Result<Window> {
     Ok(Window {
         id: r.get(0)?,
         title: r.get(1)?,

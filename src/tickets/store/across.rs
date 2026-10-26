@@ -1,7 +1,7 @@
 //! SQL for the cross-project Tickets page: tickets waiting in Triage in every project, or in the
 //! projects one tech lead owns, with the page's search and sort.
 
-use turso::Connection;
+use crate::platform::sql::Connection;
 
 /// A new ticket in Triage, for the cross-project Tickets list.
 #[derive(serde::Serialize)]

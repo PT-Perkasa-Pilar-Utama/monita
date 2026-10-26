@@ -1,6 +1,6 @@
 //! SQL for locations and monitor_locations (technical-specs 14).
 
-use turso::Connection;
+use crate::platform::sql::Connection;
 
 use crate::platform::{caps, db::query_all, db::query_i64};
 

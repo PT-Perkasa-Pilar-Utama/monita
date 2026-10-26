@@ -1,4 +1,4 @@
-//! Compressed answers. JSON goes out as zstd, which turso already links in, so no new crate:
+//! Compressed answers. JSON goes out as zstd:
 //! Chrome 123+, Firefox 126+ and Safari 26.3+ ask for it, and older browsers get plain JSON.
 //! The web bundle ships precompressed as `.br` and `.gz` (`web/build.ts`), picked by `asset`.
 

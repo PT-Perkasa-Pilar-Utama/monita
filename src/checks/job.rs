@@ -68,7 +68,10 @@ impl Job {
 
     /// The value of the monitor's sign-in secret, on the caller's connection. None when it does
     /// not sign in or the secret is gone. Only an HTTP check that signs in reads anything.
-    pub async fn read_secret(c: &turso::Connection, m: &Monitor) -> anyhow::Result<Option<String>> {
+    pub async fn read_secret(
+        c: &crate::platform::sql::Connection,
+        m: &Monitor,
+    ) -> anyhow::Result<Option<String>> {
         match m.auth_secret_id {
             Some(id) if Self::signs_in(m) => {
                 crate::projects::secrets::value_of(c, m.project_id, id).await

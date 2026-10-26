@@ -3,7 +3,7 @@
 mod across;
 pub use across::{TriageRow, count_triage_across, triage_across};
 
-use turso::Connection;
+use crate::platform::sql::Connection;
 
 use crate::platform::caps;
 
@@ -156,7 +156,7 @@ const COLS: &str = "t.number, t.title, t.public_title, t.description, t.page_url
 /// A team ticket has no ref ID, and a reporter's ticket no member, so both joins are LEFT.
 const WHO: &str = "LEFT JOIN ref_ids r ON r.id = t.ref_id LEFT JOIN users u ON u.id = t.created_by";
 
-fn row(r: &turso::Row) -> turso::Result<TicketRow> {
+fn row(r: &crate::platform::sql::Row) -> crate::platform::sql::Result<TicketRow> {
     Ok(TicketRow {
         number: r.get(0)?,
         title: r.get(1)?,
@@ -182,7 +182,7 @@ pub async fn board(c: &Connection, project_id: i64) -> anyhow::Result<Vec<Ticket
     crate::platform::db::query_all(c, format!("SELECT {COLS} FROM {NEWEST_PER_STAGE} {WHO} WHERE t.rn <= ?2 ORDER BY t.updated_at DESC"), (project_id, caps::TICKETS_PER_COLUMN), row).await
 }
 
-fn public_row(r: &turso::Row) -> turso::Result<PublicTicket> {
+fn public_row(r: &crate::platform::sql::Row) -> crate::platform::sql::Result<PublicTicket> {
     Ok(PublicTicket {
         number: r.get(0)?,
         title: r.get(1)?,

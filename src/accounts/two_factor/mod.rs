@@ -16,7 +16,7 @@
 pub mod api;
 mod store;
 
-use turso::Connection;
+use crate::platform::sql::Connection;
 
 use super::totp;
 use crate::platform::{

@@ -1,6 +1,6 @@
 //! Status updates a tech lead posts on an incident, and the hand resolve of an automatic one.
 
-use turso::Connection;
+use crate::platform::sql::Connection;
 
 use super::{Ended, Event, LABELS, UpdateError, check_message, item_names_on, store};
 use crate::platform::{caps, db::Db};

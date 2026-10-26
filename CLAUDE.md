@@ -24,7 +24,7 @@ This file restates rules tersely. The docs win on any conflict; fix this file wh
 | HTTP | axum 0.8, tokio 1.53 |
 | Frontend | React 19, TypeScript, Tailwind 4 and shadcn/ui (new-york, Radix, Phosphor icons) in `web/`, built from Beaverflow's components with Monita's tokens. Every page is this app. `make web` builds it with Bun into `web/dist`, which rust-embed puts in the binary. It calls JSON under `/api/ui/`. Decision: `docs/decisions/2026-10-17-react-ui-migration.md`. |
 | Static files | `static/theme.js` (sets the theme before paint), `static/favicon.svg`, `static/fonts/`, embedded by rust-embed |
-| Database | turso 0.8.3, standard SQLite features only |
+| Database | SQLite through rusqlite 0.41 (`bundled`), behind `platform::sql`; standard SQLite features only (decision Q47) |
 | Outbound (later sprints) | reqwest 0.13 rustls, lettre 0.11 |
 | Tests | `cargo test` (temp-file DB), Playwright 1.64 on Bun with system Chrome |
 
@@ -80,8 +80,8 @@ Two builders (the user and Claude), 2 days, sprints 1 to 4 in `docs/business/spr
 | Do | Don't |
 | --- | --- |
 | `make` targets, `cargo` | nextest, cargo-watch, bacon (not installed, not needed) |
-| `conn.query(...)` for any statement that returns rows | `conn.execute(...)` on a SELECT or a row-returning PRAGMA: turso errors "unexpected row" |
-| `Db::write(async \|c\| { ... })` | Many connections writing: turso returns busy instead of waiting |
+| `conn.query(...)` for any statement that returns rows | `conn.execute(...)` on a SELECT or a row-returning PRAGMA: it errors "Execute returned results" |
+| `Db::write(async \|c\| { ... })` | Many connections writing: they meet SQLITE_BUSY instead of taking turns |
 | `bun` in `e2e/` and `web/` | npm, npx, `playwright install` (system Chrome is used) |
 | `make web` before a build that must serve pages | Expecting pages from a binary built without `web/dist`: every page answers 503 |
 | `platform::now()` for Unix seconds | Local time in storage |
@@ -158,10 +158,11 @@ Each line was argued in review and decided. Do not reopen one without a new fact
 - `http-body` is a dev-dependency only: the ping-body unit tests need hand-made bodies. The body readers take a `Budget` (deadline and byte cap) as a parameter for the same tests.
 - Ping-body limits are tested by mechanism with small injected budgets. `BODY_MAX` and `BODY_TIMEOUT` are not asserted by value. That would restate a constant, and an over-cap request resets on Linux.
 - A test file may run to 800 lines; the 400-line cap is for `src/`.
+- A change that must not change behaviour (an engine, a dependency, a refactor) passes the parity kit, `scripts/parity/README.md`, against the commit before it: 0 regressions, the same tests passing, no measure slower.
 - The accent is magenta and means the brand: the mark, the accent button, focus, links, the chart line. It never marks a state; green, red and yellow do. Severity is a setting, not a state: a grey outline badge with a bell, never red or yellow (user request, 2026-10-21). Ticket stages: Triage grey, Backlog `--neutral-strong`, In progress yellow, Done green; close reasons: Fixed green, Won't fix and Duplicate grey (user request, 2026-10-18). The maintenance stamp and striped rows are yellow barrier tape and the paused ones grey; the word on the stamp tells maintenance from Issue (user request, 2026-10-26).
 - Charts are laid out on the server from bucketed aggregates (`checks::chart` returns SVG geometry), and React draws the SVG. No JS chart library: no unbounded rows reach the page, and the bundle stays small.
-- Charts read 15-minute `check_slots` and `ping_slots`, filled by `AFTER INSERT` triggers (migration 0046), so the file stays standard SQLite. Turso 0.8.3 materialized views were tested and rejected: wrong sums, wrong after a reopen, and `sqlite3` cannot open the file. No in-memory cache: every chart answers under 41 ms on 3 M checks in a release build (2026-10-26).
-- JSON is compressed with zstd only, because turso already links it; there is no gzip crate. The web bundle ships precompressed `.br` and `.gz`. On plain HTTP, browsers get plain JSON; the nginx configs gzip it.
+- Charts read 15-minute `check_slots` and `ping_slots`, filled by `AFTER INSERT` triggers (migration 0046). Materialized views (tested on Turso 0.8.3, before Q47) gave wrong sums and broke the file for `sqlite3`. No in-memory cache: every chart answers under 41 ms on 3 M checks in a release build (2026-10-26).
+- JSON is compressed with zstd only; there is no gzip crate. The web bundle ships precompressed `.br` and `.gz`. On plain HTTP, browsers get plain JSON; the nginx configs gzip it.
 - Status pages are a second web entry (`status.html`, `web/src/public.tsx`) that shares one preloaded chunk with the team app. Per-page `React.lazy` was tried and reverted: 78 chunks queued behind HTTP/1.1's 6 connections and delayed every page's data.
 - Availability and the chart's down bands count automatic incidents only, as the status page does. An open manual incident shows its items as Issue, never as downtime.
 - The release profile trades speed for size: fat LTO and `opt-level = "s"` (NFR-07, under 30 MB). v0.1.0 used thin LTO at the default level and was 31.5 MB on Linux. On macOS the change took the binary from 25.8 MB to 19.4 MB and an Argon2 sign-in hash from 16 ms to 20 ms. Keeping argon2 and blake2 at `opt-level = 3` saved only 1 ms, so the profile has no per-crate overrides.

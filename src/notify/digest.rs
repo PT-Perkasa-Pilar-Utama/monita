@@ -36,7 +36,7 @@ pub async fn digest(db: &Db, base_url: &str, now: i64) -> anyhow::Result<usize> 
 
 /// Queues one project's digest email; returns 1 when it had new tickets, else 0.
 async fn queue_one(
-    c: &turso::Connection,
+    c: &crate::platform::sql::Connection,
     p: &crate::projects::Project,
     after: i64,
     base_url: &str,

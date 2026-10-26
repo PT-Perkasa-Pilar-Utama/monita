@@ -126,7 +126,7 @@ pub async fn owner_emails(db: &Db) -> anyhow::Result<Vec<String>> {
 /// Projects in id order after `last_id`, at most `limit`, for a job that walks every project
 /// inside its own transaction. Loop until a batch comes back short.
 pub async fn after_id(
-    c: &turso::Connection,
+    c: &crate::platform::sql::Connection,
     last_id: i64,
     limit: i64,
 ) -> anyhow::Result<Vec<Project>> {
@@ -221,7 +221,7 @@ pub async fn eligible_owners(
 
 /// Runs inside the caller's write: a user who owns a project cannot become a supervisor, since
 /// an owner must be able to change their project.
-pub async fn owns_any(c: &turso::Connection, user_id: i64) -> anyhow::Result<bool> {
+pub async fn owns_any(c: &crate::platform::sql::Connection, user_id: i64) -> anyhow::Result<bool> {
     store::owns_any(c, user_id).await
 }
 
@@ -261,7 +261,7 @@ pub async fn find_public(db: &Db, slug: &str) -> anyhow::Result<Option<Project>>
 
 /// Name and slug for messages, inside a caller's transaction.
 pub async fn name_slug(
-    c: &turso::Connection,
+    c: &crate::platform::sql::Connection,
     project_id: i64,
 ) -> anyhow::Result<Option<(String, String)>> {
     store::name_slug(c, project_id).await
@@ -269,7 +269,10 @@ pub async fn name_slug(
 
 /// The owner's address while the owner is active, for alerts to the owner's cards. A disabled
 /// owner has left and gets none.
-pub async fn owner_email(c: &turso::Connection, project_id: i64) -> anyhow::Result<Option<String>> {
+pub async fn owner_email(
+    c: &crate::platform::sql::Connection,
+    project_id: i64,
+) -> anyhow::Result<Option<String>> {
     store::owner_email(c, project_id).await
 }
 
