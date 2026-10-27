@@ -210,3 +210,19 @@ INSERT INTO maintenance_windows (id, project_id, title, message, starts_at, ends
   (3, 3, 'Warehouse move', '', unixepoch() - 7 * 86400, unixepoch() - 7 * 86400 + 7200, unixepoch() - 9 * 86400);
 INSERT INTO maintenance_items (window_id, source_kind, source_id) VALUES
   (1, 'monitor', 6), (2, 'monitor', 2), (3, 'monitor', 8), (3, 'monitor', 9);
+
+-- v1.1 pause (Q38): the admin panel is paused while it moves to a new host.
+UPDATE monitors SET paused_at = unixepoch() - 2 * 86400 WHERE id = 4;
+
+-- v1.1 reclassify (Q46): last week's short website outage was a false alarm, so it leaves the
+-- uptime numbers and the status page but stays tagged for the team.
+UPDATE incidents SET excluded = 'false_alarm', excluded_at = unixepoch() - 5 * 86400 + 3600,
+  excluded_by = 'tl@monita.test' WHERE id = 9;
+
+-- v1.1 pins (Q48): the super admin the demo signs in as pins Payments and its checkout.
+INSERT INTO project_pins (user_id, project_id, pinned_at) VALUES (1, 2, unixepoch() - 86400);
+INSERT INTO monitor_pins (user_id, monitor_id, pinned_at) VALUES (1, 5, unixepoch() - 86400);
+
+-- The data team's phones get warnings through ntfy.
+INSERT INTO alert_cards (project_id, kind, name, critical, warning, enabled, emails, url, key) VALUES
+  (3, 'ntfy', 'Data team phones', 0, 1, 1, '', 'https://ntfy.sh/dwh-alerts-demo', NULL);
