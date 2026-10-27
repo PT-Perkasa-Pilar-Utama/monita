@@ -10,13 +10,15 @@ import { BareLayout } from "@/layouts/BareLayout";
 import { PeekingMoni, Playground } from "@/components/brand/Playground";
 import { api, ApiError, errorText } from "@/lib/api";
 
-/** Where to go after signing in: a path on this site only. */
-/** Where to go after sign-in: `?next=` only when it stays on this site. */
+/** Where to go after sign-in: `?next=` only when it stays on this site. The parsed path is
+ * checked too: dot segments turn `/.//evil.example` into `//evil.example`, which the browser
+ * reads as another host. */
 export function nextPath(next: string | null, origin: string): string {
   if (!next?.startsWith("/")) return "/";
   try {
     const url = new URL(next, origin);
-    return url.origin === origin ? url.pathname + url.search + url.hash : "/";
+    const path = url.pathname + url.search + url.hash;
+    return url.origin === origin && !path.startsWith("//") ? path : "/";
   } catch {
     return "/";
   }
