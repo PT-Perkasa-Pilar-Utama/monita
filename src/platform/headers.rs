@@ -54,14 +54,25 @@ pub async fn origin_check(State(state): State<AppState>, req: Request, next: Nex
             .get(header::ORIGIN)
             .and_then(|v| v.to_str().ok());
         if !origin_ok(origin, &state.config.base_url) {
-            let message = "Request blocked: wrong origin.";
+            let message = blocked(origin, &state.config.base_url);
             if path.starts_with("/api/") {
-                return super::api_error(StatusCode::FORBIDDEN, "forbidden", message);
+                return super::api_error(StatusCode::FORBIDDEN, "forbidden", &message);
             }
             return (StatusCode::FORBIDDEN, message).into_response();
         }
     }
     next.run(req).await
+}
+
+/// Why a browser write was refused. A page opened at another address than `MONITA_BASE_URL`, such
+/// as a server's IP or another port, is the usual cause, so the message names both addresses.
+fn blocked(origin: Option<&str>, base_url: &str) -> String {
+    match origin {
+        Some(o) => format!(
+            "This page is at {o}, but Monita's address is {base_url}. Open Monita at its address, or set MONITA_BASE_URL to the address you use."
+        ),
+        None => "Request blocked: wrong origin.".to_string(),
+    }
 }
 
 /// The request's `Origin` is Monita's own. When Monita's address is a loopback one, such as the
@@ -96,7 +107,22 @@ fn origin_ok(origin: Option<&str>, base_url: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::origin_ok;
+    use super::{blocked, origin_ok};
+
+    #[test]
+    fn a_blocked_page_is_told_both_addresses() {
+        let m = blocked(Some("http://10.0.0.5:7466"), "http://localhost:7466");
+        assert!(m.contains("This page is at http://10.0.0.5:7466,"), "{m}");
+        assert!(
+            m.contains("Monita's address is http://localhost:7466."),
+            "{m}"
+        );
+        assert!(m.contains("MONITA_BASE_URL"), "{m}");
+        assert_eq!(
+            blocked(None, "http://localhost:7466"),
+            "Request blocked: wrong origin."
+        );
+    }
 
     #[test]
     fn a_loopback_address_accepts_its_other_loopback_names_and_nothing_else() {

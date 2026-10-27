@@ -77,6 +77,7 @@ More ways to check, alert and plan: TCP, DNS and ping monitors, certificate warn
 - Sending a new invite stops the old password at once, as the guide says. Before, it kept working until the new link was used.
 - The online demo's side panels (a ticket, a new or edited monitor) close with their X, Cancel, the backdrop or Escape.
 - Monita takes the fixed releases of `rustls-webpki` and `webpki-root-certs`, which trusted distrusted emSign certificates (RUSTSEC-2026-0382 and 0383), and of `ctutils` under the password hash (RUSTSEC-2026-0385).
+- A browser page opened at another address than `MONITA_BASE_URL`, such as a server's IP or another port, gets a message that names both addresses and the setting to change, instead of "Request blocked: wrong origin."
 - `monita admin create` and `admin reset-password` hide the password in the Docker image and on Linux and macOS without `stty`, and ask for it twice on a terminal, so a typo cannot set a password nobody knows. Piped input still takes one line.
 
 ### Security
