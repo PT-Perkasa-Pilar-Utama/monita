@@ -115,15 +115,12 @@ impl Db {
                 path.display()
             );
         }
-        let conn = connect(path, true)?;
         // SEC-18: the database holds secrets, so only its owner reads it, whatever the umask.
-        for companion in ["", "-wal", "-shm", ".lock"] {
-            let f = PathBuf::from(format!("{}{companion}", path.display()));
-            if f.exists() {
-                super::restrict(&f, 0o600)
-                    .with_context(|| format!("restricting {}", f.display()))?;
-            }
-        }
+        // Modes are set before SQLite opens the file: closing any handle to it later would drop
+        // every lock this process holds, and another reader would then delete the WAL. SQLite
+        // gives the -wal and -shm files the main file's mode, so a new file starts at 0600.
+        restrict_files(path, &lock)?;
+        let conn = connect(path, true)?;
         Ok(Self(Arc::new(Inner {
             path: path.to_path_buf(),
             writer: Mutex::new(Writer {
@@ -285,6 +282,33 @@ impl Db {
         })
         .await
     }
+}
+
+/// Gives the database, its companions and the held lock file mode 0600, and creates the database
+/// file at that mode when it is missing. Called before any SQLite handle is open.
+fn restrict_files(path: &Path, lock: &std::fs::File) -> anyhow::Result<()> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+        lock.set_permissions(std::fs::Permissions::from_mode(0o600))?;
+        if std::fs::symlink_metadata(path).is_err() {
+            std::fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .mode(0o600)
+                .custom_flags(libc::O_NOFOLLOW)
+                .open(path)
+                .with_context(|| format!("creating {}", path.display()))?;
+        }
+    }
+    for companion in ["", "-wal", "-shm"] {
+        let f = PathBuf::from(format!("{}{companion}", path.display()));
+        if std::fs::symlink_metadata(&f).is_ok() {
+            super::restrict(&f, 0o600).with_context(|| format!("restricting {}", f.display()))?;
+        }
+    }
+    let _ = lock;
+    Ok(())
 }
 
 /// A new connection with the settings every connection needs. The writer also turns on WAL,
