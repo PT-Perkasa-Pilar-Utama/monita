@@ -5,9 +5,11 @@ name: release
 # Write the notes with the release-notes skill, then publish the draft. The tag must match the
 # version in Cargo.toml.
 #
-# Run it by hand with an existing tag to finish or extend its release. It builds the tag's
-# source; with no release yet it drafts one, otherwise it keeps every archive already published
-# byte for byte and appends the new checksums. Run it by hand with `build_only` on a branch to build and boot every target from
+# Run it by hand on an existing tag to finish or extend its release:
+# `gh workflow run release.yml --ref v1.2.3`. Run it on the tag, not on a branch: the image job
+# uses the `release` environment, which takes only `v*` tag refs. It builds the tag's source; with
+# no release yet it drafts one, otherwise it keeps every archive already published byte for byte
+# and appends the new checksums. Run it by hand with `build_only` on a branch to build and boot every target from
 # that branch without touching any release.
 on:
   push:
@@ -129,20 +131,22 @@ jobs:
   # The Linux binaries the build job booted, as one image for linux/amd64 and linux/arm64 on
   # GHCR. The Dockerfile comes from the commit this run is on, so a manual run can also give an
   # older tag its image. X.Y.Z always moves; X.Y, X and latest move only for the newest tag.
+  # It pushes with GHCR_TOKEN, a classic token with write:packages held by the `release`
+  # environment, which only a `v*` tag ref may use, and a ruleset lets only admins create one. The
+  # workflow's own token gets no packages permission, so a workflow on any branch cannot push.
   image:
     name: container image
     needs: build
     if: ${{ !inputs.build_only }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    environment: release
     permissions:
       contents: read
-      packages: write
       id-token: write
       attestations: write
     env:
       TAG: ${{ inputs.tag || github.ref_name }}
-      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -188,8 +192,10 @@ jobs:
       - name: push both platforms
         env:
           TAGS: ${{ steps.meta.outputs.tags }}
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+          GHCR_USER: ${{ vars.GHCR_USER }}
         run: |
-          echo "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
           docker buildx create --use --name monita
           # shellcheck disable=SC2086 # TAGS is a list of --tag flags.
           docker buildx build --platform linux/amd64,linux/arm64 -f deploy/Dockerfile \

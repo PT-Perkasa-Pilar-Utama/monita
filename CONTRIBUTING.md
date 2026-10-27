@@ -72,13 +72,14 @@ CI runs `make check`, `cargo deny`, the browser tests in three shards and a `mon
 
 ## Cut a release
 
-Maintainers only.
+Maintainers only. A ruleset lets only repository admins create a `v*` tag. The image job pushes to GHCR with the `GHCR_TOKEN` secret of the `release` environment, which only a `v*` tag can use.
 
 1. Move the `## [Unreleased]` lines in [CHANGELOG.md](CHANGELOG.md) under a new version heading with the date.
 2. Set the same version in `Cargo.toml` and `web/package.json`, then run `cargo build` to update `Cargo.lock`.
 3. Commit as `chore: release vX.Y.Z` and tag that commit: `git tag -a vX.Y.Z -m vX.Y.Z`.
 4. Push `main`, then the tag. `.github/workflows/release.yml` checks that the tag matches `Cargo.toml`, builds the static Linux binary, boots it, and opens a draft release with the archive, its checksum and a build-provenance attestation.
-5. Write the release notes on the draft, then publish it. `releases/latest/download/monita_linux_amd64.tar.gz` then serves the new archive.
+5. To finish or extend a release later, run the workflow on its tag: `gh workflow run release.yml --ref vX.Y.Z`. A run on a branch cannot use the `release` environment, so its image job fails.
+6. Write the release notes on the draft, then publish it. `releases/latest/download/monita_linux_amd64.tar.gz` then serves the new archive.
 
 ## Report a problem
 
