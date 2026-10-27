@@ -103,13 +103,27 @@ The Compose file above pins `ghcr.io/pt-perkasa-pilar-utama/monita:1`. The relea
 docker compose pull && docker compose up -d
 ```
 
-Monita migrates the database when it starts (migrations 0024 to 0047). Back up the data volume first. The image does not turn on Monita's daily backups: set `MONITA_BACKUP_DIR` if you want them.
+Monita migrates the database when it starts (migrations 0024 to 0049). Back up the data volume first. The image does not turn on Monita's daily backups: set `MONITA_BACKUP_DIR` if you want them. The first start also switches the file to give deleted space back to the disk. That rewrite needs free disk space equal to the size of the file.
 
-A v1.0.1 database was upgraded this way in a test. It held a project, a monitor, a heartbeat, a critical route with two emails and a webhook, ticket alerts with a webhook, and an API key. The migration finished cleanly and `integrity_check` returned ok. Each route became alert cards: an owner card, an Email card with both addresses, and a JSON webhook card. The ticket alerts became ticket cards.
+The upgrade was tested on 2026-10-27, from the `1.0.1` image to a 1.1.0 image built from the release commit. v1.0.0 and v1.0.1 have the same database, so the test covers both. The v1.0.1 setup ran for 6 minutes with real checks:
 
-A second test, on 2026-10-26, started the v1.0.1 image on a volume, then an image of the SQLite build on the same volume. All 24 migrations ran, Monita answered `/healthz` 0.3 s after the container started, checks went on, and the file passed `integrity_check`. An earlier run of the same upgrade took a v1.0.1 database through migrations 0024 to 0046. It held a monitor with 13 checks, a heartbeat with 3 pings, and an API key. Monita answered `/healthz` 3.7 s after it started. The checks and pings stayed, the charts showed the old checks, the key still issued ref IDs, and the old ping URL still worked. The key became a `ref_ids` key, so it cannot use the project key API until you give it a new scope. Migration 0046 adds up the stored checks into 15-minute slots: on 3 million checks this took 11 s, and `/healthz` answers only after it ends. The file stays a standard SQLite file, so `sqlite3` still opens it.
+- two projects, three HTTP monitors (one failing), and two heartbeats (one pinged every 20 s, one never pinged)
+- a critical alert route with two emails and a webhook, and ticket alerts with a webhook
+- an API key, a ticket filed with a ref ID, and an open manual incident
 
-To go back to v1.0.1, restore the backup you took before the upgrade. v1.0.1 starts on an upgraded database and keeps checking, but its System page fails, because v1.1 removed a setting that page reads.
+Then the v1.1 image started on the same volume. Every check passed:
+
+- Each migration ran once. `integrity_check` returned ok and `foreign_key_check` found nothing.
+- The admin password still signed in. Every project page and admin page answered 200.
+- Each monitor kept its v1.0 checks and went on checking. Migration 0046 built the 15-minute chart totals from the old checks.
+- The heartbeat's old ping URL still answered 200, and its pings were stored.
+- The three open incidents stayed open, once each. No incident opened for a healthy monitor.
+- The routes became alert cards with the same emails and webhooks, and a test alert went out.
+- The API key still issued ref IDs. It became a `ref_ids` key, so give it a new scope before it uses the project key API.
+- The failing monitor, fixed through the new form, closed its incident on the next passing check.
+- `sqlite3` read the live file from another container, and Monita kept working.
+
+To go back to v1.0.1, restore the backup you took before the upgrade. v1.0.1 does not know the tables that v1.1 added.
 
 ### From source
 
