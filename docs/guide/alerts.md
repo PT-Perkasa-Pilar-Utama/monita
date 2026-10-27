@@ -98,7 +98,7 @@ Select **How alerts work**, then **What recipients get**. Pick an alert to see t
 | `ticket.moved` | A ticket changes column. Adds `ticket_number`, `title`, `ticket_url`, `from`, `to` and `close_reason`. | Ticket cards |
 | `test` | A card's test button | The card tested |
 
-Every body has `text`, `event`, `project`, `at` (Unix seconds, UTC) and, for incidents, `source`, `severity` and `cause`. The `text` field makes the body work as-is with Slack and Google Chat incoming webhooks. In every `text`, Monita writes `&`, `<` and `>` as `&amp;`, `&lt;` and `&gt;`, so a reporter's title or the words a job sends with `/fail` cannot add a link or an `@channel` mention. The `title` and `cause` fields keep the words as typed, and so does the email.
+Every body has `text`, `event`, `project`, `at` (Unix seconds, UTC) and, for incidents, `source`, `severity` and `cause`. The `text` field makes the body work as-is with Slack and Google Chat incoming webhooks. In every `text`, Monita writes `&`, `<` and `>` as `&amp;`, `&lt;` and `&gt;`, so a reporter's title or the words a job sends with `/fail` cannot add a link or an `@channel` mention. The `title` and `cause` fields keep the words as typed, and so do the email, ntfy and PagerDuty. A Discord card writes square brackets with a backslash, so a cause or a title cannot hide a link behind words.
 
 ```json
 {

@@ -87,7 +87,7 @@ Fixes from the security audit of 2026-10-27.
 
 - Turning two-factor sign-in on asks for the current password first, so a stolen session alone cannot tie an account to a factor its owner does not hold.
 - Sign-in counts a wrong-password guess before it checks the password, so guesses sent at once can no longer pass the limit of 10 per account in 15 minutes. A right password gives its count back.
-- Every webhook `text` writes `&`, `<` and `>` as entities, so the words a job sends with `/fail` cannot add an `@channel` mention or a link to a Slack-style channel.
+- Every webhook `text` writes `&`, `<` and `>` as entities, so the words a job sends with `/fail` cannot add an `@channel` mention or a link to a Slack-style channel. A Discord card escapes square brackets for the same reason. ntfy and PagerDuty still get the words as typed.
 - A monitor that sends its own headers, or signs in with a header, follows a redirect only while it stays on the monitored server. A redirect to another server fails the check instead of handing it the secret.
 - One project's dead webhook servers can no longer hold up every other project's alerts. A project sends at most six test alerts a minute, and a webhook server whose last send failed gets one row a delivery pass while the rest wait a few seconds.
 - A Global Telegram card posts only to a chat that one of the project's own connect links found, so a tech lead cannot point the shared bot at another team's chat by typing its ID. A channel connects by posting the `/start` line in it. Migration 0049 keeps every chat that a card already uses.

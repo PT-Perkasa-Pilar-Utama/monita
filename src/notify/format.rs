@@ -81,6 +81,13 @@ fn ntfy_topic(url: &str) -> Option<(String, String)> {
         .then(|| (format!("{root}/"), topic.to_string()))
 }
 
+/// Undoes `compose::chat_safe`: `&amp;` goes last, so a literal `&lt;` comes back as typed.
+fn plain(s: &str) -> String {
+    s.replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&amp;", "&")
+}
+
 /// Text cut to `max` characters, for channels that refuse longer messages.
 fn cut(s: &str, max: usize) -> String {
     s.chars().take(max).collect()
@@ -95,7 +102,9 @@ pub(super) fn webhook(
     slug: &str,
     msg: &Composed,
 ) -> (String, Value) {
-    let line = msg.json["text"].as_str().unwrap_or(&msg.subject);
+    // `text` is escaped for chat markup; ntfy and PagerDuty show plain text, so they get the words.
+    let line = plain(msg.json["text"].as_str().unwrap_or(&msg.subject));
+    let line = line.as_str();
     let critical = msg.json["severity"] == "critical";
     match format {
         "discord" => (url.to_string(), card::discord(&msg.card, &msg.link)),
@@ -276,6 +285,21 @@ mod tests {
         assert_eq!(body["priority"], 3, "a resolve is not urgent");
         let (_, body) = webhook("json", "https://h.co", None, "pay", &msg(false));
         assert_eq!(body, msg(false).json, "json is the body Monita always sent");
+    }
+
+    #[test]
+    fn ntfy_and_pagerduty_get_the_words_not_the_chat_escapes() {
+        let mut m = msg(false);
+        m.json["text"] = json!(super::super::compose::chat_safe(
+            "Pay & Go / <API> is down: &lt; typed"
+        ));
+        let (_, ntfy) = webhook("ntfy", "https://ntfy.sh/ops", None, "pay", &m);
+        assert_eq!(ntfy["message"], "Pay & Go / <API> is down: &lt; typed");
+        let (_, pd) = webhook("pagerduty", PAGERDUTY_URL, Some("KEY"), "pay", &m);
+        assert_eq!(
+            pd["payload"]["summary"],
+            "Pay & Go / <API> is down: &lt; typed"
+        );
     }
 
     #[test]
