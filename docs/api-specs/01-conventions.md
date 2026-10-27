@@ -8,7 +8,7 @@
 | Content type | `application/json; charset=utf-8` for requests and responses |
 | Body limit | Request bodies are capped at 128 KiB (413) (SEC-19). The ping routes never answer 413. They read an admitted body up to 16 MiB or 10 s and keep at most 1 KB |
 | Time | Unix seconds (integer, UTC) in every JSON field ending in `_at` |
-| IDs | Public tokens are strings. Internal numeric IDs never appear in the JSON API, except ticket `number`. |
+| IDs | Public tokens are strings. The key API (3.4) and the status JSON show numeric IDs, such as `/monitors/{id}` and a public item's `id`. Ticket `number` is also numeric. |
 
 ## 1.2 Envelope
 
@@ -38,7 +38,7 @@ A list that can grow is capped or paged. Each endpoint states which.
 
 | Kind | How | Where |
 | --- | --- | --- |
-| Offset page | `?page=` from 1. A missing, bad or lower value reads page 1. The answer carries `page`, `page_size` and `total`. | Projects (20, 3.1), cross-project Incidents and Tickets (25, 5.2, 8.6), team Changelog (25, 11.1), one ticket column (25, 8.5) |
+| Offset page | `?page=` from 1. A missing, bad or lower value reads page 1. The answer carries `page`, `page_size` and `total`. | Projects (20, 3.1), cross-project Incidents and Tickets (25, 5.2, 8.6), team Changelog (25, 11.1), Maintenance (20, 5.3), one ticket column (25, 8.5) |
 | Keyset page | `?before=<time>.<id>`. The answer carries `older`, the next cursor or null. A bad cursor reads the first page. | Checks and pings (25, 4.3), public history (25, 7.2), public Changelog (25, 11.2), public incidents by month (7.2) |
 | Cap | The newest rows up to a fixed number, no cursor. | The board (25 a column, 8.5), the reporter's tickets (100, 8.3), a project's incidents (200, 5.1), a project's monitors and heartbeats (100 each, 4.3) |
 
@@ -49,14 +49,14 @@ A list that can grow is capped or paged. Each endpoint states which.
 | 200 | Read or action succeeded |
 | 201 | Created |
 | 204 | Done, no body |
-| 400 | Malformed JSON or failed validation on `/api/v1/` |
+| 400 | Malformed JSON or failed validation on the ticket routes (`/api/v1/tickets*`, 8.x), the public status JSON and reset-state |
 | 401 | Missing or bad credential |
 | 403 | Credential valid, but not allowed (IP allowlist, Origin check, a role without access, a supervisor's write) |
 | 404 | Unknown resource or token |
 | 410 | A link or token that worked once and no longer does (`/api/ui/`) |
 | 409 | Conflict with current state |
 | 413 | Request body over 128 KiB, except on the two ping routes (see Body limit) |
-| 422 | A business rule rejects the request; on `/api/ui/`, also bad JSON and failed validation |
+| 422 | A business rule rejects the request. On `/api/ui/`, the key API (3.4) and the probe API, also bad JSON and failed validation |
 | 429 | Rate limit or daily cap |
 | 503 | Monita unhealthy (`/healthz` only) |
 
@@ -64,8 +64,8 @@ A list that can grow is capped or paged. Each endpoint states which.
 
 | code | status | condition |
 | --- | --- | --- |
-| `invalid_request` | 400 | `/api/v1/`: bad JSON or a field fails validation. `message` names the field. |
-| `validation_failed` | 422 | `/api/ui/`: bad JSON or a refused form. `fields` maps each field to its message (1.10). |
+| `invalid_request` | 400 | The ticket routes, the public status JSON and reset-state: bad JSON or a field fails validation. `message` names the field. |
+| `validation_failed` | 422 | `/api/ui/`, the key API and the probe API: bad JSON or a refused form. `fields` maps each field to its message (1.10). |
 | `gone` | 410 | `/api/ui/`: a used or expired invite |
 | `too_large` | 413 | A body over 128 KiB |
 | `unauthorized` | 401 | No credential, or an unknown or revoked one |
@@ -73,6 +73,7 @@ A list that can grow is capped or paged. Each endpoint states which.
 | `not_found` | 404 | Unknown slug, token or resource |
 | `ref_id_invalid` | 422 | Unknown, revoked or used-up ref ID |
 | `rate_limited` | 429 | Over a rate limit (SEC-12) |
+| `too_many_tries` | 429 | `/api/ui/`: too many wrong passwords or codes for one account in the window (SEC-27) |
 | `daily_cap_reached` | 429 | Over a ticket cap (SEC-13) |
 | `internal` | 500 | Unexpected failure. The cause is logged. The body says only "Unexpected failure." on `/api/v1/`, and "Try again in a moment, and if it keeps failing, the error is in the server log." on `/api/ui/`. |
 
@@ -114,6 +115,7 @@ A GET shows a supervisor the same JSON as anyone else, with these values replace
 | `GET /api/ui/projects/{slug}/monitors` and `.../monitors/{id}` | `headers` | Each line as `Name: (hidden)`. A line with no colon reads `(hidden)`. |
 | same | `body` | `"(hidden)"` when a body is set |
 | same | `auth_user` | `"(hidden)"` when set |
+| `GET /api/ui/projects/{slug}/monitors` and `.../monitors/{id}` | `url` | The query and the fragment read `?(hidden)` and `#(hidden)`. |
 | `GET /api/ui/projects/{slug}/alert-cards` | `url` and `key` of each card, ticket cards too | `"(hidden)"` when set |
 
 `GET /api/ui/me` tells the page which role it has (2.2). The web app hides its create, edit and delete controls when `read_only` is true.

@@ -11,7 +11,7 @@
 | Common columns | `created_at` on every table, `updated_at` where rows change. |
 | Secrets | Only SHA-256 hashes for API keys, invites, sessions and ref IDs. Heartbeat tokens are stored raw, because the TL must see the ping URL again. |
 | Values Monita must send | Stored as entered, because a check or the mail server needs the real value: `project_secrets.value`, `monitors.headers`, `monitors.body`, `monitors.auth_user` and the mail password in `settings.mail`. See [07](07-security.md) SEC-23 to SEC-25. |
-| Table rebuilds | SQLite cannot change a column `CHECK`. Migrations 0003, 0006, 0018 and 0022 rebuild `monitors`, `tickets` and `users`. Each copy keeps every id. |
+| Table rebuilds | SQLite cannot change a column `CHECK`. Migrations 0003, 0006, 0018, 0022, 0029, 0036 and 0039 rebuild `monitors`, `heartbeats`, `tickets`, `users`, `outbox` and `alert_cards`. Each copy keeps every id. |
 | Foreign keys | `PRAGMA foreign_keys = ON`. `ON DELETE CASCADE` from a project to its children. |
 
 ## 6.2 ERD
@@ -43,6 +43,15 @@ erDiagram
   incidents ||--o{ incident_items : affects
   incidents ||--o{ status_updates : has
   ref_ids ||--o{ tickets : submits
+  monitors ||--o{ monitor_locations : checks_from
+  locations ||--o{ monitor_locations : runs
+  users ||--o{ project_pins : pins
+  projects ||--o{ project_pins : pinned_by
+  users ||--o{ monitor_pins : pins
+  monitors ||--o{ monitor_pins : pinned_by
+  users ||--o{ heartbeat_pins : pins
+  heartbeats ||--o{ heartbeat_pins : pinned_by
+  projects ||--o{ telegram_chats : proves
 ```
 
 `incident_items`, `incident_sources` and `daily_summaries` point at a monitor or a heartbeat through `(source_kind, source_id)`.
@@ -406,15 +415,17 @@ Rule: migrations are numbered files in `migrations/`, embedded at compile time w
 
 `platform::migrate::run` applies each pending file in its own `Db::write_without_fk` transaction and records it in `schema_migrations`. Foreign keys are off during a migration, because a table rebuild (SQLite's generalized ALTER TABLE procedure) drops a parent table, which would otherwise cascade. A rebuild copies every row with its id, so references stay valid.
 
+After a run that applied at least one migration, `check_references` runs `PRAGMA foreign_key_check`. A broken reference stops the start with an error that names the first row and tells the operator to restore the backup taken before the upgrade. A start with nothing to apply skips the check, because it reads every row.
+
 | Command | Effect |
 | --- | --- |
 | `monita serve` | Runs pending migrations, then starts. |
 | `monita migrate` | Runs pending migrations and exits. |
 | `monita setup` | Writes the env file and creates the first super admin ([api-specs 10.2](../api-specs/10-cli.md#102-monita-setup)). |
 | `monita admin create --email` | Creates a super admin. Reads the password from stdin. |
-| `monita admin reset-password --email` | Sets a new password for an existing super admin and signs them out. A TL resets through a new invite. |
+| `monita admin reset-password --email` | Sets a new password for an existing super admin, turns their two-factor off and signs them out. A TL resets through a new invite. |
 | `monita admin reset-sign-in --email` | For any active user who lost the authenticator and the recovery codes. Turns two-factor off, ends sessions, stops the old password, and queues an invite email. |
-| `POST /admin/reset-state {"seed":"dev"}` | Dev and test only. Wipes, migrates, loads `seeds/dev.sql` or `seeds/qa.sql`. |
+| `POST /admin/reset-state {"seed":"dev"}` | Dev and test only. Wipes, migrates, loads `seeds/dev.sql`, `seeds/qa.sql` or `seeds/demo.sql` (the history the static demo shows). |
 
 Forbidden: running a `.sql` file by an absolute path outside the runner, and creating tables in application code.
 

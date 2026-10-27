@@ -44,9 +44,9 @@ Each module owns its tables (see [06](06-data-model.md)). Other modules use only
 | `reassign(db, project_id, new_owner, acting)` | US-05. The new owner is an active TL or the acting super admin; anyone else is 404. |
 | `update_profile(db, project_id, input)` | Saves the description and the homepage (required, as for `create`) and sets, keeps or removes the icon. |
 | `page_for(db, user, q, owner, sort, page)` | One page (`caps::PROJECTS_PAGE`, 20) of the projects a user may open, with the total. A TL pages their own; a super admin or a supervisor pages every project. `q` matches name, slug, owner email and description. |
-| `pulse(...)` | The project list's row figures: the worst state, the monitor and heartbeat summaries, open incidents and tickets, and 24 hourly bars from automatic incidents. A source counts from `created_at` until `paused_at`, so an hour with no watched source has no data. The Overview (`overview::read`) adds a `timeline`: up to 10 lanes of monitors and 10 of heartbeats, each with its state, its 24 hourly buckets and its 24-hour uptime, ranked down, issue, maintenance, no data yet, up, paused, then lowest uptime, then name (v1.1 Q39). ponytail: the list reads each project's pulse one by one (20 at most a page); batch the reads if the page gets slow. |
+| `pulse(...)` | The project list's row figures: the worst state, the monitor and heartbeat summaries, open incidents and tickets, and 24 hourly bars from automatic incidents. A source counts from `created_at` until `paused_at`, so an hour with no watched source has no data. The Overview is one chart of the last 24 hours (v1.1 Q39, `checks::overview`): up to 5 monitor lines on a log scale of milliseconds and up to 6 heartbeat lanes, in 96 slots of 15 minutes. The shape is in [api-specs 03](../api-specs/03-projects.md#31-frontend-routes). ponytail: the list reads each project's pulse one by one (20 at most a page); batch the reads if the page gets slow. |
 | `delete(db, project, confirm)` | Super admin only. `confirm` must equal the project's name. Inside one write: `checks::forget_project` drops the daily summaries, `incidents::forget_sources` drops the fail streaks, then the project and its children cascade. No alert goes out. |
-| `set_pages(db, project_id, PublicPages)` | The public tab switches: Incidents, Known issues, Report a bug, Changelog. Uptime always shows. A missing `incidents` means on; a missing `changelog` means off. |
+| `set_pages(db, project_id, PublicPages)` | The public tab switches: Incidents, Known issues, Report a bug, Changelog. Uptime always shows. A missing field means on, for every tab. |
 | `owns_any(c, user_id)` | True when the user owns a project. `accounts::set_role` calls it inside its own write. |
 | `secrets::{list, create, replace, delete}` | Sealed secrets per project. `list` returns names with `used_by` (how many monitors sign in with each), never values. `delete` is refused while a monitor uses the secret. Caps: 20 secrets per project, 4 KB a value. |
 | `secrets::{exists, name_of, value_of}` | `exists` and `name_of` serve the monitor form and view. `value_of` is the only door to a value; `checks::run_check` is its only caller (SEC-23). |
@@ -57,7 +57,7 @@ Each module owns its tables (see [06](06-data-model.md)). Other modules use only
 
 | Item | Contract |
 | --- | --- |
-| `probe(&Target, &Clients) -> CheckResult` | One HTTP request with the monitor's method, headers, body and timeout, and its credential when `Target.auth` is set. `ok` when the status matches `expected_status` and the body contains `keyword` (if set). Never returns an error: failures are a `CheckResult` with `ok = false` and an `error` string. Reads at most 1 MB of body. Values of headers, the body and the credential never appear in the error. |
+| `probe(&Target, &Clients) -> CheckResult` | For an HTTP monitor, one HTTP request with the monitor's method, headers, body and timeout, and its credential when `Target.auth` is set. `ok` when the status matches `expected_status` and the body contains `keyword` (if set). Never returns an error: failures are a `CheckResult` with `ok = false` and an `error` string. Reads at most 1 MB of body. Values of headers, the body and the credential never appear in the error. `probe_tcp`, `probe_dns` and `probe::icmp::probe_ping` do the same for TCP, DNS and ping monitors (v1.1 Q16, Q24). |
 | `run_check(db, &Clients, &Monitor) -> Result<CheckResult>` | What the scheduler calls. It builds a `Job` (one check as data, the same a location's probe receives) and runs it. For a monitor with `auth_kind` other than `none` it reads the secret just before the probe, through `projects::secrets::value_of`. A deleted secret gives a failed check with the fixed sentence `SECRET_GONE`. `Err` only when the secret cannot be read; the check is skipped then, not failed. |
 | `create_monitor`, `update_monitor` -> `Saved` | `Saved::Done(id)`, `Full` (100 monitors), `NotFound` or `ForeignSecret` (the form names a secret of another project, a 422 on `auth_secret_id`). Both pick a random first check inside the interval. |
 | `delete_monitor(db, base_url, project_id, id)` | Also closes the monitor's open incident and alerts that it ended. |
@@ -66,7 +66,7 @@ Each module owns its tables (see [06](06-data-model.md)). Other modules use only
 | `alert_on(c, kind, id)`, `secret_users(c, id)`, `source_names(c, project_id)` | Reads other modules call inside their own write: the source's alert switch, how many monitors use a secret, the project's monitors and heartbeats by name. |
 | `forget_project(c, project_id)` | Drops the daily summaries of the project's sources, which have no foreign key, and returns the sources. `projects::delete` calls it. |
 | `counts(db, project_id)`, `summaries(db, project_id)` | The project's monitor and heartbeat totals and state lines, for the About column and the project list. |
-| `admit(db, limiter, &Ping) -> Admission` | Used by the `/ping` routes first. Refuses an IP over its unknown-token budget, finds the heartbeat by token (`UnknownToken`), then applies the per-heartbeat limit (`Limited(retry)`, with `/fail` in its own bucket). Returns an `Admitted` value that only `record` takes; a ping body is read only after it. |
+| `admit(db, limiter, &Ping) -> Admission` | Used by the `/ping` routes first. Finds the heartbeat by token (`UnknownToken`), then applies the per-heartbeat limit (`Limited(retry)`, with `/fail` in its own bucket). Returns an `Admitted` value that only `record` takes; a ping body is read only after it. |
 | `record(db, base_url, Admitted, cause) -> bool` | Stores the ping: an OK ping pushes `deadline_at` forward, a fail ping opens an incident. False when the heartbeat was deleted after `admit`. |
 | `locations::record_at(db, base_url, &Monitor, location_id, &CheckResult)` | Stores one result from this server (`None`) or a location, judges the monitor across its places (`verdict::judge`, technical-specs 14.7), and feeds the verdict to `incidents::observe`. `record_check` is `record_at` with `None`. |
 | `locations::{list, create, delete, claim_work, post_results}` | The Locations admin page and the probe API (`probe_routes`). Owns `locations` and `monitor_locations`. See [14](14-locations.md). |
@@ -109,12 +109,12 @@ Each module owns its tables (see [06](06-data-model.md)). Other modules use only
 | `test_connection(&MailSettings)`, `Mailer::send_now` | The admin Email page: connect and sign in without sending, and send one email now to any address. The error says what failed. |
 | `email_health(db, since)` | Sent, failed and waiting counts and the newest error, for the Email page. |
 | `card::{discord, telegram}` | Every alert builds a `Card` beside its plain text: a tone (critical, warning, good, info), a label, a title, the project, named facts and a link label. Discord gets one embed posted as Monita; Telegram gets HTML with every outside word escaped. Email, JSON, ntfy and PagerDuty keep the plain text. |
-| `telegram::{set_bot, bot_name, new_link, check_link, send_url}` | The global Telegram bot (v1.1 Q33). `set_bot` checks a token with `getMe` and `getWebhookInfo` before it saves. `new_link` makes a 10-minute `start` code; `check_link` reads `getUpdates` from the stored offset, records every code it hears for any project, and returns this severity's chat. `send_url` builds the `sendMessage` URL at delivery, so the token never reaches the outbox. |
+| `telegram::{set_bot, bot_name, new_link, check_link, send_url}` | The global Telegram bot (v1.1 Q33, Q51). `set_bot` checks a token with `getMe` and `getWebhookInfo` before it saves. `new_link` makes a 10-minute `start` code; `check_link` reads `getUpdates` from the stored offset, records every code it hears for any project, and returns the chat that this project's own link opened. A card takes only such a chat (`telegram_chats`, SEC-31). `send_url` builds the `sendMessage` URL at delivery, so the token never reaches the outbox. |
 | outbox loop | Internal. Claims due rows in a write transaction (a 120 s lease on `next_attempt_at`), so two passes never send one row twice. Before it sends an email, `delivery::to_own_sender` compares the recipient with the sender address (the saved mail server's From, else `MONITA_MAIL_FROM`), ignoring case. A match is deleted unsent and logged, unless an active user signs in with that address. Mail to Monita's own mailbox would only loop back. The admin test email is sent directly, not through the outbox, so the rule skips it. Sends 5 rows at once. A webhook server whose last send failed counts as slow for 10 minutes (`SlowServers`, in memory), and one pass sends at most one row to all slow servers together; the rest wait 5 s without counting an attempt. A dead server then cannot fill every slot in front of other projects' alerts, while a healthy shared server such as Slack's keeps full speed. Retries at 1 min, 5 min and 15 min, then marks the row failed and logs it. Delivery is at least once: a crash mid-send retries after the lease. Bodies are cleared after delivery or final failure, so an invite link never stays in the database. Without SMTP the log shows recipient and subject only. |
 
 **Ports:** `Mailer` is an enum: `Live` and `Memory` (tests). `Live` picks its server on each send, so a save on the Email page applies to the next email: the mail server a super admin saved (`settings.mail`), else `MONITA_SMTP_URL` (built once at start, lettre, OS trust store), else the log. The log shows recipient and subject only. Webhooks go through the strict reqwest client, which follows no redirect; tests point them at a local server, so no webhook port exists.
 
-**Webhook body:** every body has `text`, `event`, `project` and `at`. Slack and Teams incoming webhooks read `text`. The rest depends on the event.
+**Webhook body:** every body has `text`, `event`, `project` and `at`. Slack and Google Chat incoming webhooks read `text`. For a ticket, `text` holds the title after `chat_safe` escaping (SEC-30). The rest depends on the event.
 
 | `event` | Extra fields | Sent when |
 | --- | --- | --- |
@@ -124,6 +124,7 @@ Each module owns its tables (see [06](06-data-model.md)). Other modules use only
 | `source.up` | `source`, `severity`, `duration_s`, `source_url` | That source works again. The text starts `[UP]`. |
 | `ticket.created` | `ticket_number`, `title`, `ticket_url` | A reporter files a ticket |
 | `ticket.moved` | `ticket_number`, `title`, `from`, `to`, `close_reason`, `ticket_url` | A ticket changes column |
+| `certificate.expiring` | `source`, `severity` (`warning`), `expires_at`, `source_url` | An HTTPS check sees a certificate that expires within the monitor's warning days (v1.1 Q25). No incident opens. |
 | `test` | `card` (a card's name) | A card's test button |
 
 Critical and warning events go to the incident cards that listen to the event's level. Ticket events go to the ticket cards that listen to them. The digest skips a project whose owner Daily digest card is off.
@@ -165,7 +166,7 @@ The page JSON carries the tab switches (`pages`). A public route whose tab is of
 `GET /healthz`, public.
 
 ```json
-{"status": "ok", "db": "ok", "scheduler_lag_s": 1, "outbox_pending": 0, "version": "1.0.0"}
+{"status": "ok", "db": "ok", "scheduler_lag_s": 1, "outbox_pending": 0, "version": "1.1.0"}
 ```
 
 | Condition | HTTP | `status` |
@@ -256,8 +257,10 @@ The public routes answer 404 while `show_changelog` is off.
 | --- | --- |
 | `state(starts_at, ends_at, now)` | `Scheduled`, `Active` or `Ended`, from the times alone. |
 | `create(db, project_id, &WindowInput, now)` | Checks the form on a read connection, then again inside the write. A past start becomes now. `MaintenanceError::Invalid` names every bad field; `Full` at 20 windows scheduled or active (`caps::OPEN_WINDOWS_PER_PROJECT`). |
+| `update(db, project_id, id, &WindowInput, now)` | Edits a window (v1.1 Q50). A scheduled window changes every field. An active one changes title, message and end only. An ended one is `Ended`. The state is read again inside the write. |
 | `delete(db, project_id, id, now)` | Scheduled windows only; otherwise `Started`. |
 | `end_now(db, project_id, id, now)` | Active windows only: `ends_at` becomes now. Otherwise `NotActive`. |
-| `page(db, project_id, page)` | The team's list, 20 a page (`caps::WINDOWS_PAGE`), latest start first. |
+| `page(db, project_id, page, &Filter, now)` | The team's list, 20 a page (`caps::WINDOWS_PAGE`), with the filters `q` (title), `state`, `from` and `to` (days), and `sort` (latest start first, or earliest). See [api-specs 05](../api-specs/05-incidents.md#53-maintenance-windows). |
+| `one(db, project_id, id)` | One window, or none. |
 | `covers(c, kind, id, at)` | The end of the latest-ending active window over the source, on the caller's connection. `incidents::observe` and `checks::heartbeat::sweep_missed` ask it. |
 | `active(c, project_id, at)` | The active windows with their items, for the item states and the status page. |

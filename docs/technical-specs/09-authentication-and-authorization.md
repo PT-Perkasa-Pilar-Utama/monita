@@ -31,7 +31,7 @@ Roles: `super_admin`, `tl` and `supervisor`. A supervisor sees every project and
 | --- | --- | --- | --- | --- | --- | --- |
 | Invite with a role, change a role, disable, enable, send a new invite | yes (never your own account) | no | no | no | no | no |
 | Reassign project, delete project | yes | no | no | no | no | no |
-| Change settings (limits, time zone, mail server) | yes | no | no | no | no | no |
+| Change settings (limits, time zone, mail server, Telegram bot, locations) | yes | no | no | no | no | no |
 | View users and the admin pages | yes | yes | no | no | no | no |
 | Turn another user's two-factor off | yes (never your own account) | no | no | no | no | no |
 | Turn your own two-factor on or off | yes | yes | yes | yes | no | no |

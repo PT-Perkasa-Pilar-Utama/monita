@@ -20,6 +20,14 @@ For released work, see [CHANGELOG.md](CHANGELOG.md).
 - Two-factor sign-in ([#12](https://github.com/PT-Perkasa-Pilar-Utama/monita/issues/12)).
 - A warning before a TLS certificate expires ([#8](https://github.com/PT-Perkasa-Pilar-Utama/monita/issues/8)).
 - Checks from more than one place, with `monita probe` ([#6](https://github.com/PT-Perkasa-Pilar-Utama/monita/issues/6)).
+- Alert cards instead of fixed alert settings, ticket cards, and a global Telegram bot that a super admin sets up once.
+- Pause for a monitor or heartbeat, and batch pause, resume and delete.
+- API key scopes (`ref_ids`, `read`, `write`) and a project key API under `/api/v1/projects/{slug}`.
+- Pins for projects, monitors and heartbeats.
+- Reclassify an incident as planned work or a false alarm.
+- Edit a maintenance window.
+- SQLite through rusqlite in place of Turso.
+- The security audit fixes of 2026-10-27, in the [1.1.0 changelog](CHANGELOG.md).
 
 Smaller known gaps are [GitHub issues](https://github.com/PT-Perkasa-Pilar-Utama/monita/issues).
 

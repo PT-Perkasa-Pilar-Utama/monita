@@ -13,9 +13,9 @@ Policy: [../technical-specs/05-module-definitions.md section 5.8](../technical-s
 
 | Condition | Status | Body |
 | --- | --- | --- |
-| DB works, scheduler ticked in the last 30 s | 200 | `{"status":"ok","db":"ok","scheduler_lag_s":1,"outbox_pending":0,"version":"1.0.0"}` |
-| DB fails | 503 | `{"status":"fail","db":"fail","scheduler_lag_s":1,"outbox_pending":null,"version":"1.0.0"}` |
-| Scheduler stalled | 503 | `{"status":"fail","db":"ok","scheduler_lag_s":45,"outbox_pending":0,"version":"1.0.0"}` |
+| DB works, scheduler ticked in the last 30 s | 200 | `{"status":"ok","db":"ok","scheduler_lag_s":1,"outbox_pending":0,"version":"1.1.0"}` |
+| DB fails | 503 | `{"status":"fail","db":"fail","scheduler_lag_s":1,"outbox_pending":null,"version":"1.1.0"}` |
+| Scheduler stalled | 503 | `{"status":"fail","db":"ok","scheduler_lag_s":45,"outbox_pending":0,"version":"1.1.0"}` |
 
 Not wrapped in the `data` envelope, so probes can read `status` directly. (AC-34.01)
 

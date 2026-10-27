@@ -15,12 +15,20 @@ Monita's docs, pages and code use each of these words with one meaning. Say "tec
 | Ping | One call from a cron job to its heartbeat URL. Not the same as a ping check. |
 | Incident | A record that something is down. Monita opens an automatic incident itself. A tech lead or a super admin opens a manual incident by hand. |
 | Paused | A monitor or heartbeat a tech lead stopped for a while. Nothing checks it, nothing opens and no alert goes out until it resumes. Not a maintenance window. |
+| Held | A missed heartbeat or a failed ping that waits for a maintenance window to end. The incident opens when the window ends, unless a good ping arrives first. |
 | Maintenance window | A planned time when a project's chosen monitors and heartbeats open no incident and send no alert. The status page shows them as Maintenance. |
+| Planned work | A class a tech lead gives a closed incident when the downtime was planned. It leaves availability, charts and the status page. The team still sees it. |
+| False alarm | A class a tech lead gives an incident that was not a real outage. It is treated like planned work. Count it again undoes either class. |
+| Pin | A mark a user puts on a project, monitor or heartbeat so it comes first in their lists. Each user pins at most 6 of each kind. |
+| API key scope | What a project API key may do: `ref_ids` issues ref IDs only, `read` reads the project and `write` also changes it. |
 | Two-factor sign-in | A 6-digit code from an authenticator app that Monita asks for after the password, when the user turned it on. |
 | Recovery code | One of ten codes shown once when two-factor sign-in is turned on. Each signs in once without the phone. |
-| Alert | An email or a webhook that Monita sends when an incident opens or closes. |
-| Alert level | Critical or warning, set on each monitor, heartbeat and incident. It picks which alert setup sends the alerts. It is a setting, not a state. The JSON field is `severity`. |
-| Webhook | A message that Monita posts to a URL, for example a Slack or Teams channel. |
+| Alert | An email or a webhook that Monita sends. It tells the team that an incident opened or closed, that a source went down or up, that a certificate will expire, or that a ticket was filed or moved. |
+| Alert level | Critical or warning, set on each monitor, heartbeat and incident. Each alert card listens to one level or to both. It is a setting, not a state. The JSON field is `severity`. |
+| Alert card | One place that receives incident alerts: an email list or a webhook. A project has two fixed cards that email its owner and up to ten of its own. Each card has a switch and a test button. |
+| Ticket card | An alert card that hears tickets instead of incidents: the daily digest, new tickets or ticket moves. A card hears incidents or tickets, never both. |
+| Global Telegram bot | The one Telegram bot that a super admin sets up for the whole Monita. A project connects a chat to it with a link. |
+| Webhook | A message that Monita posts to a URL, for example a Slack or Google Chat channel. |
 | Status page | The public page of a project. Anyone with the link can read it. |
 | Ticket | A bug report from a user. It moves through triage, backlog, in progress and done. |
 | Ticket board | The tech lead's view of every ticket in a project. The public board on the status page leaves out tickets in triage. |

@@ -1,6 +1,6 @@
 # 11. Changelog
 
-A project lists its releases here. The team writes them; the public Changelog tab shows them, one release at a time, newest first. Table: [../technical-specs/06-data-model.md](../technical-specs/06-data-model.md). The tab starts off on every project and a project turns it on with `public-pages` (3.1).
+A project lists its releases here. The team writes them; the public Changelog tab shows them, one release at a time, newest first. Table: [../technical-specs/06-data-model.md](../technical-specs/06-data-model.md). The tab starts on for a new project (v1.1 Q28). A project from before Q28 keeps its setting. A project turns the tab on or off with `public-pages` (3.1).
 
 A release is a `version`, a `released_on` day, a `title`, and four kinds of change in a fixed order: Added, Changed, Fixed, Removed. Each kind holds one change per line.
 

@@ -20,9 +20,13 @@ Every row was confirmed in the design grill on 2026-10-16.
 | HTTP client | reqwest 0.13, `rustls` | Probes and webhooks. No OpenSSL. |
 | Email | lettre 0.11, `tokio1-rustls` | SMTP. |
 | Password hash | argon2 0.6 | Default Argon2id parameters. |
-| Random tokens | rand 0.9 | Tokens, offsets. |
-| Hashing | sha2 0.10 | API key, invite, session and ref ID hashes. |
-| CLI | clap 4 (`derive`) | `serve`, `migrate`, `setup`, `service`, `whereis`, `admin` ([api-specs 10](../api-specs/10-cli.md)). |
+| Random tokens | getrandom 0.4 | Tokens and offsets, from the OS. |
+| Hashing | sha2 0.11 | API key, invite, session and ref ID hashes. |
+| Two-factor | sha1_smol 1.0, qrcode 0.14 (`svg` only) | The RFC 6238 code uses HMAC-SHA-1. The setup QR is an SVG. |
+| Ping checks | socket2 0.6 | The unprivileged ICMP datagram socket (Q24). |
+| Compression | flate2 1.1 | gzip for JSON answers (`platform::compress`). |
+| File modes | libc 0.2 (Unix only) | `O_NOFOLLOW` and `lchown` in the data folder (SEC-18). |
+| CLI | clap 4 (`derive`) | `serve`, `migrate`, `setup`, `service`, `whereis`, `admin`, `probe` ([api-specs 10](../api-specs/10-cli.md)). |
 | Logs | tracing 0.1, tracing-subscriber 0.3 | JSON in prod, pretty in dev. |
 | Errors | thiserror 2, anyhow 1 | `thiserror` in modules, `anyhow` in `main`. |
 
@@ -54,13 +58,14 @@ Every row was confirmed in the design grill on 2026-10-16.
 | Task runner | `Makefile` | `check-fast`, `check` (local gate), `release-check` (adds the LTO build), `e2e`, `e2e-full`, `release`. 4 rustc jobs at `nice 10` by default. |
 | Hooks | `.githooks/pre-commit` | `cargo fmt --check` and clippy when Rust files are staged. `make setup` enables it. |
 | CI | GitHub Actions, `.github/workflows/ci.yml` | Actions pinned by commit SHA. `check` builds once (`make check`) and uploads the debug binary; `deny` runs beside it; e2e runs one job per shard (`e2e/lib/shards.ts`) on that binary and skips a shard that passed on the same inputs. Docs-only pull requests run the fast gate alone. |
-| Release | `.github/workflows/release.yml` | On a `v*` tag push only: musl build, boot check, tar.gz with the systemd files, checksums, provenance attestation, draft GitHub release. |
+| Release | `.github/workflows/release.yml` | On a `v*` tag push only: a build for Linux, macOS and Windows on amd64 and arm64 (musl on Linux), a boot check of each, tar.gz or zip archives with the systemd files, checksums, provenance attestation, the multi-platform GHCR image and a draft GitHub release. |
 
 ## 4.6 Deployment
 
 | Component | Technology | Justification |
 | --- | --- | --- |
-| Binary | `x86_64-unknown-linux-musl` static build | Copy one file to the VM. |
+| Binary | Static musl build on Linux (amd64 and arm64), native builds for macOS and Windows | Copy one file to the VM. |
+| Container | `deploy/Dockerfile`, image `ghcr.io/<owner>/monita` for linux/amd64 and linux/arm64 | Run Monita with Docker. |
 | Process | systemd unit | Restart on failure, journald logs. |
 
 ## 4.7 What we do not use
@@ -68,7 +73,7 @@ Every row was confirmed in the design grill on 2026-10-16.
 | Tool | Reason |
 | --- | --- |
 | sqlx | Async over a worker thread, compile-time macros; nothing Monita needs over rusqlite with one writer. |
-| ORMs (Diesel, SeaORM) | Plain SQL is enough for 15 tables. |
+| ORMs (Diesel, SeaORM) | Plain SQL is enough for this schema. |
 | Turso | Monita used it until decision Q47. Its async API ran on blocking reads, and its concurrent writes and encryption are experimental by its own manual. |
 | Leptos, Dioxus | WASM UI frameworks. React has the shadcn components and the Beaverflow base (4.3). |
 | Pico CSS | Archived. Tailwind 4 with Monita's tokens replaces hand-written CSS. |

@@ -45,7 +45,7 @@ Load the sample accounts with the `reset-state` call in [Getting started](docs/g
 - Read [CLAUDE.md](CLAUDE.md) first. It states the rules every change follows: which module owns which table, where SQL and business rules live, the 400-line file cap, and the list limits. The docs in `docs/` win when CLAUDE.md and a doc disagree.
 - Keep one change per pull request: one story, one fix or one doc update.
 - A change in behaviour comes with a test at the module's interface: an integration test in `tests/`, a unit test beside pure logic, or a `bun test` beside a rule in `web/src/lib/`. A bug fix comes with a test that fails without the fix.
-- A database change is a new file `migrations/000N_<what>.sql` plus one line in `src/platform/migrate.rs`. Never edit a migration that is already on `main`.
+- A database change is a new file `migrations/000N_<what>.sql` plus one line in `src/platform/migrate/mod.rs`. Never edit a migration that is already on `main`.
 - A change to a route updates its contract in `docs/api-specs/` and its row in the tracker in `docs/api-specs/_index.md`.
 - A change that users see updates the guide in `docs/guide/` and adds a line under `## [Unreleased]` in [CHANGELOG.md](CHANGELOG.md).
 - Use the words in [docs/GLOSSARY.md](docs/GLOSSARY.md): "tech lead", not "TL".
@@ -77,7 +77,7 @@ Maintainers only. A ruleset lets only repository admins create a `v*` tag. The i
 1. Move the `## [Unreleased]` lines in [CHANGELOG.md](CHANGELOG.md) under a new version heading with the date.
 2. Set the same version in `Cargo.toml` and `web/package.json`, then run `cargo build` to update `Cargo.lock`.
 3. Commit as `chore: release vX.Y.Z` and tag that commit: `git tag -a vX.Y.Z -m vX.Y.Z`.
-4. Push `main`, then the tag. `.github/workflows/release.yml` checks that the tag matches `Cargo.toml`, builds the static Linux binary, boots it, and opens a draft release with the archive, its checksum and a build-provenance attestation.
+4. Push `main`, then the tag. `.github/workflows/release.yml` checks that the tag matches `Cargo.toml`, builds the binary for Linux, macOS and Windows on amd64 and arm64, boots each one, and pushes the Linux image to GHCR. It then opens a draft release with the archives, their checksums and build-provenance attestations.
 5. To finish or extend a release later, run the workflow on its tag: `gh workflow run release.yml --ref vX.Y.Z`. A run on a branch cannot use the `release` environment, so its image job fails.
 6. Write the release notes on the draft, then publish it. `releases/latest/download/monita_linux_amd64.tar.gz` then serves the new archive.
 

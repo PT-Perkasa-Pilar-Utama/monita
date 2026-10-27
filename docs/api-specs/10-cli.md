@@ -9,6 +9,7 @@ The `monita` binary. `admin create` is in [02-authentication.md section 2.1](02-
 | `monita setup [--yes]` | Writes the env file and creates the first super admin (10.2). |
 | `monita service install\|uninstall\|status\|logs [-f]` | Manages the systemd unit (10.3). |
 | `monita whereis [env\|data\|backups\|bin\|service\|logs]` | Prints where things are (10.4). |
+| `monita probe [--server] [--token]` | Runs checks for one location of another Monita (10.5). |
 | `monita admin create --email` | Creates a super admin (2.1). |
 | `monita admin reset-password --email` | Sets a new password for a super admin, turns their two-factor sign-in off, and signs them out everywhere. |
 | `monita admin reset-sign-in --email` | For any active user who lost the authenticator and the recovery codes: turns two-factor off, stops the old password, and queues an invite email (10.6). |

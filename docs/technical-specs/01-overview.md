@@ -21,6 +21,7 @@ Monita is a self-hosted uptime and incident service for every project in the IT 
 - Create the first super admin from the CLI (US-01).
 - Invite users with a role (tech lead, supervisor or super admin), change a role, disable and enable, password set and reset (US-02, US-03, US-04).
 - A supervisor sees everything a super admin sees and changes nothing ([09](09-authentication-and-authorization.md)).
+- Optional two-factor sign-in with recovery codes (v1.1 Q19).
 
 ### 1.2.2 projects
 - Projects, ownership and reassignment (US-05, US-06).
@@ -28,7 +29,8 @@ Monita is a self-hosted uptime and incident service for every project in the IT 
 - Sealed secrets for monitor sign-in, and the public tab switches.
 
 ### 1.2.3 checks
-- HTTP monitors and recent checks (US-09, US-10).
+- HTTP, TCP, DNS and ping monitors, and recent checks (US-09, US-10; v1.1 Q16, Q24).
+- Checks from more than one place: locations and `monita probe` (v1.1 Q26, [14](14-locations.md)).
 - The scheduler with offsets and the concurrency cap (US-11).
 - Heartbeats, pings and fail pings (US-12, US-13, US-14).
 - Daily summaries and the retention sweep (US-32).
@@ -36,6 +38,9 @@ Monita is a self-hosted uptime and incident service for every project in the IT 
 ### 1.2.4 incidents
 - Automatic open and close (US-17, US-18).
 - Status updates and manual incidents (US-19, US-20).
+
+### 1.2.4a maintenance
+- Maintenance windows: scheduled, active and ended. A covered source opens no incident and sends no alert while a window is active (v1.1 Q18, Q50).
 
 ### 1.2.5 notify
 - Alert cards that listen to critical, warning or both; alerts on open and close (US-15, US-16; v1.1 Q34).
@@ -56,11 +61,10 @@ Monita is a self-hosted uptime and incident service for every project in the IT 
 - Rate limits (US-31), nightly backup (US-33), `/healthz` and the peer ping (US-34), settings, database and migrations.
 
 ### 1.2.10 Out of scope
-- Monitor types other than HTTP(S).
-- SSO, 2FA, self-service password reset.
+- SSO, self-service password reset.
 - Escalation, on-call schedules, SMS, phone calls.
 - File uploads on tickets.
-- Remote probes, hot standby, more than one instance on one database. See [02 section 2.5](02-system-architecture.md#25-replication-model).
+- Hot standby, more than one instance on one database. See [02 section 2.5](02-system-architecture.md#25-replication-model).
 
 ## 1.3 User base
 

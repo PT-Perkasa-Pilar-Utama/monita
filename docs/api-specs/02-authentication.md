@@ -32,7 +32,7 @@ Roles: `super_admin`, `tl`, `supervisor`. A `supervisor` reads everything and ch
 | Method | Path | Access | Input | Behavior | AC |
 | --- | --- | --- | --- | --- | --- |
 | GET | `/api/ui/admin/users` | super_admin, supervisor | | Every account (500 at most): `id`, `email`, `role`, `status` (`active`, `invited` before a password is set, `disabled`), `created_at`, `two_factor` (on or off) and `avatar_at` (when the user's picture last changed, or null). Never a password hash or a two-factor secret. | |
-| POST | `/api/ui/admin/users/{id}/two-factor/off` | super_admin | | Turn off the two-factor sign-in of an active account that is not yours, for someone who lost the phone and the recovery codes: the secret, the recovery codes and open sign-in challenges are deleted, 204. A disabled or unknown target is 404; your own account is 422 (turn your own off on `/account` with a code). | #12 |
+| POST | `/api/ui/admin/users/{id}/two-factor/off` | super_admin | | Turn off the two-factor sign-in of an active account that is not yours, for someone who lost the phone and the recovery codes: the secret, the recovery codes and open sign-in challenges are deleted, 204. A disabled or unknown target is 404; your own account is 422 (turn your own off on `/account/two-factor` with a code). | #12 |
 | POST | `/api/ui/admin/users` | super_admin | `email`, `role` (`tl`, `supervisor` or `super_admin`; blank is `tl`) | Create the account and queue the invite email. 201 `{email, link}`: the link is shown this once; only its hash is stored. A bad or taken email is 422 on `email`; another role value is 422 on `role`. | AC-02.01 |
 | POST | `/api/ui/admin/users/{id}/invite` | super_admin | | New invite for any account that is not disabled and is not yours: `{email, link}`. It resets their sign-in. Older invites and the user's sessions are deleted, and two-factor is turned off. A disabled or unknown target is 404; your own account is 422. | AC-04.01, AC-04.02 |
 | POST | `/api/ui/admin/users/{id}/disable` | super_admin | | Disable an enabled account that is not yours. Set `disabled_at`, delete sessions and invites, 204. Their projects stay theirs. A target already disabled or unknown is 404; your own account is 422. | |
@@ -43,7 +43,7 @@ Two rules keep access safe. At least one active super admin always remains, beca
 
 ## 2.4 Two-factor sign-in
 
-v1.1 decision Q19. Codes follow RFC 6238: HMAC-SHA-1, 6 digits, 30-second steps, one step of drift either way. A code works once: Monita stores the last step used and accepts only later ones. A recovery code is 10 letters and digits, shown as `abcde-fghij`; case, spaces and dashes do not matter. The page `/account` calls the `/api/ui/me/two-factor` routes. They take a session of any role, a supervisor's too: securing one's own account changes nothing others see.
+v1.1 decision Q19. Codes follow RFC 6238: HMAC-SHA-1, 6 digits, 30-second steps, one step of drift either way. A code works once: Monita stores the last step used and accepts only later ones. A recovery code is 10 letters and digits, shown as `abcde-fghij`; case, spaces and dashes do not matter. The page `/account/two-factor` calls the `/api/ui/me/two-factor` routes. They take a session of any role, a supervisor's too: securing one's own account changes nothing others see.
 
 | Method | Path | Access | Input | Behavior | AC |
 | --- | --- | --- | --- | --- | --- |

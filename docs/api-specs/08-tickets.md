@@ -29,7 +29,7 @@ Output 201:
 | Purpose | Submit a bug ticket. Called by the project UI or backend. |
 | Access | Anyone with a valid ref ID. CORS `*`. |
 | Behavior | 1. Validate fields. 2. Find the ref ID by hash. Unknown, revoked or used up: 422 (AC-24.03, AC-27.01). 3. Count today's tickets (UTC) for the ref ID and the project. Over the per-ref and per-project limits (defaults 5 and 100; a super admin changes them in 4.4): 429 `daily_cap_reached` (AC-24.04, AC-24.05). 4. In one transaction: insert the ticket with `stage = triage` and the next `number`, and mark a single-use ref ID used (AC-25.02). 5. `notify::send(TicketCreated)` (AC-30.03). |
-| Errors | 400, 422 `ref_id_invalid`, 429 `daily_cap_reached`, 429 `rate_limited` |
+| Errors | 400, 422 `ref_id_invalid`, 429 `daily_cap_reached`. No other limit applies (v1.1 Q45). |
 
 | field | type | required | notes |
 | --- | --- | --- | --- |

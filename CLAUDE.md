@@ -122,7 +122,7 @@ A new e2e spec file must match a project in `e2e/lib/shards.ts`; `bun test lib` 
 - Validate input at the boundary (JSON, path). Return the JSON error envelope in api-specs 01 section 1.2; a refused form names its fields.
 - `anyhow` in app code paths, `thiserror` for errors a caller branches on. Never swallow an error: log it with `tracing` and return a status.
 - Every rule with a branch gets a test at the module interface. The incident engine (`step`) is pure and fully branch-tested.
-- Migrations are append only. A new change is `migrations/000N_<what>.sql` plus one line in `platform/migrate.rs`.
+- Migrations are append only. A new change is `migrations/000N_<what>.sql` plus one line in `platform/migrate/mod.rs`.
 - Seeds hold statements that return no rows.
 
 ## Git

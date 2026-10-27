@@ -31,6 +31,12 @@ No list is unbounded. No page renders every row of a list that can grow: it read
 | Heartbeats per project | 100 | New heartbeat refused |
 | Live API keys per project | 20 | New key refused; settings also shows the newest 20 revoked |
 | Addresses per email alert card | 20 | Card not saved |
+| Pins per user: projects, and monitors and heartbeats in each project | 6 each | The seventh pin is refused |
+| Locations per instance | 10 | New location refused |
+| Ids in one batch action | 100, the per-project cap | Request refused |
+| Open maintenance windows per project (scheduled or active) | 20 | New window refused |
+| Maintenance windows per page | 20 | The list pages on the server |
+| Test alerts per project, all cards together | 6 a minute | 429 `too_many_tries` |
 | Alert cards in each section of a project (incidents, tickets), besides the owner's | 10 | Card not added |
 | Status updates per incident | 50 | Update refused |
 | Open manual incidents per project | 20 | New manual incident refused |

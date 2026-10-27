@@ -85,17 +85,18 @@ graph TB
 
 Each Monita is independent. Two Monitas at two sites watch each other through a heartbeat: each one calls `MONITA_PING_URL`, which points at a heartbeat on the other. If one dies, the other sends a "heartbeat missed" alert.
 
-Not in v1: remote probes, hot standby, and shared databases. The check runner sits behind `checks::probe(target) -> CheckResult`, so a remote probe can feed results later without a rewrite.
+Hot standby and shared databases are not built. Remote probes are built (v1.1 Q26): `monita probe` runs checks for a location and posts the results back ([14](14-locations.md)).
 
 ## 2.6 Boundary map
 
 | Module | Owns tables | Others call |
 | --- | --- | --- |
-| accounts | users, invites, sessions | `CurrentUser`, `AdminUser`, `is_active_tl`, `purge_expired` |
-| projects | projects, project_icons, api_keys, project_secrets | `ApiProject`, `find_for`, `can_view`, `owns_any`, `secrets::value_of` |
-| checks | monitors, heartbeats, check_results, pings, check_slots, ping_slots, daily_summaries | `probe`, `run_check`, `heartbeat::admit`, `heartbeat::record`, `rearm_heartbeat`, `list_monitors`, `heartbeat::list` |
+| accounts | users, invites, sessions, recovery_codes, sign_in_challenges, user_avatars | `CurrentUser`, `AdminUser`, `is_active_tl`, `purge_expired` |
+| projects | projects, project_icons, api_keys, project_secrets, project_pins | `ApiProject`, `find_for`, `can_view`, `owns_any`, `secrets::value_of` |
+| checks | monitors, heartbeats, check_results, pings, check_slots, ping_slots, daily_summaries, locations, monitor_locations, monitor_pins, heartbeat_pins | `probe`, `run_check`, `heartbeat::admit`, `heartbeat::record`, `rearm_heartbeat`, `list_monitors`, `heartbeat::list` |
 | incidents | incidents, incident_items, incident_sources, status_updates | `observe`, `states_for`, `team_states_for`, `source_deleted`, `across` |
 | notify | alert_cards, outbox, telegram_links, telegram_chats | `send`, `send_cert_warning`, `previews`, `send_ticket`, `send_ticket_moved`, `create_alerts`, `cards::*`, `purge_delivered` |
+| maintenance | maintenance_windows, maintenance_items | `covers`, `active`, `create`, `update`, `delete`, `end_now`, `page` |
 | status | none | none |
 | tickets | ref_ids, tickets | `issue_ref_id`, `submit`, `triage_across`, `stage_counts` |
 | home | none | none |

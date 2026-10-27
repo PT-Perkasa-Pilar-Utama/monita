@@ -1,7 +1,7 @@
-# Monita v1: Technical Specification
+# Monita v1.1: Technical Specification
 
-**Version:** 1.0  
-**Date:** 2026-10-16  
+**Version:** 1.1.0  
+**Date:** 2026-10-27  
 **Author:** snowfluke  
 **Status:** Approved for build  
 **Phase:** 2 Design  
@@ -29,9 +29,9 @@
 | --- | --- |
 | Business docs (stories, sprints, AC) | [../business/](../business/) |
 | Scope decision log | [../decisions/2026-10-16-monita-v1-scope.md](../decisions/2026-10-16-monita-v1-scope.md) |
+| v1.1 scope decisions (Q16 to Q52) | [../decisions/2026-10-19-v1.1-scope.md](../decisions/2026-10-19-v1.1-scope.md) |
+| React UI migration | [../decisions/2026-10-17-react-ui-migration.md](../decisions/2026-10-17-react-ui-migration.md) |
+| v1.1 follow-ups | [../decisions/2026-10-20-follow-ups.md](../decisions/2026-10-20-follow-ups.md) |
 | API specs | [../api-specs/](../api-specs/) |
 | Design system | [../design-system/](../design-system/) |
 | Glossary | [../GLOSSARY.md](../GLOSSARY.md) |
-| Coding standard | [../coding-standard/](../coding-standard/) |
-| Task breakdown | [../task-breakdown/](../task-breakdown/) |
-| Deployment plan | [../deployment-plan/](../deployment-plan/) |

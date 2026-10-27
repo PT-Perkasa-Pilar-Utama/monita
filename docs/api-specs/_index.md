@@ -1,7 +1,7 @@
-# Monita v1: API Specification
+# Monita v1.1: API Specification
 
-**Version:** 1.0  
-**Date:** 2026-10-16  
+**Version:** 1.1.0  
+**Date:** 2026-10-27  
 **Author:** snowfluke  
 **Status:** Approved for build  
 **Phase:** 2 Design  
@@ -29,7 +29,7 @@ Legend: `OK` implemented and tested, `WIP` in progress, `TODO` not started, `SCA
 | `monita setup`, `service`, `whereis`, `--env-file` | [10](10-cli.md) | OK |
 | `monita probe` | [10](10-cli.md#105-monita-probe) | OK |
 | `monita admin reset-sign-in` | [10](10-cli.md#106-monita-admin-reset-sign-in) | OK |
-| Admin locations: list, add, delete | [04](04-checks.md#45-locations-v11-q26) | OK |
+| Admin locations: list, add, delete, new token (`POST .../locations/{id}/token`), monitors of a location (`GET .../locations/{id}/monitors`) | [04](04-checks.md#45-locations-v11-q26) | OK |
 
 ### Frontend routes (`/api/ui/`)
 
@@ -46,6 +46,7 @@ Legend: `OK` implemented and tested, `WIP` in progress, `TODO` not started, `SCA
 | Secrets: list, create, replace, delete | [03](03-projects.md#33-secrets) | OK |
 | Check options, monitors (method, headers, body, `fails_to_open`, `auth_*`), heartbeats (`last`, `alert`, `auto_incident`) | [04](04-checks.md#43-frontend-routes) | OK |
 | Pause and resume a monitor or heartbeat (`PUT .../paused`, `paused_at`, state `paused`) | [04](04-checks.md#43a-pause-v11-q38) | OK |
+| Pins: `PUT, DELETE .../projects/{slug}/pin`, `.../monitors/{id}/pin`, `.../heartbeats/{id}/pin` (Q48) | [03](03-projects.md#31-frontend-routes), [04](04-checks.md#43-frontend-routes) | OK |
 | Batch pause, resume and delete (`POST .../monitors/batch`, `.../heartbeats/batch`) | [04](04-checks.md#43c-batch-pause-resume-and-delete) | OK |
 | System page, mail server and its tests, limits, time zone | [04](04-checks.md#44-system-page) | OK |
 | Project incidents, incident items, updates | [05](05-incidents.md#51-frontend-routes) | OK |
