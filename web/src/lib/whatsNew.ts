@@ -11,8 +11,9 @@ export const RELEASES: WhatsNew[] = [
     highlights: [
       { title: "Plan maintenance or pause", text: "Planned work opens no incident and sends no alert, and you can pause a monitor or heartbeat, or mark an incident as planned work or a false alarm afterwards." },
       { title: "More kinds of checks", text: "Watch a TCP port, a DNS name or a ping beside web addresses, and get a warning before an HTTPS certificate expires." },
-      { title: "Alerts where your team is", text: "Alert cards send to email lists, Discord, Telegram, ntfy, PagerDuty or any webhook, each listening to critical alerts, warnings or both." },
+      { title: "Alerts where your team is", text: "Alert cards send to email lists, Slack or Google Chat, Discord, Telegram, ntfy, PagerDuty or any webhook, each listening to critical alerts, warnings or both. A shared Telegram bot connects a chat with a link." },
       { title: "Check from more than one place", text: "Locations run your checks from other networks too, so a fault in this server's own network is not mistaken for an outage." },
+      { title: "Pin what you watch", text: "Pin up to 6 projects, and up to 6 monitors and heartbeats in each project, so they stay at the top of your lists." },
       { title: "Two-factor sign-in", text: "Protect your account with an authenticator app and recovery codes." },
       { title: "Manage projects from scripts", text: "Project API keys can now read or change monitors, heartbeats, incidents and maintenance, for example to pause a monitor while you deploy." },
     ],
