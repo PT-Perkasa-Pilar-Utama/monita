@@ -13,11 +13,13 @@ pub fn read_line() -> anyhow::Result<String> {
 
 /// A password from the terminal without echo, or one line of stdin when it is not a terminal.
 pub fn read_secret(prompt: &str) -> anyhow::Result<String> {
-    eprint!("{prompt}");
     if !std::io::stdin().is_terminal() {
+        eprint!("{prompt}");
         return read_line();
     }
+    // Echo goes off before the prompt shows, so nothing typed after the prompt is echoed.
     let hidden = NoEcho::on_stdin();
+    eprint!("{prompt}");
     let line = read_line();
     drop(hidden);
     eprintln!();
