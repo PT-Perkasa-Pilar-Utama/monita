@@ -81,6 +81,8 @@ Maintainers only. A ruleset lets only repository admins create a `v*` tag. The i
 5. To finish or extend a release later, run the workflow on its tag: `gh workflow run release.yml --ref vX.Y.Z`. A run on a branch cannot use the `release` environment, so its image job fails.
 6. Write the release notes on the draft, then publish it. `releases/latest/download/monita_linux_amd64.tar.gz` then serves the new archive.
 
+The tag's CI run also publishes the site, so the landing page and docs always describe the released version. To publish a docs fix between releases, run the `ci` workflow by hand on main: `gh workflow run ci.yml --ref main`.
+
 ## Report a problem
 
 Use the issue forms: bug report, feature request or documentation. Search the open issues first.

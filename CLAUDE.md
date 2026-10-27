@@ -93,7 +93,7 @@ make check      # cargo fmt --check, clippy -D warnings, cargo test --lib, web t
 make e2e        # when a page or API changed: make web, debug build, Playwright, server stopped at the end
 ```
 
-`make release-check` adds the 6-minute release build (fat LTO, `opt-level = "s"`). CI (`.github/workflows/ci.yml`, testate's pattern) runs `make check` once, cargo-deny beside it, then the e2e shards from `e2e/lib/shards.ts` on the debug binary that `check` built. A shard skips itself only when a pass on the same inputs is recorded in the cache. The required check `browser end-to-end` passes a skipped e2e only when nothing but docs changed and `check` passed. `release.yml` runs only on a `v*` tag push and opens a draft release.
+`make release-check` adds the 6-minute release build (fat LTO, `opt-level = "s"`). CI (`.github/workflows/ci.yml`, testate's pattern) runs `make check` once, cargo-deny and a Windows build (web build and `cargo check`) beside it, then the e2e shards from `e2e/lib/shards.ts` on the debug binary that `check` built. A shard skips itself only when a pass on the same inputs is recorded in the cache. The required check `browser end-to-end` passes a skipped e2e only when nothing but docs changed and `check` passed. `release.yml` runs only on a `v*` tag push and opens a draft release. The site (landing, docs, demo) publishes from the `v*` tag's CI run, or from a manual CI run on main.
 
 A new e2e spec file must match a project in `e2e/lib/shards.ts`; `bun test lib` in `e2e/` fails otherwise.
 
