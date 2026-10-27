@@ -48,12 +48,23 @@ async fn post_webhook(state: &AppState, url: &str, body: &str) -> anyhow::Result
         // The URL is the credential for Slack-style hooks (SEC-20).
         .map_err(|e| anyhow::anyhow!("{}", e.without_url()))?;
     // A redirect is a failure: following it would turn the POST into a GET without the payload.
-    anyhow::ensure!(
-        res.status().is_success(),
-        "webhook answered HTTP {}",
-        res.status().as_u16()
-    );
+    if !res.status().is_success() {
+        return Err(Answered(res.status().as_u16()).into());
+    }
     Ok(())
+}
+
+/// A webhook server that answered with a status other than 2xx. It answered, so it is not slow:
+/// one project's stale Discord hook must not hold back every other project's Discord alerts.
+#[derive(Debug, thiserror::Error)]
+#[error("webhook answered HTTP {0}")]
+struct Answered(u16);
+
+/// Whether the server answered at all. Only a server that did not answer holds a send slot.
+fn answered(result: &anyhow::Result<()>) -> bool {
+    result
+        .as_ref()
+        .map_or_else(|e| e.downcast_ref::<Answered>().is_some(), |()| true)
 }
 
 /// Delivers due rows of both channels, `PARALLEL` at a time. Returns how many were sent.
@@ -101,7 +112,7 @@ pub async fn deliver_due(state: &AppState) -> anyhow::Result<usize> {
     Ok(sent)
 }
 
-/// Webhook servers whose last send failed, with when that stops counting. A server that never
+/// Webhook servers whose last send got no answer, with when that stops counting. A server that never
 /// answers holds a send slot for the whole timeout, so while any such server is known, one pass
 /// sends at most one row to all of them together and the rest wait a few seconds. Healthy
 /// servers, a shared one such as Slack's included, keep the full parallel sends. In memory: a
@@ -225,7 +236,7 @@ async fn deliver_one(state: &AppState, row: store::OutboxRow) -> anyhow::Result<
         .await
         .unwrap_or_else(|_| Err(anyhow::anyhow!("send timed out after 20 s")));
     if let Some(server) = server_of(&row) {
-        state.slow_servers.record(server, result.is_ok(), now());
+        state.slow_servers.record(server, answered(&result), now());
     }
     let outcome = match &result {
         Ok(()) => store::Outcome::Sent,
@@ -275,6 +286,15 @@ mod tests {
         let ids: Vec<i64> = now.iter().map(|r| r.id).collect();
         assert_eq!(ids, [1, 4, 5, 6, 7], "healthy servers keep every row");
         assert_eq!(later, [2, 3], "all slow servers share one row a pass");
+    }
+
+    #[test]
+    fn a_server_that_answers_an_error_is_not_slow() {
+        assert!(answered(&Ok(())));
+        assert!(answered(&Err(Answered(404).into())));
+        assert!(!answered(&Err(anyhow::anyhow!(
+            "send timed out after 20 s"
+        ))));
     }
 
     #[test]

@@ -142,6 +142,6 @@ A new ticket sends an email with the subject `[TICKET] {project} / #{n} {title}`
 - A supervisor sees `(hidden)` instead of a webhook URL.
 - A super admin sets the mail server on [Outgoing email](admin.md#outgoing-email).
 - A project sends at most 6 test alerts a minute.
-- A webhook server whose last send failed gets one alert a delivery pass, and its other alerts wait a few seconds, so one dead server cannot hold up other projects' alerts.
+- A webhook server whose last send got no answer gets one alert a delivery pass, and its other alerts wait a few seconds, so one dead server cannot hold up other projects' alerts.
 
 Monita keeps delivered alerts for 30 days.
