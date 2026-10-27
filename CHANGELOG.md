@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-## [1.1.0] - 2026-10-21
+## [1.1.0] - 2026-10-27
 
 More ways to check, alert and plan: TCP, DNS and ping monitors, certificate warnings, checks from more than one place, Discord, Telegram, ntfy and PagerDuty alerts, maintenance windows, and two-factor sign-in. Migrations 0024 to 0049 run on start; 0029 rebuilds the `monitors` table, and 0039 rebuilds `alert_cards`.
 
