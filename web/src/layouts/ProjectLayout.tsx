@@ -16,6 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { ProjectHead } from "@/lib/types";
 import { footerFor } from "@/lib/primitiveFooter";
 import { useApi } from "@/lib/useApi";
+import { BASE } from "@/lib/base";
 
 function ProjectChrome(): ReactElement | null {
   const { slug = "" } = useParams();
@@ -76,7 +77,7 @@ function ProjectChrome(): ReactElement | null {
       ]}
       end={
         <Button asChild variant="outline" size="sm">
-          <a href={`/status/${p.slug}`} target="_blank" rel="noreferrer" aria-label="Status page, opens in a new tab">
+          <a href={`${BASE}/status/${p.slug}`} target="_blank" rel="noreferrer" aria-label="Status page, opens in a new tab">
             <Globe data-icon="inline-start" />
             <span className="max-sm:hidden">Status page</span>
             <ExternalLink data-icon="inline-end" className="max-sm:hidden" />

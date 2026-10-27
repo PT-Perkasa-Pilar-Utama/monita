@@ -1,5 +1,7 @@
 // The frontend's one door to the server: JSON under /api/ui, in the api-specs 01 envelope.
 
+import { BASE } from "@/lib/base";
+
 export type FieldErrors = Record<string, string>;
 
 export class ApiError extends Error {
@@ -40,9 +42,9 @@ export async function api<T>(path: string, method: Method = "GET", body?: unknow
   const json: unknown = await res.json().catch(() => null);
   if (!res.ok) {
     const e = (json as { error?: { code?: string; message?: string; fields?: FieldErrors } } | null)?.error;
-    if (res.status === 401 && path !== "/login" && window.location.pathname !== "/login") {
+    if (res.status === 401 && path !== "/login" && window.location.pathname !== `${BASE}/login`) {
       const next = window.location.pathname + window.location.search;
-      window.location.assign(`/login?next=${encodeURIComponent(next)}`);
+      window.location.assign(`${BASE}/login?next=${encodeURIComponent(next)}`);
     }
     throw new ApiError(res.status, e?.code ?? "error", e?.message ?? `The server answered ${res.status}.`, e?.fields ?? {});
   }

@@ -10,6 +10,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { BareLayout } from "@/layouts/BareLayout";
 import { api, ApiError, dropField, errorText } from "@/lib/api";
 import { useApi } from "@/lib/useApi";
+import { BASE } from "@/lib/base";
 
 /** An invite link: set a password, then land on the projects. */
 export function Invite(): ReactElement {
@@ -28,7 +29,7 @@ export function Invite(): ReactElement {
     setError(null);
     try {
       await api(`/invites/${encodeURIComponent(token)}`, "POST", { password, password_confirm: confirm });
-      window.location.assign("/");
+      window.location.assign(`${BASE}/`);
     } catch (err) {
       setError(err instanceof ApiError ? err : new ApiError(0, "error", errorText(err)));
       setBusy(false);

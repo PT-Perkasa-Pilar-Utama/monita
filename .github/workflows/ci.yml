@@ -240,14 +240,15 @@ jobs:
           CARGO_BUILD_JOBS: 4
 
   # The project site on GitHub Pages: the landing page and docs (site/build.ts), and the demo,
-  # the debug binary on seeds/demo.sql rendered to static HTML (e2e/demo/snapshot.ts). Built here,
-  # never committed. A `v*` tag publishes it, so the site describes the release people download.
+  # the web app with a service worker that answers from the debug binary's recorded answers on
+  # seeds/demo.sql (e2e/demo/snapshot.ts). Built here, never committed. A `v*` tag publishes it,
+  # so the site describes the release people download.
   # A manual run of this workflow on main republishes it, for a docs fix between releases.
   demo:
     name: publish the site
     if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     needs: [check]
     concurrency:
       group: pages
@@ -271,12 +272,18 @@ jobs:
           name: monita-debug
           path: target/debug
       - run: chmod +x target/debug/monita
-      # The snapshot renders each page in the runner's Chrome, so it needs Playwright.
+      # The demo is the web app built for its path on the site.
+      - run: bun install --frozen-lockfile && bun run build
+        working-directory: web
+        env:
+          MONITA_BASE: /monita/demo
+      # The snapshot records each page in the runner's Chrome, so it needs Playwright.
       - run: bun install --frozen-lockfile
         working-directory: e2e
       - run: bun test ./site/highlight.test.ts
       - run: bun site/build.ts
       - run: bun e2e/demo/snapshot.ts
+      - run: bun e2e/demo/smoke.ts
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: target/site

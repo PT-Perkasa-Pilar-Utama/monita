@@ -16,13 +16,14 @@ import type { ProjectRow, StateKind } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { SortHead } from "@/components/list/SortHead";
 import type { Sort } from "@/lib/sort";
+import { BASE } from "@/lib/base";
 
 /** The public status page, in a new tab. A sibling of the card's link, never inside it. */
 function StatusLink({ slug, labelled }: { slug: string; labelled: boolean }): ReactElement {
   const title = "Open the status page in a new tab";
   return (
     <Button asChild variant="ghost" size={labelled ? "sm" : "icon-sm"} className="relative z-10">
-      <a href={`/status/${slug}`} target="_blank" rel="noreferrer" title={title} aria-label={labelled ? undefined : title}>
+      <a href={`${BASE}/status/${slug}`} target="_blank" rel="noreferrer" title={title} aria-label={labelled ? undefined : title}>
         {labelled && "Status page"}
         <ExternalLink data-icon={labelled ? "inline-end" : undefined} />
       </a>

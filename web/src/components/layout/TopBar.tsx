@@ -22,6 +22,7 @@ import { lastAdminPage } from "@/lib/adminPage";
 import { lastProject } from "@/lib/lastProject";
 import { ROLE_LABEL, useMe } from "@/lib/session";
 import { cn } from "@/lib/utils";
+import { BASE } from "@/lib/base";
 
 export const DOCS = "https://pt-perkasa-pilar-utama.github.io/monita/docs/";
 
@@ -62,7 +63,7 @@ function AccountMenu(): ReactElement {
   const { resolved, setTheme } = useTheme();
   const signOut = async (): Promise<void> => {
     await api("/logout", "POST");
-    window.location.assign("/login");
+    window.location.assign(`${BASE}/login`);
   };
   return (
     <DropdownMenu>

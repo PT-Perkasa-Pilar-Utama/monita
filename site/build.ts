@@ -1,6 +1,6 @@
 /**
  * Builds the project site into target/site: the landing page, the docs from docs/guide/*.md, and
- * the shared assets. e2e/demo/snapshot.ts then adds target/site/demo and checks every link.
+ * the shared assets. e2e/demo/snapshot.ts then adds target/site/demo and checks every link outside it.
  *
  *   bun site/build.ts
  *

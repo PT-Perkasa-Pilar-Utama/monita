@@ -35,7 +35,7 @@ src/platform/         config, db, migrate, ui (JSON envelope), spa, assets, head
 src/<module>/         mod.rs (interface) api.rs (JSON) store.rs + logic files
 web/src/              pages/, layouts/, components/{ui,app,layout,list}, lib/ (api, types, pure helpers + tests)
 migrations/           0001_init.sql, append only            seeds/ dev, qa, demo .sql
-tests/                integration, tests/common::TestApp    e2e/ specs, lib, demo/ (static demo)
+tests/                integration, tests/common::TestApp    e2e/ specs, lib, demo/ (online demo)
 site/                 landing page and docs site builder    docs/guide/ user docs, published by site/build.ts
 ```
 

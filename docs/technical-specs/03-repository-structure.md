@@ -45,7 +45,7 @@ monita/
 ├── web/                       React app: src/{pages, layouts, components, lib}, build.ts; `make web` builds dist/
 ├── static/                    theme.js, favicon.svg, fonts; embedded by rust-embed
 ├── tests/                     Rust integration tests (temp-file DB, fake adapters)
-├── e2e/                       Playwright on Bun: package.json, playwright.config.ts, specs/, demo/ (static demo build)
+├── e2e/                       Playwright on Bun: package.json, playwright.config.ts, specs/, demo/ (online demo build and its smoke test)
 ├── site/                      build.ts, landing page, site.css, docs.js: the GitHub Pages site
 ├── scripts/                   smoke-cli.sh: `setup`, `service` and `probe install` as root on CI;
 │                              parity/ (the parity kit, scripts/parity/README.md)

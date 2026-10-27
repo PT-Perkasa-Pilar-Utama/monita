@@ -11,6 +11,7 @@ import { useProject } from "@/lib/project";
 import { useMe } from "@/lib/session";
 import type { PublicPages } from "@/lib/types";
 import { toast } from "sonner";
+import { BASE } from "@/lib/base";
 
 type TabKey = keyof PublicPages | "uptime";
 
@@ -48,7 +49,7 @@ export function StatusPageSection(): ReactElement {
       title="Public tabs"
       description="Choose what people see on your status page, where only the monitors and heartbeats you mark as public appear."
       footerNote={
-        <a href={`/status/${p.slug}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-mono break-all text-link underline-offset-4 hover:underline">
+        <a href={`${BASE}/status/${p.slug}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-mono break-all text-link underline-offset-4 hover:underline">
           {origin}/status/{p.slug}
           <ExternalLink className="size-3.5 shrink-0" />
         </a>

@@ -1,6 +1,7 @@
 import type { CSSProperties, MouseEvent, ReactElement, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { TableRow } from "@/components/ui/table";
+import { BASE } from "@/lib/base";
 import { cn } from "@/lib/utils";
 
 // A control inside the row keeps its own click.
@@ -14,7 +15,7 @@ export function LinkRow({ to, state, className, style, children }: { to: string;
   const navigate = useNavigate();
   const open = (e: MouseEvent<HTMLTableRowElement>): void => {
     if (e.target instanceof Element && e.target.closest(OWN_CLICK)) return;
-    if (e.metaKey || e.ctrlKey) window.open(to, "_blank", "noopener");
+    if (e.metaKey || e.ctrlKey) window.open(BASE + to, "_blank", "noopener");
     else navigate(to, { state });
   };
   return (

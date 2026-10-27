@@ -13,5 +13,6 @@
 .impeccable/hook.cache.json
 /web/node_modules
 /web/dist
+/web/dist-demo
 /web/src/globals.css
 /web/tsconfig.tsbuildinfo

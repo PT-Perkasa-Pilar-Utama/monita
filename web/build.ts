@@ -5,7 +5,10 @@ import { brotliCompressSync, constants, gzipSync } from "node:zlib";
 // status.html for the public pages, which share the core in a chunk. Monita embeds the folder
 // (src/platform/spa.rs): /status/ paths get status.html, every other page path index.html.
 
-const OUT = "./dist";
+// MONITA_BASE builds the online demo instead: the same app under a path such as /monita/demo, in
+// dist-demo, for e2e/demo/build.ts. Monita itself serves the app at the root from dist.
+const BASE = (process.env["MONITA_BASE"] ?? "").replace(/\/$/, "");
+const OUT = BASE ? "./dist-demo" : "./dist";
 await Bun.$`rm -rf ${OUT}`;
 
 const result = await Bun.build({
@@ -15,7 +18,7 @@ const result = await Bun.build({
   splitting: true,
   minify: true,
   naming: { entry: "assets/[name]-[hash].[ext]", chunk: "assets/[name]-[hash].[ext]", asset: "assets/[name]-[hash].[ext]" },
-  define: { "process.env.NODE_ENV": JSON.stringify("production") },
+  define: { "process.env.NODE_ENV": JSON.stringify("production"), "process.env.MONITA_BASE": JSON.stringify(BASE) },
 });
 if (!result.success) {
   for (const log of result.logs) console.error(log);
@@ -24,7 +27,7 @@ if (!result.success) {
 
 // Windows reports output paths with backslashes; every path below is matched with forward ones.
 const slash = (path: string): string => path.replaceAll("\\", "/");
-const rel = (path: string): string => `/${path.slice(path.indexOf("assets/"))}`;
+const rel = (path: string): string => `${BASE}/${path.slice(path.indexOf("assets/"))}`;
 const entryOf = (name: string): string => {
   const path = result.outputs.map((o) => (o.kind === "entry-point" ? slash(o.path) : "")).find((p) => p.includes(`/assets/${name}-`) && p.endsWith(".js"));
   if (!path) {
@@ -48,7 +51,7 @@ async function chunksOf(path: string, seen = new Set<string>()): Promise<Set<str
 }
 // Tailwind's output is linked as its own file: its font URLs point at /static, which the
 // bundler would try to resolve.
-const cssText = await Bun.file("./src/globals.css").text();
+const cssText = (await Bun.file("./src/globals.css").text()).replace(/url\("?\/static\//g, (m) => m.replace("/static/", `${BASE}/static/`));
 const cssHash = new Bun.CryptoHasher("sha256").update(cssText).digest("hex").slice(0, 10);
 const cssPath = `${OUT}/assets/app-${cssHash}.css`;
 await Bun.write(cssPath, cssText);
@@ -66,9 +69,9 @@ const page = async (entry: string): Promise<string> => {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Monita</title>
-<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
-<link rel="preload" href="/static/fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
-<script src="/static/theme.js?v=${themeHash}"></script>
+<link rel="icon" href="${BASE}/static/favicon.svg" type="image/svg+xml">
+<link rel="preload" href="${BASE}/static/fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin>
+<script src="${BASE}/static/theme.js?v=${themeHash}"></script>
 ${css.map((c) => `<link rel="stylesheet" href="${rel(c.path)}">`).join("\n")}
 ${preload.join("\n")}
 <script type="module" src="${rel(entry)}"></script>
@@ -84,7 +87,7 @@ await Bun.write(`${OUT}/status.html`, await page(entryOf("public")));
 
 // Each file also ships as .br and .gz, which Monita sends to a browser that takes them
 // (src/platform/spa.rs): the JS goes from 1 MB to about 240 KB.
-for (const name of await readdir(`${OUT}/assets`)) {
+for (const name of BASE ? [] : await readdir(`${OUT}/assets`)) {
   if (!/\.(js|css)$/.test(name)) continue;
   const path = `${OUT}/assets/${name}`;
   const raw = new Uint8Array(await Bun.file(path).arrayBuffer());

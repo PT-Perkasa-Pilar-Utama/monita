@@ -425,7 +425,7 @@ After a run that applied at least one migration, `check_references` runs `PRAGMA
 | `monita admin create --email` | Creates a super admin. Reads the password from stdin. |
 | `monita admin reset-password --email` | Sets a new password for an existing super admin, turns their two-factor off and signs them out. A TL resets through a new invite. |
 | `monita admin reset-sign-in --email` | For any active user who lost the authenticator and the recovery codes. Turns two-factor off, ends sessions, stops the old password, and queues an invite email. |
-| `POST /admin/reset-state {"seed":"dev"}` | Dev and test only. Wipes, migrates, loads `seeds/dev.sql`, `seeds/qa.sql` or `seeds/demo.sql` (the history the static demo shows). |
+| `POST /admin/reset-state {"seed":"dev"}` | Dev and test only. Wipes, migrates, loads `seeds/dev.sql`, `seeds/qa.sql` or `seeds/demo.sql` (the history the online demo shows). |
 
 Forbidden: running a `.sql` file by an absolute path outside the runner, and creating tables in application code.
 

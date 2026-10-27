@@ -4,6 +4,7 @@ import { BrowserRouter } from "react-router-dom";
 import { IconContext } from "@/components/icons";
 import { ThemeProvider } from "@/components/layout/ThemeProvider";
 import { Toaster } from "@/components/ui/sonner";
+import { BASE } from "@/lib/base";
 
 /** Renders an app into the page's #root with the providers every page needs. */
 export function mount(app: ReactElement): void {
@@ -13,7 +14,7 @@ export function mount(app: ReactElement): void {
     <StrictMode>
       <IconContext.Provider value={{ weight: "regular" }}>
         <ThemeProvider>
-          <BrowserRouter>{app}</BrowserRouter>
+          <BrowserRouter basename={BASE || "/"}>{app}</BrowserRouter>
           <Toaster />
         </ThemeProvider>
       </IconContext.Provider>
