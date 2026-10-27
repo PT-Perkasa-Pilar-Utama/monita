@@ -43,9 +43,10 @@ try {
     if (m.type() === "error") problems.push(`console: ${m.text()}`);
   });
   page.on("pageerror", (e) => problems.push(`page error: ${e.message}`));
+  // A missing chunk, font or recording. A page's own 404 is the not-found scenario below.
   page.on("response", (r) => {
     const url = new URL(r.url());
-    if (url.pathname.startsWith("/api/ui/") && r.status() === 404) problems.push(`no recording: ${url.pathname}${url.search}`);
+    if (url.origin === ORIGIN && r.status() === 404 && r.request().resourceType() !== "document") problems.push(`missing: ${url.pathname}${url.search}`);
   });
 
   // A first visit: the worker starts, then the app draws the projects.
@@ -60,6 +61,11 @@ try {
   await expect(page).toHaveURL(new RegExp(`${BASE}/projects/[a-z-]+$`));
   await page.getByRole("radio", { name: "Chart view" }).click().catch(() => {});
 
+  // The check above sees answers from the worker: a request the demo never recorded is caught.
+  await page.evaluate(() => fetch("/api/ui/not-recorded"));
+  await expect.poll(() => problems.includes("missing: /api/ui/not-recorded")).toBe(true);
+  problems.splice(problems.indexOf("missing: /api/ui/not-recorded"), 1);
+
   // A link straight to a monitor: Pages adds a slash, the app reads it without.
   await page.goto(`${ORIGIN}${BASE}/projects/portal/monitors/2`);
   await expect(page).toHaveURL(`${ORIGIN}${BASE}/projects/portal/monitors/2`);
@@ -71,19 +77,35 @@ try {
   if (status !== 403) problems.push(`a write answered ${status}, not 403`);
   await expect(page.getByRole("note")).toContainText("cannot save changes");
 
+  // Signing out and in again stays in the demo.
+  await page.getByRole("button", { name: /^Account:/ }).click();
+  await page.getByRole("menuitem", { name: "Sign out" }).click();
+  await expect(page).toHaveURL(`${ORIGIN}${BASE}/login`);
+  await page.getByLabel("Email").fill("visitor@example.com");
+  await page.getByLabel("Password").fill("anything");
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page).toHaveURL(`${ORIGIN}${BASE}/`);
+  await expect(page.getByRole("heading", { name: "Projects" })).toBeVisible();
+
   // A status page, and a demo page with no file of its own.
   await page.goto(`${ORIGIN}${BASE}/status/payments`);
   await expect(page.getByRole("heading").first()).toBeVisible();
   await page.goto(`${ORIGIN}${BASE}/projects/portal/nothing-here`);
   await expect(page).toHaveURL(`${ORIGIN}${BASE}/projects/portal/nothing-here`);
   await expect(page.getByRole("heading", { name: "Not found" })).toBeVisible();
+
+  // The same path on a first visit, before the worker runs, goes through 404.html.
+  const fresh = await (await browser.newContext()).newPage();
+  await fresh.goto(`${ORIGIN}${BASE}/projects/portal/monitors/nothing-here`);
+  await expect(fresh).toHaveURL(`${ORIGIN}${BASE}/projects/portal/monitors/nothing-here`);
+  await expect(fresh.getByRole("heading", { name: "Not found" })).toBeVisible();
 } catch (e) {
   problems.push(String(e));
 } finally {
   await browser.close();
   server.stop(true);
 }
-// Chrome logs the write's 403, and the not-found page's own 404, as failed loads.
+// Chrome logs the write's 403 and each 404 as a failed load; the response check above judges the 404s.
 const real = problems.filter((p) => !/^console: Failed to load resource: the server responded with a status of (403|404)/.test(p));
 if (real.length > 0) {
   console.error(`demo smoke: ${real.length} problems\n${real.join("\n")}`);

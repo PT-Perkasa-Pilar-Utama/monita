@@ -61,11 +61,12 @@ async function main(): Promise<void> {
     const { chromium } = await import("@playwright/test");
     const browser = await chromium.launch({ channel: "chrome" });
     try {
-      const capturedAt = Math.floor(Date.now() / 1000);
       const context = await signedIn(browser, cookie, 1);
       const entries = record(context);
       const pages = await crawl(context);
       await context.close();
+      // Taken after the crawl: an answer from its end must not read as the viewer's future.
+      const capturedAt = Math.floor(Date.now() / 1000);
       await write(pages, { capturedAt, entries: Object.fromEntries([...(await entries())].sort(([a], [b]) => a.localeCompare(b))) });
       if (screens !== -1) await screenshots(browser, cookie, process.argv[screens + 1] ?? "screens");
     } finally {

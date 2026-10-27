@@ -9,6 +9,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { BareLayout } from "@/layouts/BareLayout";
 import { PeekingMoni, Playground } from "@/components/brand/Playground";
 import { api, ApiError, errorText } from "@/lib/api";
+import { BASE } from "@/lib/base";
 
 /** Where to go after sign-in: `?next=` only when it stays on this site. The parsed path is
  * checked too: dot segments turn `/.//evil.example` into `//evil.example`, which the browser
@@ -24,7 +25,10 @@ export function nextPath(next: string | null, origin: string): string {
   }
 }
 
-const goOn = (): void => window.location.assign(nextPath(new URLSearchParams(window.location.search).get("next"), window.location.origin));
+const goOn = (): void => {
+  const to = nextPath(new URLSearchParams(window.location.search).get("next"), window.location.origin);
+  window.location.assign(to === "/" ? `${BASE}/` : to);
+};
 
 export function Login(): ReactElement {
   const [email, setEmail] = useState("");
