@@ -3,6 +3,7 @@
 
 pub mod cert;
 pub mod icmp;
+mod redirect;
 
 use std::time::{Duration, Instant};
 
@@ -13,13 +14,16 @@ use crate::platform::now;
 const MAX_BODY: usize = 1024 * 1024;
 
 /// One client per (TLS check, redirect policy). Skipping TLS serves self-signed internal certs.
-/// A monitor that expects a 3xx sees the redirect itself instead of where it leads.
+/// A monitor that expects a 3xx sees the redirect itself instead of where it leads. A check that
+/// sends its own headers follows only redirects that stay on the monitored server.
 #[derive(Clone)]
 pub struct Clients {
     strict: reqwest::Client,
     insecure: reqwest::Client,
     strict_no_follow: reqwest::Client,
     insecure_no_follow: reqwest::Client,
+    strict_guarded: reqwest::Client,
+    insecure_guarded: reqwest::Client,
 }
 
 impl Clients {
@@ -29,26 +33,28 @@ impl Clients {
     }
 
     pub fn new() -> anyhow::Result<Self> {
-        let base = |follow: bool| {
+        let base = |policy: fn() -> reqwest::redirect::Policy| {
             reqwest::Client::builder()
                 .user_agent(concat!(
                     "Monita/",
                     env!("CARGO_PKG_VERSION"),
                     " (uptime check)"
                 ))
-                .redirect(if follow {
-                    reqwest::redirect::Policy::limited(5)
-                } else {
-                    reqwest::redirect::Policy::none()
-                })
+                .redirect(policy())
                 // The leaf certificate, for its expiry (v1.1 Q25).
                 .tls_info(true)
         };
+        let follow = || reqwest::redirect::Policy::limited(5);
+        let none = reqwest::redirect::Policy::none;
         Ok(Self {
-            strict: base(true).build()?,
-            insecure: base(true).danger_accept_invalid_certs(true).build()?,
-            strict_no_follow: base(false).build()?,
-            insecure_no_follow: base(false).danger_accept_invalid_certs(true).build()?,
+            strict: base(follow).build()?,
+            insecure: base(follow).danger_accept_invalid_certs(true).build()?,
+            strict_no_follow: base(none).build()?,
+            insecure_no_follow: base(none).danger_accept_invalid_certs(true).build()?,
+            strict_guarded: base(redirect::guarded).build()?,
+            insecure_guarded: base(redirect::guarded)
+                .danger_accept_invalid_certs(true)
+                .build()?,
         })
     }
 }
@@ -125,11 +131,15 @@ pub async fn probe(t: &Target<'_>, clients: &Clients) -> CheckResult {
         .expected_status
         .split(',')
         .any(|p| p.trim().starts_with('3'));
-    let client = match (t.skip_tls_verify, follow) {
-        (false, true) => &clients.strict,
-        (true, true) => &clients.insecure,
-        (false, false) => &clients.strict_no_follow,
-        (true, false) => &clients.insecure_no_follow,
+    // The monitor's own headers and a header-kind secret go only to the monitored server.
+    let guarded = follow && (!t.headers.is_empty() || matches!(t.auth, Some(Auth::Header { .. })));
+    let client = match (t.skip_tls_verify, follow, guarded) {
+        (false, true, true) => &clients.strict_guarded,
+        (true, true, true) => &clients.insecure_guarded,
+        (false, true, false) => &clients.strict,
+        (true, true, false) => &clients.insecure,
+        (false, false, _) => &clients.strict_no_follow,
+        (true, false, _) => &clients.insecure_no_follow,
     };
     let checked_at = now();
     let start = Instant::now();
@@ -175,6 +185,9 @@ pub async fn probe(t: &Target<'_>, clients: &Clients) -> CheckResult {
         }
         Err(e) => return fail(None, start, root_cause(&e)),
     };
+    if guarded && let Some(error) = redirect::left_server(&resp) {
+        return fail(Some(resp.status().as_u16()), start, error);
+    }
     // After a redirect to another host, the certificate is that host's, not the monitored one.
     let cert = same_host(t.url, resp.url())
         .then(|| resp.extensions().get::<reqwest::tls::TlsInfo>())

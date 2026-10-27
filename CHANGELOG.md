@@ -85,6 +85,7 @@ Fixes from the security audit of 2026-10-27.
 - Turning two-factor sign-in on asks for the current password first, so a stolen session alone cannot tie an account to a factor its owner does not hold.
 - Sign-in counts a wrong-password guess before it checks the password, so guesses sent at once can no longer pass the limit of 10 per account in 15 minutes. A right password gives its count back.
 - Every webhook `text` writes `&`, `<` and `>` as entities, so the words a job sends with `/fail` cannot add an `@channel` mention or a link to a Slack-style channel.
+- A monitor that sends its own headers, or signs in with a header, follows a redirect only while it stays on the monitored server. A redirect to another server fails the check instead of handing it the secret.
 - Deleting another project's secret answers 404, like every other route, instead of saying how many monitors use it.
 - After sign-in, `?next=` refuses a path that dot segments turn into another host (`/.//example.com`).
 

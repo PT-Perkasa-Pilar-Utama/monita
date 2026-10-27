@@ -50,7 +50,7 @@ These fields are for HTTP checks.
 | Check every | 30 seconds, 1 minute, 3 minutes or 5 minutes | 1 minute |
 | Timeout in seconds | 1 to 30 | 10 |
 
-Monita follows redirects, unless the expected status names a `3xx`. Then the redirect itself is the answer.
+Monita follows redirects, unless the expected status names a `3xx`. Then the redirect itself is the answer. A monitor with its own headers, or one that signs in with a header, follows a redirect only while it stays on the same server, or moves from http to https on the same host. A redirect to another server fails the check with "Redirected to ..., another server", so the header values never leave for a host you did not name. Point such a monitor at the address that answers.
 
 ## Authentication
 
