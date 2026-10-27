@@ -40,6 +40,11 @@ rusqlite = { version = "0.41", default-features = false, features = ["bundled", 
 # Compresses JSON answers (platform::compress).
 flate2 = "1.1"
 
+# O_NOFOLLOW, so root never changes a file that a planted symlink in the data folder points at.
+# Already built for tokio; this names it directly.
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
 [dev-dependencies]
 http-body = "1.1"
 reqwest = { version = "0.13", default-features = false, features = ["rustls", "json"] }

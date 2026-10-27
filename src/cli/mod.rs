@@ -247,7 +247,8 @@ async fn offline(
 }
 
 /// Gives the database files the owner of their folder. Root runs these commands; the service
-/// runs as `monita` and must still open what root created.
+/// runs as `monita` and must still open what root created. Only a plain file with one name is
+/// handed over, and `lchown` never follows a link, so a link planted in the folder gains nothing.
 fn own_like_folder(db_path: &Path) {
     #[cfg(unix)]
     {
@@ -262,11 +263,15 @@ fn own_like_folder(db_path: &Path) {
             format!("{name}-shm"),
             format!("{name}.lock"),
         ] {
-            let Ok(m) = std::fs::metadata(&path) else {
+            let Ok(m) = std::fs::symlink_metadata(&path) else {
                 continue;
             };
+            if !m.file_type().is_file() || m.nlink() != 1 {
+                eprintln!("warning: left {path} alone: it is not a plain file");
+                continue;
+            }
             if (m.uid(), m.gid()) != (dir.uid(), dir.gid())
-                && let Err(e) = std::os::unix::fs::chown(&path, Some(dir.uid()), Some(dir.gid()))
+                && let Err(e) = std::os::unix::fs::lchown(&path, Some(dir.uid()), Some(dir.gid()))
             {
                 eprintln!("warning: could not give {path} to the owner of its folder: {e}");
             }

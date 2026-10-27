@@ -179,3 +179,21 @@ async fn an_old_file_switches_to_incremental_vacuum_once_and_gives_space_back() 
     assert_eq!(count("PRAGMA freelist_count").await, Some(0));
     assert!(count("PRAGMA page_count").await.unwrap() < pages / 10);
 }
+
+#[cfg(unix)]
+#[tokio::test]
+async fn open_never_changes_a_file_that_a_companion_symlink_points_at() {
+    use std::os::unix::fs::{PermissionsExt, symlink};
+    let dir = tempfile::tempdir().unwrap();
+    let victim = dir.path().join("victim.conf");
+    std::fs::write(&victim, "keep").unwrap();
+    std::fs::set_permissions(&victim, std::fs::Permissions::from_mode(0o644)).unwrap();
+    let path = dir.path().join("data/t.db");
+    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    symlink(&victim, dir.path().join("data/t.db.lock")).unwrap();
+
+    assert!(Db::open(&path).await.is_err(), "it refuses the link");
+    let mode = std::fs::metadata(&victim).unwrap().permissions().mode() & 0o777;
+    assert_eq!(mode, 0o644, "the symlink's target kept its mode");
+    assert_eq!(std::fs::read_to_string(&victim).unwrap(), "keep");
+}

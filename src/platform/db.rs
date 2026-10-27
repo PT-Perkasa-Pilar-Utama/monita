@@ -102,10 +102,11 @@ impl Db {
         }
         anyhow::ensure!(path.to_str().is_some(), "database path must be UTF-8");
         let lock_path = PathBuf::from(format!("{}.lock", path.display()));
-        let lock = std::fs::OpenOptions::new()
-            .create(true)
-            .truncate(false)
-            .write(true)
+        let mut lock = std::fs::OpenOptions::new();
+        lock.create(true).truncate(false).write(true);
+        #[cfg(unix)]
+        std::os::unix::fs::OpenOptionsExt::custom_flags(&mut lock, libc::O_NOFOLLOW);
+        let lock = lock
             .open(&lock_path)
             .with_context(|| format!("opening {}", lock_path.display()))?;
         if lock.try_lock().is_err() {
@@ -119,7 +120,8 @@ impl Db {
         for companion in ["", "-wal", "-shm", ".lock"] {
             let f = PathBuf::from(format!("{}{companion}", path.display()));
             if f.exists() {
-                super::restrict(&f, 0o600)?;
+                super::restrict(&f, 0o600)
+                    .with_context(|| format!("restricting {}", f.display()))?;
             }
         }
         Ok(Self(Arc::new(Inner {

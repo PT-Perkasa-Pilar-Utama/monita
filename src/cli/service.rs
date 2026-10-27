@@ -110,14 +110,15 @@ pub async fn install(config: &Config, env_file: Option<&Path>) -> anyhow::Result
     wait_healthy(config.bind).await
 }
 
-/// Gives the folder and what it holds to the service user, mode 0700.
+/// Gives the folder and what it holds to the service user, mode 0700. `lchown` changes a link
+/// itself, never what it points at.
 #[cfg(unix)]
 fn hand_over(dir: &Path, uid: u32, gid: u32) -> anyhow::Result<()> {
-    use std::os::unix::fs::{PermissionsExt, chown};
+    use std::os::unix::fs::{PermissionsExt, chown, lchown};
     std::fs::set_permissions(dir, std::fs::Permissions::from_mode(0o700))?;
     chown(dir, Some(uid), Some(gid))?;
     for entry in std::fs::read_dir(dir)? {
-        chown(entry?.path(), Some(uid), Some(gid))?;
+        lchown(entry?.path(), Some(uid), Some(gid))?;
     }
     Ok(())
 }

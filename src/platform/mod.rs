@@ -68,12 +68,18 @@ pub fn valid_http_url(raw: &str) -> bool {
         })
 }
 
-/// Sets a file's or folder's Unix mode (SEC-18). Does nothing on other systems.
+/// Sets a file's or folder's Unix mode (SEC-18). Does nothing on other systems. It refuses a
+/// symbolic link instead of changing what the link points at, since root may run the CLI on a
+/// folder that the service user can write.
 pub fn restrict(path: &std::path::Path, mode: u32) -> std::io::Result<()> {
     #[cfg(unix)]
     {
-        use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(path, std::fs::Permissions::from_mode(mode))?;
+        use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+        std::fs::OpenOptions::new()
+            .read(true)
+            .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK)
+            .open(path)?
+            .set_permissions(std::fs::Permissions::from_mode(mode))?;
     }
     let _ = (path, mode);
     Ok(())
