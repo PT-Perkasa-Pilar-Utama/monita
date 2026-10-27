@@ -22,14 +22,16 @@ if (!result.success) {
   process.exit(1);
 }
 
+// Windows reports output paths with backslashes; every path below is matched with forward ones.
+const slash = (path: string): string => path.replaceAll("\\", "/");
 const rel = (path: string): string => `/${path.slice(path.indexOf("assets/"))}`;
 const entryOf = (name: string): string => {
-  const out = result.outputs.find((o) => o.kind === "entry-point" && o.path.includes(`/assets/${name}-`) && o.path.endsWith(".js"));
-  if (!out) {
+  const path = result.outputs.map((o) => (o.kind === "entry-point" ? slash(o.path) : "")).find((p) => p.includes(`/assets/${name}-`) && p.endsWith(".js"));
+  if (!path) {
     console.error(`build: no ${name} entry point in the output`);
     process.exit(1);
   }
-  return out.path;
+  return path;
 };
 
 /** The chunks a file imports, followed through, so the page can ask for them all at once. */
