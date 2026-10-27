@@ -344,6 +344,9 @@ function main(): void {
   mkdirSync(join(assets, "brand"), { recursive: true });
   for (const f of readdirSync(join(ROOT, "docs/assets/brand"))) copyFileSync(join(ROOT, "docs/assets/brand", f), join(assets, "brand", f));
   for (const f of readdirSync(join(ROOT, "docs/assets/screens"))) copyFileSync(join(ROOT, "docs/assets/screens", f), join(assets, f));
+  // Other projects' logos for the landing page's benchmark table (site/logos/README.md).
+  mkdirSync(join(assets, "logos"), { recursive: true });
+  for (const f of readdirSync(join(import.meta.dir, "logos")).filter((f) => f.endsWith(".svg"))) copyFileSync(join(import.meta.dir, "logos", f), join(assets, "logos", f));
 
   const page = (file: string, html: string) => save(file, versioned(codeBlocks(html), assets));
   const pages = new Map([...listed].map((slug) => [slug, load(slug)]));
@@ -352,7 +355,7 @@ function main(): void {
   page(join(OUT, "index.html"), scenes(readFileSync(join(import.meta.dir, "index.html"), "utf8")).replace("<!-- topbar -->", topbar("", "home"))
     .replace("<!-- og -->", ogTags(
       "Monita: site reliability for every project your team ships",
-      "Monita checks your team's URLs and cron jobs, opens an incident after two failed checks, alerts the people you choose by email and webhook, and shows it on a public status page. You host it yourself.",
+      "Monita checks your team's URLs and cron jobs, opens an incident after two failed checks, alerts the people you choose by email, chat or PagerDuty, and shows it on a public status page. You host it yourself.",
       "",
     )));
   console.log(`site: ${pages.size} guide pages in ${OUT}`);

@@ -84,7 +84,7 @@
       <h2>Small enough to run on a server you already have</h2>
       <ul class="lp-motto">
         <li><b>One program and one file.</b> Monita is a single binary that keeps all its data in one SQLite file. It does not need Docker, a separate database or a message queue.</li>
-        <li><b>Light on memory.</b> In a Docker test on a Mac, Monita used about 4 MiB of memory, as <code>docker stats</code> reports it, while it checked 500 URLs every minute. Uptime Kuma used 236 MiB in the same test. A server with 512 MB of memory and 5 GB of disk is enough to start. <a href="docs/install/#requirements">See the requirements.</a></li>
+        <li><b>Light on memory.</b> In a Docker test on a Mac, Monita used about 4 MiB of memory, as <code>docker stats</code> reports it, while it checked 500 URLs every minute. Uptime Kuma used 236 MiB in the same test. A server with 512 MB of memory and 5 GB of disk is enough to start. <a href="#benchmark">See the benchmark.</a></li>
         <li><b>Easy to connect.</b> A project needs a health URL, one curl line per cron job and, for bug reports, two HTTP calls. <a href="#connect">See each one below.</a></li>
         <li><b>Alerts survive a restart.</b> Monita saves every alert before it sends it, and it tries again after a failed delivery or a restart. A slow mail server never delays a check.</li>
       </ul>
@@ -137,6 +137,30 @@ docker run --rm -it -v monita-data:/data -e MONITA_ENV=dev ghcr.io/pt-perkasa-pi
       </div>
       <p>To build it yourself, see <a href="docs/install/#from-source">building from source</a>. You can also <a href="demo/">try the demo in your browser</a> first. It needs no account.</p>
     </div>
+  </section>
+
+  <section class="lp-section" id="benchmark">
+    <h2>Monita beside Uptime Kuma and Gatus</h2>
+    <p class="lp-lead">Each tool checked 500 URLs every 60 seconds against one local nginx, alone in Docker on an Apple M1 with 2 vCPU. Memory and CPU are what <code>docker stats</code> reported every 15 seconds for 5 minutes, after a 5-minute warm-up, on 2026-10-27.</p>
+    <div class="lp-bench" role="region" aria-label="Benchmark table" tabindex="0">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">500 checks a minute</th>
+            <th scope="col" class="lp-bench__us"><span class="lp-bench__tool"><img src="assets/brand/mark.svg" alt="" width="32" height="32">Monita 1.1.0</span></th>
+            <th scope="col"><span class="lp-bench__tool"><img class="lp-bench__kuma" src="assets/logos/uptime-kuma.svg" alt="" width="32" height="32">Uptime Kuma 2.5.6</span></th>
+            <th scope="col"><span class="lp-bench__tool"><img src="assets/logos/gatus.svg" alt="" width="32" height="32">Gatus</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><th scope="row">Memory under load (median)</th><td class="lp-bench__us">3.6 MiB</td><td>236 MiB</td><td>45.5 MiB</td></tr>
+          <tr><th scope="row">CPU, share of one core</th><td class="lp-bench__us">0.7%</td><td>4.7%</td><td>3.3%</td></tr>
+          <tr><th scope="row">Checks done per minute, of 500</th><td class="lp-bench__us">500</td><td>464</td><td>500</td></tr>
+          <tr><th scope="row">Image download (arm64)</th><td class="lp-bench__us">6.5 MB</td><td>603 MB</td><td>24.5 MB</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="lp-bench__note">Uptime Kuma fell behind and did 464 of its 500 checks a minute. Gatus was the latest image, built on 2026-10-23. Checks of real sites over HTTPS cost more for every tool. The Uptime Kuma and Gatus logos belong to their projects.</p>
   </section>
 
   <section class="lp-section" id="connect">
