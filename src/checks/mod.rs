@@ -324,9 +324,14 @@ pub async fn rearm_heartbeat(
     store::heartbeats::rearm(c, id, now).await
 }
 
-/// How many monitors authenticate with project secret `id`.
-pub async fn secret_users(c: &crate::platform::sql::Connection, id: i64) -> anyhow::Result<i64> {
-    store::secret_users(c, id).await
+/// How many of the project's monitors authenticate with its secret `id`. Scoped to the project,
+/// so a count never tells a tech lead about another owner's secrets.
+pub async fn secret_users(
+    c: &crate::platform::sql::Connection,
+    project_id: i64,
+    id: i64,
+) -> anyhow::Result<i64> {
+    store::secret_users(c, project_id, id).await
 }
 
 /// Whether a source's failures alert, on the caller's connection. A deleted source counts as on.

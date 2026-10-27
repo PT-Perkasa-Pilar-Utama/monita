@@ -57,7 +57,7 @@ pub async fn list(db: &Db, project_id: i64) -> anyhow::Result<Vec<SecretRow>> {
     let c = db.read().await?;
     let mut out = Vec::new();
     for (id, name, updated_at) in store::list(&c, project_id).await? {
-        let used_by = crate::checks::secret_users(&c, id).await?;
+        let used_by = crate::checks::secret_users(&c, project_id, id).await?;
         out.push(SecretRow {
             id,
             name,
@@ -107,7 +107,11 @@ pub async fn replace(db: &Db, project_id: i64, id: i64, value: &str) -> Result<(
 /// Refused while a monitor uses it, so no check silently loses its credentials.
 pub async fn delete(db: &Db, project_id: i64, id: i64) -> Result<(), SecretError> {
     db.write(async |c| {
-        let n = crate::checks::secret_users(c, id).await?;
+        // Another project's id is NotFound, as on every by-id route, before anything is counted.
+        if store::find(c, project_id, id).await?.is_none() {
+            return Ok(Err(SecretError::NotFound));
+        }
+        let n = crate::checks::secret_users(c, project_id, id).await?;
         if n > 0 {
             let who = if n == 1 {
                 "1 monitor".to_string()

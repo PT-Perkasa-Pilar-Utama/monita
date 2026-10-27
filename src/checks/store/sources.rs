@@ -81,11 +81,11 @@ pub async fn alert_on(
     Ok(on.unwrap_or(1) == 1)
 }
 
-pub async fn secret_users(c: &Connection, secret_id: i64) -> anyhow::Result<i64> {
+pub async fn secret_users(c: &Connection, project_id: i64, secret_id: i64) -> anyhow::Result<i64> {
     Ok(crate::platform::db::query_i64(
         c,
-        "SELECT count(*) FROM monitors WHERE auth_secret_id = ?1 AND auth_kind != 'none'",
-        [secret_id],
+        "SELECT count(*) FROM monitors WHERE project_id = ?1 AND auth_secret_id = ?2 AND auth_kind != 'none'",
+        (project_id, secret_id),
     )
     .await?
     .unwrap_or(0))
