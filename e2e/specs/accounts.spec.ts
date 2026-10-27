@@ -61,6 +61,9 @@ test.describe("as the super admin", () => {
     await me.getByRole("navigation", { name: "User settings" }).getByRole("link", { name: "Two-factor sign-in" }).click();
     await expect(me).toHaveURL(/\/account\/two-factor$/);
     await me.getByRole("button", { name: "Turn on" }).click();
+    await expect(me.getByText("Enter your current password.")).toBeVisible();
+    await me.getByLabel("Current password").fill("a-long-enough-password");
+    await me.getByRole("button", { name: "Turn on" }).click();
     await expect(me.getByRole("img", { name: "QR code for your authenticator app" })).toBeVisible();
     const secret = (await me.locator("#totp-secret").textContent())!.trim();
     const at = Date.now() / 1000;

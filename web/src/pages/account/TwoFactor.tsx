@@ -51,6 +51,40 @@ function CodeForm({ id, action, danger = false, onCode }: { id: string; action: 
   );
 }
 
+/** The first step: the current password, so a session alone cannot tie the account to a factor. */
+function StartForm({ onStart }: { onStart: (current: string) => Promise<void> }): ReactElement {
+  const [current, setCurrent] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const submit = async (e: FormEvent): Promise<void> => {
+    e.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      await onStart(current);
+    } catch (err) {
+      setError(err instanceof ApiError ? (err.fields.current ?? err.message) : errorText(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <form onSubmit={(e) => void submit(e)}>
+      <Field data-invalid={error ? true : undefined}>
+        <FieldLabel htmlFor="tf-current">Current password</FieldLabel>
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <Input id="tf-current" type="password" autoComplete="current-password" className="sm:max-w-72" aria-invalid={error ? true : undefined} value={current} onChange={(e) => setCurrent(e.target.value)} />
+          <Button type="submit" disabled={busy} className="sm:w-fit">
+            {busy && <Spinner data-icon="inline-start" />}
+            Turn on
+          </Button>
+        </div>
+        {error && <FieldError>{error}</FieldError>}
+      </Field>
+    </form>
+  );
+}
+
 /** User settings, Two-factor sign-in: a code from an authenticator app after the password. */
 export function TwoFactor(): ReactElement {
   const status = useApi<TwoFactorStatus>("/me/two-factor");
@@ -59,12 +93,8 @@ export function TwoFactor(): ReactElement {
   const [codes, setCodes] = useState<string[] | null>(null);
   const s = status.data;
 
-  const start = async (): Promise<void> => {
-    try {
-      setSetup(await api<TwoFactorSetup>("/me/two-factor", "POST"));
-    } catch (err) {
-      toast.error(errorText(err));
-    }
+  const start = async (current: string): Promise<void> => {
+    setSetup(await api<TwoFactorSetup>("/me/two-factor", "POST", { current }));
   };
   const confirm = async (code: string): Promise<void> => {
     const r = await api<{ recovery_codes: string[] }>("/me/two-factor/confirm", "POST", { code });
@@ -125,13 +155,11 @@ export function TwoFactor(): ReactElement {
           </FieldGroup>
         </SettingsSection>
       ) : (
-        <SettingsSection
-          id="off"
-          title="Two-factor sign-in is off"
-          description="With it on, Monita asks for a 6-digit code from an authenticator app after your password."
-          footer={<Button onClick={() => void start()}>Turn on</Button>}
-        >
-          <p className="text-sm text-muted-foreground">Any app that reads time-based codes works, such as 1Password, Google Authenticator or Authy.</p>
+        <SettingsSection id="off" title="Two-factor sign-in is off" description="With it on, Monita asks for a 6-digit code from an authenticator app after your password.">
+          <FieldGroup className="gap-3">
+            <p className="text-sm text-muted-foreground">Any app that reads time-based codes works, such as 1Password, Google Authenticator or Authy, and Monita asks for your password before it shows the key.</p>
+            <StartForm onStart={start} />
+          </FieldGroup>
         </SettingsSection>
       )}
     </SettingsPage>

@@ -77,7 +77,7 @@ Open the avatar menu, select **User settings**, then **Password**. Enter your cu
 
 Each user can ask for a code after the password. Open the avatar menu, select **User settings**, then **Two-factor sign-in**. While it is off, a note under the top bar says so. Close the note with its X; this browser then stops showing it for your account.
 
-1. Select **Turn on**.
+1. Enter your **Current password** and select **Turn on**.
 2. Scan the QR code with the authenticator app on your phone. If you cannot scan it, type the key into the app, or select **Open in authenticator app** on the phone itself. Any app that reads time-based codes works, such as 1Password, Google Authenticator or Authy.
 3. Enter the 6-digit code the app shows and select **Turn on**. Do it within 10 minutes; after that, select **Turn on** again for a new key.
 4. Save the 10 recovery codes. Monita shows them only once. Each code signs you in once without the phone.

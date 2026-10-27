@@ -11,8 +11,12 @@ use serde_json::{Value, json};
 /// time whose code confirmed it.
 async fn turn_on(app: &TestApp, cookie: &str) -> (String, Vec<String>, i64) {
     let started = json_of(
-        app.api_post("/api/ui/me/two-factor", json!({}), Some(cookie))
-            .await,
+        app.api_post(
+            "/api/ui/me/two-factor",
+            json!({ "current": PASSWORD }),
+            Some(cookie),
+        )
+        .await,
     )
     .await;
     let secret = started["data"]["secret"].as_str().unwrap().to_string();
@@ -422,8 +426,12 @@ async fn a_waiting_key_expires_and_retention_clears_it() {
     let app = TestApp::spawn("test").await;
     let tl = app.tl("rina@x.co").await;
     let started = json_of(
-        app.api_post("/api/ui/me/two-factor", json!({}), Some(&tl))
-            .await,
+        app.api_post(
+            "/api/ui/me/two-factor",
+            json!({ "current": PASSWORD }),
+            Some(&tl),
+        )
+        .await,
     )
     .await;
     let secret = started["data"]["secret"].as_str().unwrap().to_string();
@@ -467,4 +475,26 @@ async fn a_waiting_key_expires_and_retention_clears_it() {
     .await
     .unwrap();
     assert_eq!(left, Some(0));
+}
+
+/// A stolen session alone cannot turn two-factor on: setup asks for the current password, with
+/// the same per-account budget as a password change.
+#[tokio::test]
+async fn setup_needs_the_current_password() {
+    let app = TestApp::spawn("test").await;
+    let tl = app.tl("rina@x.co").await;
+    for (body, why) in [
+        (json!({}), "no password"),
+        (json!({ "current": "not-it" }), "a wrong password"),
+    ] {
+        let res = app.api_post("/api/ui/me/two-factor", body, Some(&tl)).await;
+        assert_eq!(res.status(), 422, "{why}");
+        assert!(
+            json_of(res).await["error"]["fields"]["current"].is_string(),
+            "{why}"
+        );
+    }
+    let status = json_of(app.api_get("/api/ui/me/two-factor", Some(&tl)).await).await;
+    assert_eq!(status["data"]["on"], false, "nothing was set up");
+    turn_on(&app, &tl).await;
 }

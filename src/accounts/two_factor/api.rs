@@ -59,10 +59,25 @@ async fn status(State(state): State<AppState>, AccountUser(user): AccountUser) -
     Ok(data(super::status(&state.db, user.id).await?))
 }
 
+#[derive(Deserialize, Default)]
+#[serde(default)]
+struct Current {
+    current: String,
+}
+
 /// The secret, its `otpauth://` link and the link as a QR code. Nothing changes until `confirm`.
-async fn start(State(state): State<AppState>, AccountUser(user): AccountUser) -> UiResult {
+/// It needs the current password, as a password change does, so a stolen session alone cannot
+/// tie the account to a factor the owner does not hold.
+async fn start(
+    State(state): State<AppState>,
+    AccountUser(user): AccountUser,
+    Body(f): Body<Current>,
+) -> UiResult {
+    let at = now();
+    crate::accounts::settings::check_current(&state.db, &state.limiter, user.id, &f.current, at)
+        .await?;
     Ok(data(
-        super::start(&state.db, user.id, &user.email, now()).await?,
+        super::start(&state.db, user.id, &user.email, at).await?,
     ))
 }
 

@@ -78,6 +78,16 @@ More ways to check, alert and plan: TCP, DNS and ping monitors, certificate warn
 - The online demo's side panels (a ticket, a new or edited monitor) close with their X, Cancel, the backdrop or Escape.
 - Monita takes the fixed releases of `rustls-webpki` and `webpki-root-certs`, which trusted distrusted emSign certificates (RUSTSEC-2026-0382 and 0383), and of `ctutils` under the password hash (RUSTSEC-2026-0385).
 
+### Security
+
+Fixes from the security audit of 2026-10-27.
+
+- Turning two-factor sign-in on asks for the current password first, so a stolen session alone cannot tie an account to a factor its owner does not hold.
+- Sign-in counts a wrong-password guess before it checks the password, so guesses sent at once can no longer pass the limit of 10 per account in 15 minutes. A right password gives its count back.
+- Every webhook `text` writes `&`, `<` and `>` as entities, so the words a job sends with `/fail` cannot add an `@channel` mention or a link to a Slack-style channel.
+- Deleting another project's secret answers 404, like every other route, instead of saying how many monitors use it.
+- After sign-in, `?next=` refuses a path that dot segments turn into another host (`/.//example.com`).
+
 ## [1.0.1] - 2026-10-19
 
 ### Added

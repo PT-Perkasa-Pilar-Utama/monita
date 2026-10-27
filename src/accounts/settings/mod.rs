@@ -43,23 +43,7 @@ pub async fn change_password(
     new: &str,
     at: i64,
 ) -> Result<(), SettingsError> {
-    if current.is_empty() {
-        return Err(SettingsError::NoCurrent);
-    }
-    // Counted before the check: requests sent at once cannot all pass a check made before any
-    // of them counts.
-    if let Verdict::Deny(retry) =
-        limiter.hit(&format!("password:{user_id}"), TRIES, TRIES_WINDOW_S, at)
-    {
-        return Err(SettingsError::TooMany(retry));
-    }
-    let stored = store::password_hash(&db.read().await?, user_id).await?;
-    let Some(stored) = stored else {
-        return Err(SettingsError::WrongPassword);
-    };
-    if !password::verify_password(current, &stored).await {
-        return Err(SettingsError::WrongPassword);
-    }
+    let stored = check_current(db, limiter, user_id, current, at).await?;
     if new.chars().count() < MIN_PASSWORD {
         return Err(SettingsError::TooShort);
     }
@@ -76,6 +60,35 @@ pub async fn change_password(
         return Err(SettingsError::WrongPassword);
     }
     Ok(())
+}
+
+/// Proves the signed-in user knows their password before a change to how they sign in (a new
+/// password, or turning two-factor on), so a stolen session alone cannot make one. Tries share
+/// one per-account budget and are counted before the check: requests sent at once cannot all
+/// pass a check made before any of them counts. Returns the stored hash.
+pub(crate) async fn check_current(
+    db: &Db,
+    limiter: &Limiter,
+    user_id: i64,
+    current: &str,
+    at: i64,
+) -> Result<String, SettingsError> {
+    if current.is_empty() {
+        return Err(SettingsError::NoCurrent);
+    }
+    if let Verdict::Deny(retry) =
+        limiter.hit(&format!("password:{user_id}"), TRIES, TRIES_WINDOW_S, at)
+    {
+        return Err(SettingsError::TooMany(retry));
+    }
+    let stored = store::password_hash(&db.read().await?, user_id).await?;
+    let Some(stored) = stored else {
+        return Err(SettingsError::WrongPassword);
+    };
+    if !password::verify_password(current, &stored).await {
+        return Err(SettingsError::WrongPassword);
+    }
+    Ok(stored)
 }
 
 /// Stores the picture from the form field, or removes it for an empty field.
