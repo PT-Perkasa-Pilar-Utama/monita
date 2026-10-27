@@ -45,6 +45,18 @@ impl Limiter {
         Verdict::Allow
     }
 
+    /// Takes back one hit counted for `key` in the window that contains `now`, for a request that
+    /// had to count before its outcome was known. Nothing changes once that window has passed.
+    pub fn refund(&self, key: &str, window_s: i64, now: i64) {
+        let window_start = now - now.rem_euclid(window_s);
+        let mut w = self.windows.lock().expect("rate limit lock");
+        if let Some(entry) = w.by_key.get_mut(key)
+            && entry.0 == window_start
+        {
+            entry.1 = entry.1.saturating_sub(1);
+        }
+    }
+
     /// Like `hit`, but counts nothing: is `key` already at `limit` in the current window?
     pub fn over(&self, key: &str, limit: u32, window_s: i64, now: i64) -> Verdict {
         let window_start = now - now.rem_euclid(window_s);
@@ -97,6 +109,23 @@ mod tests {
             matches!(l.hit("k", 2, 60, 180), Verdict::Allow),
             "new window"
         );
+    }
+
+    #[test]
+    fn a_refund_gives_back_one_hit_of_the_same_window_only() {
+        let l = Limiter::default();
+        assert!(matches!(l.hit("k", 1, 60, 120), Verdict::Allow));
+        l.refund("k", 60, 130);
+        assert!(
+            matches!(l.hit("k", 1, 60, 140), Verdict::Allow),
+            "given back"
+        );
+        l.refund("k", 60, 190);
+        assert!(
+            matches!(l.hit("k", 1, 60, 150), Verdict::Deny(_)),
+            "a refund in a later window touches nothing"
+        );
+        l.refund("never", 60, 150);
     }
 
     #[test]

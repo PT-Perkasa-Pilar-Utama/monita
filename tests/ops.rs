@@ -84,6 +84,59 @@ async fn sign_in_is_limited_per_account_not_per_address() {
 }
 
 #[tokio::test]
+async fn guesses_sent_at_once_cannot_pass_the_per_account_limit() {
+    let app = TestApp::spawn("test").await;
+    app.tl("rina@x.co").await;
+    // Stay inside one fixed 15-minute window.
+    let into = now().rem_euclid(900);
+    if into > 870 {
+        tokio::time::sleep(Duration::from_secs((901 - into) as u64)).await;
+    }
+    let mut set = tokio::task::JoinSet::new();
+    for i in 0..25 {
+        let req = app
+            .http
+            .post(app.url("/api/ui/login"))
+            .header("origin", common::BASE_URL)
+            .json(&serde_json::json!({ "email": "rina@x.co", "password": format!("wrong-{i}") }));
+        set.spawn(async move { req.send().await.unwrap().status().as_u16() });
+    }
+    let got = set.join_all().await;
+    let checked = got.iter().filter(|s| **s == 422).count();
+    let refused = got.iter().filter(|s| **s == 429).count();
+    assert_eq!((checked, refused), (10, 15), "{got:?}");
+}
+
+#[tokio::test]
+async fn a_right_password_does_not_use_up_the_wrong_password_budget() {
+    let app = TestApp::spawn("test").await;
+    app.tl("rina@x.co").await;
+    let into = now().rem_euclid(900);
+    if into > 880 {
+        tokio::time::sleep(Duration::from_secs((901 - into) as u64)).await;
+    }
+    let login = |password: &'static str| {
+        app.api_post(
+            "/api/ui/login",
+            serde_json::json!({ "email": "rina@x.co", "password": password }),
+            None,
+        )
+    };
+    for _ in 0..9 {
+        assert_eq!(login("wrong-password").await.status(), 422);
+    }
+    for _ in 0..5 {
+        assert_eq!(login(common::PASSWORD).await.status(), 204);
+    }
+    assert_eq!(
+        login("wrong-password").await.status(),
+        422,
+        "the tenth wrong password is still checked"
+    );
+    assert_eq!(login("wrong-password").await.status(), 429);
+}
+
+#[tokio::test]
 async fn an_api_key_is_limited_per_minute() {
     // AC-31.02
     let app = TestApp::spawn("test").await;

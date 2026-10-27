@@ -141,8 +141,12 @@ pub async fn login(
     use crate::platform::rate_limit::Verdict;
     let email = email_key(email).ok_or(AccountError::BadCredentials)?;
     // An unknown email has a budget too, so the answer never tells whether an account exists.
+    // Counted before the check, so guesses sent at once cannot all pass it; a right password
+    // gives its count back.
     let budget = format!("signin:{email}");
-    if let Verdict::Deny(retry) = limiter.over(&budget, WRONG_PASSWORDS, WRONG_WINDOW_S, now()) {
+    let counted_at = now();
+    if let Verdict::Deny(retry) = limiter.hit(&budget, WRONG_PASSWORDS, WRONG_WINDOW_S, counted_at)
+    {
         return Err(AccountError::TooMany(retry));
     }
     let user = store::find_user_by_email(&db.read().await?, &email).await?;
@@ -156,16 +160,14 @@ pub async fn login(
     };
     match user {
         Some(u) if signed_in => {
+            limiter.refund(&budget, WRONG_WINDOW_S, counted_at);
             if two_factor::is_on(&db.read().await?, u.id).await? {
                 Ok(SignIn::Code(two_factor::challenge(db, u.id, now()).await?))
             } else {
                 Ok(SignIn::Session(new_session(db, u.id).await?))
             }
         }
-        _ => {
-            limiter.hit(&budget, WRONG_PASSWORDS, WRONG_WINDOW_S, now());
-            Err(AccountError::BadCredentials)
-        }
+        _ => Err(AccountError::BadCredentials),
     }
 }
 
