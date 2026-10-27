@@ -81,15 +81,14 @@ A missed deadline opens an incident. A call to `/fail` opens one at once, with t
 
 ## Benchmark
 
-Each tool checked 500 URLs every 60 s against one local nginx, alone in Docker on an Apple M1 (2 vCPU), measured with `docker stats` on 2026-10-20.
+Each tool checked 500 URLs every 60 s against one local nginx, alone in Docker on an Apple M1 (colima, 2 vCPU). Memory and CPU come from `docker stats` every 15 s for 5 minutes, after a 5-minute warm-up, on 2026-10-27.
 
-| 500 checks a minute | Monita 1.0.1 | Uptime Kuma 2.5.6 | Gatus (latest on 2026-10-20) |
+| 500 checks a minute | Monita 1.1.0 | Uptime Kuma 2.5.6 | Gatus (latest, built 2026-10-23) |
 | --- | --- | --- | --- |
-| Memory under load (median) | 21 MiB | 160 MiB | 44 MiB |
-| Memory idle | 18 MiB | 124 MiB | 5 MiB |
-| CPU, share of one core | 0.8% | 6.6% | 1.8% |
-| Checks done per minute, of 500 | 498 | 393 | 493 |
-| Image size (arm64, as Docker reports it) | 10.9 MB | 603 MB | 24.5 MB |
+| Memory under load (median) | 3.6 MiB | 236 MiB | 45.5 MiB |
+| CPU, share of one core | 0.7% | 4.7% | 3.3% |
+| Checks done per minute, of 500 | 500 | 464 | 500 |
+| Image download (arm64) | 6.5 MB | 603 MB | 24.5 MB |
 
 ## Docs
 

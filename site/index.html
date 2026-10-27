@@ -84,7 +84,7 @@
       <h2>Small enough to run on a server you already have</h2>
       <ul class="lp-motto">
         <li><b>One program and one file.</b> Monita is a single binary that keeps all its data in one SQLite file. It does not need Docker, a separate database or a message queue.</li>
-        <li><b>Light on memory.</b> In a Docker test on a Mac, Monita used about 21 MiB of memory while it checked 500 URLs every minute. A server with 512 MB of memory and 5 GB of disk is enough to start. <a href="docs/install/#requirements">See the requirements.</a></li>
+        <li><b>Light on memory.</b> In a Docker test on a Mac, Monita used about 4 MiB of memory, as <code>docker stats</code> reports it, while it checked 500 URLs every minute. Uptime Kuma used 236 MiB in the same test. A server with 512 MB of memory and 5 GB of disk is enough to start. <a href="docs/install/#requirements">See the requirements.</a></li>
         <li><b>Easy to connect.</b> A project needs a health URL, one curl line per cron job and, for bug reports, two HTTP calls. <a href="#connect">See each one below.</a></li>
         <li><b>Alerts survive a restart.</b> Monita saves every alert before it sends it, and it tries again after a failed delivery or a restart. A slow mail server never delays a check.</li>
       </ul>
