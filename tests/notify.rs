@@ -393,3 +393,32 @@ async fn mail_to_the_sender_address_is_dropped_unless_a_user_has_it() {
         "a user with that address gets mail"
     );
 }
+
+/// Every test press queues real sends in the one outbox all projects share, so a project gets six
+/// a minute from all its cards together (security audit 2026-10-27).
+#[tokio::test]
+async fn a_project_sends_at_most_six_test_alerts_a_minute() {
+    let app = TestApp::spawn("test").await;
+    let tl = app.tl("rina@x.co").await;
+    app.project(&tl, "Payments", "payments").await;
+    let cards = app.alert_cards(&tl, "payments").await;
+    let id = cards.as_array().unwrap()[0]["id"].clone();
+    let press = async || {
+        app.api_post(
+            &format!("/api/ui/projects/payments/alert-cards/{id}/test"),
+            serde_json::json!({}),
+            Some(&tl),
+        )
+        .await
+        .status()
+    };
+    // Stay inside one fixed minute.
+    let into = monita::platform::now().rem_euclid(60);
+    if into > 50 {
+        tokio::time::sleep(Duration::from_secs((61 - into) as u64)).await;
+    }
+    for _ in 0..6 {
+        assert_eq!(press().await, 200);
+    }
+    assert_eq!(press().await, 429);
+}

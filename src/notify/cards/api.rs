@@ -163,6 +163,9 @@ async fn set_enabled(
     Ok(StatusCode::NO_CONTENT.into_response())
 }
 
+/// Test alerts one project may send each minute, from all its cards together.
+const TESTS_PER_MINUTE: u32 = 6;
+
 /// `{sent_to}`: how many recipients the test went to.
 async fn test(
     State(state): State<AppState>,
@@ -170,6 +173,17 @@ async fn test(
     Path((slug, id)): Path<(String, i64)>,
 ) -> UiResult {
     let p = projects::find_for(&state.db, &user, &slug).await?;
+    // Every press queues real sends that share the one outbox with every project's alerts.
+    if let crate::platform::rate_limit::Verdict::Deny(retry) = state.limiter.hit(
+        &format!("cardtest:{}", p.id),
+        TESTS_PER_MINUTE,
+        60,
+        crate::platform::now(),
+    ) {
+        return Err(UiError::TooMany(format!(
+            "Too many test alerts for this project, so wait {retry} seconds and try again."
+        )));
+    }
     let sent_to = super::send_test(&state.db, p.id, id, &state.config.base_url).await?;
     Ok(data(json!({ "sent_to": sent_to })))
 }

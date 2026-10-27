@@ -27,7 +27,7 @@ use crate::{
 
 use cards::Listen;
 pub use cards::{AlertCard, CardForm};
-pub use delivery::{deliver_due, spawn_delivery};
+pub use delivery::{SlowServers, deliver_due, spawn_delivery};
 pub use digest::digest;
 pub use mailer::{Mailer, SentEmail, test_connection};
 pub use preview::{Preview, previews};

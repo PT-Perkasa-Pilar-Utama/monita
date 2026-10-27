@@ -13,7 +13,7 @@ The React page `/projects/{slug}/settings/alerts` calls these (conventions 1.10)
 | PUT | `/api/ui/projects/{slug}/alert-cards/{id}` | owner, super_admin | as POST | Saves the card, 204. The owner's cards: 422. Another project's card or none: 404. A `section` other than the card's own: 404, so an update cannot move a card to the other section. A card that keeps its kind keeps its name when `name` is empty. It does not change `enabled`. | |
 | DELETE | `/api/ui/projects/{slug}/alert-cards/{id}` | owner, super_admin | | 204. The owner's cards: 422. | |
 | PUT | `/api/ui/projects/{slug}/alert-cards/{id}/enabled` | owner, super_admin | `enabled` (boolean) | Any card, the owner's too. Off sends nothing and keeps the card. 204, or 404. | |
-| POST | `/api/ui/projects/{slug}/alert-cards/{id}/test` | owner, super_admin | | One `test` alert to this card alone, on or off. 200 `{sent_to}`: its addresses, or 1 for a webhook card. A PagerDuty test sends a trigger and its resolve. | |
+| POST | `/api/ui/projects/{slug}/alert-cards/{id}/test` | owner, super_admin | | Six a minute per project, from all its cards together; past that, 429. One `test` alert to this card alone, on or off. 200 `{sent_to}`: its addresses, or 1 for a webhook card. A PagerDuty test sends a trigger and its resolve. | |
 | GET | `/api/ui/projects/{slug}/alerts-preview` | owner, super_admin, supervisor | | Sample alerts of every kind, built by the code that sends the real ones, with this project's name: a list of `{event, label, route, email, webhook}`. `event` is the webhook `event` (6.2). `route` is the section that sends it: `critical`, `warning` or `ticket`. `email` is `{subject, body}`, or null for a kind that sends no email. | |
 
 ## 6.2 Outgoing webhook

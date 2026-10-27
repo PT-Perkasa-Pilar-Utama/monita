@@ -26,6 +26,8 @@ pub struct AppState {
     pub mailer: Mailer,
     pub http: crate::checks::Clients,
     pub limiter: Arc<crate::platform::rate_limit::Limiter>,
+    /// Webhook servers whose last alert send failed (`notify::SlowServers`).
+    pub slow_servers: Arc<crate::notify::SlowServers>,
     /// Background work and a ping being stored hold a read guard; reset-state and shutdown take
     /// the write guard, so neither races a check, a delivery, a daily job or a ping mid-write.
     pub gate: Arc<tokio::sync::RwLock<()>>,
@@ -67,6 +69,7 @@ async fn start(
         mailer,
         http: crate::checks::Clients::new()?,
         limiter: Arc::default(),
+        slow_servers: Arc::default(),
         gate: Arc::default(),
         stopping: Arc::new(tokio::sync::watch::channel(false).0),
     };

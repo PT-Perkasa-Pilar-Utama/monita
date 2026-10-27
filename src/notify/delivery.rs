@@ -18,6 +18,8 @@ pub(super) const SEND_TIMEOUT: Duration = Duration::from_secs(20);
 const PARALLEL: usize = 5;
 /// How long a claimed row stays invisible to other passes. Longer than a full batch can take.
 const LEASE_S: i64 = 120;
+/// How far a row waits when its webhook server already has a send in this pass.
+const DEFER_S: i64 = 5;
 
 pub fn spawn_delivery(state: &AppState, running: &Arc<AtomicBool>) {
     let Some(reset) = crate::platform::jobs::try_start(running) else {
@@ -64,6 +66,15 @@ pub async fn deliver_due(state: &AppState) -> anyhow::Result<usize> {
         .db
         .write(async |c| store::claim_due(c, t, BATCH, t + LEASE_S).await)
         .await?;
+    // A server that failed lately gets one row a pass, so dead servers cannot fill every slot
+    // in front of other projects' alerts.
+    let (due, later) = hold_back_slow(due, |s| state.slow_servers.is_slow(s, t));
+    if !later.is_empty() {
+        state
+            .db
+            .write(async |c| store::defer(c, &later, t + DEFER_S).await)
+            .await?;
+    }
     let mut queue = due.into_iter();
     let mut running = tokio::task::JoinSet::new();
     let mut sent = 0;
@@ -88,6 +99,69 @@ pub async fn deliver_due(state: &AppState) -> anyhow::Result<usize> {
         }
     }
     Ok(sent)
+}
+
+/// Webhook servers whose last send failed, with when that stops counting. A server that never
+/// answers holds a send slot for the whole timeout, so while any such server is known, one pass
+/// sends at most one row to all of them together and the rest wait a few seconds. Healthy
+/// servers, a shared one such as Slack's included, keep the full parallel sends. In memory: a
+/// restart forgets them, and the first send after it finds them again.
+#[derive(Default)]
+pub struct SlowServers(std::sync::Mutex<std::collections::HashMap<String, i64>>);
+
+/// How long a failed webhook server counts as slow.
+const SLOW_FOR_S: i64 = 600;
+
+impl SlowServers {
+    fn is_slow(&self, server: &str, now: i64) -> bool {
+        let map = self.0.lock().expect("slow servers lock");
+        map.get(server).is_some_and(|until| *until > now)
+    }
+
+    fn record(&self, server: String, ok: bool, now: i64) {
+        let mut map = self.0.lock().expect("slow servers lock");
+        map.retain(|_, until| *until > now);
+        if ok {
+            map.remove(&server);
+        } else {
+            map.insert(server, now + SLOW_FOR_S);
+        }
+    }
+}
+
+/// The webhook server a row goes to, as `host:port`. Email and the global Telegram bot each go to
+/// one shared server every project uses, so they are never held back.
+fn server_of(row: &store::OutboxRow) -> Option<String> {
+    if matches!(row.channel.as_str(), "email" | "telegram") {
+        return None;
+    }
+    let u = reqwest::Url::parse(&row.recipient).ok()?;
+    Some(format!(
+        "{}:{}",
+        u.host_str().unwrap_or(""),
+        u.port_or_known_default().unwrap_or(0)
+    ))
+}
+
+/// Splits claimed rows into those to send now and the ids of those that wait: of the rows to
+/// slow servers, only the first goes in this pass.
+fn hold_back_slow(
+    rows: Vec<store::OutboxRow>,
+    is_slow: impl Fn(&str) -> bool,
+) -> (Vec<store::OutboxRow>, Vec<i64>) {
+    let mut slow_sent = false;
+    let mut now = Vec::new();
+    let mut later = Vec::new();
+    for row in rows {
+        let slow = server_of(&row).is_some_and(|s| is_slow(&s));
+        if slow && slow_sent {
+            later.push(row.id);
+        } else {
+            slow_sent |= slow;
+            now.push(row);
+        }
+    }
+    (now, later)
 }
 
 /// Is `to` Monita's own sender address, which no user signs in with? Mail to it loops back to
@@ -150,6 +224,9 @@ async fn deliver_one(state: &AppState, row: store::OutboxRow) -> anyhow::Result<
     let result = tokio::time::timeout(SEND_TIMEOUT, send)
         .await
         .unwrap_or_else(|_| Err(anyhow::anyhow!("send timed out after 20 s")));
+    if let Some(server) = server_of(&row) {
+        state.slow_servers.record(server, result.is_ok(), now());
+    }
     let outcome = match &result {
         Ok(()) => store::Outcome::Sent,
         Err(e) => match RETRY_DELAYS_S.get(row.attempts as usize) {
@@ -165,4 +242,49 @@ async fn deliver_one(state: &AppState, row: store::OutboxRow) -> anyhow::Result<
         .write(async |c| store::mark(c, row.id, &outcome, now()).await)
         .await?;
     Ok(result.is_ok())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn row(id: i64, channel: &str, recipient: &str) -> store::OutboxRow {
+        store::OutboxRow {
+            id,
+            channel: channel.into(),
+            recipient: recipient.into(),
+            subject: None,
+            body: String::new(),
+            attempts: 0,
+        }
+    }
+
+    #[test]
+    fn of_the_rows_to_slow_servers_one_goes_now_and_the_rest_wait() {
+        let rows = vec![
+            row(1, "webhook", "http://dead.test/a"),
+            row(2, "webhook", "http://dead.test/b"),
+            row(3, "webhook", "http://other-dead.test/a"),
+            row(4, "webhook", "https://hooks.test/x"),
+            row(5, "webhook", "https://hooks.test/y"),
+            row(6, "email", "a@x.co"),
+            row(7, "telegram", "-100"),
+        ];
+        let slow = |s: &str| s.contains("dead.test");
+        let (now, later) = hold_back_slow(rows, slow);
+        let ids: Vec<i64> = now.iter().map(|r| r.id).collect();
+        assert_eq!(ids, [1, 4, 5, 6, 7], "healthy servers keep every row");
+        assert_eq!(later, [2, 3], "all slow servers share one row a pass");
+    }
+
+    #[test]
+    fn a_failed_server_is_slow_until_it_answers_or_ten_minutes_pass() {
+        let s = SlowServers::default();
+        assert!(!s.is_slow("a:80", 100));
+        s.record("a:80".into(), false, 100);
+        assert!(s.is_slow("a:80", 101));
+        assert!(!s.is_slow("a:80", 100 + SLOW_FOR_S));
+        s.record("a:80".into(), true, 102);
+        assert!(!s.is_slow("a:80", 103));
+    }
 }

@@ -53,6 +53,18 @@ pub async fn any_due(c: &Connection, at: i64) -> anyhow::Result<bool> {
     Ok(n == Some(1))
 }
 
+/// Moves claimed rows back to `at` without counting an attempt: they were not sent.
+pub async fn defer(c: &Connection, ids: &[i64], at: i64) -> anyhow::Result<()> {
+    for id in ids {
+        c.execute(
+            "UPDATE outbox SET next_attempt_at = ?1 WHERE id = ?2 AND sent_at IS NULL",
+            (at, *id),
+        )
+        .await?;
+    }
+    Ok(())
+}
+
 /// Claims due rows by pushing `next_attempt_at` to `lease_until`, so two delivery passes never
 /// send one row twice. A crash mid-send leaves the lease to expire and the row is retried.
 pub async fn claim_due(
