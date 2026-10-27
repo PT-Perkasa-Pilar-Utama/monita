@@ -450,6 +450,35 @@ async fn migration_39_turns_ticket_alerts_into_cards() {
     );
 }
 
+/// Migration 49: each chat a Global Telegram card already posts to counts as proved for its own
+/// project, once, so no alert stops and the card can still be edited.
+#[tokio::test]
+async fn migration_49_proves_the_chats_cards_already_use() {
+    let (_dir, db) = at(48).await;
+    exec(
+        &db,
+        "INSERT INTO users (id, email, role) VALUES (1, 'own@x.co', 'tl');
+         INSERT INTO projects (id, owner_id, name, slug) VALUES (1, 1, 'Pay', 'pay'), (2, 1, 'Shop', 'shop');
+         DELETE FROM alert_cards;
+         INSERT INTO alert_cards (project_id, kind, name, critical, warning, url, key) VALUES
+           (1, 'telegram_bot', 'Ops chat', 1, 0, 'https://api.telegram.org/', '-100'),
+           (1, 'telegram_bot', 'Ops chat again', 0, 1, 'https://api.telegram.org/', '-100'),
+           (2, 'telegram_bot', 'Shop chat', 1, 1, 'https://api.telegram.org/', '-200'),
+           (2, 'telegram', 'Own bot', 1, 0, 'https://api.telegram.org/bot1:x/sendMessage', '-300');",
+    )
+    .await;
+    apply(&db, 48..49).await;
+    assert_eq!(
+        strings(
+            &db,
+            "SELECT project_id || ' ' || chat_id FROM telegram_chats ORDER BY project_id, chat_id"
+        )
+        .await,
+        ["1 -100", "2 -200"],
+        "one row a chat, for its own project, and none for a card with its own bot"
+    );
+}
+
 #[tokio::test]
 async fn a_broken_reference_after_migrating_stops_the_start_and_is_named() {
     let dir = tempfile::tempdir().unwrap();
