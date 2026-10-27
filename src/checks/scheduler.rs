@@ -1,8 +1,9 @@
 //! The one loop that drives every timed job. Spec: docs/technical-specs/13-check-scheduler.md.
 
 use std::{
+    collections::HashMap,
     sync::{
-        Arc,
+        Arc, Mutex,
         atomic::{AtomicBool, Ordering},
     },
     time::Duration,
@@ -50,6 +51,7 @@ pub fn spawn(state: AppState) -> JoinHandle<()> {
         let daily = Arc::new(AtomicBool::new(false));
         let mut last_peer_ping = 0i64;
         let slots = Arc::new(Semaphore::new(0));
+        let holds = Held::default();
         let mut cap = 0usize;
         let mut ticks = 0u64;
         let mut tick = tokio::time::interval(Duration::from_secs(1));
@@ -68,7 +70,9 @@ pub fn spawn(state: AppState) -> JoinHandle<()> {
                     // A primary-key read; a changed cap applies on the next tick.
                     cap = resize(&conn, &slots, cap).await;
                     healthy = true;
-                    if let Err(e) = run_due_monitors(&state, &conn, &slots, &pass).await {
+                    if let Err(e) =
+                        run_due_monitors(&state, &conn, &slots, &holds, cap, &pass).await
+                    {
                         tracing::error!(error = %e, "scheduler: monitor pass failed");
                         healthy = false;
                     }
@@ -125,15 +129,76 @@ fn reshape(slots: &Semaphore, cap: usize, wanted: usize) -> usize {
     }
 }
 
-/// Claims as many due monitors as there are free slots, and probes each in its own task.
-/// Only this loop takes permits, so every claimed monitor gets one.
+/// Check slots each project holds now, by project id.
+type Held = Arc<Mutex<HashMap<i64, usize>>>;
+
+/// One project's hold on a slot, given back when the probe ends, even on an error path.
+struct Hold(Held, i64);
+
+impl Hold {
+    fn take(held: &Held, project: i64) -> Self {
+        *held.lock().unwrap().entry(project).or_default() += 1;
+        Self(held.clone(), project)
+    }
+}
+
+impl Drop for Hold {
+    fn drop(&mut self) {
+        let mut map = self.0.lock().unwrap();
+        if let Some(n) = map.get_mut(&self.1) {
+            *n -= 1;
+            if *n == 0 {
+                map.remove(&self.1);
+            }
+        }
+    }
+}
+
+/// Which due monitors take the `free` slots, in the order given. While another project waits,
+/// no project holds more than half of the `cap` slots, so one project's slow or silent servers
+/// cannot hold up every other project's checks. A slot nobody else wants still goes to a project
+/// past its half. With one slot there is no half to keep.
+fn pick<T>(
+    found: Vec<T>,
+    project: impl Fn(&T) -> i64,
+    held: &HashMap<i64, usize>,
+    cap: usize,
+    free: usize,
+) -> Vec<T> {
+    let share = (cap / 2).max(1);
+    let mut taken: HashMap<i64, usize> = HashMap::new();
+    let (mut picked, mut waiting) = (Vec::new(), Vec::new());
+    for m in found {
+        if picked.len() == free {
+            break;
+        }
+        let p = project(&m);
+        let n = taken
+            .entry(p)
+            .or_insert_with(|| held.get(&p).copied().unwrap_or(0));
+        if *n < share {
+            *n += 1;
+            picked.push(m);
+        } else {
+            waiting.push(m);
+        }
+    }
+    let room = free - picked.len();
+    picked.extend(waiting.into_iter().take(room));
+    picked
+}
+
+/// Claims due monitors for the free slots, as `pick` shares them, and probes each in its own
+/// task. Only this loop takes permits, so every claimed monitor gets one.
 async fn run_due_monitors(
     state: &AppState,
     conn: &crate::platform::sql::Connection,
     slots: &Arc<Semaphore>,
+    holds: &Held,
+    cap: usize,
     pass: &Arc<OwnedRwLockReadGuard<()>>,
 ) -> anyhow::Result<()> {
-    let free = slots.available_permits() as i64;
+    let free = slots.available_permits();
     if free == 0 {
         return Ok(());
     }
@@ -141,20 +206,29 @@ async fn run_due_monitors(
     if !store::any_due(conn, t).await? {
         return Ok(());
     }
+    // A copy: a probe that ends meanwhile only makes this pick a little cautious.
+    let now_held = holds.lock().unwrap().clone();
     let due = state
         .db
-        .write(async |c| store::claim_due(c, t, free).await)
+        .write(async |c| {
+            let found = store::due(c, t, cap as i64).await?;
+            let picked = pick(found, |m| m.project_id, &now_held, cap, free);
+            store::claim(c, t, &picked).await?;
+            Ok(picked)
+        })
         .await?;
     for monitor in due {
         let Ok(permit) = slots.clone().try_acquire_owned() else {
             break;
         };
+        let hold = Hold::take(holds, monitor.project_id);
         let state = state.clone();
         let held = pass.clone();
         tokio::spawn(async move {
             let _held = held;
             let result = super::run_check(&state.db, &state.http, &monitor).await;
             drop(permit);
+            drop(hold);
             let result = match result {
                 Ok(r) => r,
                 Err(e) => {
@@ -187,5 +261,32 @@ mod tests {
         assert_eq!((cap, slots.available_permits()), (2, 2));
         assert_eq!(reshape(&slots, cap, 3), 3);
         assert_eq!(slots.available_permits(), 3);
+    }
+
+    #[test]
+    fn a_project_holds_at_most_half_the_slots_while_another_waits() {
+        let by_letter = |m: &&str| i64::from(m.as_bytes()[0]);
+        let a = i64::from(b'A');
+        let none = HashMap::new();
+        let a_holds_one = HashMap::from([(a, 1)]);
+        assert_eq!(
+            pick(vec!["A1", "B1"], by_letter, &a_holds_one, 2, 1),
+            ["B1"]
+        );
+        assert_eq!(
+            pick(vec!["A1", "A2", "B1"], by_letter, &none, 2, 2),
+            ["A1", "B1"]
+        );
+        assert_eq!(
+            pick(vec!["A1", "A2"], by_letter, &none, 2, 2),
+            ["A1", "A2"],
+            "a slot nobody else wants still goes to A"
+        );
+        assert_eq!(pick(vec!["A1"], by_letter, &a_holds_one, 1, 1), ["A1"]);
+        let a_holds_25 = HashMap::from([(a, 25)]);
+        assert_eq!(
+            pick(vec!["A9", "B1"], by_letter, &a_holds_25, 50, 3),
+            ["B1", "A9"]
+        );
     }
 }

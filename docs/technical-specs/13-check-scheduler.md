@@ -10,7 +10,8 @@ One loop drives every timed job in Monita: monitor checks, heartbeat deadlines, 
 | Monitor due | `next_check_at <= now` and `paused_at IS NULL`. A location's claim skips a paused monitor too. Resume sets the monitor due at once. | Indexed column. Pause: v1.1 Q38. |
 | Claim | Set `next_check_at = now + interval_s` before the probe starts | A slow probe is never picked twice. |
 | Concurrency | `tokio::sync::Semaphore` with `settings.check_concurrency` permits (50), re-read every tick | Q10 |
-| Batch size | `LIMIT available_permits` | The loop never queues more than it can run. |
+| Batch size | Reads up to `check_concurrency` due monitors, each project's oldest first, then each project's second, and claims at most `available_permits` of them | The loop never queues more than it can run. |
+| Fair share | While another project has a due monitor, no project holds more than half of the slots (at least 1). A slot that no other project wants still goes to a project past its half. The rule is `pick` in `checks/scheduler.rs`; the count of held slots lives in memory. | Security audit 2026-10-27, v1.1 Q52: one project's silent servers held every slot and delayed other projects' checks. Ceiling: inside one project, more hung monitors than slots still delay that project's own healthy monitors. With `check_concurrency = 1` there is no share to keep. |
 | New monitor offset | `next_check_at = now + 5 + rand(0..interval_s - 5)` | Q10. Spreads load. |
 | Interval edit | `next_check_at = now + 5 + rand(0..interval_s - 5)` | Same spreading |
 | Heartbeat due | `deadline_at <= now` and `paused_at IS NULL`. The loop sends `HeartbeatMissed`, then sets `deadline_at = NULL`. Resume sets `deadline_at = now + period_s + grace_s`. | One miss signal per outage |

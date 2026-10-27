@@ -344,25 +344,31 @@ pub async fn any_due(c: &Connection, at: i64) -> anyhow::Result<bool> {
     Ok(n == Some(1))
 }
 
-/// Claims up to `limit` due monitors by moving their `next_check_at` one interval ahead.
-pub async fn claim_due(c: &Connection, at: i64, limit: i64) -> anyhow::Result<Vec<Monitor>> {
-    let due = many(
+/// Up to `limit` due monitors, each project's oldest first, then each project's second, and so on.
+pub async fn due(c: &Connection, at: i64, limit: i64) -> anyhow::Result<Vec<Monitor>> {
+    many(
         c,
         format!(
-            "SELECT {COLS} {FROM} WHERE m.next_check_at <= ?1 AND m.paused_at IS NULL
-             ORDER BY m.next_check_at LIMIT ?2"
+            "WITH d AS (SELECT id, ROW_NUMBER() OVER (PARTITION BY project_id ORDER BY next_check_at, id) AS rn
+                        FROM monitors WHERE next_check_at <= ?1 AND paused_at IS NULL)
+             SELECT {COLS} {FROM} JOIN d ON d.id = m.id
+             ORDER BY d.rn, m.next_check_at, m.id LIMIT ?2"
         ),
         (at, limit),
     )
-    .await?;
-    for m in &due {
+    .await
+}
+
+/// Claims monitors by moving their `next_check_at` one interval ahead.
+pub async fn claim(c: &Connection, at: i64, picked: &[Monitor]) -> anyhow::Result<()> {
+    for m in picked {
         c.execute(
             "UPDATE monitors SET next_check_at = ?1 WHERE id = ?2",
             (at + m.interval_s, m.id),
         )
         .await?;
     }
-    Ok(due)
+    Ok(())
 }
 
 pub async fn count_monitors(c: &Connection, project_id: i64) -> anyhow::Result<i64> {

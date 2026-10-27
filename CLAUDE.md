@@ -182,7 +182,7 @@ Each line was argued in review and decided. Do not reopen one without a new fact
 - [ ] Ref IDs: `POST /api/v1/ref-ids`, project from a `ref_ids` or `write` API key, `single_use` flag. Caps: 5 per ref ID per day, 100 per project per day.
 - [ ] Rate limits (Q45): nothing is limited per IP, because a shared address would lock out everyone behind it. Sign-in takes 10 wrong passwords per account per 15 min (`signin:{email}`, counted before the check and refunded on a right password), 120/min per API key, 1/s per heartbeat (extra pings return 429 and are not stored; the ping accepted in that second keeps the heartbeat alive); `/fail` has its own 1/s bucket `pingfail:{id}`. Request bodies are capped at 128 KiB (413), except the ping routes (see Settled trade-offs).
 - [ ] API key format `mk_` + 26 base32 chars; heartbeat tokens stored raw; everything else hashed.
-- [ ] Scheduler: one 1 s loop; claim by setting `next_check_at` before probing; 50 concurrent checks. Each tick holds one shared read guard on `AppState.gate`; reset-state takes the write guard.
+- [ ] Scheduler: one 1 s loop; claim by setting `next_check_at` before probing; 50 concurrent checks, and while another project waits no project holds more than half of them (Q52). Each tick holds one shared read guard on `AppState.gate`; reset-state takes the write guard.
 - [ ] `incidents::observe` and `notify::send` run inside the same `Db::write` as the check or ping that caused them. The outbox claims rows with a 120 s lease.
 - [ ] Dev machine has 8 GiB RAM: 4 cargo jobs, e2e at most 2 workers.
 
