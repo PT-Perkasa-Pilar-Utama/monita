@@ -36,6 +36,8 @@ pub fn new_password(prompt: &str) -> anyhow::Result<String> {
     Ok(first)
 }
 
+// ponytail: Ctrl-C at the prompt skips the Drop, so echo can stay off; `reset` restores it. A
+// SIGINT handler that restores the mode would close this.
 /// Turns the terminal's echo off until dropped. It sets the terminal itself, because the
 /// container image has no `stty` to call.
 #[cfg(unix)]
