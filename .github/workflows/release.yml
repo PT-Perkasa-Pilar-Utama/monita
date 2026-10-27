@@ -25,6 +25,12 @@ on:
 permissions:
   contents: read
 
+# One run per tag at a time: two runs for the same tag would race on its archives, checksums and
+# image tags. A second run waits for the first instead of cancelling it halfway through.
+concurrency:
+  group: release-${{ inputs.build_only && github.ref || inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
 defaults:
   run:
     shell: bash
