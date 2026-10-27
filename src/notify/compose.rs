@@ -43,7 +43,7 @@ pub(super) fn compose(
     base_url: &str,
 ) -> (String, Composed) {
     let (name, slug) = project;
-    match ev {
+    let (severity, composed) = match ev {
         Event::Opened {
             incident_id,
             title,
@@ -193,7 +193,18 @@ pub(super) fn compose(
                 },
             )
         }
+    };
+    (severity, chat_text(composed))
+}
+
+/// The webhook body's `text` is what chats render, and it carries names, titles and a ping's
+/// own words, so it is escaped with `chat_safe` (the plain `text` for email keeps them raw, and
+/// so do the separate JSON fields for code that reads them).
+fn chat_text(mut c: Composed) -> Composed {
+    if let Some(t) = c.json.get("text").and_then(serde_json::Value::as_str) {
+        c.json["text"] = serde_json::Value::String(chat_safe(t));
     }
+    c
 }
 
 /// A certificate that expires soon or has expired (v1.1 Q25). Always the warning route.
@@ -222,7 +233,7 @@ pub(super) fn cert_warning(
         }
     };
     let text = format!("[CERT] {name} / {}: the certificate {when}", w.monitor_name);
-    Composed {
+    chat_text(Composed {
         card: Card {
             tone: Tone::Warning,
             label: "Certificate",
@@ -240,7 +251,7 @@ pub(super) fn cert_warning(
             "severity": "warning", "expires_at": w.expires_at, "source_url": url, "at": at,
         }),
         text: format!("{text}\n\nRenew it before then. No incident was opened.\n{url}\n"),
-    }
+    })
 }
 
 /// The page of a monitor or a heartbeat, for an alert with no incident to link.
@@ -294,7 +305,7 @@ pub(super) fn test_alert(
 ) -> Composed {
     let link = format!("{base_url}/projects/{slug}/settings/alerts");
     let text = format!("[TEST] {name}: the alert card \"{card_name}\" reaches this channel.");
-    Composed {
+    chat_text(Composed {
         card: Card {
             tone: Tone::Info,
             label: "Test",
@@ -309,5 +320,32 @@ pub(super) fn test_alert(
         link,
         dedup: "test".into(),
         resolves: false,
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_ping_cause_cannot_add_a_mention_or_link_to_the_chat_text() {
+        let cause = "<!channel> <https://evil.example/phish|Reset your password> & more";
+        let ev = Event::Opened {
+            incident_id: 7,
+            project_id: 1,
+            source_name: "nightly <@U1>".into(),
+            title: "nightly reported a failure".into(),
+            severity: "critical".into(),
+            cause: cause.into(),
+        };
+        let (_, c) = compose(&ev, &("Pay".into(), "pay".into()), "https://m.co");
+        let text = c.json["text"].as_str().unwrap();
+        assert!(!text.contains('<') && !text.contains('>'), "{text}");
+        assert!(text.contains("&lt;!channel&gt;"), "{text}");
+        assert_eq!(
+            c.json["cause"], cause,
+            "code that reads the JSON gets the words"
+        );
+        assert!(c.text.contains(cause), "email keeps the plain words");
     }
 }
