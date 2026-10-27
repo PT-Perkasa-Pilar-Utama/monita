@@ -4,13 +4,11 @@
 mod envfile;
 mod probe;
 mod probe_service;
+mod prompt;
 mod service;
 mod setup;
 
-use std::{
-    io::BufRead,
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 
 use anyhow::Context;
 use clap::{Parser, Subcommand, ValueEnum};
@@ -150,7 +148,7 @@ pub async fn run(cli: Cli) -> anyhow::Result<()> {
         Cmd::Admin {
             cmd: AdminCmd::Create { email },
         } => {
-            let password = read_secret(&format!("Password for {email}: "))?;
+            let password = prompt::new_password(&format!("Password for {email}: "))?;
             offline(&config, async |db| {
                 let user = crate::accounts::create_super_admin(db, &email, &password).await?;
                 println!("created super admin {}", user.email);
@@ -161,7 +159,7 @@ pub async fn run(cli: Cli) -> anyhow::Result<()> {
         Cmd::Admin {
             cmd: AdminCmd::ResetPassword { email },
         } => {
-            let password = read_secret(&format!("New password for {email}: "))?;
+            let password = prompt::new_password(&format!("New password for {email}: "))?;
             offline(&config, async |db| {
                 crate::accounts::reset_super_admin_password(db, &email, &password).await?;
                 println!("new password set for {email}; their sessions are signed out");
@@ -320,37 +318,6 @@ fn whereis(var: &dyn Fn(&str) -> Option<String>, env_path: Option<&Path>, what: 
             None => println!("{label:<8} {value}"),
         }
     }
-}
-
-/// One line from stdin, without its line break. A closed stdin is an error, not an empty answer.
-fn read_line() -> anyhow::Result<String> {
-    let mut line = String::new();
-    if std::io::stdin().lock().read_line(&mut line)? == 0 {
-        anyhow::bail!("stdin closed before the answer");
-    }
-    Ok(line.trim_end_matches(['\r', '\n']).to_string())
-}
-
-/// A password from the terminal without echo, or one line of stdin when it is not a terminal.
-// ponytail: `stty -echo` stays on if the prompt is killed; termios through a crate would restore it.
-fn read_secret(prompt: &str) -> anyhow::Result<String> {
-    use std::io::IsTerminal;
-    eprint!("{prompt}");
-    let tty = std::io::stdin().is_terminal();
-    let echo = |on: bool| {
-        let _ = std::process::Command::new("stty")
-            .arg(if on { "echo" } else { "-echo" })
-            .status();
-    };
-    if tty {
-        echo(false);
-    }
-    let line = read_line();
-    if tty {
-        echo(true);
-        eprintln!();
-    }
-    line
 }
 
 fn init_tracing(config: &Config) {

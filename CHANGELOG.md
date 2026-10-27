@@ -89,6 +89,7 @@ Fixes from the security audit of 2026-10-27.
 - One project's dead webhook servers can no longer hold up every other project's alerts. A project sends at most six test alerts a minute, and a webhook server whose last send failed gets one row a delivery pass while the rest wait a few seconds.
 - A Global Telegram card posts only to a chat that one of the project's own connect links found, so a tech lead cannot point the shared bot at another team's chat by typing its ID. A channel connects by posting the `/start` line in it. Migration 0049 keeps every chat that a card already uses.
 - One project's silent servers can no longer hold every check slot. While another project has a check due, no project holds more than half of the slots, so the other project's checks keep their interval.
+- `monita admin create` and `admin reset-password` hide the password in the Docker image and on Linux and macOS without `stty`, and ask for it twice on a terminal, so a typo cannot set a password nobody knows. Piped input still takes one line.
 - Monita no longer follows a symbolic link in the data folder when it sets file modes or when root's CLI hands the files to the service user. A planted `monita.db.lock` link made root change the mode and owner of any file it pointed at. Now Monita refuses to start and names the link.
 - Deleting another project's secret answers 404, like every other route, instead of saying how many monitors use it.
 - After sign-in, `?next=` refuses a path that dot segments turn into another host (`/.//example.com`).

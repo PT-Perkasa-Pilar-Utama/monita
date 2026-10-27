@@ -6,7 +6,7 @@ Session strategy: [../technical-specs/07-security.md](../technical-specs/07-secu
 
 | Part | Contract |
 | --- | --- |
-| Signature | `monita admin create --email <email>`. The password is read from a prompt, or from stdin when not a TTY. |
+| Signature | `monita admin create --email <email>`. On a terminal it asks for the password twice, without echo, and exits 1 when the two differ. When stdin is not a terminal, it reads one line. `admin reset-password` reads its new password the same way. |
 | Behavior | Validates the email and a password of 8 or more characters. Inserts `users(role=super_admin)`. (AC-01.01) |
 | Output | Exit 0, prints `created super admin <email>`. |
 | Errors | Exit 1 `An account with this email already exists.` (AC-01.02). Exit 1 `Use at least 8 characters.` |

@@ -5,7 +5,10 @@ use std::path::Path;
 
 use anyhow::{Context, bail};
 
-use super::{envfile, read_line, read_secret};
+use super::{
+    envfile,
+    prompt::{read_line, read_secret},
+};
 use crate::{
     accounts::{self, AccountError},
     platform::config::Config,
