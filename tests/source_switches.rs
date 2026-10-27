@@ -303,3 +303,48 @@ async fn a_paused_monitor_runs_no_check_closes_its_incident_quietly_and_resumes(
     .await;
     assert_eq!(team["data"]["monitors"][0]["state"], "up");
 }
+
+/// A check that was running when the monitor was paused finishes after the pause. It must not
+/// open an incident or alert, because nothing would close them while the monitor stays paused.
+#[tokio::test]
+async fn a_check_that_finishes_after_the_pause_opens_nothing() {
+    let app = TestApp::spawn("test").await;
+    let (tl, _up) = setup(&app, true, true).await;
+    app.state
+        .db
+        .write(async |c| {
+            c.execute(
+                "UPDATE monitors SET fails_to_open = 1, next_check_at = 9999999999",
+                (),
+            )
+            .await?;
+            Ok(())
+        })
+        .await
+        .unwrap();
+    // The scheduler's copy of the monitor, taken when it claimed the check.
+    let claimed = checks::find_monitor(&app.state.db, 1, 1)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(set_paused(&app, &tl, "monitors/1", true).await, 204);
+
+    let failed = checks::CheckResult {
+        checked_at: monita::platform::now(),
+        ok: false,
+        status_code: Some(503),
+        latency_ms: 10,
+        error: Some("HTTP 503".into()),
+        cert_expires_at: None,
+    };
+    checks::record_check(&app.state.db, common::BASE_URL, &claimed, &failed)
+        .await
+        .unwrap();
+    assert_eq!(count(&app, "SELECT count(*) FROM incidents").await, 0);
+    assert!(subjects(&app).await.is_empty(), "no alert");
+    assert_eq!(
+        count(&app, "SELECT count(*) FROM check_results").await,
+        0,
+        "a paused monitor keeps no check"
+    );
+}

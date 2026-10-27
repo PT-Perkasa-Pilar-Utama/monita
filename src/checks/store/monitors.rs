@@ -371,6 +371,17 @@ pub async fn claim(c: &Connection, at: i64, picked: &[Monitor]) -> anyhow::Resul
     Ok(())
 }
 
+/// Whether the monitor still exists and is not paused.
+pub async fn checks_now(c: &Connection, id: i64) -> anyhow::Result<bool> {
+    let n = crate::platform::db::query_i64(
+        c,
+        "SELECT count(*) FROM monitors WHERE id = ?1 AND paused_at IS NULL",
+        [id],
+    )
+    .await?;
+    Ok(n == Some(1))
+}
+
 pub async fn count_monitors(c: &Connection, project_id: i64) -> anyhow::Result<i64> {
     Ok(crate::platform::db::query_i64(
         c,

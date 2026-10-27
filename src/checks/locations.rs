@@ -198,6 +198,11 @@ pub async fn record_local(
     result: &CheckResult,
 ) -> anyhow::Result<()> {
     db.write(async |c| {
+        // The probe ran on the scheduler's copy. A monitor paused or deleted meanwhile keeps no
+        // check, so a failure cannot open an incident that nothing would close (Q38).
+        if !store::checks_now(c, monitor.id).await? {
+            return Ok(());
+        }
         let held = crate::maintenance::covers(
             c,
             crate::incidents::SourceKind::Monitor,
