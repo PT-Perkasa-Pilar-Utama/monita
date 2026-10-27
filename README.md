@@ -7,8 +7,7 @@
 
 ### Site reliability for every project your team ships.
 
-Monita checks your team's websites and scheduled jobs, alerts your team when one fails, and shows the outage on a public status page.
-You run it on your own server as one program, and it keeps all its data in one SQLite file.
+Monita checks your team's websites and scheduled jobs, alerts the people you choose when one fails, and shows the outage on a public status page. It runs on your own server as one program with one SQLite file.
 
 [![CI](https://github.com/PT-Perkasa-Pilar-Utama/monita/actions/workflows/ci.yml/badge.svg)](https://github.com/PT-Perkasa-Pilar-Utama/monita/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-c4258f)](LICENSE)
@@ -22,29 +21,15 @@ You run it on your own server as one program, and it keeps all its data in one S
 
 </div>
 
-Monita does the same job as a hosted uptime service such as Better Stack, but it runs on a server
-that your team controls.
+- **Monitors** check a URL, a TCP port, a DNS name or a host by ping every 30 s to 5 min, and warn before an HTTPS certificate expires.
+- **Heartbeats** wait for your cron jobs to call in.
+- **Incidents** open after two failed checks or a missed heartbeat, and alert by email, Slack, Google Chat, Discord, Telegram, ntfy or PagerDuty.
+- **Status pages** show 90 days of uptime and the updates your team posts.
+- **Tickets** collect bug reports from the status page or from your app.
+- **Maintenance windows, pause and locations** keep planned work quiet and check from more than one place.
+- **Roles, two-factor sign-in and scoped API keys** let one Monita serve the whole IT department.
 
-- A monitor checks a URL, a TCP port, a DNS name or a host by ping, every 30 seconds to 5 minutes.
-  An HTTPS monitor can warn before its certificate expires.
-- A heartbeat expects your cron job to call a Monita URL on a schedule.
-- When a monitor fails twice in a row, or a heartbeat call does not arrive in time, Monita opens an
-  incident. It emails the project's owner, and alert cards send to email lists, Slack, Google Chat,
-  Discord, Telegram, ntfy or PagerDuty.
-- Locations check from other machines too, and an incident opens only when enough places agree.
-- Maintenance windows keep planned work from opening incidents or sending alerts.
-- A tech lead can pause a monitor or heartbeat, so it opens no incident and sends no alert until it resumes.
-- Each project has a public status page. The page shows 90 days of uptime and the updates your team
-  writes during an incident.
-- Users can report a bug from the status page, and the tech lead sorts the reports on the ticket board.
-- People sign in with a password and, if they choose, an authenticator code.
-- A super admin runs Monita, each tech lead manages the projects they own, and a supervisor sees
-  every project without changing anything.
-- API keys let scripts issue ticket reference IDs, read a project, or also change its monitors,
-  heartbeats, incidents and maintenance windows.
-
-The [demo](https://pt-perkasa-pilar-utama.github.io/monita/demo/) is a saved copy of the real pages
-with sample data. You can click through it, but it does not save anything you enter.
+Click through the [demo](https://pt-perkasa-pilar-utama.github.io/monita/demo/) first. It runs on sample data and saves nothing.
 
 ![A monitor page: uptime streak, last check, mean response time, a response-time chart and availability](docs/assets/screens/monitor.png)
 
@@ -54,13 +39,7 @@ with sample data. You can click through it, but it does not save anything you en
 
 ## Install
 
-Monita needs a 64-bit Linux server with systemd (x86 or Arm), 512 MB of memory and 5 GB of disk.
-Releases also carry macOS and Windows builds for amd64 and arm64, for trying it on a laptop.
-For 500 monitors, give it 2 vCPU, 1 GB of memory and 20 GB of disk.
-
-Download the archive from
-[Releases](https://github.com/PT-Perkasa-Pilar-Utama/monita/releases), unpack it, and install the binary.
-On an Arm server, use `monita_linux_arm64.tar.gz`:
+On a 64-bit Linux server with systemd, 512 MB of memory and 5 GB of disk. On Arm, use `monita_linux_arm64.tar.gz`.
 
 ```sh
 curl -fsSLO https://github.com/PT-Perkasa-Pilar-Utama/monita/releases/latest/download/monita_linux_amd64.tar.gz
@@ -70,32 +49,22 @@ sudo monita setup
 sudo monita service install
 ```
 
-With Docker, on Windows and macOS too, try it on a laptop with:
+`monita setup` asks for the public URL, the mail server and the first super admin. Put Caddy or nginx in front of `127.0.0.1:7466` for HTTPS.
+
+To try it on a laptop with Docker, create the first account (it asks for a password of at least 8 characters):
 
 ```sh
 docker volume create monita-data
 docker run --rm -it -v monita-data:/data -e MONITA_ENV=dev ghcr.io/pt-perkasa-pilar-utama/monita:1 admin create --email you@company.co.id
 ```
 
-The last command asks for a password of at least 8 characters. Then start Monita and open
-`http://localhost:7466`:
+Then start Monita and open `http://localhost:7466`:
 
 ```sh
 docker run -d --name monita -p 127.0.0.1:7466:7466 -v monita-data:/data -e MONITA_ENV=dev ghcr.io/pt-perkasa-pilar-utama/monita:1
 ```
 
-These commands make Monita reachable from this computer only. For a server, the
-[install guide](https://pt-perkasa-pilar-utama.github.io/monita/docs/install/#with-docker) has a
-Compose file. Set `MONITA_BASE_URL` to the address people open, because sign-in only works on that
-address.
-
-`monita setup` asks for the public URL, the mail server and the first super admin.
-`monita service install` makes Monita start now and after every reboot.
-
-Monita listens on `127.0.0.1:7466`. Put a web server that handles HTTPS, such as Caddy or nginx, in
-front of it. The [install guide](https://pt-perkasa-pilar-utama.github.io/monita/docs/install/)
-explains these steps and how to build Monita from source. The [operations guide](https://pt-perkasa-pilar-utama.github.io/monita/docs/operations/)
-explains backups, restores and upgrades.
+The [install guide](https://pt-perkasa-pilar-utama.github.io/monita/docs/install/) covers a Docker server, macOS, Windows, upgrades and building from source.
 
 ## Send a ping from a cron job
 
@@ -108,14 +77,11 @@ fi
 curl -fsS -m 10 "$URL"
 ```
 
-If the job does not call the URL before its deadline, Monita opens an incident. A call to `/fail`
-opens an incident at once. Monita stores the first 1 KB of that request as the cause of the
-incident, so the command above sends the job's error output.
+A missed deadline opens an incident. A call to `/fail` opens one at once, with the first 1 KB of the body as its cause.
 
 ## Benchmark
 
-Monita, Uptime Kuma and Gatus each checked 500 URLs every 60 seconds against one local nginx.
-Each ran alone in Docker Desktop on an Apple M1 (arm64, a VM with 2 vCPU), with SQLite storage.
+Each tool checked 500 URLs every 60 s against one local nginx, alone in Docker on an Apple M1 (2 vCPU), measured with `docker stats` on 2026-10-20.
 
 | 500 checks a minute | Monita 1.0.1 | Uptime Kuma 2.5.6 | Gatus (latest on 2026-10-20) |
 | --- | --- | --- | --- |
@@ -125,33 +91,9 @@ Each ran alone in Docker Desktop on an Apple M1 (arm64, a VM with 2 vCPU), with 
 | Checks done per minute, of 500 | 498 | 393 | 493 |
 | Image size (arm64, as Docker reports it) | 10.9 MB | 603 MB | 24.5 MB |
 
-How it was measured, on 2026-10-20:
-
-- Memory and CPU come from `docker stats`, sampled every 15 seconds after a warm-up. Monita had a
-  5-minute warm-up and 5 minutes of samples. Uptime Kuma and Gatus had 2.5 minutes of each.
-- The checks per minute count the requests nginx received while the samples ran.
-- Uptime Kuma got its 500 monitors as copies of one monitor made through its API, then a restart.
-  It did 393 checks a minute in that window, so it had not caught up with all 500.
-- Real sites over HTTPS cost more CPU and memory than a local nginx, for every tool.
-
-Monita 1.1.0 ran the same test on 2026-10-27, in colima on the same Mac, beside 1.0.1 for comparison.
-The 1.1.0 image was a local build with thin LTO. Memory is what `docker stats` reports, which leaves out
-the binary's own file pages, so `top` on a server shows a larger number.
-
-| 500 checks a minute, colima, 2 vCPU | Monita 1.0.1 | Monita 1.1.0 |
-| --- | --- | --- |
-| Memory under load (median) | 20.4 MiB | 3.6 MiB |
-| Memory under load (peak) | 22.4 MiB | 3.8 MiB |
-| CPU, share of one core | 1.2% | 1.2% |
-| Checks done, of 500 a minute | all (2709 in 324 s) | all (2709 in 324 s) |
-
-The drop comes from the move to SQLite's own C library in 1.1.
-
 ## Docs
 
-The [documentation](https://pt-perkasa-pilar-utama.github.io/monita/docs/) explains how to start,
-how to connect your jobs and tools, and how to run Monita in production. Its source files are in
-[docs/guide/](docs/guide/).
+The [documentation](https://pt-perkasa-pilar-utama.github.io/monita/docs/) is built from [docs/guide/](docs/guide/).
 
 | Start | Connect | Reference |
 | --- | --- | --- |
@@ -172,7 +114,7 @@ make check    # check formatting and lints, then run the Rust tests
 make e2e      # run the browser tests on port 18080
 ```
 
-[CONTRIBUTING.md](CONTRIBUTING.md) explains how to send a change. [CLAUDE.md](CLAUDE.md) lists the project rules, [docs/GLOSSARY.md](docs/GLOSSARY.md) the terms, and [seeds/README.md](seeds/README.md) the sample accounts.
+Read [CONTRIBUTING.md](CONTRIBUTING.md) before you send a change. [CLAUDE.md](CLAUDE.md) holds the project rules and [docs/GLOSSARY.md](docs/GLOSSARY.md) the terms.
 
 Report a security problem privately, as [SECURITY.md](SECURITY.md) describes. Everyone who takes part follows the [Code of Conduct](CODE_OF_CONDUCT.md). [GOVERNANCE.md](GOVERNANCE.md) names the maintainers, [ROADMAP.md](ROADMAP.md) the direction and [CHANGELOG.md](CHANGELOG.md) each release.
 
