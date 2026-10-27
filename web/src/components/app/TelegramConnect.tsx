@@ -86,6 +86,9 @@ export function TelegramConnect({ slug, bot, onChat }: { slug: string; bot: stri
             </a>
           </Button>
         </div>
+        <p className="text-muted-foreground">
+          For a channel, make @{bot} an admin of it and post <code className="font-mono text-foreground">/start {link.code}</code> there.
+        </p>
         <p className="flex items-center gap-2 text-muted-foreground">
           <Spinner /> Waiting for Telegram.
         </p>

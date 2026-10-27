@@ -112,11 +112,18 @@ fn check(f: &CardForm<'_>) -> Result<Saved, AlertError> {
     })
 }
 
-/// Checks the form, and that the global Telegram bot is set for a card that uses it.
-async fn checked(db: &Db, f: &CardForm<'_>) -> Result<Saved, AlertError> {
+/// Checks the form, that the global Telegram bot is set for a card that uses it, and that the
+/// card's chat is one the project's own connect link found.
+async fn checked(db: &Db, project_id: i64, f: &CardForm<'_>) -> Result<Saved, AlertError> {
     let saved = check(f)?;
-    if saved.kind == "telegram_bot" && telegram::bot_name(db).await?.is_none() {
-        return Err(AlertError::NoBot);
+    if saved.kind == "telegram_bot" {
+        if telegram::bot_name(db).await?.is_none() {
+            return Err(AlertError::NoBot);
+        }
+        let chat = saved.key.as_deref().unwrap_or_default();
+        if !telegram::chat_proved(db, project_id, chat).await? {
+            return Err(AlertError::UnprovedChat);
+        }
     }
     Ok(saved)
 }
@@ -127,7 +134,7 @@ pub async fn list(db: &Db, project_id: i64) -> anyhow::Result<Vec<AlertCard>> {
 
 /// A new card, on. Returns its id.
 pub async fn create(db: &Db, project_id: i64, f: &CardForm<'_>) -> Result<i64, AlertError> {
-    let saved = checked(db, f).await?;
+    let saved = checked(db, project_id, f).await?;
     db.write(async |c| {
         if store::own_count(c, project_id, saved.incidents()).await? >= caps::ALERT_CARDS {
             return Ok(Err(AlertError::Full));
@@ -148,7 +155,7 @@ async fn own_card(c: &Connection, project_id: i64, id: i64) -> Result<AlertCard,
 
 /// A card stays in its section, so the cap of each section holds.
 pub async fn update(db: &Db, project_id: i64, id: i64, f: &CardForm<'_>) -> Result<(), AlertError> {
-    let saved = checked(db, f).await?;
+    let saved = checked(db, project_id, f).await?;
     db.write(async |c| {
         match own_card(c, project_id, id).await {
             Err(e) => return Ok(Err(e)),

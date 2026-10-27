@@ -49,7 +49,7 @@ impl From<AlertError> for UiError {
                 Some("emails")
             }
             AlertError::BadWebhook | AlertError::NtfyTopic => Some("url"),
-            AlertError::BadKey(_) => Some("key"),
+            AlertError::BadKey(_) | AlertError::UnprovedChat => Some("key"),
         };
         match (field, e) {
             (_, AlertError::Other(e)) => UiError::Internal(e),

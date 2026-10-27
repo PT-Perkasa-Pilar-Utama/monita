@@ -102,3 +102,32 @@ pub async fn take_heard(
     }
     Ok(found)
 }
+
+/// Records that a project's link was heard in `chat_id`, so its telegram_bot cards may use it.
+pub async fn prove(
+    c: &Connection,
+    project_id: i64,
+    chat_id: &str,
+    title: &str,
+    now: i64,
+) -> anyhow::Result<()> {
+    c.execute(
+        "INSERT INTO telegram_chats (project_id, chat_id, title, proved_at) VALUES (?1, ?2, ?3, ?4)
+         ON CONFLICT (project_id, chat_id) DO UPDATE SET title = excluded.title, proved_at = excluded.proved_at",
+        (project_id, chat_id, title, now),
+    )
+    .await?;
+    Ok(())
+}
+
+/// Whether one of the project's links was heard in `chat_id`.
+pub async fn proved(c: &Connection, project_id: i64, chat_id: &str) -> anyhow::Result<bool> {
+    Ok(crate::platform::db::query_i64(
+        c,
+        "SELECT count(*) FROM telegram_chats WHERE project_id = ?1 AND chat_id = ?2",
+        (project_id, chat_id),
+    )
+    .await?
+    .unwrap_or(0)
+        > 0)
+}

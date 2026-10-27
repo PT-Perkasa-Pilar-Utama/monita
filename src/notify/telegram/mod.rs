@@ -57,6 +57,12 @@ pub async fn bot_name(db: &Db) -> anyhow::Result<Option<String>> {
     Ok(store::bot(&db.read().await?).await?.map(|(_, n)| n))
 }
 
+/// Whether one of the project's connect links was heard in `chat_id`. A telegram_bot card may
+/// only post to such a chat, so the shared bot speaks only where the project's team added it.
+pub async fn chat_proved(db: &Db, project_id: i64, chat_id: &str) -> anyhow::Result<bool> {
+    store::proved(&db.read().await?, project_id, chat_id).await
+}
+
 /// Where `telegram_bot` alerts post, built at delivery so no route or outbox row holds the token.
 pub async fn send_url(db: &Db, api: &str) -> anyhow::Result<Option<String>> {
     Ok(store::bot(&db.read().await?)
@@ -223,7 +229,11 @@ fn heard_codes(updates: &Value, bot: &str) -> (Vec<(String, Chat)>, Option<i64>)
         if let Some(id) = u["update_id"].as_i64() {
             next = Some(next.map_or(id + 1, |n: i64| n.max(id + 1)));
         }
-        let msg = &u["message"];
+        let msg = if u["message"].is_object() {
+            &u["message"]
+        } else {
+            &u["channel_post"]
+        };
         let (Some(text), Some(chat_id)) = (msg["text"].as_str(), msg["chat"]["id"].as_i64()) else {
             continue;
         };
@@ -253,8 +263,11 @@ pub async fn check_link(
         (store::bot(&c).await?, store::offset(&c).await?)
     };
     let (token, name) = bot.ok_or(TelegramError::NoBot)?;
-    // allowed_updates=["message"], URL-encoded.
-    let query = format!("offset={offset}&timeout=0&limit=100&allowed_updates=%5B%22message%22%5D");
+    // allowed_updates=["message","channel_post"], URL-encoded: a channel admin proves a channel
+    // by posting the /start line in it, where the bot, as an admin, reads it as a channel post.
+    let query = format!(
+        "offset={offset}&timeout=0&limit=100&allowed_updates=%5B%22message%22%2C%22channel_post%22%5D"
+    );
     let (status, updates) = call(client, api, &token, "getUpdates", &query).await?;
     match status {
         409 => return Err(TelegramError::WebhookSet),
@@ -273,7 +286,11 @@ pub async fn check_link(
             if let Some(next) = next {
                 store::advance_offset(c, next).await?;
             }
-            store::take_heard(c, project_id, &token::hash(code), now).await
+            let found = store::take_heard(c, project_id, &token::hash(code), now).await?;
+            if let Some((chat_id, title)) = &found {
+                store::prove(c, project_id, chat_id, title, now).await?;
+            }
+            Ok(found)
         })
         .await?;
     Ok(found.map(|(chat_id, title)| Chat { chat_id, title }))
@@ -309,6 +326,7 @@ mod tests {
             { "update_id": 9, "message": { "text": "/start@MonitaBot two", "chat": { "id": -100, "title": "On call" } } },
             { "update_id": 8, "message": { "text": "hi", "chat": { "id": 42 } } },
             { "update_id": 10, "edited_message": {} },
+            { "update_id": 11, "channel_post": { "text": "/start three", "chat": { "id": -200, "title": "Status" } } },
         ]});
         let (codes, next) = heard_codes(&updates, "MonitaBot");
         assert_eq!(
@@ -328,9 +346,16 @@ mod tests {
                         title: "On call".into()
                     }
                 ),
+                (
+                    "three".to_string(),
+                    Chat {
+                        chat_id: "-200".into(),
+                        title: "Status".into()
+                    }
+                ),
             ]
         );
-        assert_eq!(next, Some(11));
+        assert_eq!(next, Some(12));
         assert_eq!(
             heard_codes(&json!({ "ok": true, "result": [] }), "MonitaBot").1,
             None

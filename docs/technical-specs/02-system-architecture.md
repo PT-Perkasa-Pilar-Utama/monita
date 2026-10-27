@@ -95,7 +95,7 @@ Not in v1: remote probes, hot standby, and shared databases. The check runner si
 | projects | projects, project_icons, api_keys, project_secrets | `ApiProject`, `find_for`, `can_view`, `owns_any`, `secrets::value_of` |
 | checks | monitors, heartbeats, check_results, pings, check_slots, ping_slots, daily_summaries | `probe`, `run_check`, `heartbeat::admit`, `heartbeat::record`, `rearm_heartbeat`, `list_monitors`, `heartbeat::list` |
 | incidents | incidents, incident_items, incident_sources, status_updates | `observe`, `states_for`, `team_states_for`, `source_deleted`, `across` |
-| notify | alert_cards, outbox, telegram_links | `send`, `send_cert_warning`, `previews`, `send_ticket`, `send_ticket_moved`, `create_alerts`, `cards::*`, `purge_delivered` |
+| notify | alert_cards, outbox, telegram_links, telegram_chats | `send`, `send_cert_warning`, `previews`, `send_ticket`, `send_ticket_moved`, `create_alerts`, `cards::*`, `purge_delivered` |
 | status | none | none |
 | tickets | ref_ids, tickets | `issue_ref_id`, `submit`, `triage_across`, `stage_counts` |
 | home | none | none |

@@ -50,7 +50,9 @@ A super admin sets up one bot for every project in **Admin**, **Telegram**. Once
 2. Scan the QR code with your phone, or select **Open in Telegram**, then select **Start**. To alert a group, select **Add @bot to a group** and pick the group.
 3. The form checks every 3 seconds. When the bot hears you, it shows **Connected to** and the chat's name. Select **Change** to pick another chat. Select **Add card**.
 
-The link works for 10 minutes. After that, select **Get a new link**. A bot cannot send to a person by @username, so the link is how Monita learns the chat. To type a chat instead, select **Enter a chat ID instead**. A public channel can be typed as `@channel`. Add the bot to the channel as an admin first.
+To alert a channel, make the bot an admin of the channel. Then post the `/start` line that the form shows in the channel.
+
+The link works for 10 minutes. After that, select **Get a new link**. The link is the only way to pick a chat for the global bot. It shows that your team added the bot to that chat, so no project can make the shared bot post in a chat that is not its own.
 
 Each recipient gets one alert when an incident opens and one when it closes. A manual incident sends no alert. It shows on the status page.
 

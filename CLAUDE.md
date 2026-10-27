@@ -47,7 +47,7 @@ site/                 landing page and docs site builder    docs/guide/ user doc
 | projects | projects, project_icons, api_keys, project_secrets, project_pins | `ApiProject` extractor, `find_for`, `can_view`, `owns_any` |
 | checks | monitors, heartbeats, check_results, pings, check_slots, ping_slots, daily_summaries, locations, monitor_locations, monitor_pins, heartbeat_pins | `probe`, `Job`, `heartbeat::admit` and `record`, `scheduler::spawn`, `locations::record_at` |
 | incidents | incidents, incident_items, incident_sources, status_updates | `observe` (the only door for check results), `open_manual`, `post_update`, `states_for`, `source_deleted` |
-| notify | alert_cards, outbox, telegram_links | `send(Event)`: inserts outbox rows, never blocks; `create_alerts`, `cards::*`, `purge_delivered` |
+| notify | alert_cards, outbox, telegram_links, telegram_chats | `send(Event)`: inserts outbox rows, never blocks; `create_alerts`, `cards::*`, `purge_delivered` |
 | status | none | public page and JSON |
 | home | none | cross-project Incidents and Tickets pages, top menu counts |
 | maintenance | maintenance_windows, maintenance_items | `covers` (asked by `incidents::observe` and the missed-heartbeat sweep), `active`, `create`, `delete`, `end_now`, `page` |

@@ -79,6 +79,8 @@ pub enum AlertError {
     BadKey(&'static str),
     #[error("Ask a super admin to set the global Telegram bot first, or use your own bot.")]
     NoBot,
+    #[error("Connect this chat with a link first, so Monita knows your team added the bot there.")]
+    UnprovedChat,
     #[error("Keep the name to 60 characters.")]
     NoName,
     #[error("Pick critical, warning or both.")]

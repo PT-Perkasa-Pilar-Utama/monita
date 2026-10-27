@@ -310,7 +310,9 @@ Uptime % for a day = `1 - downtime_s / 86400`. The status page computes the same
 | last_error | TEXT NULL | |
 | created_at | INTEGER | Rows older than 30 days are deleted |
 
-`telegram_links` (migration 0036, v1.1 Q33; reshaped by 0037): `code_hash` TEXT PK (SHA-256 of a connect link's code), `project_id` FK projects ON DELETE CASCADE, `expires_at` (10 minutes after the link), `chat_id` and `chat_title` (set when the bot hears the code). A project has one open link: a new one deletes its older link and every expired one. the global Telegram bot itself is three `settings` rows: `telegram_bot_token`, `telegram_bot_name` and `telegram_offset` (the next update to read).
+`telegram_links` (migration 0036, v1.1 Q33; reshaped by 0037): `code_hash` TEXT PK (SHA-256 of a connect link's code), `project_id` FK projects ON DELETE CASCADE, `expires_at` (10 minutes after the link), `chat_id` and `chat_title` (set when the bot hears the code). A project has one open link: a new one deletes its older link and every expired one. The global Telegram bot itself is three `settings` rows: `telegram_bot_token`, `telegram_bot_name` and `telegram_offset` (the next update to read).
+
+`telegram_chats` (migration 0049, security audit 2026-10-27): `project_id` FK projects ON DELETE CASCADE, `chat_id` TEXT, `title`, `proved_at`; PK (`project_id`, `chat_id`). A chat that one of the project's connect links found. A `telegram_bot` card may only name such a chat. The migration counts the chats of existing `telegram_bot` cards as proved, so no alert stops.
 
 ### 6.3.13 ref_ids and tickets
 

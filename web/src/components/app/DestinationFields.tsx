@@ -25,8 +25,6 @@ export function DestinationFields({ prefix, slug, bot, kinds, value, errors, onC
   const global = value.kind === "telegram_bot";
   // The custom kind to go back to from Global Telegram.
   const [custom, setCustom] = useState<DestKind>(global ? kinds[0]! : value.kind);
-  // Typing a chat ID by hand, as for a public @channel, instead of connecting with a link.
-  const [manual, setManual] = useState(false);
   const fields = value.kind === "email" ? null : webhookFields(value.kind);
   const id = (f: string): string => `${prefix}-${f}`;
 
@@ -70,14 +68,7 @@ export function DestinationFields({ prefix, slug, bot, kinds, value, errors, onC
       {global && bot === null && <p className="text-sm text-muted-foreground">No global Telegram bot is set up, so pick Custom.</p>}
       {global && bot !== null && (
         <Field data-invalid={errors.key ? true : undefined}>
-          {manual ? (
-            <>
-              <FieldLabel htmlFor={id("key")} required>
-                Chat ID
-              </FieldLabel>
-              <Input id={id("key")} className="font-mono" placeholder="-1001234567890 or @team_alerts" aria-invalid={errors.key ? true : undefined} value={value.key} onChange={(e) => onChange({ key: e.target.value, title: "" }, "key")} />
-            </>
-          ) : value.key ? (
+          {value.key ? (
             <div className="flex items-center justify-between gap-3 rounded-lg border bg-paper p-4 text-sm">
               <span>
                 Connected to <span className="font-medium">{value.title || `chat ${value.key}`}</span>
@@ -89,9 +80,6 @@ export function DestinationFields({ prefix, slug, bot, kinds, value, errors, onC
           ) : (
             <TelegramConnect slug={slug} bot={bot} onChat={(chat) => onChange({ key: chat.chat_id, title: chat.title }, "key")} />
           )}
-          <Button type="button" variant="link" size="sm" className="h-auto w-fit p-0" onClick={() => setManual((m) => !m)}>
-            {manual ? "Connect with a link instead" : "Enter a chat ID instead"}
-          </Button>
           {errors.key && <FieldError>{errors.key}</FieldError>}
         </Field>
       )}

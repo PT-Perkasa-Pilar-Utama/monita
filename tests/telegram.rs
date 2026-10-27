@@ -145,6 +145,12 @@ async fn a_connect_link_fills_the_chat_and_alerts_carry_no_token() {
         422
     );
     assert_eq!(set_token(&app, &admin, TOKEN).await.status(), 200);
+    let unproved = add_card(&app, &tl, "4242").await;
+    assert_eq!(unproved.status(), 422, "a typed chat ID is not enough");
+    assert_eq!(
+        json_of(unproved).await["error"]["fields"]["key"],
+        "Connect this chat with a link first, so Monita knows your team added the bot there."
+    );
 
     let link = json_of(app.api_post(link_path, json!({}), Some(&tl)).await).await;
     let code = link["data"]["code"].as_str().unwrap().to_string();
@@ -199,6 +205,11 @@ async fn a_connect_link_fills_the_chat_and_alerts_carry_no_token() {
         "another project's link heard in the same read is kept for it"
     );
 
+    assert_eq!(
+        add_card(&app, &tl, "-100").await.status(),
+        422,
+        "a chat proved for Shop does not open it to Pay"
+    );
     let card = add_card(&app, &tl, "4242").await;
     assert_eq!(card.status(), 201);
     let id = json_of(card).await["data"]["id"].clone();
