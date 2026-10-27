@@ -135,14 +135,15 @@ How it was measured, on 2026-10-20:
 - Real sites over HTTPS cost more CPU and memory than a local nginx, for every tool.
 
 Monita 1.1.0 ran the same test on 2026-10-27, in colima on the same Mac, beside 1.0.1 for comparison.
-The 1.1.0 image was a local build with thin LTO.
+The 1.1.0 image was a local build with thin LTO. Memory is what `docker stats` reports, which leaves out
+the binary's own file pages, so `top` on a server shows a larger number.
 
 | 500 checks a minute, colima, 2 vCPU | Monita 1.0.1 | Monita 1.1.0 |
 | --- | --- | --- |
 | Memory under load (median) | 20.4 MiB | 3.6 MiB |
 | Memory under load (peak) | 22.4 MiB | 3.8 MiB |
 | CPU, share of one core | 1.2% | 1.2% |
-| Checks done per minute, of 500 | 502 | 502 |
+| Checks done, of 500 a minute | all (2709 in 324 s) | all (2709 in 324 s) |
 
 The drop comes from the move to SQLite's own C library in 1.1.
 
