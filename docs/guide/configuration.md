@@ -17,6 +17,9 @@ Monita reads `MONITA_*` environment variables at start. `monita setup` writes th
 | `MONITA_DIGEST_UTC_HOUR` | Hour of the daily ticket digest | `1` |
 | `MONITA_LOG` | Log filter | `info` |
 | `MONITA_LOG_FORMAT` | `pretty` or `json` | `json` |
+| `MONITA_TELEGRAM_API` | The Bot API server for the global Telegram bot: Telegram's, or a self-hosted `telegram-bot-api` | `https://api.telegram.org` |
+
+`monita probe` reads two more variables, `MONITA_PROBE_SERVER` and `MONITA_PROBE_TOKEN`. [Locations](locations.md) explains them.
 
 `MONITA_RESET_TOKEN` exists for development only. In prod the reset route is not registered at all.
 

@@ -18,6 +18,11 @@ No page or job in Monita grows without bound. A list you add to refuses one more
 | Addresses per email alert card | 20 |
 | Updates per incident | 50 |
 | Open manual incidents per project | 20 |
+| Scheduled or active maintenance windows per project | 20 |
+| Maintenance windows per page | 20 |
+| Locations per instance | 10 |
+| Test alerts per project | 6 a minute |
+| Probe calls from one location | 300 a minute |
 | Tickets per board column | newest 25 shown, all counted; Show more loads the next 25 |
 | Tickets per digest email | 50 listed, the rest counted |
 | Checks and pings per page | 25, with an Older link |

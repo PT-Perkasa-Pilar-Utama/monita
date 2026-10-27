@@ -6,9 +6,9 @@ Run Monita on your laptop, add a project, and watch your first URL in about five
 
 Monita watches the systems of every project in a team and tells people when one breaks.
 
-- An **HTTP monitor** requests a URL every 30 s to 5 min. By default 2 failed checks in a row open an incident (each monitor can pick any count from 1 to 99); the first passing check closes it.
+- A **monitor** requests a URL, opens a TCP port, looks up a DNS name or pings a host every 30 s to 5 min. By default 2 failed checks in a row open an incident (each monitor can pick any count from 1 to 99); the first passing check closes it.
 - A **heartbeat** waits for a ping from a cron job. A ping that does not come in time opens an incident.
-- An **incident** sends email and webhook alerts, and shows on the project's public **status page**.
+- An **incident** sends alerts by email, chat or PagerDuty, and shows on the project's public **status page**.
 - Users file **tickets** through the status page, and the tech lead sorts them on the ticket board.
 - A **changelog** lists each release for your users.
 

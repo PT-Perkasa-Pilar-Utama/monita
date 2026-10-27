@@ -55,6 +55,15 @@ curl -s "https://monita.example.com/api/v1/public/status/payments?days=90"
           { "label": "investigating", "message": "Detected.", "at": 1792396936 }
         ]
       }
+    ],
+    "maintenance": [
+      {
+        "title": "Database upgrade",
+        "message": "Checkout pauses until 02:00.",
+        "starts_at": 1792396000,
+        "ends_at": 1792399600,
+        "items": ["API health"]
+      }
     ]
   }
 }
@@ -67,6 +76,7 @@ curl -s "https://monita.example.com/api/v1/public/status/payments?days=90"
 | `items[].state` | `up`, `down`, `issue`, `maintenance` or `unknown` (no data yet). A paused system is left out. |
 | `items[].days[]` | Oldest first. `uptime` is `null` for a day before the system existed. |
 | `incidents[].updates[]` | Newest first. `label` is `investigating`, `identified`, `monitoring` or `resolved`. |
+| `maintenance` | The active maintenance windows that cover a public system, soonest end first: `title`, `message` (may be empty), `starts_at`, `ends_at`, and the public `items` it covers |
 | Times | Unix seconds |
 
 While the project's Incidents tab is off, `incidents` is empty. An answer can be up to 30 seconds old.
@@ -154,7 +164,8 @@ The routes are the ones the team's pages use, with `/api/v1/projects/{slug}` in 
 | `/monitors/batch`, `/heartbeats/batch` | `POST {"action": "pause", "ids": [3, 4]}` pauses, resumes or deletes up to 100 at once |
 | `/incidents`, `/incidents/{id}`, `/incidents/{id}/updates` | List and open incidents, and post updates |
 | `/incidents/{id}/class` | `PUT {"class": "false_alarm"}` marks an incident planned work or a false alarm, or counts it again |
-| `/maintenance`, `/maintenance/{id}`, `/maintenance/{id}/end` | List, plan, delete and end maintenance windows |
+| `/maintenance`, `/maintenance/{id}`, `/maintenance/{id}/end` | List, plan, edit, delete and end maintenance windows |
+| `/incident-items` | The monitors and heartbeats an incident or a maintenance window can name |
 
 Pause a monitor while you deploy, then resume it:
 

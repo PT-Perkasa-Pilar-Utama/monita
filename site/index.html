@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Monita: site reliability for every project your team ships</title>
-<meta name="description" content="Monita checks your team's URLs and cron jobs, opens an incident after two failed checks, alerts the people you choose by email and webhook, and shows it on a public status page. You host it yourself.">
+<meta name="description" content="Monita checks your team's URLs and cron jobs, opens an incident after two failed checks, alerts the people you choose by email, chat or PagerDuty, and shows it on a public status page. You host it yourself.">
 <!-- og -->
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <script src="assets/theme.js"></script>
@@ -64,6 +64,21 @@
     </ul>
   </section>
 
+  <section class="lp-section" id="team">
+    <h2>Built for every team in the IT department</h2>
+    <p class="lp-lead">One Monita serves every project. Each tech lead runs their own projects, and the department sees all of them in one place.</p>
+    <ul class="lp-limits">
+      <li><b>Roles that match the department.</b> A super admin runs Monita, each tech lead manages the projects they own, and a supervisor sees every project without changing anything.</li>
+      <li><b>Alerts where your team already talks.</b> Each project has alert cards for email lists, Slack and Google Chat, Discord, Telegram, ntfy and PagerDuty, and each card listens to critical alerts, warnings or both. One shared Telegram bot connects a chat with a link.</li>
+      <li><b>Planned work stays quiet.</b> A maintenance window keeps its monitors and heartbeats from opening incidents or sending alerts, and the charts draw it as stripes. A window that runs long can get more time while it is active.</li>
+      <li><b>Checks from more than one place.</b> Run <code>monita probe</code> on another machine, and an incident opens only when enough places agree that a service is down.</li>
+      <li><b>Pause, pin and sort.</b> Pause or resume up to 100 monitors at once, pin the projects you watch most, and mark an incident as planned work or a false alarm so it leaves the uptime numbers.</li>
+      <li><b>Scripts and pipelines can drive it.</b> An API key can only issue ticket reference IDs, read a project, or also change its monitors, heartbeats, incidents and maintenance windows.</li>
+      <li><b>Sign-in with a second factor.</b> Anyone can add an authenticator app code to their password, with recovery codes for a lost phone.</li>
+      <li><b>Certificates do not expire by surprise.</b> An HTTPS monitor can warn 7, 14 or 30 days before its certificate runs out.</li>
+    </ul>
+  </section>
+
   <section class="lp-section lp-get" id="get">
     <div>
       <h2>Small enough to run on a server you already have</h2>
@@ -118,7 +133,7 @@ $env:MONITA_ENV = "dev"
 docker run --rm -it -v monita-data:/data -e MONITA_ENV=dev ghcr.io/pt-perkasa-pilar-utama/monita:1 admin create --email you@company.co.id</code></pre>
         <p>The last command asks for a password of at least 8 characters. Then start Monita:</p>
 <pre class="code"><code class="language-sh">docker run -d --name monita -p 127.0.0.1:7466:7466 -v monita-data:/data -e MONITA_ENV=dev ghcr.io/pt-perkasa-pilar-utama/monita:1</code></pre>
-        <p>Open <code>http://localhost:7466</code> and sign in. For a server, see the <a href="docs/install/#with-docker">Compose file in the install guide</a>.</p>
+        <p>Open <code>http://localhost:7466</code> and sign in. These commands make Monita reachable from this computer only. On a server, use the <a href="docs/install/#with-docker">Compose file in the install guide</a> and set <code>MONITA_BASE_URL</code> to the address people open, because sign-in only works on that address.</p>
       </div>
       <p>To build it yourself, see <a href="docs/install/#from-source">building from source</a>. You can also <a href="demo/">try the demo in your browser</a> first. It needs no account.</p>
     </div>
@@ -170,13 +185,16 @@ docker run --rm -it -v monita-data:/data -e MONITA_ENV=dev ghcr.io/pt-perkasa-pi
           </div>
         </div>
         <div class="lp-tabs__panel" role="tabpanel" id="panel-2" aria-labelledby="tab-2" hidden>
-          <p>Paste a Slack or Microsoft Teams incoming-webhook URL into the project's alert settings. Monita posts JSON like this when an incident opens and when it closes. It also emails the addresses you list.</p>
+          <p>Add an alert card in the project's alert settings and paste a Slack or Google Chat incoming-webhook URL. Monita posts JSON like this when an incident opens and when it closes. Other cards send to Discord, Telegram, ntfy, PagerDuty or a list of email addresses, and the project owner gets an email by default.</p>
 <pre class="code"><code class="language-json">{
   "text": "[CRITICAL] Payments / API health is down: HTTP 503, expected 2xx after 2 checks",
   "event": "incident.opened",
   "project": "payments",
+  "source": "API health",
   "severity": "critical",
-  "incident_url": "https://monita.example.com/projects/payments/incidents/42"
+  "cause": "HTTP 503, expected 2xx after 2 checks",
+  "incident_url": "https://monita.example.com/projects/payments/incidents/42",
+  "at": 1792137600
 }</code></pre>
         </div>
         <div class="lp-tabs__panel" role="tabpanel" id="panel-3" aria-labelledby="tab-3" hidden>
@@ -233,8 +251,8 @@ curl -s -X POST https://monita.example.com/api/v1/tickets -H 'content-type: appl
     <p class="lp-lead">Read these before you install it. Each one is a choice for version 1, and some of them can change.</p>
     <ul class="lp-limits">
       <li><b>It reads A and AAAA answers only.</b> A DNS check does not look at MX, TXT or CNAME records.</li>
-      <li><b>It pings from Linux and macOS.</b> Windows has no ping socket that works without administrator rights, so use a TCP check there.</li>
-      <li><b>It alerts by email and webhook.</b> It does not send text messages, make phone calls or manage an on-call rotation.</li>
+      <li><b>A ping check sends one echo.</b> It reports whether the host answered and how fast, not packet loss over many echoes.</li>
+      <li><b>It alerts by email, chat and PagerDuty.</b> It does not send text messages or make phone calls itself, and it has no on-call rotation of its own.</li>
       <li><b>It signs people in with an email, a password and an optional authenticator code.</b> Single sign-on is not in version 1.</li>
       <li><b>It keeps single checks for 7 days.</b> Daily summaries stay for good, so the uptime history stays complete.</li>
       <li><b>Tickets hold text only.</b> Users cannot attach files to a bug report.</li>

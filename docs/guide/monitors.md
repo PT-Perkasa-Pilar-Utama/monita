@@ -90,7 +90,7 @@ A check fails on a timeout, a connection error, a status outside the expected li
 
 | Setting | Means |
 | --- | --- |
-| Alert level | Two cards, **Critical** and **Warning**. The card picks which alert setup the monitor uses. Each has its own emails and webhook. Default: warning. |
+| Alert level | Two cards, **Critical** and **Warning**. The alert goes to every alert card of the project that listens to that level ([Alerts](alerts.md)). Default: warning. |
 | It counts as down after | The number of failed checks in a row, from 1 to 99. Default: 2. |
 | Send alerts to the people in Alerts settings | Off means Monita sends nothing for this monitor. |
 | Open an incident | Off means no incident and nothing on the status page. |
@@ -161,7 +161,7 @@ Select **Refresh** to read the latest data. The page also reads itself every 30 
 | Part | Shows |
 | --- | --- |
 | Stats | How long it has been up or down, the last check, the mean response time, incidents in 30 days |
-| Chart | Mean response time per bucket, failed checks in red, down time in a red band, maintenance windows as grey stripes. Hover to read a bucket: the time, the count, and "Up" or "Down for ...". Hour, day and week read the raw checks; month reads the daily summary. |
+| Chart | Mean response time per bucket, failed checks in red, down time in a red band, maintenance windows as grey stripes. Hover to read a bucket: the time, the count, and "Up" or "Down for ...". Hour reads the raw checks, day and week read 15-minute totals, and month reads the daily summary. |
 | Availability | Today, the last 7, 30 and 365 days, and all time: percent up, downtime, incidents, the longest and the average |
 | Checks | The last 7 days, 25 per page, newest first |
 
@@ -173,7 +173,7 @@ Select **Details** beside **Edit** for a side panel.
 
 | Part | Shows |
 | --- | --- |
-| Request | The URL, method, sign-in, header names, body size, timeout and interval |
+| Request | What it checks, the timeout and the interval. An HTTP monitor also shows the method, sign-in, header names and body size. |
 | Try it yourself | A `curl` command that sends the same request and prints the status code and time. For a signed-in monitor, its first line sets the secret as a shell variable. You fill in the value. |
 | A check passes when | The status code, the body text and the certificate rule |
 | When it fails | The failed-check count, what happens then, and the status page rule |

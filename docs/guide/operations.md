@@ -82,4 +82,4 @@ systemctl start monita
 
 ## Cut a release (maintainers)
 
-Push a `v*` tag that matches the version in `Cargo.toml`. [release.yml](../../.github/workflows/release.yml) builds the static Linux binary, boots it, and opens a draft GitHub release with `checksums.txt`.
+Push a `v*` tag that matches the version in `Cargo.toml`. [release.yml](../../.github/workflows/release.yml) builds the Linux, macOS and Windows archives for amd64 and arm64, boots each one, pushes the image to GHCR, and opens a draft GitHub release with `checksums.txt`. Only a repository admin can push a `v*` tag.

@@ -102,12 +102,12 @@ Every body has `text`, `event`, `project`, `at` (Unix seconds, UTC) and, for inc
 
 ```json
 {
-  "text": "[CRITICAL] Payments / Checkout API is down: HTTP 503 on 2 checks in a row",
+  "text": "[CRITICAL] Payments / Checkout API is down: HTTP 503, expected 2xx after 2 checks",
   "event": "incident.opened",
   "project": "payments-k3x9qa",
   "source": "Checkout API",
   "severity": "critical",
-  "cause": "HTTP 503 on 2 checks in a row",
+  "cause": "HTTP 503, expected 2xx after 2 checks",
   "incident_url": "https://monita.example.com/projects/payments-k3x9qa/incidents/42",
   "at": 1792137600
 }
@@ -135,11 +135,13 @@ A new ticket sends an email with the subject `[TICKET] {project} / #{n} {title}`
 ## Delivery
 
 - Alerts leave from a queue, so a slow mail server or webhook never delays a check.
-- Monita sends a POST with a JSON body.
+- Monita sends a POST. A JSON card sends the body above. Discord, Telegram, ntfy and PagerDuty cards send the body each service expects.
 - A 2xx answer within 10 seconds counts as delivered. A redirect counts as a failure.
 - Monita tries a failed call again after 1, 5 and 15 minutes. After the fourth failure it gives up and writes the error to its log.
 - Monita leaves the webhook URL out of its logs and error messages. Treat the URL as a secret.
 - A supervisor sees `(hidden)` instead of a webhook URL.
 - A super admin sets the mail server on [Outgoing email](admin.md#outgoing-email).
+- A project sends at most 6 test alerts a minute.
+- A webhook server whose last send failed gets one alert a delivery pass, and its other alerts wait a few seconds, so one dead server cannot hold up other projects' alerts.
 
 Monita keeps delivered alerts for 30 days.

@@ -8,7 +8,7 @@ Monita has three roles.
 
 | Role | Sees | Changes |
 | --- | --- | --- |
-| Super admin | Every project and every admin page | Everything: projects, users, limits, email, time zone |
+| Super admin | Every project and every admin page | Everything: projects, users, locations, limits, email, the Telegram bot, time zone |
 | Tech lead | Only the projects they own. Another project answers 404. | Everything inside the projects they own |
 | Supervisor | Every project and every admin page | Nothing |
 
@@ -140,6 +140,10 @@ Monita drops an email addressed to its own sender address, the **From** of the s
 ### Email delivery
 
 A badge reads **Sending** or **Log only**. The section shows the mail server, the time of the last send, and three counts: **Sent in N days**, **Waiting or retrying** and **Gave up**. After a failure it shows the last error.
+
+## Locations
+
+A super admin adds a location, a machine that runs `monita probe` and checks monitors from another place. [Locations](locations.md) explains how to add one and pick it on a monitor.
 
 ## Telegram
 

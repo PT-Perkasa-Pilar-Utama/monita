@@ -29,8 +29,8 @@ that your team controls.
   An HTTPS monitor can warn before its certificate expires.
 - A heartbeat expects your cron job to call a Monita URL on a schedule.
 - When a monitor fails twice in a row, or a heartbeat call does not arrive in time, Monita opens an
-  incident. It emails the addresses you list for the project, and it posts to Slack, Discord,
-  Telegram, ntfy or PagerDuty if you add a webhook.
+  incident. It emails the project's owner, and alert cards send to email lists, Slack, Google Chat,
+  Discord, Telegram, ntfy or PagerDuty.
 - Locations check from other machines too, and an incident opens only when enough places agree.
 - Maintenance windows keep planned work from opening incidents or sending alerts.
 - A tech lead can pause a monitor or heartbeat, so it opens no incident and sends no alert until it resumes.
@@ -38,6 +38,10 @@ that your team controls.
   writes during an incident.
 - Users can report a bug from the status page, and the tech lead sorts the reports on the ticket board.
 - People sign in with a password and, if they choose, an authenticator code.
+- A super admin runs Monita, each tech lead manages the projects they own, and a supervisor sees
+  every project without changing anything.
+- API keys let scripts issue ticket reference IDs, read a project, or also change its monitors,
+  heartbeats, incidents and maintenance windows.
 
 The [demo](https://pt-perkasa-pilar-utama.github.io/monita/demo/) is a saved copy of the real pages
 with sample data. You can click through it, but it does not save anything you enter.
@@ -78,7 +82,12 @@ The last command asks for a password of at least 8 characters. Then start Monita
 
 ```sh
 docker run -d --name monita -p 127.0.0.1:7466:7466 -v monita-data:/data -e MONITA_ENV=dev ghcr.io/pt-perkasa-pilar-utama/monita:1
-``` The [install guide](https://pt-perkasa-pilar-utama.github.io/monita/docs/install/#with-docker) has a Compose file for a server.
+```
+
+These commands make Monita reachable from this computer only. For a server, the
+[install guide](https://pt-perkasa-pilar-utama.github.io/monita/docs/install/#with-docker) has a
+Compose file. Set `MONITA_BASE_URL` to the address people open, because sign-in only works on that
+address.
 
 `monita setup` asks for the public URL, the mail server and the first super admin.
 `monita service install` makes Monita start now and after every reboot.
@@ -134,9 +143,10 @@ how to connect your jobs and tools, and how to run Monita in production. Its sou
 | Start | Connect | Reference |
 | --- | --- | --- |
 | [Getting started](docs/guide/getting-started.md) | [Heartbeats and cron](docs/guide/heartbeats.md) | [Technical specs](docs/technical-specs/_index.md) |
-| [Install](docs/guide/install.md) | [Status JSON](docs/guide/status-page.md) | [API specs](docs/api-specs/_index.md) |
-| [Configuration](docs/guide/configuration.md) | [Tickets API](docs/guide/tickets.md) | [Design system](docs/design-system/) |
-| [Operations](docs/guide/operations.md) | [Webhooks](docs/guide/incidents.md) | [Decisions](docs/decisions/) |
+| [Install](docs/guide/install.md) | [Alerts and webhooks](docs/guide/alerts.md) | [API specs](docs/api-specs/_index.md) |
+| [Configuration](docs/guide/configuration.md) | [Status JSON](docs/guide/status-page.md) | [Limits](docs/guide/limits.md) |
+| [Operations](docs/guide/operations.md) | [Tickets API](docs/guide/tickets.md) | [Design system](docs/design-system/) |
+| [Locations](docs/guide/locations.md) | [Project API](docs/guide/api.md) | [Decisions](docs/decisions/) |
 
 ## Contributing
 

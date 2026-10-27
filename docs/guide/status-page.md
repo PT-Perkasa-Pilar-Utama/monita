@@ -12,8 +12,8 @@ The page has up to five tabs. A super admin or the owner picks them in **Setting
 | --- | --- | --- |
 | Uptime | The systems and their 90 days | Always on |
 | Incidents | Current problems and past incidents | Optional, on by default |
-| Issues | The public ticket board | Optional |
-| Ticket | A form to report a bug, and the reporter's tickets | Optional |
+| Issues | The public ticket board | Optional, on by default |
+| Ticket | A form to report a bug, and the reporter's tickets | Optional, on by default |
 | Changelog | Releases, one version at a time | Optional, on by default for a new project |
 
 Tick a card and select **Save changes**. A tab that is off disappears from the page. Its address and its JSON answer 404.
@@ -88,6 +88,10 @@ curl -s https://monita.example.com/api/v1/public/status/payments?days=30
       { "title": "API health is down", "origin": "auto", "severity": "critical",
         "started_at": 1792137600, "resolved_at": null, "items": ["API health"],
         "updates": [ { "label": "investigating", "message": "Detected.", "at": 1792137600 } ] }
+    ],
+    "maintenance": [
+      { "title": "Database upgrade", "message": "Checkout pauses until 02:00.",
+        "starts_at": 1792170000, "ends_at": 1792173600, "items": ["API health"] }
     ]
   }
 }
@@ -99,6 +103,7 @@ curl -s https://monita.example.com/api/v1/public/status/payments?days=30
 | `overall` | `down` if any item is down, else `issue` if any has an issue, else `maintenance` if any is in maintenance, else `up` if any item was checked, else `unknown` (no public item, or none checked yet) |
 | `days[].uptime` | `null` for a day before the item existed |
 | `incidents` | Empty while the Incidents tab is off |
+| `maintenance` | The active maintenance windows that cover a public system, soonest end first: `title`, `message` (may be empty), `starts_at`, `ends_at`, and the public `items` it covers |
 
 ## Time zone
 

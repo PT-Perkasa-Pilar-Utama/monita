@@ -48,7 +48,7 @@ monita --version
 
 ### With Docker
 
-The image `ghcr.io/pt-perkasa-pilar-utama/monita` runs on Linux, and on Windows and macOS through Docker Desktop. It holds the same static binary as the Linux archives, for `linux/amd64` and `linux/arm64`. It has no shell and runs as a user without root rights. Tags: `1.0.1` for one release, `1.0` and `1` for the newest in that line, and `latest`.
+The image `ghcr.io/pt-perkasa-pilar-utama/monita` runs on Linux, and on Windows and macOS through Docker Desktop. It holds the same static binary as the Linux archives, for `linux/amd64` and `linux/arm64`. It has no shell and runs as a user without root rights. Tags: `1.1.0` for one release, `1.1` and `1` for the newest in that line, and `latest`.
 
 Data lives in the volume at `/data`. The commands below are one line each, so they work in PowerShell, Command Prompt and a Unix shell.
 
@@ -72,7 +72,7 @@ To try it on a laptop:
    docker run -d --name monita --restart unless-stopped -p 127.0.0.1:7466:7466 -v monita-data:/data -e MONITA_ENV=dev ghcr.io/pt-perkasa-pilar-utama/monita:1
    ```
 
-4. Open `http://localhost:7466` and sign in. Use `localhost`, not `127.0.0.1`: sign-in checks that the page and `MONITA_BASE_URL` (default `http://localhost:7466`) have the same address.
+4. Open `http://localhost:7466` and sign in. `127.0.0.1` works too. The `-p 127.0.0.1:7466:7466` publish makes Monita reachable from this computer only. Sign-in checks that the page and `MONITA_BASE_URL` (default `http://localhost:7466`) have the same address. If you publish another port or open Monita from another machine, set `MONITA_BASE_URL` to that address.
 
 `MONITA_ENV=dev` allows an `http://` address and logs more. On a server, keep the image's `MONITA_ENV=prod` and put Monita behind a web server that handles HTTPS. A Compose file for a server:
 

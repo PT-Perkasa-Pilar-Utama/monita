@@ -26,7 +26,7 @@ The same calls follow here.
 
 ## Get an API key
 
-In the project, open **Settings**, then **API keys**, and select **New API key**. Name the key after the program that uses it. Monita shows the key once. Every JSON call that needs a key sends it as a bearer token:
+In the project, open **Settings**, then **API keys**, and select **New API key**. Name the key after the program that uses it, and keep the scope **Ref IDs only**, or pick **Read and write** if the same program also manages the project. A **Read** key cannot issue ref IDs. Monita shows the key once. Every JSON call that needs a key sends it as a bearer token:
 
 ```sh
 -H "Authorization: Bearer mk_..."

@@ -31,7 +31,7 @@ The form names every bad field at once.
 
 ## The project tabs
 
-A project has these tabs: **Overview**, **Monitors**, **Heartbeats**, **Incidents**, **Tickets**, **Changelog** and **Settings**. A count on a tab shows what needs you: monitors and heartbeats down, open incidents, and tickets in Triage.
+A project has these tabs: **Overview**, **Monitors**, **Heartbeats**, **Incidents**, **Maintenance**, **Tickets**, **Changelog** and **Settings**. A count on a tab shows what needs you: monitors and heartbeats down, open incidents, monitors and heartbeats paused or in a maintenance window now, and tickets in Triage.
 
 ### Overview
 
