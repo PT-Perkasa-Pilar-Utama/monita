@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- **Admin**, **Time zone**: type a place or an offset under **Show times in**, for example `jakarta` or `+7`, to find it in the list. Enter picks the highlighted one.
+
 ## [1.1.0] - 2026-10-27
 
 More ways to check, alert and plan: TCP, DNS and ping monitors, certificate warnings, checks from more than one place, Discord, Telegram, ntfy and PagerDuty alerts, maintenance windows, and two-factor sign-in. Migrations 0024 to 0049 run on start; 0029 rebuilds the `monitors` table, and 0039 rebuilds `alert_cards`.
