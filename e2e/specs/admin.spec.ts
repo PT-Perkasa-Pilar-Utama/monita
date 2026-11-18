@@ -26,8 +26,11 @@ test("a limit can be discarded, then saved, and holds after a reload", async ({ 
 
 test("the time zone moves every time shown, until it is set back", async ({ page }) => {
   await page.goto("/admin/time-zone");
-  await page.locator("#tz").click();
-  await page.getByRole("option", { name: /Jakarta/ }).click();
+  // Typing a place highlights its offset, and Enter picks it.
+  await page.locator("#tz").fill("jakarta");
+  await expect(page.getByRole("option")).toHaveText([/UTC\+7: Jakarta/]);
+  await page.locator("#tz").press("Enter");
+  await expect(page.locator("#tz")).toHaveValue(/UTC\+7: Jakarta/);
   await page.locator("#time-zone").getByRole("button", { name: "Save changes" }).click();
   await expect(page.locator("#time-zone")).toContainText(/Now it is .* UTC\+7\./);
   await apiSend(page, "PUT", "/api/ui/admin/time-zone", { utc_offset_min: 0 }, 204);
