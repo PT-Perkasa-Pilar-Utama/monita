@@ -2,12 +2,12 @@ import { useState } from "react";
 import type { ReactElement } from "react";
 import { SettingsSection } from "@/components/app/SettingsSection";
 import { TimeZonePicker } from "@/components/app/TimeZonePicker";
-import type { Zone } from "@/components/app/TimeZonePicker";
 import { Button } from "@/components/ui/button";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Spinner } from "@/components/ui/spinner";
 import { api, errorText } from "@/lib/api";
 import { digestNote, stamp, zone } from "@/lib/time";
+import type { Zone } from "@/lib/time";
 import { toast } from "sonner";
 
 /** Offsets real places use, in minutes east of UTC, with a few places for each. */

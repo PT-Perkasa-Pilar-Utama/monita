@@ -3,12 +3,9 @@ import type { KeyboardEvent, ReactElement } from "react";
 import { Popover } from "radix-ui";
 import { Check, ChevronDownIcon } from "@/components/icons";
 import { Input } from "@/components/ui/input";
-import { matches } from "@/lib/filter";
-import { zone } from "@/lib/time";
+import { zone, zonesMatching } from "@/lib/time";
+import type { Zone } from "@/lib/time";
 import { cn } from "@/lib/utils";
-
-/** An offset in minutes east of UTC and the places that use it. */
-export type Zone = [number, string];
 
 const label = ([min, places]: Zone): string => `${zone(min)}: ${places}`;
 
@@ -32,7 +29,7 @@ export function TimeZonePicker({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState<string | null>(null);
   const [active, setActive] = useState(0);
-  const shown = useMemo(() => zones.filter(([min, places]) => matches(query ?? "", zone(min), places)), [zones, query]);
+  const shown = useMemo(() => zonesMatching(zones, query ?? ""), [zones, query]);
   const current = zones.find(([min]) => min === value);
 
   useEffect(() => {
