@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 import { Link, Outlet, useLocation, useParams } from "react-router-dom";
-import { Mark } from "@/components/brand/Mark";
+import { ProjectBadge } from "@/components/app/ProjectBadge";
 import { Activity, AlertTriangle, Bug, ExternalLink, ListChecks, ScrollText } from "@/components/icons";
 import { PageFrame } from "@/components/layout/Page";
 import { PageTabs } from "@/components/layout/PageTabs";
@@ -34,7 +34,7 @@ export function PublicLayout(): ReactElement | null {
         <div className="px-4 sm:px-8 lg:px-12">
           <div className="mx-auto flex h-14 max-w-app items-center gap-3">
             <Link to={base} className="flex min-w-0 items-center gap-2 text-lg font-semibold tracking-tight">
-              <Mark className="size-[26px] shrink-0 text-primary" />
+              <ProjectBadge name={p.data.name} iconUrl={p.data.icon_url} className="size-[26px] rounded-md text-xs" />
               <span className="truncate">{p.data.name}</span>
             </Link>
             {p.data.homepage_url && (

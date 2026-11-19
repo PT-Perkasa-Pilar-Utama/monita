@@ -94,7 +94,7 @@ A ticket on the team board and detail (`TicketRow`):
 
 | Method | Path | Access | Input | Behavior | AC |
 | --- | --- | --- | --- | --- | --- |
-| GET | `/api/ui/public/{slug}` | public | | The project's `name`, `slug`, `pages` (the public flags of 3.1), `utc_offset_min` and `homepage_url`, for a public page's header and its tabs. Unknown slug: 404. | |
+| GET | `/api/ui/public/{slug}` | public | | The project's `name`, `slug`, `pages` (the public flags of 3.1), `utc_offset_min`, `homepage_url` and `icon_url` (`/api/ui/public/{slug}/icon?v={icon_at}`, or null), for a public page's header and its tabs. Unknown slug: 404. | |
 | POST | `/api/ui/public/{slug}/report` | public | `ref_id`, `title`, `description`, `page_url` | Same rules as 8.2. The ref ID must belong to this project. 201 `{number}`; a cap is 429 `daily_cap_reached`. 404 with `report` off. | AC-24.01, AC-24.03 to AC-24.05 |
 | POST | `/api/ui/public/{slug}/mine` | public | `ref_id` | `tickets`: the same data as 8.3. The ref ID must belong to this project, or it is 422 on `ref_id`. A POST keeps the ref ID out of URLs and logs. The page asks for the ref ID once, then shows a New report form beside the reporter's tickets. 404 with `report` off. | AC-29.01 |
 | GET | `/api/ui/public/{slug}/tickets` | public | `?stage=` (`backlog`, `in_progress` or `done`) and `?page=` | Public board: stages Backlog, In progress, Done. `tickets` with number, public title or title, stage, created, updated; `counts` per stage. Each column holds its newest 25 by last change. With `?stage=`, one page of that column: `{tickets, page, total, page_size}`; `triage` and any unknown stage are 404 (Q22). `Cache-Control: public, max-age=30`. 404 with `known_issues` off. | AC-28.01, AC-28.02, AC-26.01 |

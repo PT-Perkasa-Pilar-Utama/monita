@@ -33,7 +33,7 @@ The React page `/incidents` calls this route (conventions 1.10). A TL sees the i
 
 | Method | Path | Access | Input | Behavior | AC |
 | --- | --- | --- | --- | --- | --- |
-| GET | `/api/ui/incidents` | session | Query `q`, `state`, `severity`, `from`, `to` (as in 5.1), `sort`, `page` | One page of 25. `incidents`: each an incident as in 5.1 plus `project` (the project as in 3.1, without `pulse`). `total`: the incidents that match, on every page. `page`, `page_size` (25). `q` matches the title, the project's name, or `INC-12`, ignoring case; it counts its first 100 characters. `state` is `open` (default, also for any other value), `resolved` or `all`. `severity` is `critical` or `warning`; blank is both. `sort` is `newest`, `oldest`, or blank: critical first, then newest. `page` counts from 1; a missing or bad value reads page 1. | |
+| GET | `/api/ui/incidents` | session | Query `q`, `state`, `severity`, `from`, `to` (as in 5.1), `sort`, `page` | One page of 25. `incidents`: each an incident as in 5.1 plus `project` (the project as in 3.1, without `pulse`). `total`: the incidents that match, on every page. `page`, `page_size` (25). `q` matches the title, the project's name, or `INC-12`, ignoring case; it counts its first 100 characters. `state` is `open` (default, also for any other value), `resolved` or `all`. `severity` is `critical` or `warning`; blank is both. `sort` is `newest`, `oldest`, `warning_first` (warning first, then newest), or blank: critical first, then newest. `page` counts from 1; a missing or bad value reads page 1. | |
 
 ## 5.3 Maintenance windows
 

@@ -15,7 +15,7 @@ import { DateRange } from "@/components/list/DateRange";
 import { TableEmpty } from "@/components/list/TableEmpty";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { dateHead, nextDate } from "@/lib/dateSort";
+import { incidentsHead, nextIncidentsSort } from "@/lib/listSort";
 import { duration, nowSecs, stamp } from "@/lib/time";
 import type { HomeIncident, HomeList } from "@/lib/types";
 import { LIVE_MS, useApi } from "@/lib/useApi";
@@ -36,8 +36,8 @@ export function AllIncidents(): ReactElement {
   const d = res.data;
   const now = nowSecs();
   const noun = params.state === "resolved" ? "resolved incident" : params.state === "all" ? "incident" : "open incident";
-  const sort = params.sort === "" ? { by: "severity", dir: "desc" as const } : dateHead("started", params.sort, false);
-  const onSort = (by: string): void => list.set({ sort: by === "severity" ? "" : nextDate(params.sort, false) });
+  const sort = incidentsHead(params.sort);
+  const onSort = (by: string): void => list.set({ sort: nextIncidentsSort(params.sort, by) });
   return (
     <>
       <PageHeader title="Incidents" filtered={list.filtered} actions={<RefreshButton onClick={res.refresh} busy={res.refreshing} />} />

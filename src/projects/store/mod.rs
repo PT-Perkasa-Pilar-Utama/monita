@@ -208,6 +208,7 @@ const MATCHING: &str = "FROM projects p JOIN users u ON u.id = p.owner_id \
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Sort {
     Name,
+    NameDesc,
     Newest,
     Oldest,
 }
@@ -216,6 +217,7 @@ impl Sort {
     fn order_by(self) -> &'static str {
         match self {
             Sort::Name => "p.name, p.id",
+            Sort::NameDesc => "p.name DESC, p.id DESC",
             Sort::Newest => "p.created_at DESC, p.id DESC",
             Sort::Oldest => "p.created_at, p.id",
         }

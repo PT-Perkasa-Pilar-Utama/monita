@@ -38,6 +38,19 @@ test.describe("as the TL", () => {
     expect(body.data.items.map((i: { name: string }) => i.name)).toEqual(["Checkout"]);
     await visitor.close();
   });
+
+  test("the status page header shows the project's icon to a signed-out visitor", async ({ page, browser }) => {
+    const slug = await apiProject(page, "Iconic");
+    const png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+    await apiSend(page, "PUT", `/api/ui/projects/${slug}/profile`, { homepage_url: "https://example.com", description: "", icon: `data:image/png;base64,${png}` }, 204);
+    const visitor = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+    const v = await visitor.newPage();
+    await v.goto(`/status/${slug}`);
+    const icon = v.getByRole("banner").getByRole("link").locator("img");
+    await expect(icon).toHaveAttribute("src", new RegExp(`^/api/ui/public/${slug}/icon\\?v=`));
+    await expect.poll(() => icon.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
+    await visitor.close();
+  });
 });
 
 test.describe("the public pages", () => {

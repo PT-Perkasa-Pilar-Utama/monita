@@ -20,6 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { listQuery, pageCount, pageParam, skeletonCount } from "@/lib/page";
 import type { OverviewChart as ChartData, ProjectList } from "@/lib/types";
 import { LIVE_MS, useApi } from "@/lib/useApi";
+import { nextProjectsSort, projectsHead } from "@/lib/listSort";
 import { useRememberedQuery } from "@/lib/useRememberedQuery";
 import { useViewMode } from "@/lib/useViewMode";
 
@@ -32,7 +33,7 @@ export function Projects(): ReactElement {
   const q = params.get("q") ?? "";
   const owner = params.get("owner") ?? "";
   // Any other value reads newest first, as the server does.
-  const sort = ["name", "oldest"].includes(params.get("sort") ?? "") ? params.get("sort")! : "";
+  const sort = ["name", "name_desc", "oldest"].includes(params.get("sort") ?? "") ? params.get("sort")! : "";
   const state = ["down", "issue", "up"].includes(params.get("state") ?? "") ? params.get("state")! : "";
   const page = pageParam(params.get("page"));
   const query = listQuery({ q, owner, sort, state, page });
@@ -118,7 +119,8 @@ export function Projects(): ReactElement {
         options={[
           { value: "", label: "Newest first" },
           { value: "oldest", label: "Oldest first" },
-          { value: "name", label: "Name" },
+          { value: "name", label: "Name, A to Z" },
+          { value: "name_desc", label: "Name, Z to A" },
         ]}
         onChange={(v) => go({ sort: v }, 1, true)}
       />
@@ -207,8 +209,8 @@ export function Projects(): ReactElement {
                 projects={projects}
                 loading={loading}
                 skeletons={skeletons}
-                sort={sort === "name" ? { by: "name", dir: "asc" } : sort === "oldest" ? { by: "created", dir: "asc" } : { by: "created", dir: "desc" }}
-                onSort={(by) => go({ sort: by === "name" ? "name" : sort === "oldest" ? "" : "oldest" }, 1, true)}
+                sort={projectsHead(sort)}
+                onSort={() => go({ sort: nextProjectsSort(sort) }, 1, true)}
                 onPin={repin}
               />}
           </TableCard>

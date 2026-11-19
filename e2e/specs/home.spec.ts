@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { apiHeartbeat, apiProject, apiSend } from "../lib/api";
+import { apiHeartbeat, apiMonitor, apiProject, apiSend } from "../lib/api";
 import { authFile } from "../lib/roles";
 
 test.use({ storageState: authFile("tl") });
@@ -48,4 +48,34 @@ test("All tickets opens a ticket over the list and closes back to it; a tech lea
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page).toHaveURL(/\/tickets(\?|$)/);
+});
+
+test("the Project and Alert level headings sort both ways on the server", async ({ page }) => {
+  const stamp = `Order${Date.now()}`;
+  const slug = await apiProject(page, `${stamp} Alpha`);
+  await apiProject(page, `${stamp} Zulu`);
+  await page.goto("/");
+  await page.getByLabel("Search projects").fill(stamp);
+  const first = page.locator("tbody tr").first();
+  await expect(page.locator("tbody tr")).toHaveCount(2);
+  const heading = page.getByRole("button", { name: "Project", exact: true });
+  await heading.click();
+  await expect(page).toHaveURL(/[?&]sort=name(&|$)/);
+  await expect(first).toContainText(`${stamp} Alpha`);
+  await heading.click();
+  await expect(page).toHaveURL(/[?&]sort=name_desc/);
+  await expect(first).toContainText(`${stamp} Zulu`);
+
+  const monitor = await apiMonitor(page, slug);
+  await apiSend(page, "POST", `/api/ui/projects/${slug}/incidents`, { title: `${stamp} slow`, items: [`monitor:${monitor}`], severity: "warning", message: "Looking into it." }, 201);
+  await apiSend(page, "POST", `/api/ui/projects/${slug}/incidents`, { title: `${stamp} down`, items: [`monitor:${monitor}`], severity: "critical", message: "Looking into it." }, 201);
+  await page.goto("/incidents");
+  await page.getByLabel("Search incidents").fill(stamp);
+  await expect(page.locator("tbody tr")).toHaveCount(2);
+  await expect(first).toContainText(`${stamp} down`);
+  const level = page.getByRole("button", { name: "Alert level", exact: true });
+  await level.click();
+  await expect(first).toContainText(`${stamp} slow`);
+  await level.click();
+  await expect(first).toContainText(`${stamp} down`);
 });

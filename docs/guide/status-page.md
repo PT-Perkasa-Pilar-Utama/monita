@@ -1,6 +1,6 @@
 # Status page
 
-Each project has a public status page at `/status/<slug>`. It shows the monitors and heartbeats marked public, their last 90 days, and the incidents that touched them. Users need no sign-in.
+Each project has a public status page at `/status/<slug>`. It shows the monitors and heartbeats marked public, their last 90 days, and the incidents that touched them. Users need no sign-in. The header shows the project's icon and name. A project with no icon shows its first letter.
 
 Open the page from the project header, or from **Settings**, **Status page**.
 

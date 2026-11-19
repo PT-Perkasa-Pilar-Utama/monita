@@ -128,7 +128,7 @@ A project's **Incidents** page lists its incidents with alert level, latest upda
 
 - The list shows open incidents first. Critical ones come first.
 - Use the state filter for **Open**, **Resolved** or **Open and resolved**. Use **Search incidents**, the alert level filter and the two days to narrow the list.
-- Sort by **Alert level** or **Started**.
+- Select **Alert level** to show warning incidents first, and select it again to show critical ones first. Select **Started** to sort newest first, then oldest first.
 - A reclassified incident shows its **Planned work** or **False alarm** tag under the title.
 - The list shows 25 a page. A count on the menu shows the open incidents.
 - A row opens the incident. The crumb **All incidents** returns to the same search and page.

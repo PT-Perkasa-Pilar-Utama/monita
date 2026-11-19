@@ -9,6 +9,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Changed
 
 - **Admin**, **Time zone**: type a place or an offset under **Show times in**, for example `jakarta` or `+7`, to find it in the list. Enter picks the highlighted one.
+- **Status page**: the header shows the project's icon, or its first letter when it has none, instead of the Monita mark.
+
+### Fixed
+
+- **Projects**, list view: a second click on the **Project** heading sorts names Z to A, and a third returns to newest first. Before, the heading stayed on A to Z. The **Sort** menu adds **Name, Z to A**.
+- **Incidents** in the top menu: a click on **Alert level** shows warning incidents first, and the next click shows critical ones first again. Before, the heading did nothing.
 
 ## [1.1.0] - 2026-10-27
 

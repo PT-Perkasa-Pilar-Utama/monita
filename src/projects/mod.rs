@@ -261,6 +261,12 @@ pub async fn find_public(db: &Db, slug: &str) -> anyhow::Result<Option<Project>>
     store::find_by_slug(&db.read().await?, slug).await
 }
 
+/// The status page's icon URL, versioned by `icon_at` like the team's; `None` shows the first letter.
+pub fn public_icon_url(p: &Project) -> Option<String> {
+    p.icon_at
+        .map(|v| format!("/api/ui/public/{}/icon?v={v}", p.slug))
+}
+
 /// Name and slug for messages, inside a caller's transaction.
 pub async fn name_slug(
     c: &crate::platform::sql::Connection,
