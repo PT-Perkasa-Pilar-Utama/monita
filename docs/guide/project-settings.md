@@ -11,7 +11,7 @@ A project groups the monitors, heartbeats, incidents and tickets of one system. 
 - Each project draws a bar for each of the last 24 hours. An hour before any monitor or heartbeat existed, or while all of them were paused, has no data and shows grey, not green.
 - Select the pin on a project's card or row to keep it first in your list. Each person pins up to 6 projects. A pinned project leads the chart view too. Select the pin again, or Undo in the message, to unpin.
 - **Search projects** runs on the server.
-- Filter by **State**: **Down** (a monitor or heartbeat is down), **Issue** (one is in an open manual incident and none is down) or **Up** (neither). The filter follows the badge each project shows. Filter by **Owner** (only when more than one owner exists). Sort by **Newest first** (the default), **Oldest first** or **Name**.
+- Filter by **State**: **Down** (a monitor or heartbeat is down), **Issue** (one is in an open manual incident and none is down) or **Up** (neither). The filter follows the badge each project shows. Filter by **Owner** (only when more than one owner exists). Sort by **Newest first** (the default), **Oldest first**, **Name, A to Z** or **Name, Z to A**. In the list view, select **Project** to sort by name A to Z, again for Z to A, and a third time for newest first.
 - Monita reopens your last search and page when you return to the list.
 - **Refresh** reads the list again. The list also reads itself every 30 seconds.
 

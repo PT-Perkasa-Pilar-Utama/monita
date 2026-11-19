@@ -131,6 +131,7 @@ async fn page_of(
 ) -> anyhow::Result<super::ProjectPage> {
     let sort = match q.sort.as_str() {
         "name" => super::Sort::Name,
+        "name_desc" => super::Sort::NameDesc,
         "oldest" => super::Sort::Oldest,
         _ => super::Sort::Newest,
     };

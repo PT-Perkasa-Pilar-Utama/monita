@@ -449,6 +449,10 @@ async fn the_project_list_filters_by_owner_and_sorts_by_age() {
         ["Alpha", "Beta", "Gamma"]
     );
     assert_eq!(
+        page_of(&app, &admin, "?sort=name_desc").await.0,
+        ["Gamma", "Beta", "Alpha"]
+    );
+    assert_eq!(
         page_of(&app, &admin, "?sort=oldest").await.0,
         ["Beta", "Alpha", "Gamma"]
     );

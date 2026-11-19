@@ -50,6 +50,7 @@ fn order_sql(sort: &str) -> &'static str {
     match sort {
         "newest" => "i.started_at DESC, i.id DESC",
         "oldest" => "i.started_at ASC, i.id ASC",
+        "warning_first" => "(i.severity = 'critical') ASC, i.started_at DESC, i.id DESC",
         _ => "(i.severity = 'critical') DESC, i.started_at DESC, i.id DESC",
     }
 }
