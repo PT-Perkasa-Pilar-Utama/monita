@@ -2,6 +2,8 @@
 // team's pages show times on the viewer's own clock with no zone name (`setViewerClock`); the
 // public pages show them in the fixed UTC offset a super admin sets (`setOffset`), named.
 
+import { matches } from "@/lib/filter";
+
 const pad = (n: number, w = 2): string => String(n).padStart(w, "0");
 
 let offsetMin = 0;
@@ -128,4 +130,12 @@ export function windowHint(starts: number | null, ends: number | null, now: numb
   const start = starts <= now + 60 ? "It starts now" : `It starts in ${duration(minutes(starts - now))}`;
   const when = `${start} and lasts ${duration(minutes(ends - Math.max(starts, now)))}.`;
   return shownAs ? `${when} Monita shows it as ${shownAs}.` : when;
+}
+
+/** An offset in minutes east of UTC and the places that use it. */
+export type Zone = [number, string];
+
+/** The zones whose offset (`UTC+7`) or places contain `query`, ignoring case, in their order. */
+export function zonesMatching(zones: Zone[], query: string): Zone[] {
+  return zones.filter(([min, places]) => matches(query, zone(min), places));
 }

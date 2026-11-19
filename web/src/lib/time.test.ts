@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
-import { ago, day, digestNote, duration, stamp, inputValue, fromInputValue, fromLocalInputValue, localInputValue, windowHint } from "@/lib/time";
+import { ago, day, digestNote, duration, stamp, inputValue, fromInputValue, fromLocalInputValue, localInputValue, windowHint, zonesMatching } from "@/lib/time";
+import type { Zone } from "@/lib/time";
 
 test("formats times in the offset the way the server does", () => {
   expect(stamp(0, 0)).toBe("1970-01-01 00:00 UTC");
@@ -47,4 +48,20 @@ test("a time typed on this computer's clock round-trips", () => {
   const ts = 1_800_000_000;
   expect(fromLocalInputValue(localInputValue(ts))).toBe(ts - (ts % 60));
   expect(fromLocalInputValue("not a time")).toBeNull();
+});
+
+test("a time zone is found by a place or by its offset", () => {
+  const zones: Zone[] = [
+    [0, "London in winter, Reykjavík"],
+    [330, "India"],
+    [420, "Jakarta (WIB), Bangkok, Hanoi"],
+    [480, "Makassar (WITA), Singapore, Manila"],
+  ];
+  expect(zonesMatching(zones, "jakarta")).toEqual([zones[2]!]);
+  expect(zonesMatching(zones, " BANGKOK ")).toEqual([zones[2]!]);
+  expect(zonesMatching(zones, "wit")).toEqual([zones[3]!]);
+  expect(zonesMatching(zones, "utc+5:30")).toEqual([zones[1]!]);
+  expect(zonesMatching(zones, "UTC")).toEqual(zones);
+  expect(zonesMatching(zones, "")).toEqual(zones);
+  expect(zonesMatching(zones, "Tokyo")).toEqual([]);
 });

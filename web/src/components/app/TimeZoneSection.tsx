@@ -1,16 +1,17 @@
 import { useState } from "react";
 import type { ReactElement } from "react";
 import { SettingsSection } from "@/components/app/SettingsSection";
+import { TimeZonePicker } from "@/components/app/TimeZonePicker";
 import { Button } from "@/components/ui/button";
 import { Field, FieldLabel } from "@/components/ui/field";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { api, errorText } from "@/lib/api";
 import { digestNote, stamp, zone } from "@/lib/time";
+import type { Zone } from "@/lib/time";
 import { toast } from "sonner";
 
 /** Offsets real places use, in minutes east of UTC, with a few places for each. */
-const ZONES: [number, string][] = [
+const ZONES: Zone[] = [
   [-720, "Baker Island"],
   [-660, "American Samoa"],
   [-600, "Hawaii"],
@@ -82,20 +83,7 @@ export function TimeZoneSection({ initial, digestHour }: { initial: number; dige
     >
       <Field className="max-w-md">
         <FieldLabel htmlFor="tz">Show times in</FieldLabel>
-        <Select value={String(value)} onValueChange={(v) => setValue(Number(v))}>
-          <SelectTrigger id="tz">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectGroup>
-              {ZONES.map(([min, places]) => (
-                <SelectItem key={min} value={String(min)}>
-                  {zone(min)}: {places}
-                </SelectItem>
-              ))}
-            </SelectGroup>
-          </SelectContent>
-        </Select>
+        <TimeZonePicker id="tz" zones={ZONES} value={value} onChange={setValue} />
       </Field>
     </SettingsSection>
   );

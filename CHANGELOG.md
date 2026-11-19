@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
+- **Admin**, **Time zone**: type a place or an offset under **Show times in**, for example `jakarta` or `+7`, to find it in the list. Enter picks the highlighted one.
 - **Status page**: the header shows the project's icon, or its first letter when it has none, instead of the Monita mark.
 
 ### Fixed

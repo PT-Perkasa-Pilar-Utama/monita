@@ -161,7 +161,7 @@ Use a bot for Monita alone: Monita reads the bot's messages to find connect link
 
 The team's pages show every time on each person's own computer clock, daylight saving included, with no zone name. Charts and the hourly bars follow the same clock.
 
-**Admin**, **Time zone** sets the offset the public status page uses. Pick it under **Show times in**, for example `UTC+7: Jakarta (WIB), Bangkok, Hanoi`, and select **Save changes**.
+**Admin**, **Time zone** sets the offset the public status page uses. Pick it under **Show times in**, for example `UTC+7: Jakarta (WIB), Bangkok, Hanoi`, and select **Save changes**. To find one, type a place or an offset, for example `jakarta` or `+7`. The list shows only the matches. Press Enter to pick the highlighted one.
 
 - The offset is fixed. The status page does not follow daylight saving. Change it by hand when your clock changes.
 - The status page shows its times in this offset, and its 90 days start at midnight in this offset.
