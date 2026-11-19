@@ -388,7 +388,7 @@ export type MyTicket = { number: number; title: string; stage: Stage; close_reas
 export type PublicProject = { name: string; slug: string };
 
 /** The public layout's project: its name and the tabs it shows. */
-export type PublicSite = PublicProject & { pages: PublicPages; utc_offset_min: number; homepage_url: string | null };
+export type PublicSite = PublicProject & { pages: PublicPages; utc_offset_min: number; homepage_url: string | null; icon_url: string | null };
 
 /** SEC-21: an update on a public page has no author. */
 export type PublicUpdate = { label: UpdateLabel; message: string; at: number };

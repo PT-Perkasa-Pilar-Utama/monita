@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- **Status page**: the header shows the project's icon, or its first letter when it has none, instead of the Monita mark.
+
 ### Fixed
 
 - **Projects**, list view: a second click on the **Project** heading sorts names Z to A, and a third returns to newest first. Before, the heading stayed on A to Z. The **Sort** menu adds **Name, Z to A**.

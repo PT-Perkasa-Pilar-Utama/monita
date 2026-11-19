@@ -335,10 +335,29 @@ async fn editing_refuses_svg_and_long_text_and_removes_the_icon() {
     assert_eq!(res.status(), 204);
     let icon = app.get("/projects/payments/icon", Some(&rina)).await;
     assert_eq!(icon.status(), 200);
+    let site = json_of(app.get("/api/ui/public/payments", None).await).await;
+    let public = site["data"]["icon_url"].as_str().unwrap().to_string();
+    assert!(public.starts_with("/api/ui/public/payments/icon?v="));
+    let icon = app.get(&public, None).await;
+    assert_eq!(
+        icon.status(),
+        200,
+        "the status page reads the icon signed out"
+    );
+    assert!(
+        icon.headers()["cache-control"]
+            .to_str()
+            .unwrap()
+            .starts_with("public,")
+    );
     let res = edit(json!({ "remove_icon": "on", "description": "" })).await;
     assert_eq!(res.status(), 204);
     let icon = app.get("/projects/payments/icon", Some(&rina)).await;
     assert_eq!(icon.status(), 404);
+    let icon = app.get("/api/ui/public/payments/icon", None).await;
+    assert_eq!(icon.status(), 404);
+    let site = json_of(app.get("/api/ui/public/payments", None).await).await;
+    assert!(site["data"]["icon_url"].is_null());
     let head = json_of(app.get("/api/ui/projects/payments", Some(&rina)).await).await;
     assert!(head["data"]["project"]["description"].is_null());
     assert!(head["data"]["project"]["icon_url"].is_null());
