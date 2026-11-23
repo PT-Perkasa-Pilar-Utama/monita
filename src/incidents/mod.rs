@@ -252,7 +252,7 @@ pub async fn across(
 }
 
 /// `open`: Some(true) open only, Some(false) resolved only, None both.
-/// The project's newest 200 incidents: open, resolved or both, and open at some time in `range`.
+/// The project's newest `caps::PROJECT_INCIDENTS` incidents: open, resolved or both, and open at some time in `range`.
 pub async fn list(
     db: &Db,
     project_id: i64,

@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- **Reports**: download a project's summary report as a PDF from **Overview**, **Download report**, for the last 7 days, the last month, the last quarter or days you pick (up to 366). It shows availability, downtime, incidents and the mean time to resolve, each monitor and heartbeat, the incidents and the maintenance windows. An incident's page downloads that incident's report. Reports never show a monitor's URL.
 - **Projects**: a compact view shows up to 100 projects a page, each as its icon in a ring of its state's colour, with the state's symbol for every state but up. The new route is `GET /api/ui/projects-grid`.
 
 ### Changed

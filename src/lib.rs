@@ -12,5 +12,6 @@ pub mod maintenance;
 pub mod notify;
 pub mod platform;
 pub mod projects;
+pub mod reports;
 pub mod status;
 pub mod tickets;

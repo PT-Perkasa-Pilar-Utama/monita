@@ -340,7 +340,7 @@ pub async fn list(
         None => "1",
     };
     let range = across::range_sql(2, 3);
-    crate::platform::db::query_all(c, format!("SELECT {COLS} FROM incidents i WHERE i.project_id = ?1 AND {filter} AND {range} ORDER BY i.started_at DESC, i.id DESC LIMIT 200"), (project_id, from, to), row).await
+    crate::platform::db::query_all(c, format!("SELECT {COLS} FROM incidents i WHERE i.project_id = ?1 AND {filter} AND {range} ORDER BY i.started_at DESC, i.id DESC LIMIT {}", crate::platform::caps::PROJECT_INCIDENTS), (project_id, from, to), row).await
 }
 
 pub async fn find(c: &Connection, project_id: i64, id: i64) -> anyhow::Result<Option<IncidentRow>> {

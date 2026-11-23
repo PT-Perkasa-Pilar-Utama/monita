@@ -38,7 +38,7 @@ type Group = { title: string; icon: string; blurb: string; pages: string[] };
 const GROUPS: Group[] = [
   { title: "Start", icon: "play", blurb: "What Monita does, a first monitor on your laptop, a production install, and project settings.", pages: ["getting-started", "install", "project-settings"] },
   { title: "Watch", icon: "pulse", blurb: "Monitors for URLs, ports, names and hosts, heartbeats for cron jobs, and checks from more than one place.", pages: ["monitors", "heartbeats", "locations"] },
-  { title: "Respond", icon: "bell", blurb: "Incidents, alerts, the public status page, bug tickets and the changelog.", pages: ["incidents", "alerts", "status-page", "tickets", "changelog"] },
+  { title: "Respond", icon: "bell", blurb: "Incidents, alerts, reports as PDF, the public status page, bug tickets and the changelog.", pages: ["incidents", "alerts", "reports", "status-page", "tickets", "changelog"] },
   { title: "Operate", icon: "wrench", blurb: "Users and roles, configuration, the command line, backups, upgrades and limits.", pages: ["admin", "configuration", "cli", "operations", "limits"] },
   { title: "Integrate", icon: "code", blurb: "The API: status JSON, tickets, ref IDs, managing a project with a key, heartbeat pings and webhooks.", pages: ["api"] },
   { title: "Brand", icon: "palette", blurb: "The logo, Moni the mascot, colours and type, as files to download.", pages: ["brand"] },

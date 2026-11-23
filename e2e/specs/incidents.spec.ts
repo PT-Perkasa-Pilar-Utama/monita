@@ -217,3 +217,34 @@ test("a tech lead marks an incident as a false alarm, the cross-project list tag
   await page.getByRole("alertdialog").getByRole("button").last().click();
   await expect(page.getByText("The incident counts again.")).toBeVisible();
 });
+
+test("the project and an incident download their reports as PDF, and a range that is too long is refused", async ({ page }) => {
+  const { slug, pingUrl } = await projectWithHeartbeat(page);
+  expect((await page.request.post(`${pingUrl}/fail`)).status()).toBe(200);
+  await page.goto(`/projects/${slug}`);
+
+  const menu = page.getByRole("button", { name: "Download report" });
+  const monthly = page.waitForEvent("download");
+  await menu.click();
+  await page.getByRole("menuitem", { name: "Last month" }).click();
+  expect((await monthly).suggestedFilename()).toMatch(new RegExp(`^${slug}-\\d{4}-\\d{2}-01-to-\\d{4}-\\d{2}-\\d{2}\\.pdf$`));
+
+  await menu.click();
+  await page.getByRole("menuitem", { name: "Pick the days" }).click();
+  // The browser holds a last day before the first; the server refuses a range that is too long.
+  await page.getByLabel("First day").fill("2025-01-01");
+  await page.getByLabel("Last day").fill("2026-10-31");
+  await page.getByRole("dialog").getByRole("button", { name: "Download" }).click();
+  await expect(page.getByRole("dialog")).toContainText("A report covers 366 days at most.");
+  await page.getByLabel("First day").fill("2026-10-05");
+  const picked = page.waitForEvent("download");
+  await page.getByRole("dialog").getByRole("button", { name: "Download" }).click();
+  expect((await picked).suggestedFilename()).toBe(`${slug}-2026-10-05-to-2026-10-31.pdf`);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+
+  await page.goto(`/projects/${slug}/incidents`);
+  await page.getByRole("link", { name: "nightly-settlement reported a failure" }).click();
+  const one = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download report" }).click();
+  expect((await one).suggestedFilename()).toMatch(new RegExp(`^${slug}-inc-\\d+\\.pdf$`));
+});

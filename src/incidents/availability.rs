@@ -75,6 +75,38 @@ pub async fn report(
     Ok(Report { periods, streak })
 }
 
+/// One item's numbers over `[since, until)` for a report (v1.2 Q57), counted from when the item
+/// was created. `availability` is `None` when the item did not exist in the range.
+pub async fn between(
+    db: &Db,
+    item: ItemRef,
+    created_at: i64,
+    since: i64,
+    until: i64,
+) -> anyhow::Result<Period> {
+    let since = since.max(created_at);
+    if since >= until {
+        return Ok(Period {
+            label: "",
+            availability: None,
+            downtime_s: 0,
+            incidents: 0,
+            longest_s: None,
+            average_s: None,
+        });
+    }
+    let (incidents, down, longest_s, average_s) =
+        store::period_stats(&db.read().await?, item, since, until).await?;
+    Ok(Period {
+        label: "",
+        availability: percent_up(down, until - since),
+        downtime_s: down,
+        incidents,
+        longest_s,
+        average_s,
+    })
+}
+
 fn percent_up(down: i64, span: i64) -> Option<f64> {
     (span > 0).then(|| 100.0 * (1.0 - down.clamp(0, span) as f64 / span as f64))
 }

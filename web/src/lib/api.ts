@@ -40,15 +40,32 @@ export async function api<T>(path: string, method: Method = "GET", body?: unknow
   const res = await fetch(`/api/ui${path}`, init);
   if (res.status === 204) return undefined as T;
   const json: unknown = await res.json().catch(() => null);
-  if (!res.ok) {
-    const e = (json as { error?: { code?: string; message?: string; fields?: FieldErrors } } | null)?.error;
-    if (res.status === 401 && path !== "/login" && window.location.pathname !== `${BASE}/login`) {
-      const next = window.location.pathname + window.location.search;
-      window.location.assign(`${BASE}/login?next=${encodeURIComponent(next)}`);
-    }
-    throw new ApiError(res.status, e?.code ?? "error", e?.message ?? `The server answered ${res.status}.`, e?.fields ?? {});
-  }
+  if (!res.ok) throw failure(res, json, path);
   return (json as { data: T }).data;
+}
+
+/** The error a refused call names in its envelope. A 401 sends the reader to sign in. */
+function failure(res: Response, json: unknown, path: string): ApiError {
+  const e = (json as { error?: { code?: string; message?: string; fields?: FieldErrors } } | null)?.error;
+  if (res.status === 401 && path !== "/login" && window.location.pathname !== `${BASE}/login`) {
+    const next = window.location.pathname + window.location.search;
+    window.location.assign(`${BASE}/login?next=${encodeURIComponent(next)}`);
+  }
+  return new ApiError(res.status, e?.code ?? "error", e?.message ?? `The server answered ${res.status}.`, e?.fields ?? {});
+}
+
+/** Downloads the file at `/api/ui${path}` under the name the server gives it. A refusal comes
+ * back as an `ApiError`, as from `api`. */
+export async function apiFile(path: string): Promise<void> {
+  const res = await fetch(`/api/ui${path}`, { credentials: "same-origin" });
+  if (!res.ok) throw failure(res, await res.json().catch(() => null), path);
+  const name = /filename="([^"]+)"/.exec(res.headers.get("content-disposition") ?? "")?.[1] ?? "report.pdf";
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 /** The message to show for a failed call. */

@@ -40,7 +40,7 @@ Legend: `OK` implemented and tested, `WIP` in progress, `TODO` not started, `SCA
 | Admin users: turn two-factor off | [02](02-authentication.md#23-admin-users) | OK |
 | Two-factor sign-in: code step, enroll (with `qr`), confirm, turn off | [02](02-authentication.md#24-two-factor-sign-in) | OK |
 | User settings: password, picture | [02](02-authentication.md#25-user-settings) | OK |
-| Projects: list (`owner`, `sort`, `state`, `pulse`), the list's chart (`/api/ui/projects-chart`), the compact view (`/api/ui/projects-grid`, v1.2), create, detail (`counts`), delete, overview, profile (`homepage_url`), icon, owners | [03](03-projects.md#31-frontend-routes) | OK |
+| Projects: list (`owner`, `sort`, `state`, `pulse`), the list's chart (`/api/ui/projects-chart`), the compact view (`/api/ui/projects-grid`, v1.2), the summary report PDF (`/api/ui/projects/{slug}/report`, v1.2), create, detail (`counts`), delete, overview, profile (`homepage_url`), icon, owners | [03](03-projects.md#31-frontend-routes) | OK |
 | API keys, allowlist, public pages (`public-pages`) | [03](03-projects.md#31-frontend-routes) | OK |
 | The key API under `/api/v1/projects/{slug}` (v1.1 Q44) | [03](03-projects.md#34-the-key-api) | OK |
 | Secrets: list, create, replace, delete | [03](03-projects.md#33-secrets) | OK |
@@ -49,7 +49,7 @@ Legend: `OK` implemented and tested, `WIP` in progress, `TODO` not started, `SCA
 | Pins: `PUT, DELETE .../projects/{slug}/pin`, `.../monitors/{id}/pin`, `.../heartbeats/{id}/pin` (Q48) | [03](03-projects.md#31-frontend-routes), [04](04-checks.md#43-frontend-routes) | OK |
 | Batch pause, resume and delete (`POST .../monitors/batch`, `.../heartbeats/batch`) | [04](04-checks.md#43c-batch-pause-resume-and-delete) | OK |
 | System page, mail server and its tests, limits, time zone | [04](04-checks.md#44-system-page) | OK |
-| Project incidents, incident items, updates | [05](05-incidents.md#51-frontend-routes) | OK |
+| Project incidents, incident items, updates, the incident report PDF (v1.2) | [05](05-incidents.md#51-frontend-routes) | OK |
 | Reclassify an incident (`PUT .../incidents/{id}/class`, `excluded`) | [05](05-incidents.md#51-frontend-routes) | OK |
 | Incidents across projects (`/api/ui/incidents`) | [05](05-incidents.md#52-incidents-across-projects) | OK |
 | Maintenance windows | [05](05-incidents.md#53-maintenance-windows) | OK |

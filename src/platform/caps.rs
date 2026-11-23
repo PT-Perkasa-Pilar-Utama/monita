@@ -62,6 +62,10 @@ pub const PUBLIC_HISTORY_PAGE: i64 = 25;
 pub const CHANGELOG_PAGE: i64 = 25;
 /// Rows per page of the cross-project Incidents and Tickets lists.
 pub const ACROSS_PAGE: i64 = 25;
+/// Incidents in a project's list, newest first.
+pub const PROJECT_INCIDENTS: i64 = 200;
+/// Incidents a summary report lists, longest first (v1.2 Q60).
+pub const REPORT_INCIDENTS: i64 = 50;
 /// Automatic-incident spans read for one project's window. A source that flaps faster than this
 /// has its oldest spans left out of the uptime figure.
 pub const SPANS: i64 = 10_000;

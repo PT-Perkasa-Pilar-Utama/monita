@@ -4,6 +4,7 @@ import type { FormEvent, ReactElement } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { ChoiceCards } from "@/components/app/ChoiceCards";
 import { ClassNotice, Reclassify } from "@/components/app/Reclassify";
+import { IncidentReportButton } from "@/components/app/ReportMenu";
 import { FormSheet, FormSheetBody } from "@/components/app/FormSheet";
 import { Side } from "@/components/app/Side";
 import { LabelBadge, SeverityBadge, StateBadge } from "@/components/app/Tone";
@@ -164,6 +165,7 @@ export function Incident(): ReactElement {
             }
             actions={
               <>
+              <IncidentReportButton slug={p.slug} id={i.id} />
               <Reclassify
                 path={path}
                 incident={i}

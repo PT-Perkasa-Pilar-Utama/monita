@@ -6,6 +6,7 @@ import { RefreshButton } from "@/components/app/RefreshButton";
 import { OverviewChart } from "@/components/app/OverviewChart";
 import { ProjectAbout, useProjectEdit } from "@/components/app/ProjectAbout";
 import { ProjectBadge } from "@/components/app/ProjectBadge";
+import { ReportMenu } from "@/components/app/ReportMenu";
 import { LabelBadge, SeverityBadge } from "@/components/app/Tone";
 import { TableCard } from "@/components/app/TableCard";
 import { Pencil, Save, X } from "@/components/icons";
@@ -49,12 +50,15 @@ export function Overview(): ReactElement {
               </Button>
             </>
           ) : (
-            <Writable>
-              <Button variant="outline" onClick={edit.start}>
-                <Pencil data-icon="inline-start" />
-                Edit project
-              </Button>
-            </Writable>
+            <>
+              <ReportMenu slug={p.slug} />
+              <Writable>
+                <Button variant="outline" onClick={edit.start}>
+                  <Pencil data-icon="inline-start" />
+                  Edit project
+                </Button>
+              </Writable>
+            </>
           )
         }
       />
