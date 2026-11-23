@@ -273,7 +273,11 @@ async fn the_public_board_hides_triage_descriptions_and_reporters() {
         !board.contains("Budi Santoso"),
         "the original title stays private"
     );
-    assert!(!board.contains("4111"), "descriptions never appear");
+    // The whole text: a bare "4111" also sits in Unix times such as 1795411132.
+    assert!(
+        !board.contains("Card 4111 failed"),
+        "descriptions never appear"
+    );
     assert!(!board.contains(&rid), "reporters never appear");
     stage(
         &app,
