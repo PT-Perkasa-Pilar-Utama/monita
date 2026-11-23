@@ -6,6 +6,15 @@ export type WhatsNew = { version: string; summary: string; highlights: { title: 
 /** Newest first. Add an entry with each release that changes what people see or do. */
 export const RELEASES: WhatsNew[] = [
   {
+    version: "1.2.0",
+    summary: "Monita 1.2 adds reports as PDF, post-mortems and a compact Projects view.",
+    highlights: [
+      { title: "Reports as PDF", text: "Download a project's summary for a week, a month, a quarter or days you pick, or one incident's report, and have the summary emailed every week or month." },
+      { title: "Post-mortems", text: "After an incident is resolved, write what happened, why and what changes next, starting from a template or an example, then email it to a list or download it." },
+      { title: "A compact Projects view", text: "See up to 100 projects a page, each as its icon in a ring of its state's colour." },
+    ],
+  },
+  {
     version: "1.1.0",
     summary: "Monita 1.1 adds maintenance windows, more kinds of checks and new places to send alerts.",
     highlights: [

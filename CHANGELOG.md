@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-23
+
+Reports and a compact Projects view: summary and incident reports as PDF, weekly and monthly summaries by email, post-mortems, and a Projects view of icons only. Migrations 0050 and 0051 run on start; they only add tables and columns.
+
 ### Added
 
 - **Reports**: download a project's summary report as a PDF from **Overview**, **Download report**, for the last 7 days, the last month, the last quarter or days you pick (up to 366). It shows availability, downtime, outages and the mean time to resolve, availability by day, each monitor and heartbeat with MTTR and MTBF, the maintenance time, and each incident with what it affects, its cause and its latest update. A download follows your computer's clock. An incident's page downloads that incident's report. Reports never show a monitor's URL.
@@ -166,7 +170,8 @@ The first stable release. See the [release notes](https://github.com/PT-Perkasa-
 
 The first release: HTTP monitors, heartbeats, automatic and manual incidents, email and webhook alerts through an outbox, public status pages with a status JSON, bug tickets with ref IDs, and the `monita` command line for setup and the systemd service.
 
-[Unreleased]: https://github.com/PT-Perkasa-Pilar-Utama/monita/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/PT-Perkasa-Pilar-Utama/monita/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/PT-Perkasa-Pilar-Utama/monita/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/PT-Perkasa-Pilar-Utama/monita/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/PT-Perkasa-Pilar-Utama/monita/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/PT-Perkasa-Pilar-Utama/monita/compare/v0.1.0...v1.0.0

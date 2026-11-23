@@ -1,6 +1,6 @@
 # Roadmap
 
-Monita 1.1 is stable and in maintenance. This roadmap states the direction. It is a statement of intent, not a contract, and it carries no dates: a small team sets its pace by capacity.
+Monita 1.2 is stable and in maintenance. This roadmap states the direction. It is a statement of intent, not a contract, and it carries no dates: a small team sets its pace by capacity.
 
 For released work, see [CHANGELOG.md](CHANGELOG.md).
 
@@ -9,6 +9,14 @@ For released work, see [CHANGELOG.md](CHANGELOG.md).
 - Keep dependencies current and the supply chain checked: monthly Dependabot updates, actions pinned by commit SHA, `cargo deny` in CI, and an attestation on every release.
 - Fix reported bugs, and answer security reports within the times in [SECURITY.md](SECURITY.md).
 - Keep the footprint small: one binary, one SQLite file, and the memory and size targets in [spec 08](docs/technical-specs/08-non-functional-requirements.md).
+
+## Done in 1.2
+
+[The v1.2 decision](docs/decisions/2026-11-23-v1.2-scope.md) added reporting:
+
+- A project's summary report and an incident's report as PDF, and the summary by email every week or month ([#17](https://github.com/PT-Perkasa-Pilar-Utama/monita/issues/17)).
+- Post-mortems on resolved incidents, emailed to a list on publish or downloaded.
+- A compact Projects view of icons in their state's colour ([#18](https://github.com/PT-Perkasa-Pilar-Utama/monita/issues/18)).
 
 ## Done in 1.1
 

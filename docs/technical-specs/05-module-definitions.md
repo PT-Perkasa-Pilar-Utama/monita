@@ -166,7 +166,7 @@ The page JSON carries the tab switches (`pages`). A public route whose tab is of
 `GET /healthz`, public.
 
 ```json
-{"status": "ok", "db": "ok", "scheduler_lag_s": 1, "outbox_pending": 0, "version": "1.1.0"}
+{"status": "ok", "db": "ok", "scheduler_lag_s": 1, "outbox_pending": 0, "version": "1.2.0"}
 ```
 
 | Condition | HTTP | `status` |

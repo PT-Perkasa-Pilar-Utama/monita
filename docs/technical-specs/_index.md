@@ -1,7 +1,7 @@
-# Monita v1.1: Technical Specification
+# Monita v1.2: Technical Specification
 
-**Version:** 1.1.0  
-**Date:** 2026-10-27  
+**Version:** 1.2.0  
+**Date:** 2026-11-23  
 **Author:** snowfluke  
 **Status:** Approved for build  
 **Phase:** 2 Design  
