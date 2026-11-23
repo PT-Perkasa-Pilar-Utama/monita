@@ -71,12 +71,14 @@ impl Sheet {
         }
     }
 
+    /// The report's title, wrapped: a long incident title is never cut.
     pub fn title(&mut self, s: &str) {
-        self.room(30.0);
-        self.y += 20.0;
-        let s = fit(s, Font::Bold, 20.0, TEXT_W);
-        self.pdf.text(MARGIN, self.y, 20.0, Font::Bold, INK, &s);
-        self.y += 10.0;
+        for line in wrap(s, Font::Bold, 20.0, TEXT_W) {
+            self.room(26.0);
+            self.y += 24.0;
+            self.pdf.text(MARGIN, self.y, 20.0, Font::Bold, INK, &line);
+        }
+        self.y += 6.0;
     }
 
     /// Plain text in the muted colour, wrapped to the width.

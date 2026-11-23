@@ -195,3 +195,101 @@ async fn a_report_is_refused_for_a_bad_range_another_owner_or_a_missing_incident
         );
     }
 }
+
+/// The PDF's text items in drawing order, unescaped.
+fn literals(text: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut chars = text.chars();
+    while let Some(c) = chars.next() {
+        if c != '(' {
+            continue;
+        }
+        let mut s = String::new();
+        while let Some(c) = chars.next() {
+            match c {
+                '\\' => s.extend(chars.next()),
+                ')' => break,
+                _ => s.push(c),
+            }
+        }
+        out.push(s);
+    }
+    out
+}
+
+/// `whole` put back together from the wrapped lines that are pieces of it.
+fn rebuilt(text: &str, whole: &str) -> String {
+    literals(text)
+        .into_iter()
+        // Short items such as a figure "0" can sit inside `whole` by chance.
+        .filter(|l| l.trim().len() > 2 && whole.contains(l.trim()))
+        .collect::<Vec<_>>()
+        .concat()
+        .replace(' ', "")
+}
+
+#[tokio::test]
+async fn long_names_titles_emails_and_tokens_are_wrapped_never_cut() {
+    let app = TestApp::spawn("test").await;
+    let name = "Payments platform for the Jakarta and Surabaya regional offices second rollout";
+    let email = "rina.kartika.wijayakusuma@corp.co.id";
+    let tl = app.tl(email).await;
+    app.project(&tl, name, "payments").await;
+    let title = "Checkout and refunds fail for card payments while the acquirer gateway in the Jakarta region answers with HTTP 503 errors";
+    let token: String = (0..150)
+        .map(|i| char::from(b'a' + (i % 26) as u8))
+        .collect();
+    let sql = format!(
+        "INSERT INTO incidents (id, project_id, origin, title, severity, started_at, resolved_at) VALUES
+           (1, 1, 'manual', '{title}', 'critical', {a}, {a} + 600);
+         INSERT INTO status_updates (incident_id, label, message, author_id, created_at) VALUES
+           (1, 'identified', '{token}', (SELECT id FROM users WHERE email = '{email}'), {a});",
+        a = OCT_1,
+    );
+    app.state
+        .db
+        .write(async move |c| {
+            c.execute_batch(&sql).await?;
+            Ok(())
+        })
+        .await
+        .unwrap();
+    assert_eq!(name.len(), 78);
+    assert_eq!(title.len(), 121);
+
+    let pdf = app
+        .get("/api/ui/projects/payments/incidents/1/report", Some(&tl))
+        .await
+        .bytes()
+        .await
+        .unwrap();
+    keep("long-incident.pdf", &pdf);
+    let text = pages(&pdf);
+    let full = format!("INC-1: {title}");
+    assert_eq!(
+        rebuilt(&text, &full),
+        full.replace(' ', ""),
+        "the whole title"
+    );
+    assert_eq!(rebuilt(&text, &token), token, "the whole token");
+    assert_eq!(rebuilt(&text, email), email, "the whole author");
+
+    let pdf = app
+        .get(
+            "/api/ui/projects/payments/report?from=2026-10-01&to=2026-10-31",
+            Some(&tl),
+        )
+        .await
+        .bytes()
+        .await
+        .unwrap();
+    keep("long-summary.pdf", &pdf);
+    let text = pages(&pdf);
+    let heading = format!("{name} report");
+    assert_eq!(rebuilt(&text, &heading), heading.replace(' ', ""));
+    assert_eq!(
+        rebuilt(&text, title),
+        title.replace(' ', ""),
+        "the incident row"
+    );
+}

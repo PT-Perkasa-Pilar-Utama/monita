@@ -20,12 +20,12 @@ The last 7 days end yesterday. The last month is the calendar month before this 
 
 ## What a summary report shows
 
-- The project's availability, its downtime, the number of incidents and the mean time to resolve.
-- A row for each monitor and heartbeat: availability, downtime, incidents and the longest incident.
-- The incidents that were open in the range, longest first. Monita reads the newest 200 of them and the table shows the 50 longest, and the report says when there are more.
+- The project's availability, its downtime, the number of outages and the mean time to resolve.
+- A row for each monitor and heartbeat: availability, downtime, outages and the longest outage.
+- Every incident that was open in the range, manual and reclassified ones too, longest first. Monita reads the newest 200 of them and the table shows the 50 longest, and the report says when there are more.
 - The maintenance windows that overlap the range.
 
-Availability counts automatic incidents only, as the status page and the monitor page do. A manual incident, an incident reclassified as planned work or a false alarm, and time in a maintenance window are not downtime. The project's availability adds up the time of all its systems, so a system that existed for half the range counts half. The mean time to resolve is the mean time from start to resolve of the counted incidents that were resolved in the range.
+An outage is an incident that Monita opened after failed checks and nobody reclassified as planned work or a false alarm. Availability counts outages only, as the status page and the monitor page do, so a manual incident and time in a maintenance window are not downtime. The project's availability adds up the time of all its systems, so a system that existed for half the range counts half. The mean time to resolve is the mean time from start to resolve of the outages resolved in the range.
 
 A report never shows a monitor's URL, so a token in a URL stays private.
 
@@ -45,7 +45,7 @@ A project can email its summary report as a PDF every week, every month, or both
 3. Under **Email addresses**, enter one address a line, up to 20.
 4. Select **Save changes**.
 
-The first email goes out after the next period ends: a weekly report turned on on a Wednesday first covers the week that starts the coming Monday. To stop the emails, turn off **Send this report** and select **Save changes**. The email names the project and the period and links to the project. Monita sends it through the mail server set in **Admin**, **Outgoing email**.
+The first email goes out after the current period ends: a weekly report turned on on a Wednesday first covers the week that holds that Wednesday, and a monthly report turned on today first covers this month. To stop the emails, turn off **Send this report** and select **Save changes**. The email names the project and the period and links to the project. Monita sends it through the mail server set in **Admin**, **Outgoing email**.
 
 The project owner and a super admin change the schedules. A supervisor reads them.
 
@@ -53,5 +53,5 @@ The outbox tries a report email again after 1, 5 and 15 minutes. When every try 
 
 ## Limits
 
-- A report prints letters A to Z, digits and the usual punctuation. Any other character, such as `é` or `✓`, prints as `?`.
+- A report prints letters A to Z, digits and the usual punctuation, and turns curly quotes, dashes and the ellipsis into their plain forms. Any other character, such as `é` or `✓`, prints as `?`.
 - Response times are not in a report.

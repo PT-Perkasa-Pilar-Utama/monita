@@ -168,7 +168,7 @@ pub fn render(r: &IncidentReport) -> anyhow::Result<Vec<u8>> {
             &[
                 Col::left("Time", 0.19),
                 Col::left("Label", 0.14),
-                Col::left("By", 0.2),
+                Col::wrapping("By", 0.2),
                 Col::wrapping("Message", 0.47),
             ],
             &rows,

@@ -1,8 +1,9 @@
 //! A small PDF writer for reports (v1.2 Q58): A4 pages of text, lines and filled rectangles in
 //! the built-in Helvetica fonts, so no font file is embedded and no crate is added.
 //!
-//! ponytail: WinAnsi printable ASCII only; any other character prints as `?`. Swap in a
-//! font-embedding crate that passes `cargo deny` when reports need other scripts.
+//! ponytail: printable ASCII only, after curly quotes, dashes and the ellipsis become their ASCII
+//! forms; any other character prints as `?`. Swap in a font-embedding crate that passes
+//! `cargo deny` when reports need other scripts.
 
 use std::fmt::Write as _;
 use std::io::Write as _;
@@ -39,23 +40,33 @@ const BOLD: [u16; 95] = [
     278, 889, 611, 611, 611, 611, 389, 556, 333, 611, 556, 778, 556, 556, 500, 389, 280, 389, 584,
 ];
 
-/// The byte a character prints as: itself when it is printable ASCII, else `?`.
-fn byte(c: char) -> u8 {
-    match c {
-        ' '..='~' => c as u8,
-        _ => b'?',
+/// The punctuation that keyboards type for people, as its ASCII form: curly quotes, dashes, the
+/// ellipsis and a no-break space. Every other character outside printable ASCII prints as `?`.
+fn plain(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    for c in s.chars() {
+        match c {
+            '\u{2018}' | '\u{2019}' | '\u{201A}' | '\u{2032}' => out.push('\''),
+            '\u{201C}' | '\u{201D}' | '\u{201E}' | '\u{2033}' => out.push('"'),
+            '\u{2010}'..='\u{2015}' | '\u{2212}' => out.push('-'),
+            '\u{2026}' => out.push_str("..."),
+            '\u{00A0}' | '\u{2009}' | '\u{202F}' => out.push(' '),
+            ' '..='~' => out.push(c),
+            _ => out.push('?'),
+        }
     }
+    out
 }
 
-/// The width of `s` in points at `size`.
+/// The width of `s` in points at `size`, as it prints.
 pub fn width(s: &str, font: Font, size: f32) -> f32 {
     let table = match font {
         Font::Regular => &REGULAR,
         Font::Bold => &BOLD,
     };
-    let units: u32 = s
-        .chars()
-        .map(|c| u32::from(table[usize::from(byte(c) - b' ')]))
+    let units: u32 = plain(s)
+        .bytes()
+        .map(|b| u32::from(table[usize::from(b - b' ')]))
         .sum();
     units as f32 * size / 1000.0
 }
@@ -77,7 +88,7 @@ pub fn fit(s: &str, font: Font, size: f32, max: f32) -> String {
 }
 
 /// `s` broken into lines of at most `max` points at spaces and line breaks. A word longer than a
-/// line is cut to fit.
+/// line, such as a URL or a token, is broken across lines, so no character is lost.
 pub fn wrap(s: &str, font: Font, size: f32, max: f32) -> Vec<String> {
     let mut lines = Vec::new();
     for para in s.lines() {
@@ -90,11 +101,18 @@ pub fn wrap(s: &str, font: Font, size: f32, max: f32) -> Vec<String> {
             };
             if width(&next, font, size) <= max {
                 line = next;
-            } else {
-                if !line.is_empty() {
-                    lines.push(line);
+                continue;
+            }
+            if !line.is_empty() {
+                lines.push(std::mem::take(&mut line));
+            }
+            for c in word.chars() {
+                let longer = format!("{line}{c}");
+                if !line.is_empty() && width(&longer, font, size) > max {
+                    lines.push(std::mem::replace(&mut line, c.to_string()));
+                } else {
+                    line = longer;
                 }
-                line = fit(word, font, size, max);
             }
         }
         lines.push(line);
@@ -106,11 +124,11 @@ pub fn wrap(s: &str, font: Font, size: f32, max: f32) -> Vec<String> {
 fn literal(s: &str) -> String {
     let mut out = String::with_capacity(s.len() + 2);
     out.push('(');
-    for b in s.chars().map(byte) {
-        if matches!(b, b'(' | b')' | b'\\') {
+    for c in plain(s).chars() {
+        if matches!(c, '(' | ')' | '\\') {
             out.push('\\');
         }
-        out.push(char::from(b));
+        out.push(c);
     }
     out.push(')');
     out
@@ -261,6 +279,10 @@ mod tests {
     fn text_from_users_cannot_end_its_string_and_other_scripts_print_as_question_marks() {
         assert_eq!(literal(r"a (b) \ c"), r"(a \(b\) \\ c)");
         assert_eq!(literal("Reykjavík ✓"), "(Reykjav?k ?)");
+        assert_eq!(
+            literal("It\u{2019}s \u{201C}up\u{201D} \u{2014} mostly\u{2026}"),
+            "(It's \"up\" - mostly...)"
+        );
         assert_eq!(literal(")\nET"), r"(\)?ET)");
     }
 
@@ -290,6 +312,17 @@ mod tests {
         assert!(lines.len() >= 3, "{lines:?}");
         assert_eq!(lines.last().unwrap(), "seven", "a line break starts a line");
         assert!(lines.iter().all(|l| width(l, Font::Regular, 10.0) <= 50.0));
+        let token = "https://api.invalid/v1/very/long/path/without/any/space/at/all";
+        let lines = wrap(&format!("see {token} now"), Font::Regular, 10.0, 60.0);
+        assert!(
+            lines.iter().all(|l| width(l, Font::Regular, 10.0) <= 60.0),
+            "{lines:?}"
+        );
+        assert_eq!(
+            lines.concat().replace(' ', ""),
+            format!("see{token}now"),
+            "no character is lost"
+        );
     }
 
     #[test]
