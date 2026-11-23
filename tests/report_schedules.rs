@@ -156,6 +156,7 @@ async fn only_the_owner_or_a_super_admin_changes_a_schedule() {
 #[tokio::test]
 async fn a_closed_week_goes_out_once_to_each_address_with_its_pdf() {
     let app = TestApp::spawn("test").await;
+    let admin = app.super_admin("boss@x.co").await;
     let tl = app.tl("rina@x.co").await;
     app.project(&tl, "Payments", "payments").await;
     let res = put(
@@ -175,7 +176,11 @@ async fn a_closed_week_goes_out_once_to_each_address_with_its_pdf() {
             .unwrap(),
         0
     );
-    let next = now + WEEK;
+    // Wednesday 12:00 UTC of next week: the week that holds `now` has closed, and it stays
+    // Wednesday under the offsets tried below, so the test never depends on the hour it runs.
+    let today = now - now.rem_euclid(86_400);
+    let monday = today - (today / 86_400 + 3).rem_euclid(7) * 86_400;
+    let next = monday + WEEK + 2 * 86_400 + 43_200;
     assert_eq!(
         monita::reports::run_due(&app.state.db, BASE_URL, next)
             .await
@@ -189,6 +194,25 @@ async fn a_closed_week_goes_out_once_to_each_address_with_its_pdf() {
         0,
         "a period goes out once"
     );
+    // A new admin time zone does not make last week look unsent.
+    for off in [420, -300] {
+        let res = app
+            .api_send(
+                Method::PUT,
+                "/api/ui/admin/time-zone",
+                json!({ "utc_offset_min": off }),
+                Some(&admin),
+            )
+            .await;
+        assert_eq!(res.status(), 204);
+        assert_eq!(
+            monita::reports::run_due(&app.state.db, BASE_URL, next)
+                .await
+                .unwrap(),
+            0,
+            "offset {off}"
+        );
+    }
     assert_eq!(
         sql_i64(
             &app,

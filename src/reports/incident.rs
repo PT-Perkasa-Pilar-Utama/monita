@@ -140,6 +140,12 @@ pub fn render(r: &IncidentReport) -> anyhow::Result<Vec<u8>> {
     if r.updates.is_empty() {
         sheet.para("Nobody has posted an update yet.");
     } else {
+        let cap = crate::platform::caps::UPDATES_PER_INCIDENT;
+        if r.updates.len() as i64 >= cap {
+            sheet.note(&format!(
+                "The table shows the newest {cap} updates, oldest first."
+            ));
+        }
         // Oldest first, so the table reads as a timeline.
         let mut updates: Vec<&UpdateRow> = r.updates.iter().collect();
         updates.sort_by_key(|u| u.created_at);

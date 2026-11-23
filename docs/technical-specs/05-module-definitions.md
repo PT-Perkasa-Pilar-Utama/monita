@@ -275,5 +275,5 @@ The public routes answer 404 while `show_changelog` is off.
 | `incident_pdf(db, project, id, now, off)` | One incident's facts, systems, cause and updates oldest first, or `None`. |
 | `range_of(period, from, to, now, off)` | `week`, `7d`, `month`, `quarter`, or whole days `from` to `to` (both included, up to 366, the first not in the future). `RangeError` names what is wrong. |
 | `schedules(db, project_id)`, `save_schedule(db, project_id, cadence, enabled, emails, now)` | The weekly and monthly schedules. On needs a valid list; turning on counts the closed period as sent. |
-| `run_due(db, base_url, now)` | The daily job at `MONITA_DIGEST_UTC_HOUR`: for each schedule that is on and whose closed period is newer than `last_from`, draws the PDF on a read connection, then in one write records the period and queues one email per address. |
+| `run_due(db, base_url, now)` | The daily job at `MONITA_DIGEST_UTC_HOUR`: for each schedule that is on and whose closed period starts after `last_sent`, draws the PDF on a read connection, then in one write reads the row again, records the period and queues one email per address. A failure is logged and the other schedules still run. |
 

@@ -7,10 +7,11 @@ pub struct Row {
     pub cadence: String,
     pub enabled: bool,
     pub emails: String,
-    pub last_from: Option<i64>,
+    /// The first day of the period sent last, `YYYY-MM-DD` in the admin offset.
+    pub last_sent: Option<String>,
 }
 
-const COLS: &str = "project_id, cadence, enabled, emails, last_from";
+const COLS: &str = "project_id, cadence, enabled, emails, last_sent";
 
 fn row(r: &crate::platform::sql::Row) -> crate::platform::sql::Result<Row> {
     Ok(Row {
@@ -18,7 +19,7 @@ fn row(r: &crate::platform::sql::Row) -> crate::platform::sql::Result<Row> {
         cadence: r.get(1)?,
         enabled: r.get::<i64>(2)? == 1,
         emails: r.get(3)?,
-        last_from: r.get(4)?,
+        last_sent: r.get(4)?,
     })
 }
 
@@ -50,13 +51,13 @@ pub async fn save(
     cadence: &str,
     enabled: bool,
     emails: &str,
-    last_from: Option<i64>,
+    last_sent: Option<&str>,
 ) -> anyhow::Result<()> {
     c.execute(
-        "INSERT INTO report_schedules (project_id, cadence, enabled, emails, last_from) VALUES (?1, ?2, ?3, ?4, ?5)
+        "INSERT INTO report_schedules (project_id, cadence, enabled, emails, last_sent) VALUES (?1, ?2, ?3, ?4, ?5)
          ON CONFLICT (project_id, cadence) DO UPDATE SET enabled = excluded.enabled, emails = excluded.emails,
-           last_from = excluded.last_from",
-        (project_id, cadence, i64::from(enabled), emails, last_from),
+           last_sent = excluded.last_sent",
+        (project_id, cadence, i64::from(enabled), emails, last_sent),
     )
     .await?;
     Ok(())
@@ -80,11 +81,11 @@ pub async fn mark_sent(
     c: &Connection,
     project_id: i64,
     cadence: &str,
-    from: i64,
+    first_day: &str,
 ) -> anyhow::Result<()> {
     c.execute(
-        "UPDATE report_schedules SET last_from = ?3 WHERE project_id = ?1 AND cadence = ?2",
-        (project_id, cadence, from),
+        "UPDATE report_schedules SET last_sent = ?3 WHERE project_id = ?1 AND cadence = ?2",
+        (project_id, cadence, first_day),
     )
     .await?;
     Ok(())

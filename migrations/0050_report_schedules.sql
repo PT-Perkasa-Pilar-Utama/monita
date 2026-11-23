@@ -1,12 +1,13 @@
 -- v1.2 Q59: each project's weekly and monthly summary report, sent as a PDF to a list of
--- addresses. A missing row is a schedule that is off. `last_from` is the start of the period sent
--- last, written in the same transaction that queues the emails, so a period goes out once.
+-- addresses. A missing row is a schedule that is off. `last_sent` is the first day (`YYYY-MM-DD`
+-- in the admin offset) of the period sent last, written in the same transaction that queues the
+-- emails, so a period goes out once. A day, not a time: a new offset does not move it.
 CREATE TABLE report_schedules (
     project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     cadence TEXT NOT NULL CHECK (cadence IN ('weekly', 'monthly')),
     enabled INTEGER NOT NULL DEFAULT 0 CHECK (enabled IN (0, 1)),
     emails TEXT NOT NULL DEFAULT '',
-    last_from INTEGER,
+    last_sent TEXT,
     PRIMARY KEY (project_id, cadence)
 );
 

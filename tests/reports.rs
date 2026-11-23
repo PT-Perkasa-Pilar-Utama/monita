@@ -98,6 +98,7 @@ async fn the_summary_report_counts_automatic_incidents_only_as_downtime() {
     // API down 3 600 s of 31 days: 100 * (1 - 3600 / 2 678 400) = 99.87 %.
     for want in [
         "(Payments report)",
+        "(Outages)",
         "(This report covers 2026-10-01 to 2026-10-31, and its times are in UTC. Monita made it on",
         "(API)",
         "(99.87%)",

@@ -81,7 +81,8 @@ export function Projects(): ReactElement {
     go({ q: "", owner: "", state: "" }, 1, true);
   };
 
-  const loading = shown.loading;
+  // A view that has not read yet shows its skeleton, not the empty or old rows of the last one.
+  const loading = shown.loading || (shown.data === undefined && shown.error === undefined);
   const skeletons = skeletonCount(page, d?.page_size ?? 20, d?.total);
   const none = !loading && d !== undefined && d.total === 0;
   const filtered = q !== "" || owner !== "" || state !== "";

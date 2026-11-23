@@ -377,7 +377,7 @@ A project's weekly and monthly summary report by email (migration 0050, v1.2 Q59
 | cadence | TEXT | no | | PK | `weekly` (Monday to Sunday) or `monthly` (the calendar month), in the admin offset |
 | enabled | INTEGER | no | 0 | | 0 or 1 |
 | emails | TEXT | no | `''` | | One address a line, checked as an alert card's list (`notify::email_list`) |
-| last_from | INTEGER | yes | | | The start of the period sent last. Written in the same write that queues the emails, so a period goes out once. Turning a schedule on sets it to the period that already closed. |
+| last_sent | TEXT | yes | | | The first day (`YYYY-MM-DD` in the admin offset) of the period sent last. Written in the same write that queues the emails, so a period goes out once; a day, so a new offset does not move it. Turning a schedule on sets it to the period that already closed. |
 
 ### 6.3.14 settings and schema_migrations
 

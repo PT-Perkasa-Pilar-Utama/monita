@@ -1,6 +1,6 @@
 //! Weekly and monthly summary reports by email (v1.2 Q59). Each project has one schedule of each
-//! cadence, with a switch and addresses. The daily job sends each closed period once: the start
-//! of the period sent last is recorded in the same write that queues the emails.
+//! cadence, with a switch and addresses. The daily job sends each closed period once: the first
+//! day of the period sent last is recorded in the same write that queues the emails.
 
 use serde::Serialize;
 
@@ -92,27 +92,44 @@ pub async fn save(
         let off = settings::utc_offset(c).await?;
         let before = store::one(c, project_id, cadence.as_str()).await?;
         let was_on = before.as_ref().is_some_and(|r| r.enabled);
-        let last_from = match (&before, enabled && !was_on) {
-            (_, true) => Some(cadence.closed(now, off).from),
-            (Some(r), false) => r.last_from,
+        let last_sent = match (&before, enabled && !was_on) {
+            (_, true) => Some(time::day_at(cadence.closed(now, off).from, off)),
+            (Some(r), false) => r.last_sent.clone(),
             (None, false) => None,
         };
-        store::save(c, project_id, cadence.as_str(), enabled, &joined, last_from).await
+        store::save(
+            c,
+            project_id,
+            cadence.as_str(),
+            enabled,
+            &joined,
+            last_sent.as_deref(),
+        )
+        .await
     })
     .await?;
     Ok(())
 }
 
-/// Sends every schedule whose period closed since it last sent. Returns the emails queued.
+/// Sends every schedule whose period closed since it last sent. Returns the emails queued, or
+/// the last error after trying every schedule, so the daily job tries the pass again.
 pub async fn run_due(db: &Db, base_url: &str, now: i64) -> anyhow::Result<usize> {
     let off = settings::utc_offset(&db.read().await?).await?;
     let mut queued = 0;
+    let mut failed = None;
     let mut after = (0_i64, String::new());
     loop {
         let batch =
             store::on_after(&db.read().await?, (after.0, &after.1), caps::JOB_BATCH).await?;
         for row in &batch {
-            queued += send_one(db, base_url, row, now, off).await?;
+            // One project's failure must not hold back the others; the job retries the pass.
+            match send_one(db, base_url, row, now, off).await {
+                Ok(n) => queued += n,
+                Err(e) => {
+                    tracing::error!(project = row.project_id, cadence = %row.cadence, error = %e, "report not sent");
+                    failed = Some(e);
+                }
+            }
         }
         match batch.last() {
             Some(last) if batch.len() as i64 == caps::JOB_BATCH => {
@@ -121,7 +138,15 @@ pub async fn run_due(db: &Db, base_url: &str, now: i64) -> anyhow::Result<usize>
             _ => break,
         }
     }
-    Ok(queued)
+    match failed {
+        Some(e) => Err(e),
+        None => Ok(queued),
+    }
+}
+
+/// `YYYY-MM-DD` dates compare in calendar order as text.
+fn sent_already(row: &store::Row, first_day: &str) -> bool {
+    row.last_sent.as_deref().is_some_and(|d| d >= first_day)
 }
 
 async fn send_one(
@@ -135,7 +160,8 @@ async fn send_one(
         return Ok(0);
     };
     let range = cadence.closed(now, off);
-    if row.last_from.is_some_and(|f| f >= range.from) {
+    let first_day = time::day_at(range.from, off);
+    if sent_already(row, &first_day) {
         return Ok(0);
     }
     let Some(project) = crate::projects::by_ids(db, &[row.project_id])
@@ -144,16 +170,12 @@ async fn send_one(
     else {
         return Ok(0);
     };
-    let to = notify::split_emails(&row.emails);
     // The PDF is read before the write, so the writer is never held while it is drawn.
     let pdf = Pdf {
         name: super::file_name(&project.slug, range, off),
         bytes: super::summary_pdf(db, &project, range, now, off).await?,
     };
-    let (first, last) = (
-        time::day_at(range.from, off),
-        time::day_at(range.to - 1, off),
-    );
+    let (first, last) = (first_day.clone(), time::day_at(range.to - 1, off));
     let word = cadence.as_str();
     let subject = format!("{} {word} report, {first} to {last}", project.name);
     let body = format!(
@@ -166,15 +188,16 @@ async fn send_one(
         project.slug,
     );
     db.write(async |c| {
-        // Another pass may have sent it since the read above.
-        let now_row = store::one(c, row.project_id, &row.cadence).await?;
-        let sent = now_row
-            .as_ref()
-            .map(|r| !r.enabled || r.last_from.is_some_and(|f| f >= range.from));
-        if sent != Some(false) {
+        // Read again inside the write: another pass may have sent it, or a tech lead turned it off
+        // or changed the addresses while the PDF was drawn.
+        let Some(now_row) = store::one(c, row.project_id, &row.cadence).await? else {
+            return Ok(0);
+        };
+        if !now_row.enabled || sent_already(&now_row, &first_day) {
             return Ok(0);
         }
-        store::mark_sent(c, row.project_id, &row.cadence, range.from).await?;
+        store::mark_sent(c, row.project_id, &row.cadence, &first_day).await?;
+        let to = notify::split_emails(&now_row.emails);
         for email in &to {
             notify::queue_email_with_pdf(c, email, &subject, &body, &pdf, now).await?;
         }

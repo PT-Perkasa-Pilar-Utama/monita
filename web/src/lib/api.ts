@@ -65,7 +65,8 @@ export async function apiFile(path: string): Promise<void> {
   a.href = url;
   a.download = name;
   a.click();
-  URL.revokeObjectURL(url);
+  // Some browsers read the URL after click() returns, so it is freed a moment later.
+  setTimeout(() => URL.revokeObjectURL(url), 1_000);
 }
 
 /** The message to show for a failed call. */

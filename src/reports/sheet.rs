@@ -178,26 +178,37 @@ impl Sheet {
                 })
                 .collect();
             let lines = cells.iter().map(Vec::len).max().unwrap_or(1).max(1);
-            let h = lines as f32 * LINE + PAD;
-            if self.y + h > BOTTOM {
+            // A row starts where at least two of its lines fit. A row taller than the rest of
+            // the page goes on line by line, under the header again on the next page.
+            let first = lines.min(2) as f32 * LINE + PAD;
+            if self.y + first > BOTTOM {
                 self.pdf.new_page();
                 self.y = MARGIN;
                 header(self);
             }
-            let mut x = MARGIN;
-            for ((c, w), cell) in cols.iter().zip(&widths).zip(&cells) {
-                for (i, line) in cell.iter().enumerate() {
-                    let at = if c.right {
-                        x + w - 2.0 * PAD - crate::platform::pdf::width(line, Font::Regular, SIZE)
-                    } else {
-                        x
-                    };
-                    let y = self.y + LINE + i as f32 * LINE;
-                    self.pdf.text(at, y, SIZE, Font::Regular, INK, line);
+            for i in 0..lines {
+                if self.y + LINE > BOTTOM {
+                    self.pdf.new_page();
+                    self.y = MARGIN;
+                    header(self);
                 }
-                x += w;
+                self.y += LINE;
+                let mut x = MARGIN;
+                for ((c, w), cell) in cols.iter().zip(&widths).zip(&cells) {
+                    if let Some(line) = cell.get(i) {
+                        let at = if c.right {
+                            x + w
+                                - 2.0 * PAD
+                                - crate::platform::pdf::width(line, Font::Regular, SIZE)
+                        } else {
+                            x
+                        };
+                        self.pdf.text(at, self.y, SIZE, Font::Regular, INK, line);
+                    }
+                    x += w;
+                }
             }
-            self.y += h;
+            self.y += PAD;
             self.pdf.hline(MARGIN, self.y, TEXT_W, 0.5, RULE);
         }
     }
@@ -257,5 +268,29 @@ mod tests {
         );
         assert!(text.contains(&format!("(Payments   Page {pages} of {pages})")));
         assert!(text.contains("(Monitor 119)"), "no row is lost at a break");
+    }
+
+    #[test]
+    fn a_row_taller_than_a_page_goes_on_over_the_next_pages() {
+        let mut sheet = Sheet::new("Long", "Payments");
+        let words: Vec<String> = (0..1500).map(|i| format!("w{i}")).collect();
+        sheet.table(
+            &[Col::left("Time", 0.3), Col::wrapping("Message", 0.7)],
+            &[vec!["10:00".into(), words.join(" ")]],
+        );
+        let pages = sheet.pdf.page_count();
+        assert!(pages >= 2, "{pages} pages");
+        let text = text_of(&sheet.finish().unwrap());
+        assert!(text.contains("w1499"), "the end of the message is drawn");
+        // Every line sits above the footer: no Td lower than the bottom margin.
+        for y in text
+            .split(" Td")
+            .filter_map(|t| t.rsplit(' ').next()?.parse::<f32>().ok())
+        {
+            assert!(
+                !(40.0..PAGE_H - BOTTOM - 1.0).contains(&y),
+                "a line at {y} runs into the footer"
+            );
+        }
     }
 }

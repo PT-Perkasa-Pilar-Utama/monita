@@ -24,9 +24,18 @@ pub struct SourceLine {
 pub struct IncidentLine {
     pub title: String,
     pub severity: String,
+    /// Opened by Monita after failed checks, not by hand.
+    pub automatic: bool,
     pub started_at: i64,
     pub resolved_at: Option<i64>,
     pub excluded: Option<String>,
+}
+
+impl IncidentLine {
+    /// An outage counts as downtime: automatic and not reclassified (Q46, v1.2 Q57).
+    pub fn outage(&self) -> bool {
+        self.automatic && self.excluded.is_none()
+    }
 }
 
 pub struct WindowLine {
@@ -86,6 +95,7 @@ pub async fn gather(
             .map(|i| IncidentLine {
                 title: i.title,
                 severity: i.severity,
+                automatic: i.origin == "auto",
                 started_at: i.started_at,
                 resolved_at: i.resolved_at,
                 excluded: i.excluded,
@@ -126,11 +136,11 @@ pub fn overall(sources: &[SourceLine]) -> Option<f64> {
     (span > 0).then(|| 100.0 * (1.0 - down as f64 / span as f64))
 }
 
-/// The mean time from start to resolve of the counted incidents resolved in the range.
+/// The mean time from start to resolve of the outages resolved in the range.
 pub fn mean_to_resolve(incidents: &[IncidentLine], range: Range) -> Option<i64> {
     let done: Vec<i64> = incidents
         .iter()
-        .filter(|i| i.excluded.is_none())
+        .filter(|i| i.outage())
         .filter_map(|i| i.resolved_at.map(|r| (i.started_at, r)))
         .filter(|&(_, r)| r >= range.from && r < range.to)
         .map(|(s, r)| r - s)
@@ -180,7 +190,14 @@ pub fn render(s: &Summary) -> anyhow::Result<Vec<u8>> {
             "Downtime",
             time::duration(s.sources.iter().map(|x| x.downtime_s).sum()),
         ),
-        ("Incidents", s.incidents.len().to_string()),
+        (
+            "Outages",
+            s.incidents
+                .iter()
+                .filter(|i| i.outage())
+                .count()
+                .to_string(),
+        ),
         (
             "Mean time to resolve",
             mttr.map_or("None resolved".into(), time::duration),
@@ -304,12 +321,12 @@ pub fn render(s: &Summary) -> anyhow::Result<Vec<u8>> {
 
     sheet.heading("How Monita counts");
     sheet.note(
-        "Availability is the share of each system's time without an automatic incident, counted \
-         from when the system was added, and the project's availability adds up the time of all \
-         its systems. Manual incidents and incidents reclassified as planned work or a false \
-         alarm are not downtime, and a failure inside a maintenance window opens no incident. \
-         The mean time to resolve is the mean time from the start to the resolve of the counted \
-         incidents that were resolved in this period.",
+        "An outage is an incident that Monita opened after failed checks and nobody reclassified \
+         as planned work or a false alarm. Availability is the share of each system's time \
+         without an outage, counted from when the system was added, and the project's \
+         availability adds up the time of all its systems. Manual incidents are not downtime, \
+         and a failure inside a maintenance window opens no incident. The mean time to resolve \
+         is the mean time from the start to the resolve of the outages resolved in this period.",
     );
     sheet.finish()
 }
@@ -334,6 +351,7 @@ mod tests {
         IncidentLine {
             title: "API is down".into(),
             severity: "critical".into(),
+            automatic: true,
             started_at: started,
             resolved_at: resolved,
             excluded: excluded.map(str::to_string),
@@ -361,8 +379,16 @@ mod tests {
             incident(1_500, None, None),        // open
             incident(1_800, Some(2_500), None), // resolved after the range
             incident(1_300, Some(1_400), Some("planned")),
+            IncidentLine {
+                automatic: false,
+                ..incident(1_100, Some(1_900), None)
+            },
         ];
-        assert_eq!(mean_to_resolve(&list, r), Some(300));
+        assert_eq!(
+            mean_to_resolve(&list, r),
+            Some(300),
+            "no manual or reclassified incident"
+        );
         assert_eq!(mean_to_resolve(&list[2..3], r), None);
     }
 
