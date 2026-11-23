@@ -53,7 +53,7 @@ test("All tickets opens a ticket over the list and closes back to it; a tech lea
 test("the Project and Alert level headings sort both ways on the server", async ({ page }) => {
   const stamp = `Order${Date.now()}`;
   const slug = await apiProject(page, `${stamp} Alpha`);
-  await apiProject(page, `${stamp} Zulu`);
+  const zulu = await apiProject(page, `${stamp} Zulu`);
   await page.goto("/");
   await page.getByLabel("Search projects").fill(stamp);
   const first = page.locator("tbody tr").first();
@@ -69,13 +69,21 @@ test("the Project and Alert level headings sort both ways on the server", async 
   const monitor = await apiMonitor(page, slug);
   await apiSend(page, "POST", `/api/ui/projects/${slug}/incidents`, { title: `${stamp} slow`, items: [`monitor:${monitor}`], severity: "warning", message: "Looking into it." }, 201);
   await apiSend(page, "POST", `/api/ui/projects/${slug}/incidents`, { title: `${stamp} down`, items: [`monitor:${monitor}`], severity: "critical", message: "Looking into it." }, 201);
+  const other = await apiMonitor(page, zulu);
+  await apiSend(page, "POST", `/api/ui/projects/${zulu}/incidents`, { title: `${stamp} zulu`, items: [`monitor:${other}`], severity: "warning", message: "Looking into it." }, 201);
   await page.goto("/incidents");
   await page.getByLabel("Search incidents").fill(stamp);
-  await expect(page.locator("tbody tr")).toHaveCount(2);
+  await expect(page.locator("tbody tr")).toHaveCount(3);
   await expect(first).toContainText(`${stamp} down`);
   const level = page.getByRole("button", { name: "Alert level", exact: true });
   await level.click();
-  await expect(first).toContainText(`${stamp} slow`);
+  await expect(first).toContainText("Warning");
   await level.click();
   await expect(first).toContainText(`${stamp} down`);
+  const byProject = page.getByRole("button", { name: "Project", exact: true });
+  await byProject.click();
+  await expect(page).toHaveURL(/[?&]sort=project(&|$)/);
+  await expect(first).toContainText(`${stamp} Alpha`);
+  await byProject.click();
+  await expect(first).toContainText(`${stamp} zulu`);
 });

@@ -24,7 +24,8 @@ fn search(q: &str) -> String {
     q.trim().to_lowercase().chars().take(100).collect()
 }
 
-/// `oldest` reads the longest waiting first; anything else, the newest.
+/// `oldest` reads the longest waiting first, `project` and `project_desc` by project name;
+/// anything else, the newest.
 pub async fn triage_across(
     c: &Connection,
     owner: Option<i64>,
@@ -33,10 +34,14 @@ pub async fn triage_across(
     limit: i64,
     offset: i64,
 ) -> anyhow::Result<Vec<TriageRow>> {
-    let order = if sort == "oldest" {
-        "created_at ASC, id ASC"
-    } else {
-        "created_at DESC, id DESC"
+    // The project names are read only, as the search reads them.
+    let order = match sort {
+        "oldest" => "created_at ASC, id ASC",
+        "project" => "(SELECT name FROM projects WHERE id = project_id), created_at DESC, id DESC",
+        "project_desc" => {
+            "(SELECT name FROM projects WHERE id = project_id) DESC, created_at DESC, id DESC"
+        }
+        _ => "created_at DESC, id DESC",
     };
     crate::platform::db::query_all(
         c,

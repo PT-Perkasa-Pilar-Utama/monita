@@ -140,7 +140,7 @@ After a report, the page shows the reporter's tickets at once. The old addresses
 **Tickets** in the top menu lists the new tickets in Triage across every project you can open. A tech lead sees their own projects. A super admin and a supervisor see all.
 
 - The title reads "N in Triage".
-- Search by title. Sort by **Reported**.
+- Search by title. Select **Reported** to sort newest or oldest first, or **Project** to sort by project name, A to Z and then Z to A.
 - The list shows 25 a page.
 - A row opens the ticket in the same side panel, so closing it returns you to the same rows.
 

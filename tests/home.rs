@@ -88,6 +88,32 @@ async fn a_tech_lead_sees_their_own_projects_and_a_super_admin_sees_all() {
         ],
         "warning first, then newest"
     );
+    let by_project = read(&app, "/api/ui/incidents?sort=project", &admin).await;
+    assert_eq!(
+        titles(&by_project["incidents"]),
+        [
+            "payments Slow checkout",
+            "payments Card errors",
+            "search Search is down"
+        ],
+        "project A to Z, then newest"
+    );
+    let by_project = read(&app, "/api/ui/incidents?sort=project_desc", &admin).await;
+    assert_eq!(
+        titles(&by_project["incidents"])[0],
+        "search Search is down",
+        "project Z to A"
+    );
+    let tickets = read(&app, "/api/ui/tickets?sort=project", &admin).await;
+    assert_eq!(
+        titles(&tickets["tickets"]),
+        ["payments Refund stuck", "search Typo search"]
+    );
+    let tickets = read(&app, "/api/ui/tickets?sort=project_desc", &admin).await;
+    assert_eq!(
+        titles(&tickets["tickets"]),
+        ["search Typo search", "payments Refund stuck"]
+    );
     let warn = read(&app, "/api/ui/incidents?severity=warning", &admin).await;
     assert_eq!(titles(&warn["incidents"]), ["payments Slow checkout"]);
     let old = read(&app, "/api/ui/incidents?state=resolved&q=inc-4", &admin).await;

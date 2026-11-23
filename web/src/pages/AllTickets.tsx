@@ -11,7 +11,7 @@ import { SortHead } from "@/components/list/SortHead";
 import { TableEmpty } from "@/components/list/TableEmpty";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { dateHead, nextDate } from "@/lib/dateSort";
+import { nextTicketsSort, ticketsHead } from "@/lib/listSort";
 import { ago } from "@/lib/time";
 import type { HomeList, HomeTicket } from "@/lib/types";
 import { LIVE_MS, useApi } from "@/lib/useApi";
@@ -25,7 +25,8 @@ export function AllTickets(): ReactElement {
   const res = useApi<HomeList<"tickets", HomeTicket>>(`/tickets${list.query}`, LIVE_MS);
   const [open, setOpen] = useState<{ slug: string; number: string } | null>(null);
   const d = res.data;
-  const sort = dateHead("reported", params.sort, true);
+  const sort = ticketsHead(params.sort);
+  const onSort = (by: string): void => list.set({ sort: nextTicketsSort(params.sort, by) });
   return (
     <>
       <PageHeader title="Tickets" filtered={list.filtered} actions={<RefreshButton onClick={res.refresh} busy={res.refreshing} />} />
@@ -46,8 +47,8 @@ export function AllTickets(): ReactElement {
               <TableHeader>
                 <TableRow>
                   <TableHead>Ticket</TableHead>
-                  <TableHead className="max-md:hidden">Project</TableHead>
-                  <SortHead by="reported" label="Reported" sort={sort} onSort={() => list.set({ sort: nextDate(params.sort, true) })} className="text-right" />
+                  <SortHead by="project" label="Project" sort={sort} onSort={onSort} className="max-md:hidden" />
+                  <SortHead by="reported" label="Reported" sort={sort} onSort={onSort} className="text-right" />
                 </TableRow>
               </TableHeader>
               <TableBody>
