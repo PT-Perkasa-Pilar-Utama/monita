@@ -27,10 +27,15 @@ export function dropField(error: ApiError, field: string): ApiError | null {
 
 type Method = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
+/** The viewer's clock, so the server lays out chart labels, day bars and reports in the viewer's
+ * time. */
+function viewerClock(): Record<string, string> {
+  return { "x-utc-offset": String(-new Date().getTimezoneOffset()) };
+}
+
 /** Calls `/api/ui${path}` and returns `data`. A 401 sends the reader to sign in. */
 export async function api<T>(path: string, method: Method = "GET", body?: unknown, cache?: RequestCache): Promise<T> {
-  // The viewer's clock, so the server lays out chart labels and day bars in the viewer's time.
-  const clock = { "x-utc-offset": String(-new Date().getTimezoneOffset()) };
+  const clock = viewerClock();
   const init: RequestInit = { method, credentials: "same-origin", headers: { accept: "application/json", ...clock } };
   if (cache) init.cache = cache;
   if (body !== undefined) {
@@ -57,7 +62,7 @@ function failure(res: Response, json: unknown, path: string): ApiError {
 /** Downloads the file at `/api/ui${path}` under the name the server gives it. A refusal comes
  * back as an `ApiError`, as from `api`. */
 export async function apiFile(path: string): Promise<void> {
-  const res = await fetch(`/api/ui${path}`, { credentials: "same-origin" });
+  const res = await fetch(`/api/ui${path}`, { credentials: "same-origin", headers: viewerClock() });
   if (!res.ok) throw failure(res, await res.json().catch(() => null), path);
   const name = /filename="([^"]+)"/.exec(res.headers.get("content-disposition") ?? "")?.[1] ?? "report.pdf";
   const url = URL.createObjectURL(await res.blob());

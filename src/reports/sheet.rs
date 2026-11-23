@@ -109,6 +109,38 @@ impl Sheet {
         self.y += 4.0;
     }
 
+    /// A bold line that names the block under it, such as one incident.
+    pub fn subheading(&mut self, s: &str) {
+        let lines = wrap(s, Font::Bold, 10.5, TEXT_W);
+        self.room(16.0 * lines.len() as f32 + 30.0);
+        self.y += 8.0;
+        for line in lines {
+            self.y += 14.0;
+            self.pdf.text(MARGIN, self.y, 10.5, Font::Bold, INK, &line);
+        }
+    }
+
+    /// One bar per value across the text width, each in its colour, with the first and the
+    /// last label under the row.
+    pub fn bars(&mut self, colours: &[Rgb], first: &str, last: &str) {
+        const H: f32 = 28.0;
+        self.room(H + 30.0);
+        self.y += 10.0;
+        let n = colours.len().max(1) as f32;
+        let step = TEXT_W / n;
+        let gap = (step * 0.2).min(2.0);
+        for (i, c) in colours.iter().enumerate() {
+            self.pdf
+                .rect(MARGIN + i as f32 * step, self.y, step - gap, H, *c);
+        }
+        self.y += H + 12.0;
+        self.pdf
+            .text(MARGIN, self.y, 8.5, Font::Regular, MUTED, first);
+        let w = crate::platform::pdf::width(last, Font::Regular, 8.5);
+        self.pdf
+            .text(MARGIN + TEXT_W - w, self.y, 8.5, Font::Regular, MUTED, last);
+    }
+
     /// Up to four numbers in a row: each value large, its name under it.
     pub fn figures(&mut self, items: &[(&str, String)]) {
         self.room(52.0);

@@ -14,8 +14,8 @@ use crate::{
     accounts::CurrentUser,
     app::AppState,
     platform::{
-        now, settings,
-        ui::{Body, UiError, UiResult, data},
+        now,
+        ui::{Body, UiError, UiResult, ViewerOffset, data},
     },
     projects,
 };
@@ -57,15 +57,16 @@ fn pdf(name: &str, body: Vec<u8>) -> Response {
         .into_response()
 }
 
-/// The summary report of a range of days, in the admin's offset.
+/// The summary report of a range of days, on the viewer's clock as the team pages are; without
+/// the app's `x-utc-offset` header, in the admin's offset.
 async fn summary(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
     Path(slug): Path<String>,
     Query(q): Query<RangeQuery>,
+    ViewerOffset(off): ViewerOffset,
 ) -> Result<Response, UiError> {
     let p = projects::find_for(&state.db, &user, &slug).await?;
-    let off = settings::utc_offset(&state.db.read().await?).await?;
     let t = now();
     let range = super::range_of(&q.period, &q.from, &q.to, t, off)
         .map_err(|e| UiError::field("from", e.to_string()))?;
@@ -73,14 +74,14 @@ async fn summary(
     Ok(pdf(&super::file_name(&p.slug, range, off), body))
 }
 
-/// The report of one incident.
+/// The report of one incident, on the viewer's clock.
 async fn incident(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
     Path((slug, id)): Path<(String, i64)>,
+    ViewerOffset(off): ViewerOffset,
 ) -> Result<Response, UiError> {
     let p = projects::find_for(&state.db, &user, &slug).await?;
-    let off = settings::utc_offset(&state.db.read().await?).await?;
     let body = super::incident_pdf(&state.db, &p, id, now(), off)
         .await?
         .ok_or(UiError::NotFound)?;

@@ -2,7 +2,7 @@
 
 Monita makes two kinds of report as PDF files: a summary of a project over a range of days, and the report of one incident. Give them to a manager or a client who does not use Monita.
 
-Every role that can open the project can download its reports, a supervisor included. A report shows the times in the admin time zone (**Admin**, **Time zone**) and names the offset on its first line.
+Every role that can open the project can download its reports, a supervisor included. A downloaded report shows times on your own computer's clock, as the team's pages do, and names the offset on its first line. An emailed report uses the admin time zone (**Admin**, **Time zone**).
 
 ## Download a summary report
 
@@ -16,14 +16,15 @@ To pick the days yourself:
 2. Enter the **First day** and the **Last day**. The report covers both days and every day between them, up to 366 days.
 3. Select **Download**.
 
-The last 7 days end yesterday. The last month is the calendar month before this one, and the last quarter is the three calendar months before this quarter (January to March, April to June, July to September or October to December).
+The last 7 days end yesterday, on your clock. The last month is the calendar month before this one, and the last quarter is the three calendar months before this quarter (January to March, April to June, July to September or October to December).
 
 ## What a summary report shows
 
-- The project's availability, its downtime, the number of outages and the mean time to resolve.
-- A row for each monitor and heartbeat: availability, downtime, outages and the longest outage.
-- Every incident that was open in the range, manual and reclassified ones too, longest first. Monita reads the newest 200 of them and the table shows the 50 longest, and the report says when there are more.
-- The maintenance windows that overlap the range.
+- Four figures: the project's availability, its downtime, the number of outages and the mean time to resolve.
+- Availability by day: one bar a day, green with no downtime, yellow when down for less than 1% of the day, red for more, and grey before the first monitor or heartbeat.
+- A row for each monitor and heartbeat: availability, downtime, outages, MTTR (the mean length of an outage) and MTBF (the time up divided by the outages).
+- The maintenance time and its share of the period, with the windows that overlap it.
+- Each incident that was open in the range, longest first, manual and reclassified ones too: its alert level and state, when it started and ended, what it affects, its cause and its latest update. Monita reads the newest 200 incidents and shows the 50 longest, and the report says when there are more.
 
 An outage is an incident that Monita opened after failed checks and nobody reclassified as planned work or a false alarm. Availability counts outages only, as the status page and the monitor page do, so a manual incident and time in a maintenance window are not downtime. The project's availability adds up the time of all its systems, so a system that existed for half the range counts half. The mean time to resolve is the mean time from start to resolve of the outages resolved in the range.
 

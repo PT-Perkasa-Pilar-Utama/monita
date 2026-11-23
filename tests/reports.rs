@@ -102,13 +102,23 @@ async fn the_summary_report_counts_automatic_incidents_only_as_downtime() {
         "(This report covers 2026-10-01 to 2026-10-31, and its times are in UTC. Monita made it on",
         "(API)",
         "(99.87%)",
-        "(Planned work)",
-        "(Payments degraded)",
+        "(Warning, planned work)",
+        "(INC-3: Payments degraded)",
         "(DNS move)",
         "(1h 0m)",
+        "(Availability by day)",
+        "(MTBF)",
+        "(INC-1: API is down)",
+        "(Affects)",
+        "(API)",
+        r"(HTTP 503 \(from\) \\ edge)",
+        "(Resolved, 2026-10-01 11:00: The edge cache was flushed.)",
+        "(Planned maintenance took 1h 0m, 0.13% of the period, in 1 window.)",
+        "(3 incidents were open in this period: 1 critical and 2 warning.)",
     ] {
         assert!(text.contains(want), "missing {want}");
     }
+    assert!(!text.contains("How Monita counts"));
     // Site's incident is planned work and the manual one is not downtime: both read 100 %.
     assert_eq!(text.matches("(100.00%)").count(), 2, "Site and Backup");
     assert!(!text.contains("token=secret"), "no monitor URL in a report");
@@ -287,9 +297,44 @@ async fn long_names_titles_emails_and_tokens_are_wrapped_never_cut() {
     let text = pages(&pdf);
     let heading = format!("{name} report");
     assert_eq!(rebuilt(&text, &heading), heading.replace(' ', ""));
+    let block = format!("INC-1: {title}");
     assert_eq!(
-        rebuilt(&text, title),
-        title.replace(' ', ""),
+        rebuilt(&text, &block),
+        block.replace(' ', ""),
         "the incident row"
+    );
+}
+
+#[tokio::test]
+async fn a_download_follows_the_viewers_clock() {
+    let app = TestApp::spawn("test").await;
+    let tl = app.tl("rina@x.co").await;
+    app.project(&tl, "Payments", "payments").await;
+    seed(&app).await;
+    // At UTC-12 the API outage (2026-10-01 10:00 to 11:00 UTC) falls on 2026-09-30.
+    let pdf = app
+        .http
+        .get(app.url("/api/ui/projects/payments/report?from=2026-10-01&to=2026-10-31"))
+        .header("cookie", &tl)
+        .header("x-utc-offset", "-720")
+        .send()
+        .await
+        .unwrap()
+        .bytes()
+        .await
+        .unwrap();
+    let text = pages(&pdf);
+    assert!(
+        text.contains("times are in UTC-12"),
+        "the viewer's offset is named"
+    );
+    assert!(
+        !text.contains("(INC-1: API is down)"),
+        "the outage is on another day"
+    );
+    assert_eq!(
+        text.matches("(100.00%)").count(),
+        4,
+        "the project and its three systems are up on these days"
     );
 }
