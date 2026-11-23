@@ -193,7 +193,7 @@ export function Incident(): ReactElement {
           </div>
           <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_18rem]">
             <div className="flex min-w-0 flex-col gap-8">
-            {i.resolved_at !== null && <PostmortemPanel key={i.resolved_at} path={path} />}
+            {i.resolved_at !== null && <PostmortemPanel key={i.resolved_at} path={path} incident={d} />}
             <section aria-labelledby="timeline" className="flex min-w-0 flex-col gap-4">
               <h2 id="timeline" className="text-[15px] font-semibold">
                 Updates, newest first

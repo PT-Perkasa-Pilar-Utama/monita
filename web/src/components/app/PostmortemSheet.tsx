@@ -8,16 +8,24 @@ import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { api, ApiError, dropField, errorText } from "@/lib/api";
-import { publishNote, SECTIONS } from "@/lib/postmortem";
-import type { Postmortem, PostmortemText } from "@/lib/types";
+import { fillEmpty, publishNote, SECTIONS, template, UNFILLED, unfilled } from "@/lib/postmortem";
+import type { IncidentDetail, Postmortem, PostmortemText } from "@/lib/types";
 
 /** The post-mortem form (v1.2 Q63): Google's eight sections. Save keeps a draft; Publish asks
  * first and says who gets the email. */
-export function PostmortemSheet({ path, pm, open, onClose, onSaved }: { path: string; pm: Postmortem; open: boolean; onClose: () => void; onSaved: () => void }): ReactElement {
+export function PostmortemSheet({ path, pm, incident, open, onClose, onSaved }: { path: string; pm: Postmortem; incident: IncidentDetail; open: boolean; onClose: () => void; onSaved: () => void }): ReactElement {
   const [text, setText] = useState<PostmortemText>(() => Object.fromEntries(SECTIONS.map((s) => [s.key, pm[s.key]])) as PostmortemText);
   const [error, setError] = useState<ApiError | null>(null);
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const anyEmpty = SECTIONS.some((s) => text[s.key].trim() === "");
+
+  // A prompt left from the template stops the publish before the dialog asks.
+  const publish = (): void => {
+    const left = unfilled(text);
+    if (left.length === 0) return setConfirming(true);
+    setError(new ApiError(422, "invalid", UNFILLED, Object.fromEntries(left.map((k) => [k, UNFILLED]))));
+  };
 
   const send = async (action: "save" | "publish"): Promise<boolean> => {
     setBusy(true);
@@ -77,13 +85,16 @@ export function PostmortemSheet({ path, pm, open, onClose, onSaved }: { path: st
                 await send("publish");
               }}
             />
-            <Button type="button" disabled={busy} onClick={() => setConfirming(true)}>
+            <Button type="button" disabled={busy} onClick={publish}>
               Publish
             </Button>
           </>
         }
       >
         <FieldGroup className="gap-5">
+          <Button type="button" variant="outline" size="sm" className="self-start" disabled={!anyEmpty} onClick={() => setText(fillEmpty(text, template(incident)))}>
+            Fill in a template
+          </Button>
           {SECTIONS.map((s) => {
             const message = error?.fields[s.key];
             return (

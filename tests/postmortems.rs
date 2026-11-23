@@ -56,7 +56,7 @@ fn filled(marker: &str) -> Value {
         "trigger": "A spike in traffic.",
         "resolution": "The cache was flushed and its disk grown.",
         "detection": "Monita's monitor, after two failed checks.",
-        "action_items": "Alert on cache disk use.",
+        "action_items": "Alert on cache disk use.\n- Grow the disk.",
         "lessons": "Size caches for peak traffic."
     })
 }
@@ -215,6 +215,10 @@ async fn the_incident_pdf_carries_the_post_mortem_marked_draft_until_published()
     let text = String::from_utf8_lossy(&inflate(&pdf)).into_owned();
     assert!(text.contains(r"(Post-mortem \(draft\))"));
     assert!(text.contains("(Root cause)") && text.contains("(The edge cache filled its disk.)"));
+    assert!(
+        text.contains("(Alert on cache disk use.)") && text.contains("(- Grow the disk.)"),
+        "each line of a section prints on its own line"
+    );
     put(&app, &tl, with_action("publish", filled("x"))).await;
     let pdf = app
         .get("/api/ui/projects/payments/incidents/1/report", Some(&tl))

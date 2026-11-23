@@ -258,6 +258,17 @@ test("a resolved incident takes a post-mortem that is saved as a draft and then 
   expect((await page.request.get(pingUrl)).status()).toBe(200);
   await page.reload();
 
+  // The template states the facts, and its prompts stop a publish.
+  await page.getByRole("button", { name: "Write post-mortem" }).click();
+  await page.getByRole("button", { name: "Fill in a template" }).click();
+  await expect(page.getByLabel("Summary")).toHaveValue(/^INC-\d+: nightly-settlement reported a failure\./);
+  await expect(page.getByLabel("Impact")).toHaveValue(/\[Who was affected/);
+  await expect(page.getByRole("button", { name: "Fill in a template" })).toBeDisabled();
+  await page.getByRole("button", { name: "Publish" }).click();
+  await expect(page.getByText("Replace the text in square brackets before you publish.").first()).toBeVisible();
+  await expect(page.getByRole("alertdialog")).toHaveCount(0);
+  await page.keyboard.press("Escape");
+
   await page.getByRole("button", { name: "Write post-mortem" }).click();
   await page.getByLabel("Summary").fill("The settlement job crashed on a bad row.");
   await page.getByRole("button", { name: "Save draft" }).click();

@@ -10,11 +10,11 @@ import { api, errorText } from "@/lib/api";
 import { SECTIONS } from "@/lib/postmortem";
 import { Writable } from "@/lib/session";
 import { stamp } from "@/lib/time";
-import type { Postmortem } from "@/lib/types";
+import type { IncidentDetail, Postmortem } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 
 /** A resolved incident's post-mortem (v1.2 Q63): the written sections, or a button to write them. */
-export function PostmortemPanel({ path }: { path: string }): ReactElement | null {
+export function PostmortemPanel({ path, incident }: { path: string; incident: IncidentDetail }): ReactElement | null {
   const res = useApi<Postmortem>(`${path}/postmortem`);
   // The copy the form opens with, read again just before, so its state and its email count
   // are the server's now.
@@ -74,7 +74,7 @@ export function PostmortemPanel({ path }: { path: string }): ReactElement | null
           )}
         </Card>
       )}
-      {editing && <PostmortemSheet path={path} pm={editing} open onClose={() => setEditing(null)} onSaved={res.reload} />}
+      {editing && <PostmortemSheet path={path} pm={editing} incident={incident} open onClose={() => setEditing(null)} onSaved={res.reload} />}
     </section>
   );
 }
