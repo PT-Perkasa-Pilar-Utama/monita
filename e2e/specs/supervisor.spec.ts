@@ -36,6 +36,17 @@ test("a supervisor reads another team's project and its settings, with nothing t
   await expect(page.getByRole("button", { name: "Save changes" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Danger zone" })).toHaveCount(0);
 
+  // Reports: the schedules show, and nothing changes them. The report itself downloads.
+  await page.goto(`/projects/${slug}/settings/reports`);
+  await expect(page.locator("#report-weekly").getByLabel("Send this report")).toBeDisabled();
+  await expect(page.locator("#report-weekly").getByLabel("Email addresses")).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Save changes" })).toHaveCount(0);
+  await page.goto(`/projects/${slug}`);
+  const pdf = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download report" }).click();
+  await page.getByRole("menuitem", { name: "Last 7 days" }).click();
+  expect((await pdf).suggestedFilename()).toMatch(new RegExp(`^${slug}-.*\\.pdf$`));
+
   const write = await page.request.post(`/api/ui/projects/${slug}/monitors`, { headers: { origin: BASE_URL }, data: { name: "Mine" } });
   expect(write.status()).toBe(403);
 });

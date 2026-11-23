@@ -50,15 +50,19 @@ pub fn render(s: &Summary) -> anyhow::Result<Vec<u8>> {
         ),
         (
             "Outages",
-            s.incidents
-                .iter()
-                .filter(|i| i.outage())
-                .count()
-                .to_string(),
+            // Counted from the newest `caps::PROJECT_INCIDENTS` of the range (Known limits).
+            {
+                let n = s.incidents.iter().filter(|i| i.outage()).count();
+                if s.incidents.len() as i64 >= caps::PROJECT_INCIDENTS {
+                    format!("{n} or more")
+                } else {
+                    n.to_string()
+                }
+            },
         ),
         (
             "Mean time to resolve",
-            mttr.map_or("None resolved".into(), time::duration),
+            mttr.map_or("None".into(), time::duration),
         ),
     ]);
 

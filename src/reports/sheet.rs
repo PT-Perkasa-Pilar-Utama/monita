@@ -220,8 +220,10 @@ impl Sheet {
         let n = self.pdf.page_count();
         for i in 0..n {
             self.pdf.select(i);
-            let foot = format!("{}   Page {} of {n}", self.footer, i + 1);
-            let foot = fit(&foot, Font::Regular, 8.0, TEXT_W);
+            // The page number always prints; a long project name is cut before it.
+            let page = format!("   Page {} of {n}", i + 1);
+            let room = TEXT_W - crate::platform::pdf::width(&page, Font::Regular, 8.0);
+            let foot = format!("{}{page}", fit(&self.footer, Font::Regular, 8.0, room));
             self.pdf
                 .text(MARGIN, PAGE_H - 30.0, 8.0, Font::Regular, MUTED, &foot);
         }
@@ -270,6 +272,13 @@ mod tests {
         );
         assert!(text.contains(&format!("(Payments   Page {pages} of {pages})")));
         assert!(text.contains("(Monitor 119)"), "no row is lost at a break");
+    }
+
+    #[test]
+    fn a_long_project_name_never_pushes_the_page_number_off_the_footer() {
+        let sheet = Sheet::new("Long", &"WIDE PROJECT NAME ".repeat(8));
+        let text = text_of(&sheet.finish().unwrap());
+        assert!(text.contains("...   Page 1 of 1)"), "{text}");
     }
 
     #[test]
