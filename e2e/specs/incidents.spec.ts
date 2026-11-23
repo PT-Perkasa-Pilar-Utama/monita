@@ -293,4 +293,7 @@ test("a resolved incident takes a post-mortem that is saved as a draft and then 
   const panel = page.locator("section", { has: page.locator("#postmortem") });
   await expect(panel).toContainText("Published");
   await expect(panel).toContainText("A row with an empty amount.");
+  const pdf = page.waitForEvent("download");
+  await panel.getByRole("button", { name: "Download PDF" }).click();
+  expect((await pdf).suggestedFilename()).toMatch(/-inc-\d+\.pdf$/);
 });

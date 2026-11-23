@@ -166,7 +166,7 @@ export function Incident(): ReactElement {
             }
             actions={
               <>
-              <IncidentReportButton slug={p.slug} id={i.id} />
+              <IncidentReportButton path={path} label="Download report" />
               <Reclassify
                 path={path}
                 incident={i}

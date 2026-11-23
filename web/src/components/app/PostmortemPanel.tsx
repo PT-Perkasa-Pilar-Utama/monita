@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { ReactElement } from "react";
 import { toast } from "sonner";
 import { PostmortemSheet } from "@/components/app/PostmortemSheet";
+import { IncidentReportButton } from "@/components/app/ReportMenu";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -46,6 +47,7 @@ export function PostmortemPanel({ path, incident }: { path: string; incident: In
         </h2>
         {pm.state !== "none" && <Badge variant={pm.state === "published" ? "up" : "unknown"}>{pm.state === "published" ? "Published" : "Draft"}</Badge>}
         <span className="flex-1" />
+        {pm.state !== "none" && <IncidentReportButton path={path} label="Download PDF" size="sm" />}
         <Writable>
           <Button variant="outline" size="sm" disabled={busy} onClick={() => void edit()}>
             {busy && <Spinner data-icon="inline-start" />}

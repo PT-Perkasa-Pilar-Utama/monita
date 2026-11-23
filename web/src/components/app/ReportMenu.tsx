@@ -102,13 +102,14 @@ export function ReportMenu({ slug }: { slug: string }): ReactElement {
   );
 }
 
-/** One incident's report as a PDF. */
-export function IncidentReportButton({ slug, id }: { slug: string; id: number }): ReactElement {
+/** One incident's report as a PDF, post-mortem included. `path` is the incident's page path.
+ * The post-mortem section offers the same file under its own label. */
+export function IncidentReportButton({ path, label, size }: { path: string; label: string; size?: "sm" }): ReactElement {
   const [busy, setBusy] = useState(false);
   const get = async (): Promise<void> => {
     setBusy(true);
     try {
-      await apiFile(`/projects/${slug}/incidents/${id}/report`);
+      await apiFile(`${path}/report`);
     } catch (e) {
       toast.error(errorText(e));
     } finally {
@@ -116,9 +117,9 @@ export function IncidentReportButton({ slug, id }: { slug: string; id: number })
     }
   };
   return (
-    <Button variant="outline" disabled={busy} onClick={() => void get()}>
+    <Button variant="outline" size={size} disabled={busy} onClick={() => void get()}>
       {busy ? <Spinner data-icon="inline-start" /> : <FileDown data-icon="inline-start" />}
-      Download report
+      {label}
     </Button>
   );
 }
