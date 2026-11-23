@@ -4,6 +4,7 @@
 mod allowlist;
 pub mod api;
 mod api_key;
+mod list;
 mod overview;
 pub mod pins;
 mod profile;
@@ -19,6 +20,7 @@ use crate::{
 };
 
 pub use api_key::{ApiProject, KEY_API, key_user};
+pub use list::{ListAt, ProjectPage, StateFilter, owner_emails, page_for};
 pub use profile::{ProfileInput, ProjectInput, create, find_owner, icon, slug_for, update_profile};
 pub use store::{ApiKeyRow, Project, Sort};
 
@@ -49,82 +51,6 @@ pub enum ProjectError {
     Other(#[from] anyhow::Error),
 }
 
-/// One page of the projects a user may open, and how many match in all.
-pub struct ProjectPage {
-    pub projects: Vec<Project>,
-    pub total: i64,
-    pub page: i64,
-}
-
-/// The project list's state filter (v1.1 Q43), as the cards' badges read: down, an issue, or up
-/// (neither: up, in maintenance, waiting or paused).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum StateFilter {
-    All,
-    Down,
-    Issue,
-    Up,
-}
-
-impl StateFilter {
-    /// `?state=`; anything else is all.
-    pub fn parse(raw: &str) -> Self {
-        match raw {
-            "down" => Self::Down,
-            "issue" => Self::Issue,
-            "up" => Self::Up,
-            _ => Self::All,
-        }
-    }
-}
-
-/// A tech lead pages through their own projects; a super admin through every project.
-/// `page` counts from 1; a lower value reads page 1. `q` matches name, slug, owner email or
-/// description, ignoring ASCII case. `owner` is an owner's email, or empty for any.
-pub async fn page_for(
-    db: &Db,
-    user: &User,
-    q: &str,
-    owner: &str,
-    sort: Sort,
-    state: StateFilter,
-    page: i64,
-) -> anyhow::Result<ProjectPage> {
-    let q: String = q.trim().to_lowercase().chars().take(100).collect();
-    let ids = match state {
-        StateFilter::All => None,
-        _ => {
-            let (down, issue) = crate::incidents::troubled_projects(db).await?;
-            Some(match state {
-                StateFilter::Down => store::Ids::Only(down),
-                StateFilter::Issue => store::Ids::Only(issue),
-                _ => store::Ids::Not([down, issue].concat()),
-            })
-        }
-    };
-    let f = store::Filter {
-        owner_id: (!user.sees_all()).then_some(user.id),
-        q: &q,
-        owner_email: owner.trim(),
-        sort,
-        ids,
-        viewer: user.pin_owner(),
-    };
-    let page = page.max(1);
-    let offset = (page - 1).saturating_mul(caps::PROJECTS_PAGE);
-    let conn = db.read().await?;
-    Ok(ProjectPage {
-        total: store::count_matching(&conn, &f).await?,
-        projects: store::page_matching(&conn, &f, caps::PROJECTS_PAGE, offset).await?,
-        page,
-    })
-}
-
-/// Emails that own a project, for a super admin's owner filter.
-pub async fn owner_emails(db: &Db) -> anyhow::Result<Vec<String>> {
-    store::owner_emails(&db.read().await?).await
-}
-
 /// Projects in id order after `last_id`, at most `limit`, for a job that walks every project
 /// inside its own transaction. Loop until a batch comes back short.
 pub async fn after_id(
@@ -135,7 +61,7 @@ pub async fn after_id(
     store::after_id(c, last_id, limit).await
 }
 
-pub use pulse::{Pulse, pulse};
+pub use pulse::{Pulse, pulse, state};
 
 /// The public tabs a project shows besides Uptime, which always shows.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]

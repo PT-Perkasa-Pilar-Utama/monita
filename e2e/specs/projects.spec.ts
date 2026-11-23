@@ -104,3 +104,28 @@ test("the project list opens on its chart, filters by state, and remembers the v
   await page.reload();
   await expect(page.getByRole("radio", { name: "Card view" })).toHaveAttribute("data-state", "on");
 });
+
+test("the compact view shows each project as its icon with its state, and stays picked", async ({ page }) => {
+  const stamp = `Tiles${Date.now()}`;
+  const down = await apiProject(page, `${stamp} Ledger`);
+  const fail = await apiHeartbeat(page, down);
+  expect((await page.request.post(`${fail.pingUrl}/fail`)).status()).toBe(200);
+  const up = await apiProject(page, `${stamp} Portal`);
+  const ok = await apiHeartbeat(page, up);
+  expect((await page.request.get(ok.pingUrl)).status()).toBe(200);
+
+  await page.goto("/");
+  await page.getByRole("radio", { name: "Compact view" }).click();
+  await page.getByLabel("Search projects").fill(stamp);
+  const tiles = page.getByRole("list", { name: "Projects" }).getByRole("link");
+  await expect(tiles).toHaveCount(2);
+  await expect(page.getByRole("link", { name: `${stamp} Ledger, down` })).toBeVisible();
+  await expect(page.getByRole("link", { name: `${stamp} Portal, up` })).toBeVisible();
+  await page.getByRole("button", { name: "State" }).click();
+  await page.getByRole("menuitemradio", { name: "Down" }).click();
+  await expect(tiles).toHaveCount(1);
+  await page.reload();
+  await expect(page.getByRole("radio", { name: "Compact view" })).toHaveAttribute("data-state", "on");
+  await page.getByRole("link", { name: `${stamp} Ledger, down` }).click();
+  await expect(page).toHaveURL(new RegExp(`/projects/${down}`));
+});

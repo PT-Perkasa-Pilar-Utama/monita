@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- **Projects**: a compact view shows up to 100 projects a page, each as its icon in a ring of its state's colour, with the state's symbol for every state but up. The new route is `GET /api/ui/projects-grid`.
+
 ### Changed
 
 - **Admin**, **Time zone**: type a place or an offset under **Show times in**, for example `jakarta` or `+7`, to find it in the list. Enter picks the highlighted one.

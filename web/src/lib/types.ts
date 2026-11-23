@@ -37,6 +37,12 @@ export type ProjectList = {
   owner_options: string[];
 };
 
+/** A project in the compact view (v1.2 Q53): its icon and the state its card shows. */
+export type ProjectTileRow = { slug: string; name: string; icon_url: string | null; kind: StateKind; pinned: boolean };
+
+/** The compact view's page: the list's answer with tiles in place of rows. */
+export type ProjectGridPage = Omit<ProjectList, "projects"> & { projects: ProjectTileRow[] };
+
 /** A project's numbers. Tabs show only the ones that flag a problem: down systems, open
  * incidents, tickets in Triage. */
 export type TabCounts = { monitors: number; heartbeats: number; monitors_down: number; heartbeats_down: number; incidents: number; tickets: number; triage: number; on_hold: number };

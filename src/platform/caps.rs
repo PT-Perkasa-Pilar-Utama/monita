@@ -5,6 +5,8 @@
 
 /// Projects per page of the project list. The number of projects has no cap.
 pub const PROJECTS_PAGE: i64 = 20;
+/// Projects per page of the compact Projects view (v1.2 Q53): an icon each, so more fit.
+pub const PROJECTS_GRID_PAGE: i64 = 100;
 /// Accounts in one instance, super admins and TLs.
 pub const USERS: i64 = 500;
 pub const MONITORS_PER_PROJECT: i64 = 100;

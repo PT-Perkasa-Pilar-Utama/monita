@@ -20,6 +20,7 @@ pub fn router() -> Router<AppState> {
         .route("/api/ui/projects", get(list).post(create))
         // Not under /projects/: a project may be called `chart`.
         .route("/api/ui/projects-chart", get(chart))
+        .route("/api/ui/projects-grid", get(grid))
         .route("/api/ui/projects/{slug}", get(detail).delete(delete))
         .route("/api/ui/projects/{slug}/overview", get(overview))
         .route("/api/ui/projects/{slug}/pin", put(pin).delete(unpin))
@@ -61,9 +62,7 @@ impl From<&Project> for ProjectView {
             owner_id: p.owner_id,
             owner_avatar_at: p.owner_avatar_at,
             description: p.description.clone(),
-            icon_url: p
-                .icon_at
-                .map(|v| format!("/projects/{}/icon?v={v}", p.slug)),
+            icon_url: icon_url(p),
             ip_allowlist: p.ip_allowlist.clone(),
             created_at: p.created_at,
             pages: p.pages,
@@ -79,9 +78,10 @@ pub struct OwnerView {
     pub role: String,
 }
 
+/// A page of the list: rows with their pulse, or the compact view's tiles.
 #[derive(Serialize)]
-struct ProjectList {
-    projects: Vec<ProjectRow>,
+struct ProjectList<T> {
+    projects: Vec<T>,
     /// Projects that match the search, on every page.
     total: i64,
     page: i64,
@@ -128,6 +128,7 @@ async fn page_of(
     state: &AppState,
     user: &crate::accounts::User,
     q: &ListQuery,
+    page_size: i64,
 ) -> anyhow::Result<super::ProjectPage> {
     let sort = match q.sort.as_str() {
         "name" => super::Sort::Name,
@@ -135,16 +136,15 @@ async fn page_of(
         "oldest" => super::Sort::Oldest,
         _ => super::Sort::Newest,
     };
-    super::page_for(
-        &state.db,
-        user,
-        &q.q,
-        &q.owner,
+    let at = super::ListAt {
+        q: &q.q,
+        owner: &q.owner,
         sort,
-        super::StateFilter::parse(&q.state),
-        q.page.trim().parse().unwrap_or(1),
-    )
-    .await
+        state: super::StateFilter::parse(&q.state),
+        page: q.page.trim().parse().unwrap_or(1),
+        page_size,
+    };
+    super::page_for(&state.db, user, &at).await
 }
 
 /// The chart of the same page of projects (v1.1 Q39): a line each for its monitors' response time.
@@ -154,7 +154,7 @@ async fn chart(
     Query(q): Query<ListQuery>,
     ViewerOffset(off): ViewerOffset,
 ) -> UiResult {
-    let found = page_of(&state, &user, &q).await?;
+    let found = page_of(&state, &user, &q, crate::platform::caps::PROJECTS_PAGE).await?;
     let projects: Vec<(i64, String)> = found
         .projects
         .iter()
@@ -173,6 +173,45 @@ async fn chart(
     Ok(data(serde_json::json!({ "chart": chart, "slugs": slugs })))
 }
 
+/// Versioned by `icon_at`, so a new icon is a new URL. `None` shows the first letter.
+fn icon_url(p: &Project) -> Option<String> {
+    p.icon_at
+        .map(|v| format!("/projects/{}/icon?v={v}", p.slug))
+}
+
+/// A project in the compact view (v1.2 Q53): its icon and its state.
+#[derive(Serialize)]
+struct GridTile {
+    slug: String,
+    name: String,
+    icon_url: Option<String>,
+    kind: &'static str,
+    pinned: bool,
+}
+
+/// The compact view's page: 100 projects with their state only, in the list's order.
+// ponytail: one state read per project; batch them into grouped queries if 100 tiles get slow.
+async fn grid(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Query(q): Query<ListQuery>,
+) -> UiResult {
+    let size = crate::platform::caps::PROJECTS_GRID_PAGE;
+    let found = page_of(&state, &user, &q, size).await?;
+    let pinned = super::pins::ids(&state.db, user.pin_owner()).await?;
+    let mut tiles = Vec::with_capacity(found.projects.len());
+    for p in &found.projects {
+        tiles.push(GridTile {
+            icon_url: icon_url(p),
+            slug: p.slug.clone(),
+            name: p.name.clone(),
+            kind: super::state(&state.db, p.id).await?,
+            pinned: pinned.contains(&p.id),
+        });
+    }
+    Ok(data(list_page(&state, &user, tiles, &found, size).await?))
+}
+
 /// One page: a tech lead's own projects, or every project for a super admin.
 async fn list(
     State(state): State<AppState>,
@@ -180,21 +219,34 @@ async fn list(
     Query(q): Query<ListQuery>,
     ViewerOffset(off): ViewerOffset,
 ) -> UiResult {
-    let found = page_of(&state, &user, &q).await?;
+    let size = crate::platform::caps::PROJECTS_PAGE;
+    let found = page_of(&state, &user, &q, size).await?;
+    let pinned = super::pins::ids(&state.db, user.pin_owner()).await?;
+    let rows = rows(&state, &found.projects, &pinned, off).await?;
+    Ok(data(list_page(&state, &user, rows, &found, size).await?))
+}
+
+/// The list's answer around `projects`: the count, the page and the owner choices.
+async fn list_page<T>(
+    state: &AppState,
+    user: &crate::accounts::User,
+    projects: Vec<T>,
+    found: &super::ProjectPage,
+    page_size: i64,
+) -> anyhow::Result<ProjectList<T>> {
     let owner_options = if user.is_admin() {
         super::owner_emails(&state.db).await?
     } else {
         Vec::new()
     };
-    let pinned = super::pins::ids(&state.db, user.pin_owner()).await?;
-    Ok(data(ProjectList {
-        projects: rows(&state, &found.projects, &pinned, off).await?,
+    Ok(ProjectList {
+        projects,
         total: found.total,
         page: found.page,
-        page_size: crate::platform::caps::PROJECTS_PAGE,
-        owners: owners(&state, &user).await?,
+        page_size,
+        owners: owners(state, user).await?,
         owner_options,
-    }))
+    })
 }
 
 /// A project in the list, with how it is doing right now.

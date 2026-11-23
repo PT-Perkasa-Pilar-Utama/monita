@@ -70,6 +70,12 @@ fn worse(a: &'static str, b: &'static str) -> &'static str {
     if rank(b) > rank(a) { b } else { a }
 }
 
+/// The project's state alone, as `pulse` reads it, for the compact view (v1.2 Q53).
+pub async fn state(db: &Db, project_id: i64) -> anyhow::Result<&'static str> {
+    let [monitors, heartbeats] = crate::checks::summaries(db, project_id).await?;
+    Ok(worse(monitors.kind, heartbeats.kind))
+}
+
 /// Each part read through its module's interface.
 /// `off`: the viewer's clock, minutes east of UTC, for the hour labels.
 pub async fn pulse(db: &Db, project_id: i64, off: i64) -> anyhow::Result<Pulse> {

@@ -1,11 +1,11 @@
 import type { ReactElement } from "react";
-import { ChartLine, LayoutGrid, List } from "@/components/icons";
+import { ChartLine, CompactGrid, LayoutGrid, List } from "@/components/icons";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { ViewMode } from "@/lib/useViewMode";
 
-// ViewToggle switches a list page between a chart, cards and a table. A click on the
+// ViewToggle switches a list page between a chart, cards, a table and icons. A click on the
 // open view keeps it open: Radix reports that as an empty value.
-export function ViewToggle({ value, onChange, chart = false }: { value: ViewMode; onChange: (v: ViewMode) => void; chart?: boolean }): ReactElement {
+export function ViewToggle({ value, onChange, chart = false, compact = false }: { value: ViewMode; onChange: (v: ViewMode) => void; chart?: boolean; compact?: boolean }): ReactElement {
   return (
     <ToggleGroup
       type="single"
@@ -26,6 +26,11 @@ export function ViewToggle({ value, onChange, chart = false }: { value: ViewMode
       <ToggleGroupItem value="list" aria-label="List view" title="List view">
         <List />
       </ToggleGroupItem>
+      {compact && (
+        <ToggleGroupItem value="compact" aria-label="Compact view" title="Compact view">
+          <CompactGrid />
+        </ToggleGroupItem>
+      )}
     </ToggleGroup>
   );
 }

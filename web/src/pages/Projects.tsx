@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { ReactElement } from "react";
 import { NewProjectSheet } from "@/components/app/NewProjectSheet";
 import { OverviewChart } from "@/components/app/OverviewChart";
+import { ProjectGrid } from "@/components/app/ProjectGrid";
 import { ProjectCard, ProjectCardSkeletons, ProjectTable } from "@/components/app/ProjectTile";
 import { FilterCount, TableCard } from "@/components/app/TableCard";
 import { Plus } from "@/components/icons";
@@ -18,9 +19,10 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { listQuery, pageCount, pageParam, skeletonCount } from "@/lib/page";
-import type { OverviewChart as ChartData, ProjectList } from "@/lib/types";
+import type { OverviewChart as ChartData, ProjectGridPage, ProjectList } from "@/lib/types";
 import { LIVE_MS, useApi } from "@/lib/useApi";
 import { nextProjectsSort, projectsHead } from "@/lib/listSort";
+import { switchResetsPage } from "@/lib/projectGrid";
 import { useRememberedQuery } from "@/lib/useRememberedQuery";
 import { useViewMode } from "@/lib/useViewMode";
 
@@ -37,15 +39,19 @@ export function Projects(): ReactElement {
   const state = ["down", "issue", "up"].includes(params.get("state") ?? "") ? params.get("state")! : "";
   const page = pageParam(params.get("page"));
   const query = listQuery({ q, owner, sort, state, page });
-  // The cards and rows show live state, so the page reads again every 30 seconds.
-  const list = useApi<ProjectList>(`/projects${query}`, LIVE_MS);
   // The chart is the first view (v1.1 Q39); the view picked last is remembered.
   const [view, setView] = useViewMode("monita:projects:view", "chart");
+  const compact = view === "compact";
+  // The cards, rows and tiles show live state, so the page reads again every 30 seconds. The
+  // compact view reads its own page of 100 with the state alone (v1.2 Q53).
+  const list = useApi<ProjectList>(compact ? null : `/projects${query}`, LIVE_MS);
+  const grid = useApi<ProjectGridPage>(compact ? `/projects-grid${query}` : null, LIVE_MS);
   const chart = useApi<{ chart: ChartData; slugs: Record<string, string> }>(view === "chart" ? `/projects-chart${query}` : null, LIVE_MS);
   const [draft, setDraft] = useState(q);
   const [creating, setCreating] = useState(false);
-  const d = list.data;
-  const projects = d?.projects ?? [];
+  const shown = compact ? grid : list;
+  const d = shown.data;
+  const projects = list.data?.projects ?? [];
   const go = (next: { q?: string; owner?: string; sort?: string; state?: string }, nextPage: number, replace: boolean): void =>
     setSearch(listQuery({ q, owner, sort, state, ...next, page: nextPage }), replace);
 
@@ -63,7 +69,7 @@ export function Projects(): ReactElement {
 
   // A page past the end, from an old link or a deleted project, shows the last page.
   useEffect(() => {
-    if (d && d.total > 0 && projects.length === 0 && page > 1) go({}, pageCount(d.total, d.page_size), true);
+    if (d && d.total > 0 && d.projects.length === 0 && page > 1) go({}, pageCount(d.total, d.page_size), true);
   }, [d]);
 
   const turn = (p: number): void => {
@@ -75,7 +81,7 @@ export function Projects(): ReactElement {
     go({ q: "", owner: "", state: "" }, 1, true);
   };
 
-  const loading = list.loading;
+  const loading = shown.loading;
   const skeletons = skeletonCount(page, d?.page_size ?? 20, d?.total);
   const none = !loading && d !== undefined && d.total === 0;
   const filtered = q !== "" || owner !== "" || state !== "";
@@ -127,6 +133,11 @@ export function Projects(): ReactElement {
     </>
   );
 
+  const pick = (v: typeof view): void => {
+    if (switchResetsPage(view, v) && page > 1) go({}, 1, true);
+    setView(v);
+  };
+
   // A pin reorders the list and the chart, so both read again.
   const repin = (): void => {
     list.refresh();
@@ -141,15 +152,15 @@ export function Projects(): ReactElement {
         actions={
           <>
             <div className="flex w-full items-center gap-2 sm:w-auto">
-              <ViewToggle value={view} onChange={setView} chart />
+              <ViewToggle value={view} onChange={pick} chart compact />
               <PageSearch value={draft} onChange={setDraft} placeholder="Search projects" />
             </div>
             <RefreshButton
               onClick={() => {
-                list.refresh();
+                shown.refresh();
                 chart.refresh();
               }}
-              busy={list.refreshing || chart.refreshing}
+              busy={shown.refreshing || chart.refreshing}
             />
             <Writable>
               <Button onClick={() => setCreating(true)}>
@@ -160,9 +171,9 @@ export function Projects(): ReactElement {
           </>
         }
       />
-      {list.error && (
+      {shown.error && (
         <Alert variant="destructive" className="mb-6">
-          <AlertDescription>{list.error.message}</AlertDescription>
+          <AlertDescription>{shown.error.message}</AlertDescription>
         </Alert>
       )}
       <div className="flex flex-col gap-6 pb-4">
@@ -198,6 +209,8 @@ export function Projects(): ReactElement {
         )}
         {none && view !== "list" ? (
           <Card className="py-0">{empty}</Card>
+        ) : compact ? (
+          <ProjectGrid tiles={grid.data?.projects ?? []} loading={loading} skeletons={skeletons} />
         ) : view === "card" ? (
           <div className={GRID} aria-busy={loading}>
             {loading ? <ProjectCardSkeletons count={skeletons} /> : projects.map((p) => <ProjectCard key={p.slug} p={p} onPin={repin} />)}

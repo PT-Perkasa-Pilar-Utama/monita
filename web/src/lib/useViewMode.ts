@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { readLocal, writeLocal } from "@/lib/store";
 
-export type ViewMode = "chart" | "card" | "list";
+export type ViewMode = "chart" | "card" | "list" | "compact";
 
-const MODES: ViewMode[] = ["chart", "card", "list"];
+const MODES: ViewMode[] = ["chart", "card", "list", "compact"];
 
 /** A list page's view, remembered in this browser under `key`; `fallback` until one is picked. */
 export function useViewMode(key: string, fallback: ViewMode = "card"): [ViewMode, (v: ViewMode) => void] {

@@ -132,6 +132,7 @@ export {
   Translate as Languages,
   Stack as Layers,
   SquaresFour as LayoutGrid,
+  DotsNine as CompactGrid,
   Lightbulb,
   List,
   ListChecks,
