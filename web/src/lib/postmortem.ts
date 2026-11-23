@@ -72,3 +72,22 @@ export function unfilled(text: PostmortemText): (keyof PostmortemText)[] {
 }
 
 export const UNFILLED = "Replace the text in square brackets before you publish.";
+
+/** A finished post-mortem of a made-up incident, shown beside the form so a tech lead sees how
+ * each section reads. Never written into the form, so it cannot be published by mistake. */
+export const EXAMPLE: PostmortemText = {
+  summary:
+    "INC-42: Checkout API is down. Card payments failed for 38 minutes, from 14:02 to 14:40, because the payment service ran out of database connections after a release. Rolling the release back restored payments.",
+  impact: "About 1 900 customers could not pay by card, and 312 orders failed. Bank transfers and the rest of the shop kept working. Support received 46 tickets.",
+  root_cause:
+    "Release 3.8 opened a new database connection for each fraud check and never returned it to the pool. At the normal afternoon load the pool of 50 connections was used up in 9 minutes, and every later request waited until it timed out.",
+  trigger: "Release 3.8 was deployed at 13:53. The load test before it ran at a tenth of real traffic, so the leak did not show.",
+  resolution:
+    "The on-call engineer rolled back to release 3.7 at 14:36, and payments recovered at 14:40 when the old connections timed out. Release 3.8.1, which returns each connection after the check, shipped the next day.",
+  detection:
+    "Monita opened INC-42 at 14:02 after two failed checks of the Checkout API, and the critical alert reached the on-call engineer by email and Telegram. Linking the failure to the release took 34 minutes, because the deploy was not posted in the incident channel.",
+  action_items:
+    "- Return each connection after the fraud check - prevent - payments team (done in 3.8.1)\n- Alert when the connection pool is over 80% used - mitigate - platform team\n- Load test at full afternoon traffic before a release - prevent - QA\n- Post every deploy in the incident channel - process - release manager",
+  lessons:
+    "What went well: Monita alerted within 2 minutes, and the rollback took 4 minutes.\nWhat went wrong: nobody linked the failure to the release for half an hour.\nWhere we got lucky: the release went out on a weekday afternoon, with the whole team at work.",
+};

@@ -42,7 +42,7 @@ The report shows the alert level, who opened the incident, when it started and w
 After an incident is resolved, its page has a **Post-mortem** section. The sections follow Google's example post-mortem.
 
 1. Open the resolved incident and select **Write post-mortem**.
-2. To start from a template, select **Fill in a template**. Each empty section gets what Monita knows about the incident: its systems, times, duration and cause. Text in square brackets is a prompt. Replace each prompt with your own words. Publish is refused while a prompt is left.
+2. To start from a template, select **Fill in a template**. Each empty section gets what Monita knows about the incident: its systems, times, duration and cause. Text in square brackets is a prompt. Replace each prompt with your own words. Publish is refused while a prompt is left. To see how a finished post-mortem reads, select **See an example**. The example is a made-up incident, and it does not change the form.
 3. Fill in **Summary**, **Root cause** and **Resolution**. These three are needed to publish. **Impact**, **Trigger**, **Detection**, **Action items** and **Lessons learned** are optional. Each section takes up to 2 000 characters.
 4. Select **Save draft** to keep it as a draft, or **Publish**. The dialog says how many addresses get the email.
 

@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { ReactElement } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/app/ConfirmDialog";
+import { PostmortemExample } from "@/components/app/PostmortemExample";
 import { FormSheet, FormSheetBody } from "@/components/app/FormSheet";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -92,9 +93,12 @@ export function PostmortemSheet({ path, pm, incident, open, onClose, onSaved }: 
         }
       >
         <FieldGroup className="gap-5">
-          <Button type="button" variant="outline" size="sm" className="self-start" disabled={!anyEmpty} onClick={() => setText(fillEmpty(text, template(incident)))}>
-            Fill in a template
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="button" variant="outline" size="sm" disabled={!anyEmpty} onClick={() => setText(fillEmpty(text, template(incident)))}>
+              Fill in a template
+            </Button>
+            <PostmortemExample />
+          </div>
           {SECTIONS.map((s) => {
             const message = error?.fields[s.key];
             return (

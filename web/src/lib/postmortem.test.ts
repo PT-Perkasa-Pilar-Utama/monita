@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { fillEmpty, publishNote, SECTIONS, template, unfilled } from "@/lib/postmortem";
+import { EXAMPLE, fillEmpty, publishNote, SECTIONS, template, unfilled } from "@/lib/postmortem";
 import type { IncidentDetail, PostmortemText } from "@/lib/types";
 
 function detail(over: Partial<IncidentDetail["incident"]> = {}, items = ["Checkout API"]): IncidentDetail {
@@ -47,4 +47,13 @@ test("filling keeps typed text, and a section is done once its prompts are repla
   const lessons = "What went well: alerts.\nWhat went wrong: slow rollback.\nWhere we got lucky: night time.";
   expect(unfilled({ ...filled, lessons, impact: "Card payments failed [for one bank]." })).not.toContain("lessons");
   expect(unfilled({ ...filled, impact: "Card payments failed [for one bank]." })).not.toContain("impact");
+});
+
+test("the example fills every section, holds no prompt and fits the PDF", () => {
+  for (const { key } of SECTIONS) {
+    expect(EXAMPLE[key].length).toBeGreaterThan(0);
+    expect(EXAMPLE[key].length).toBeLessThanOrEqual(2_000);
+    expect(EXAMPLE[key]).toMatch(/^[ -~\n]*$/);
+  }
+  expect(unfilled(EXAMPLE)).toEqual([]);
 });

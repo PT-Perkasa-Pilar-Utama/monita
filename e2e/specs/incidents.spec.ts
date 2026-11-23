@@ -260,6 +260,11 @@ test("a resolved incident takes a post-mortem that is saved as a draft and then 
 
   // The template states the facts, and its prompts stop a publish.
   await page.getByRole("button", { name: "Write post-mortem" }).click();
+  await page.getByRole("button", { name: "See an example" }).click();
+  await expect(page.getByRole("dialog", { name: "An example post-mortem" })).toContainText("Release 3.8 opened a new database connection");
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog", { name: "An example post-mortem" })).toHaveCount(0);
+  await expect(page.getByLabel("Summary")).toHaveValue("");
   await page.getByRole("button", { name: "Fill in a template" }).click();
   await expect(page.getByLabel("Summary")).toHaveValue(/^INC-\d+: nightly-settlement reported a failure\./);
   await expect(page.getByLabel("Impact")).toHaveValue(/\[Who was affected/);
