@@ -245,16 +245,19 @@ pub fn overall(sources: &[SourceLine]) -> Option<f64> {
     (span > 0).then(|| 100.0 * (1.0 - down as f64 / span as f64))
 }
 
-/// The mean time from start to resolve of the outages resolved in the range.
-pub fn mean_to_resolve(incidents: &[IncidentLine], range: Range) -> Option<i64> {
-    let done: Vec<i64> = incidents
+/// The mean length of an outage across the project, weighted by each system's outages, so it is
+/// the same rule as each system's MTTR: an outage still open counts up to the range's end.
+pub fn mean_repair(sources: &[SourceLine]) -> Option<i64> {
+    let n: i64 = sources
         .iter()
-        .filter(|i| i.outage())
-        .filter_map(|i| i.resolved_at.map(|r| (i.started_at, r)))
-        .filter(|&(_, r)| r >= range.from && r < range.to)
-        .map(|(s, r)| r - s)
-        .collect();
-    (!done.is_empty()).then(|| done.iter().sum::<i64>() / done.len() as i64)
+        .filter(|s| s.mttr_s.is_some())
+        .map(|s| s.incidents)
+        .sum();
+    let total: i64 = sources
+        .iter()
+        .filter_map(|s| s.mttr_s.map(|m| m * s.incidents))
+        .sum();
+    (n > 0).then(|| total / n)
 }
 
 #[cfg(test)]
@@ -304,28 +307,13 @@ pub(super) mod tests {
     }
 
     #[test]
-    fn mean_time_to_resolve_counts_resolves_inside_the_range_only() {
-        let r = Range {
-            from: 1_000,
-            to: 2_000,
-        };
-        let list = [
-            incident(900, Some(1_100), None),   // 200 s, resolved inside
-            incident(1_200, Some(1_600), None), // 400 s, resolved inside
-            incident(1_500, None, None),        // open
-            incident(1_800, Some(2_500), None), // resolved after the range
-            incident(1_300, Some(1_400), Some("planned")),
-            IncidentLine {
-                automatic: false,
-                ..incident(1_100, Some(1_900), None)
-            },
-        ];
-        assert_eq!(
-            mean_to_resolve(&list, r),
-            Some(300),
-            "no manual or reclassified incident"
-        );
-        assert_eq!(mean_to_resolve(&list[2..3], r), None);
+    fn the_projects_mttr_weighs_each_systems_mttr_by_its_outages() {
+        let mut a = source(0, 10_000);
+        (a.incidents, a.mttr_s) = (3, Some(100));
+        let mut b = source(0, 10_000);
+        (b.incidents, b.mttr_s) = (1, Some(500));
+        assert_eq!(mean_repair(&[a, b, source(0, 10_000)]), Some(200));
+        assert_eq!(mean_repair(&[source(0, 10_000)]), None, "no outage");
     }
 
     #[test]

@@ -26,7 +26,7 @@ The last 7 days end yesterday, on your clock. The last month is the calendar mon
 - The maintenance time and its share of the period, with the windows that overlap it.
 - Each incident that was open in the range, longest first, manual and reclassified ones too: its alert level and state, when it started and ended, what it affects, its cause and its latest update. Monita reads the newest 200 incidents and shows the 50 longest, and the report says when there are more.
 
-An outage is an incident that Monita opened after failed checks and nobody reclassified as planned work or a false alarm. Availability counts outages only, as the status page and the monitor page do, so a manual incident and time in a maintenance window are not downtime. The project's availability adds up the time of all its systems, so a system that existed for half the range counts half. The mean time to resolve is the mean time from start to resolve of the outages resolved in the range.
+An outage is an incident that Monita opened after failed checks and nobody reclassified as planned work or a false alarm. Availability counts outages only, as the status page and the monitor page do, so a manual incident and time in a maintenance window are not downtime. The project's availability adds up the time of all its systems, so a system that existed for half the range counts half. The mean time to resolve is the mean length of an outage that touched the range, the same rule as each system's MTTR; an outage still open counts up to the end of the range.
 
 A report never shows a monitor's URL, so a token in a URL stays private.
 
@@ -35,7 +35,7 @@ A report never shows a monitor's URL, so a token in a URL stays private.
 1. Open the incident.
 2. Select **Download report**.
 
-The report shows the alert level, who opened the incident, when it started and was resolved, its class, the affected monitors and heartbeats, the cause Monita recorded, and the updates oldest first with who posted them. An incident takes 50 updates at most. The incident report is for the team: the cause can name internal hosts, and each update names its author. For people outside the team, link the status page, which shows neither.
+The report shows the alert level, who opened the incident, when it started and was resolved, its class, the affected monitors and heartbeats, the cause Monita recorded, and the updates oldest first with who posted them. An incident takes 50 updates at most. The incident report is for the team: the cause can name internal hosts, and each update names its author. The summary report shows each incident's cause and latest update too, and the weekly and monthly emails carry the same PDF, so list only addresses that may read them. For people outside the team, link the status page, which shows neither.
 
 ## Send a report every week or month
 

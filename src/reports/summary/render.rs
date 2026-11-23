@@ -2,7 +2,7 @@
 //! each monitor and heartbeat, the maintenance, then each incident with what it touched. The
 //! sections follow Site24x7's availability summary and Pingdom's uptime report.
 
-use super::{DayLine, IncidentLine, Summary, maintenance_s, mean_to_resolve, overall};
+use super::{DayLine, IncidentLine, Summary, maintenance_s, mean_repair, overall};
 use crate::{
     platform::{caps, pdf::Rgb, time},
     reports::sheet::{Col, Sheet},
@@ -86,7 +86,7 @@ pub fn render(s: &Summary) -> anyhow::Result<Vec<u8>> {
         ),
         (
             "Mean time to resolve",
-            mean_to_resolve(&s.incidents, s.range).map_or("None".into(), time::duration),
+            mean_repair(&s.sources).map_or("None".into(), time::duration),
         ),
     ]);
 
