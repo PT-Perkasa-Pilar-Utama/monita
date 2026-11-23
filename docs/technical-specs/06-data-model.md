@@ -436,7 +436,7 @@ The actor is the project owner or a super admin. No state is terminal. Every oth
 | none | published | resolved; summary, root cause and resolution filled | stored, one email per address on the list |
 | draft | draft | none | text saved |
 | draft | published | summary, root cause and resolution filled | one email per address on the list |
-| draft | none | none | row deleted |
+| draft | none | it was never published | row deleted |
 | published | draft | none | text kept |
 
 ## 6.5 Indexes

@@ -18,6 +18,7 @@ export function EmailListSection({
   path,
   saved,
   onSaved,
+  switchLabel,
 }: {
   id: string;
   title: string;
@@ -25,6 +26,7 @@ export function EmailListSection({
   path: string;
   saved: { enabled: boolean; emails: string[] };
   onSaved: () => void;
+  switchLabel: string;
 }): ReactElement {
   const [enabled, setEnabled] = useState(saved.enabled);
   const [emails, setEmails] = useState(saved.emails.join("\n"));
@@ -63,7 +65,7 @@ export function EmailListSection({
       <div className="flex flex-col gap-5">
         <Field orientation="horizontal">
           <Switch id={`${id}-on`} checked={enabled} onCheckedChange={setEnabled} />
-          <FieldLabel htmlFor={`${id}-on`}>Send this report</FieldLabel>
+          <FieldLabel htmlFor={`${id}-on`}>{switchLabel}</FieldLabel>
         </Field>
         <Field data-invalid={error ? true : undefined} className="max-w-md">
           <FieldLabel htmlFor={`${id}-emails`}>Email addresses</FieldLabel>

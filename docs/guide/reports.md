@@ -45,7 +45,7 @@ After an incident is resolved, its page has a **Post-mortem** section. The secti
 2. Fill in **Summary**, **Root cause** and **Resolution**. These three are needed to publish. **Impact**, **Trigger**, **Detection**, **Action items** and **Lessons learned** are optional. Each section takes up to 2 000 characters.
 3. Select **Save draft** to keep it as a draft, or **Publish**. The dialog says how many addresses get the email.
 
-A draft shows on the incident page and in its PDF, marked Draft. Publishing emails the incident PDF, with the post-mortem in it, to the addresses under **Settings**, **Reports**, **Post-mortems**. To change a published post-mortem, select **Edit**: it goes back to draft until you publish it again, and that publish sends an email marked updated. A draft can be deleted, and a published post-mortem cannot. Nothing is emailed when an incident closes. A post-mortem never shows on the status page.
+A draft shows on the incident page and in its PDF, marked Draft. Publishing emails the incident PDF, with the post-mortem in it, to the addresses under **Settings**, **Reports**, **Post-mortems**. To change a published post-mortem, select **Edit**: it goes back to draft until you publish it again, and that publish sends an email marked updated. A draft that was never published can be deleted. Once published, a post-mortem stays, also while it is a draft again. Nothing is emailed when an incident closes. A post-mortem never shows on the status page.
 
 The project owner and a super admin write post-mortems. A supervisor reads them.
 

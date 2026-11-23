@@ -53,10 +53,10 @@ fn order_sql(sort: &str) -> &'static str {
         "warning_first" => "(i.severity = 'critical') ASC, i.started_at DESC, i.id DESC",
         // Read-only, as the search reads project names.
         "project" => {
-            "(SELECT name FROM projects WHERE id = i.project_id), i.started_at DESC, i.id DESC"
+            "(SELECT name FROM projects WHERE id = i.project_id) COLLATE NOCASE, i.started_at DESC, i.id DESC"
         }
         "project_desc" => {
-            "(SELECT name FROM projects WHERE id = i.project_id) DESC, i.started_at DESC, i.id DESC"
+            "(SELECT name FROM projects WHERE id = i.project_id) COLLATE NOCASE DESC, i.started_at DESC, i.id DESC"
         }
         _ => "(i.severity = 'critical') DESC, i.started_at DESC, i.id DESC",
     }

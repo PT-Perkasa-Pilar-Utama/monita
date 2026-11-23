@@ -45,7 +45,7 @@ export function PostmortemSheet({ path, pm, open, onClose, onSaved }: { path: st
         onSubmit={() => void send("save")}
         footer={
           <>
-            {pm.state === "draft" && (
+            {pm.state === "draft" && pm.published_at === null && (
               <ConfirmDialog
                 trigger={
                   <Button type="button" variant="ghost" className="text-destructive">

@@ -166,9 +166,19 @@ async fn a_post_mortem_moves_from_none_to_draft_to_published_and_back() {
         2
     );
 
-    // draft -> none.
+    // A draft that was published once is not deleted.
     app.api_send(Method::POST, &edit, json!({}), Some(&tl))
         .await;
+    assert_eq!(
+        app.api_send(Method::DELETE, PATH, json!({}), Some(&tl))
+            .await
+            .status(),
+        422
+    );
+
+    // draft -> none, for one never published.
+    sql(&app, "DELETE FROM postmortems").await;
+    put(&app, &tl, json!({ "action": "save", "summary": "notes" })).await;
     assert_eq!(
         app.api_send(Method::DELETE, PATH, json!({}), Some(&tl))
             .await

@@ -105,11 +105,20 @@ pub enum PostmortemError {
 }
 
 /// The state after `action` from `from`, or why the move is refused. Pure: the table's rows.
-pub fn next(from: State, action: Action, resolved: bool) -> Result<State, PostmortemError> {
+/// `was_published`: it went out once, so even as a draft again it cannot be deleted.
+pub fn next(
+    from: State,
+    action: Action,
+    resolved: bool,
+    was_published: bool,
+) -> Result<State, PostmortemError> {
     if !resolved {
         return Err(PostmortemError::IncidentOpen);
     }
     match (from, action) {
+        (State::Draft, Action::Discard) if was_published => Err(PostmortemError::NotAllowed(
+            "This post-mortem was published, so it cannot be deleted.",
+        )),
         (State::None | State::Draft, Action::Save) => Ok(State::Draft),
         (State::None | State::Draft, Action::Publish) => Ok(State::Published),
         (State::Draft, Action::Discard) => Ok(State::None),
@@ -233,7 +242,12 @@ pub async fn apply(
     };
     let resolved = incident.resolved_at.is_some();
     let before = view(db, project.id, incident_id).await?;
-    next(before.state, action, resolved)?;
+    next(
+        before.state,
+        action,
+        resolved,
+        before.published_at.is_some(),
+    )?;
     let pdf = if action == Action::Publish {
         let bytes =
             super::incident_pdf_with(db, project, incident_id, Some((&text, false)), now, off)
@@ -258,7 +272,8 @@ pub async fn apply(
     db.write(async |c| {
         let row = store::one(c, project.id, incident_id).await?;
         let from = row.as_ref().map_or(State::None, |r| r.state);
-        let to = match next(from, action, resolved) {
+        let was = row.as_ref().is_some_and(|r| r.published_at.is_some());
+        let to = match next(from, action, resolved, was) {
             Ok(to) => to,
             Err(e) => return Ok(Err(e)),
         };
@@ -331,12 +346,19 @@ mod tests {
     fn every_row_of_the_state_table_and_every_refusal() {
         use Action::*;
         use State::*;
-        assert_eq!(next(None, Save, true).unwrap(), Draft);
-        assert_eq!(next(None, Publish, true).unwrap(), Published);
-        assert_eq!(next(Draft, Save, true).unwrap(), Draft);
-        assert_eq!(next(Draft, Publish, true).unwrap(), Published);
-        assert_eq!(next(Draft, Discard, true).unwrap(), None);
-        assert_eq!(next(Published, Edit, true).unwrap(), Draft);
+        assert_eq!(next(None, Save, true, false).unwrap(), Draft);
+        assert_eq!(next(None, Publish, true, false).unwrap(), Published);
+        assert_eq!(next(Draft, Save, true, false).unwrap(), Draft);
+        assert_eq!(next(Draft, Publish, true, true).unwrap(), Published);
+        assert_eq!(next(Draft, Discard, true, false).unwrap(), None);
+        assert!(
+            matches!(
+                next(Draft, Discard, true, true),
+                Err(PostmortemError::NotAllowed(_))
+            ),
+            "a draft that was published stays"
+        );
+        assert_eq!(next(Published, Edit, true, true).unwrap(), Draft);
         for (from, action) in [
             (Published, Save),
             (Published, Publish),
@@ -347,7 +369,7 @@ mod tests {
         ] {
             assert!(
                 matches!(
-                    next(from, action, true),
+                    next(from, action, true, false),
                     Err(PostmortemError::NotAllowed(_))
                 ),
                 "{from:?} {action:?}"
@@ -355,7 +377,7 @@ mod tests {
         }
         for from in [None, Draft, Published] {
             assert!(matches!(
-                next(from, Save, false),
+                next(from, Save, false, false),
                 Err(PostmortemError::IncidentOpen)
             ));
         }

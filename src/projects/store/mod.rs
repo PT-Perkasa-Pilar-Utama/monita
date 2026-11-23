@@ -216,8 +216,8 @@ pub enum Sort {
 impl Sort {
     fn order_by(self) -> &'static str {
         match self {
-            Sort::Name => "p.name, p.id",
-            Sort::NameDesc => "p.name DESC, p.id DESC",
+            Sort::Name => "p.name COLLATE NOCASE, p.id",
+            Sort::NameDesc => "p.name COLLATE NOCASE DESC, p.id DESC",
             Sort::Newest => "p.created_at DESC, p.id DESC",
             Sort::Oldest => "p.created_at, p.id",
         }

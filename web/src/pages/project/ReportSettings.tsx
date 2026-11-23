@@ -33,6 +33,7 @@ export function ReportSettings(): ReactElement {
               path={`${base}/report-schedules/${s.cadence}`}
               saved={s}
               onSaved={schedules.reload}
+              switchLabel="Send this report"
             />
           ))}
           <EmailListSection
@@ -43,6 +44,7 @@ export function ReportSettings(): ReactElement {
             path={`${base}/postmortem-recipients`}
             saved={pm.data}
             onSaved={pm.reload}
+            switchLabel="Email published post-mortems"
           />
         </>
       )}

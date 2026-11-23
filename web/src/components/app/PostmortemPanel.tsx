@@ -16,7 +16,9 @@ import { useApi } from "@/lib/useApi";
 /** A resolved incident's post-mortem (v1.2 Q63): the written sections, or a button to write them. */
 export function PostmortemPanel({ path }: { path: string }): ReactElement | null {
   const res = useApi<Postmortem>(`${path}/postmortem`);
-  const [editing, setEditing] = useState(false);
+  // The copy the form opens with, read again just before, so its state and its email count
+  // are the server's now.
+  const [editing, setEditing] = useState<Postmortem | null>(null);
   const [busy, setBusy] = useState(false);
   const pm = res.data;
   if (!pm) return null;
@@ -26,8 +28,8 @@ export function PostmortemPanel({ path }: { path: string }): ReactElement | null
     setBusy(true);
     try {
       if (pm.state === "published") await api(`${path}/postmortem/edit`, "POST");
+      setEditing(await api<Postmortem>(`${path}/postmortem`));
       res.reload();
-      setEditing(true);
     } catch (e) {
       toast.error(errorText(e));
     } finally {
@@ -72,7 +74,7 @@ export function PostmortemPanel({ path }: { path: string }): ReactElement | null
           )}
         </Card>
       )}
-      {editing && res.data && <PostmortemSheet key={res.data.updated_at ?? 0} path={path} pm={res.data} open={editing} onClose={() => setEditing(false)} onSaved={res.reload} />}
+      {editing && <PostmortemSheet path={path} pm={editing} open onClose={() => setEditing(null)} onSaved={res.reload} />}
     </section>
   );
 }

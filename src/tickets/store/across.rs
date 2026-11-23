@@ -37,9 +37,11 @@ pub async fn triage_across(
     // The project names are read only, as the search reads them.
     let order = match sort {
         "oldest" => "created_at ASC, id ASC",
-        "project" => "(SELECT name FROM projects WHERE id = project_id), created_at DESC, id DESC",
+        "project" => {
+            "(SELECT name FROM projects WHERE id = project_id) COLLATE NOCASE, created_at DESC, id DESC"
+        }
         "project_desc" => {
-            "(SELECT name FROM projects WHERE id = project_id) DESC, created_at DESC, id DESC"
+            "(SELECT name FROM projects WHERE id = project_id) COLLATE NOCASE DESC, created_at DESC, id DESC"
         }
         _ => "created_at DESC, id DESC",
     };

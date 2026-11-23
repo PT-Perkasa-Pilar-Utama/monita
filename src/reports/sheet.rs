@@ -161,12 +161,14 @@ impl Sheet {
         let label_w = 110.0;
         for (label, value) in items {
             let lines = wrap(value, Font::Regular, 10.0, TEXT_W - label_w);
-            self.room(15.0 * lines.len() as f32);
+            // The label stays with the first lines; a long value goes on over the next pages.
+            self.room(15.0 * lines.len().min(3) as f32);
             self.y += 15.0;
             self.pdf
                 .text(MARGIN, self.y, 10.0, Font::Regular, MUTED, label);
             for (i, line) in lines.iter().enumerate() {
                 if i > 0 {
+                    self.room(14.0);
                     self.y += 14.0;
                 }
                 self.pdf
@@ -304,6 +306,25 @@ mod tests {
         );
         assert!(text.contains(&format!("(Payments   Page {pages} of {pages})")));
         assert!(text.contains("(Monitor 119)"), "no row is lost at a break");
+    }
+
+    #[test]
+    fn a_long_fact_goes_on_over_the_next_pages() {
+        let mut sheet = Sheet::new("Long", "Payments");
+        let words: Vec<String> = (0..2000).map(|i| format!("w{i}")).collect();
+        sheet.facts(&[("Latest update", words.join(" "))]);
+        assert!(sheet.pdf.page_count() >= 2);
+        let text = text_of(&sheet.finish().unwrap());
+        assert!(text.contains("w1999"), "the end of the value is drawn");
+        for y in text
+            .split(" Td")
+            .filter_map(|t| t.rsplit(' ').next()?.parse::<f32>().ok())
+        {
+            assert!(
+                !(40.0..PAGE_H - BOTTOM - 1.0).contains(&y),
+                "a line at {y} runs into the footer"
+            );
+        }
     }
 
     #[test]

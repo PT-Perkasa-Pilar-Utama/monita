@@ -230,12 +230,24 @@ pub fn by_day(sources: &[(i64, Vec<(i64, i64)>)], range: Range, off: i64) -> Vec
     out
 }
 
-/// Seconds of maintenance inside the range, from the windows the report lists.
+/// Seconds inside the range when at least one listed window was active: windows that overlap
+/// count their shared time once.
 pub fn maintenance_s(windows: &[WindowLine], range: Range) -> i64 {
-    windows
+    let mut spans: Vec<(i64, i64)> = windows
         .iter()
-        .map(|w| (w.ends_at.min(range.to) - w.starts_at.max(range.from)).max(0))
-        .sum()
+        .map(|w| (w.starts_at.max(range.from), w.ends_at.min(range.to)))
+        .filter(|(s, e)| e > s)
+        .collect();
+    spans.sort_unstable();
+    let (mut total, mut reach) = (0, i64::MIN);
+    for (s, e) in spans {
+        let from = s.max(reach);
+        if e > from {
+            total += e - from;
+        }
+        reach = reach.max(e);
+    }
+    total
 }
 
 /// The project's availability: every system's time adds up, as on the project card.
@@ -377,6 +389,11 @@ pub(super) mod tests {
         assert_eq!(
             maintenance_s(&[w(900, 1_100), w(1_500, 1_600), w(1_900, 2_500)], r),
             300
+        );
+        assert_eq!(
+            maintenance_s(&[w(1_200, 1_400), w(1_300, 1_500), w(1_350, 1_380)], r),
+            300,
+            "overlapping windows count once"
         );
     }
 }
