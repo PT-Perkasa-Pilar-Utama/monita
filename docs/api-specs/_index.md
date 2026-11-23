@@ -49,7 +49,7 @@ Legend: `OK` implemented and tested, `WIP` in progress, `TODO` not started, `SCA
 | Pins: `PUT, DELETE .../projects/{slug}/pin`, `.../monitors/{id}/pin`, `.../heartbeats/{id}/pin` (Q48) | [03](03-projects.md#31-frontend-routes), [04](04-checks.md#43-frontend-routes) | OK |
 | Batch pause, resume and delete (`POST .../monitors/batch`, `.../heartbeats/batch`) | [04](04-checks.md#43c-batch-pause-resume-and-delete) | OK |
 | System page, mail server and its tests, limits, time zone | [04](04-checks.md#44-system-page) | OK |
-| Project incidents, incident items, updates, the incident report PDF (v1.2) | [05](05-incidents.md#51-frontend-routes) | OK |
+| Project incidents, incident items, updates, the incident report PDF and post-mortems (v1.2) | [05](05-incidents.md#51-frontend-routes) | OK |
 | Reclassify an incident (`PUT .../incidents/{id}/class`, `excluded`) | [05](05-incidents.md#51-frontend-routes) | OK |
 | Incidents across projects (`/api/ui/incidents`) | [05](05-incidents.md#52-incidents-across-projects) | OK |
 | Maintenance windows | [05](05-incidents.md#53-maintenance-windows) | OK |

@@ -338,6 +338,28 @@ export type UpdateRow = { label: UpdateLabel; message: string; author_email: str
 
 export type IncidentDetail = { incident: IncidentRow; items: string[]; updates: UpdateRow[]; labels: UpdateLabel[] };
 
+/** A post-mortem's sections (v1.2 Q63), as the form and the PDF name them. */
+export type PostmortemText = {
+  summary: string;
+  impact: string;
+  root_cause: string;
+  trigger: string;
+  resolution: string;
+  detection: string;
+  action_items: string;
+  lessons: string;
+};
+
+/** An incident's post-mortem; `none` with empty text when nobody has written one. `recipients`
+ * is how many addresses a publish emails now. */
+export type Postmortem = PostmortemText & {
+  state: "none" | "draft" | "published";
+  updated_by: string | null;
+  updated_at: number | null;
+  published_at: number | null;
+  recipients: number;
+};
+
 /** A monitor or heartbeat a manual incident may name. `state` is set only when it is down, has an issue or is in maintenance. */
 export type IncidentItem = { value: string; kind: "monitor" | "heartbeat"; name: string; state: "down" | "issue" | "maintenance" | null };
 

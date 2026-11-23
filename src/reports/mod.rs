@@ -5,6 +5,7 @@
 pub mod api;
 mod incident;
 mod period;
+pub mod postmortem;
 mod schedule;
 mod sheet;
 mod store;
@@ -28,7 +29,8 @@ pub async fn summary_pdf(
     summary::render(&summary::gather(db, project, range, now, off).await?)
 }
 
-/// The report of the project's incident `id`, as a PDF; `None` when the project has none.
+/// The report of the project's incident `id`, with its post-mortem as stored, as a PDF; `None`
+/// when the project has no such incident.
 pub async fn incident_pdf(
     db: &Db,
     project: &Project,
@@ -36,8 +38,22 @@ pub async fn incident_pdf(
     now: i64,
     off: i64,
 ) -> anyhow::Result<Option<Vec<u8>>> {
+    let pm = postmortem::for_report(db, project.id, id).await?;
+    incident_pdf_with(db, project, id, pm.as_ref().map(|(t, d)| (t, *d)), now, off).await
+}
+
+/// The incident report with the given post-mortem text, `true` when it is a draft. A publish
+/// passes the text it is about to store.
+pub async fn incident_pdf_with(
+    db: &Db,
+    project: &Project,
+    id: i64,
+    postmortem: Option<(&postmortem::Text, bool)>,
+    now: i64,
+    off: i64,
+) -> anyhow::Result<Option<Vec<u8>>> {
     match incident::gather(db, project, id, now, off).await? {
-        Some(r) => Ok(Some(incident::render(&r)?)),
+        Some(r) => Ok(Some(incident::render(&r, postmortem)?)),
         None => Ok(None),
     }
 }

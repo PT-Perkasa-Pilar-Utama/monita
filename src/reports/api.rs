@@ -32,6 +32,7 @@ pub fn router() -> Router<AppState> {
             "/api/ui/projects/{slug}/report-schedules/{cadence}",
             put(save_schedule),
         )
+        .merge(super::postmortem::api::router())
 }
 
 /// `period` is `week`, `7d`, `month` or `quarter`; anything else reads `from` and `to`.

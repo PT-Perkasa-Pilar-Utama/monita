@@ -47,6 +47,8 @@ Roles: `super_admin`, `tl` and `supervisor`. A supervisor sees every project and
 | Write a changelog release | yes | no | yes | no | no | no |
 | Download a project's summary report or an incident's report (v1.2 Q56) | yes | yes | yes | no | no | no |
 | Change the weekly and monthly report schedules (v1.2 Q59) | yes | no | yes | no | no | no |
+| Write, publish, edit or delete a post-mortem, and change its email list (v1.2 Q63) | yes | no | yes | no | no | no |
+| Read a post-mortem | yes | yes | yes | no | no | no |
 | Submit ticket | no | no | no | no | yes | with a ref ID |
 | Ping heartbeat | no | no | no | no | no | with the token |
 | View status page, public ticket board, public JSON | yes | yes | yes | yes | yes | yes |

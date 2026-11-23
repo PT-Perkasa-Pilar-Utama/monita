@@ -379,6 +379,14 @@ A project's weekly and monthly summary report by email (migration 0050, v1.2 Q59
 | emails | TEXT | no | `''` | | One address a line, checked as an alert card's list (`notify::email_list`) |
 | last_sent | TEXT | yes | | | The first day (`YYYY-MM-DD` in the admin offset) of the period sent last. Written in the same write that queues the emails, so a period goes out once; a day, so a new offset does not move it. Turning a schedule on sets it to the period that already closed. |
 
+### 6.3.13d postmortems and postmortem_recipients
+
+A resolved incident's post-mortem, written by the tech lead (migration 0051, v1.2 Q63). `reports` owns both tables; no public route reads them.
+
+`postmortems`: `incident_id` INTEGER PK, FK incidents ON DELETE CASCADE; `project_id` FK projects ON DELETE CASCADE; `state` TEXT `draft` or `published`; `summary`, `impact`, `root_cause`, `trigger_cause`, `resolution`, `detection`, `action_items`, `lessons` TEXT, each up to 2 000 characters; `updated_by` TEXT (an email); `updated_at` INTEGER; `published_at` INTEGER NULL, the first publish. No row is the state `none`.
+
+`postmortem_recipients`: `project_id` INTEGER PK, FK projects ON DELETE CASCADE; `enabled` 0 or 1; `emails` TEXT, one address a line, checked as an alert card's list. No row is off.
+
 ### 6.3.14 settings and schema_migrations
 
 | table | columns |
@@ -417,6 +425,19 @@ stateDiagram-v2
 ```
 
 The code allows a move from any column to any other. The diagram shows the usual path. Entering `done` needs `close_reason`. Leaving `done` clears it. A move to another column sends `ticket.moved` when the ticket webhook listens for moves. A ticket is public when `stage != 'triage'`.
+
+### 6.4.3 Post-mortem
+
+The actor is the project owner or a super admin. No state is terminal. Every other move is refused with 422.
+
+| From | To | Guard | Effect |
+| --- | --- | --- | --- |
+| none | draft | the incident is resolved | text stored |
+| none | published | resolved; summary, root cause and resolution filled | stored, one email per address on the list |
+| draft | draft | none | text saved |
+| draft | published | summary, root cause and resolution filled | one email per address on the list |
+| draft | none | none | row deleted |
+| published | draft | none | text kept |
 
 ## 6.5 Indexes
 

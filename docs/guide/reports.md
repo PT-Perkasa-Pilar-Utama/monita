@@ -37,6 +37,18 @@ A report never shows a monitor's URL, so a token in a URL stays private.
 
 The report shows the alert level, who opened the incident, when it started and was resolved, its class, the affected monitors and heartbeats, the cause Monita recorded, and the updates oldest first with who posted them. An incident takes 50 updates at most. The incident report is for the team: the cause can name internal hosts, and each update names its author. The summary report shows each incident's cause and latest update too, and the weekly and monthly emails carry the same PDF, so list only addresses that may read them. For people outside the team, link the status page, which shows neither.
 
+## Write a post-mortem
+
+After an incident is resolved, its page has a **Post-mortem** section. The sections follow Google's example post-mortem.
+
+1. Open the resolved incident and select **Write post-mortem**.
+2. Fill in **Summary**, **Root cause** and **Resolution**. These three are needed to publish. **Impact**, **Trigger**, **Detection**, **Action items** and **Lessons learned** are optional. Each section takes up to 2 000 characters.
+3. Select **Save draft** to keep it as a draft, or **Publish**. The dialog says how many addresses get the email.
+
+A draft shows on the incident page and in its PDF, marked Draft. Publishing emails the incident PDF, with the post-mortem in it, to the addresses under **Settings**, **Reports**, **Post-mortems**. To change a published post-mortem, select **Edit**: it goes back to draft until you publish it again, and that publish sends an email marked updated. A draft can be deleted, and a published post-mortem cannot. Nothing is emailed when an incident closes. A post-mortem never shows on the status page.
+
+The project owner and a super admin write post-mortems. A supervisor reads them.
+
 ## Send a report every week or month
 
 A project can email its summary report as a PDF every week, every month, or both. The weekly report covers Monday to Sunday and the monthly report the calendar month, in the admin time zone. Monita sends each one once, at the hour of the daily digest (`MONITA_DIGEST_UTC_HOUR`) after its period ends.

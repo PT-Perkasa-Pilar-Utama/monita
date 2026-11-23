@@ -248,3 +248,33 @@ test("the project and an incident download their reports as PDF, and a range tha
   await page.getByRole("button", { name: "Download report" }).click();
   expect((await one).suggestedFilename()).toMatch(new RegExp(`^${slug}-inc-\\d+\\.pdf$`));
 });
+
+test("a resolved incident takes a post-mortem that is saved as a draft and then published", async ({ page }) => {
+  const { slug, pingUrl } = await projectWithHeartbeat(page);
+  expect((await page.request.post(`${pingUrl}/fail`)).status()).toBe(200);
+  await page.goto(`/projects/${slug}/incidents`);
+  await page.getByRole("link", { name: "nightly-settlement reported a failure" }).click();
+  await expect(page.getByRole("heading", { name: "Post-mortem" })).toHaveCount(0);
+  expect((await page.request.get(pingUrl)).status()).toBe(200);
+  await page.reload();
+
+  await page.getByRole("button", { name: "Write post-mortem" }).click();
+  await page.getByLabel("Summary").fill("The settlement job crashed on a bad row.");
+  await page.getByRole("button", { name: "Save draft" }).click();
+  await expect(page.getByText("Draft saved.")).toBeVisible();
+  await expect(page.locator("#postmortem").locator("..")).toContainText("Draft");
+
+  await page.getByRole("button", { name: "Continue the draft" }).click();
+  await page.getByRole("button", { name: "Publish" }).click();
+  await expect(page.getByRole("alertdialog")).toContainText("no email goes out");
+  await page.getByRole("alertdialog").getByRole("button", { name: "Publish" }).click();
+  await expect(page.getByText("Write the root cause before you publish.")).toBeVisible();
+  await page.getByLabel("Root cause").fill("A row with an empty amount.");
+  await page.getByLabel("Resolution").fill("The job skips such rows and reports them.");
+  await page.getByRole("button", { name: "Publish" }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Publish" }).click();
+  await expect(page.getByText("Post-mortem published.")).toBeVisible();
+  const panel = page.locator("section", { has: page.locator("#postmortem") });
+  await expect(panel).toContainText("Published");
+  await expect(panel).toContainText("A row with an empty amount.");
+});

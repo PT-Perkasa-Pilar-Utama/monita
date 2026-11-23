@@ -5,6 +5,7 @@ import { useLocation, useParams } from "react-router-dom";
 import { ChoiceCards } from "@/components/app/ChoiceCards";
 import { ClassNotice, Reclassify } from "@/components/app/Reclassify";
 import { IncidentReportButton } from "@/components/app/ReportMenu";
+import { PostmortemPanel } from "@/components/app/PostmortemPanel";
 import { FormSheet, FormSheetBody } from "@/components/app/FormSheet";
 import { Side } from "@/components/app/Side";
 import { LabelBadge, SeverityBadge, StateBadge } from "@/components/app/Tone";
@@ -191,6 +192,8 @@ export function Incident(): ReactElement {
             <ClassNotice incident={i} />
           </div>
           <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_18rem]">
+            <div className="flex min-w-0 flex-col gap-8">
+            {i.resolved_at !== null && <PostmortemPanel key={i.resolved_at} path={path} />}
             <section aria-labelledby="timeline" className="flex min-w-0 flex-col gap-4">
               <h2 id="timeline" className="text-[15px] font-semibold">
                 Updates, newest first
@@ -232,6 +235,7 @@ export function Incident(): ReactElement {
                 </ol>
               )}
             </section>
+            </div>
             <aside className="flex flex-col gap-5 lg:sticky lg:top-[calc(var(--bar-h)+24px)]">
               <Side title="Affects">
                 <ul className="flex flex-col gap-1 text-sm">

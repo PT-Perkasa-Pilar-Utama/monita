@@ -8,29 +8,37 @@ import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { api, ApiError, errorText } from "@/lib/api";
-import type { ReportSchedule } from "@/lib/types";
 
-const COPY: Record<ReportSchedule["cadence"], { title: string; description: string }> = {
-  weekly: { title: "Weekly report", description: "Monita emails the summary report of last week, Monday to Sunday, as a PDF after the week ends." },
-  monthly: { title: "Monthly report", description: "Monita emails the summary report of last month as a PDF after the month ends." },
-};
-
-/** One report schedule (v1.2 Q59): a switch and the addresses that get the PDF. */
-export function ReportScheduleSection({ slug, schedule, onSaved }: { slug: string; schedule: ReportSchedule; onSaved: () => void }): ReactElement {
-  const id = `report-${schedule.cadence}`;
-  const [enabled, setEnabled] = useState(schedule.enabled);
-  const [emails, setEmails] = useState(schedule.emails.join("\n"));
+/** A list of addresses that gets a PDF (v1.2 Q59, Q63): a switch and the addresses, saved with
+ * `PUT path {enabled, emails}`. The weekly and monthly reports and the post-mortems use it. */
+export function EmailListSection({
+  id,
+  title,
+  description,
+  path,
+  saved,
+  onSaved,
+}: {
+  id: string;
+  title: string;
+  description: string;
+  path: string;
+  saved: { enabled: boolean; emails: string[] };
+  onSaved: () => void;
+}): ReactElement {
+  const [enabled, setEnabled] = useState(saved.enabled);
+  const [emails, setEmails] = useState(saved.emails.join("\n"));
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const changed = enabled !== schedule.enabled || emails.trim() !== schedule.emails.join("\n");
+  const changed = enabled !== saved.enabled || emails.trim() !== saved.emails.join("\n");
 
   const save = async (): Promise<void> => {
     setBusy(true);
     try {
-      await api(`/projects/${slug}/report-schedules/${schedule.cadence}`, "PUT", { enabled, emails });
+      await api(path, "PUT", { enabled, emails });
       setError(null);
       onSaved();
-      toast.success(`${COPY[schedule.cadence].title} saved.`);
+      toast.success(`${title} saved.`);
     } catch (e) {
       if (e instanceof ApiError && e.fields["emails"]) setError(e.fields["emails"]);
       else toast.error(errorText(e));
@@ -42,8 +50,8 @@ export function ReportScheduleSection({ slug, schedule, onSaved }: { slug: strin
   return (
     <SettingsSection
       id={id}
-      title={COPY[schedule.cadence].title}
-      description={COPY[schedule.cadence].description}
+      title={title}
+      description={description}
       onSubmit={() => void save()}
       footer={
         <Button type="submit" disabled={busy || !changed}>

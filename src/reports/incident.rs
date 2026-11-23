@@ -71,7 +71,11 @@ fn class(i: &IncidentRow, off: i64) -> String {
     }
 }
 
-pub fn render(r: &IncidentReport) -> anyhow::Result<Vec<u8>> {
+/// The PDF. A post-mortem, when given, follows the summary; `true` marks it a draft.
+pub fn render(
+    r: &IncidentReport,
+    postmortem: Option<(&super::postmortem::Text, bool)>,
+) -> anyhow::Result<Vec<u8>> {
     let i = &r.incident;
     let name = format!("INC-{}", i.id);
     let mut sheet = Sheet::new(
@@ -122,6 +126,21 @@ pub fn render(r: &IncidentReport) -> anyhow::Result<Vec<u8>> {
         ),
         ("Class", class(i, r.off)),
     ]);
+
+    if let Some((text, draft)) = postmortem {
+        sheet.heading(if draft {
+            "Post-mortem (draft)"
+        } else {
+            "Post-mortem"
+        });
+        for (_, label, body) in text.sections() {
+            if body.trim().is_empty() {
+                continue;
+            }
+            sheet.subheading(label);
+            sheet.para(body);
+        }
+    }
 
     sheet.heading("Affected systems");
     if r.items.is_empty() {
