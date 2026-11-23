@@ -26,7 +26,7 @@ use crate::{
 };
 
 use cards::Listen;
-pub use cards::{AlertCard, CardForm};
+pub use cards::{AlertCard, CardForm, email_list, split_emails};
 pub use delivery::{SlowServers, deliver_due, spawn_delivery};
 pub use digest::digest;
 pub use mailer::{Mailer, SentEmail, test_connection};
@@ -56,6 +56,25 @@ pub async fn queue_email(
     store::queue(c, "email", to, Some(subject), body, at).await
 }
 
+/// A PDF to attach to an email, and the file name the reader sees.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Pdf {
+    pub name: String,
+    pub bytes: Vec<u8>,
+}
+
+/// Queues one email with a PDF attached. Call it inside `Db::write` with the change that caused it.
+pub async fn queue_email_with_pdf(
+    c: &Connection,
+    to: &str,
+    subject: &str,
+    body: &str,
+    pdf: &Pdf,
+    at: i64,
+) -> anyhow::Result<()> {
+    store::queue_with_pdf(c, to, subject, body, pdf, at).await
+}
+
 /// Why an alert card was refused.
 #[derive(Debug, thiserror::Error)]
 pub enum AlertError {
@@ -63,10 +82,7 @@ pub enum AlertError {
     BadEmail(String),
     #[error("Enter at least one email address.")]
     NoEmails,
-    #[error(
-        "A card takes {} addresses at most.",
-        crate::platform::caps::EMAILS_PER_CARD
-    )]
+    #[error("Enter {} addresses at most.", crate::platform::caps::EMAILS_PER_CARD)]
     TooManyEmails,
     #[error("The webhook URL must start with http:// or https://.")]
     BadWebhook,

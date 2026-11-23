@@ -152,6 +152,10 @@ const MIGRATIONS: &[(i64, &str)] = &[
         49,
         include_str!("../../../migrations/0049_telegram_chats.sql"),
     ),
+    (
+        50,
+        include_str!("../../../migrations/0050_report_schedules.sql"),
+    ),
 ];
 
 pub async fn run(db: &Db) -> anyhow::Result<()> {

@@ -110,3 +110,21 @@ test("ticket alerts are cards: the owner's three start off, and a webhook card k
   await expect(page.locator("#card-ticket_moves")).toBeChecked();
   await expect(page.locator("#card-critical")).toHaveCount(0);
 });
+
+test("Reports turns the weekly report on for two addresses, and it holds after a reload", async ({ page }) => {
+  const slug = await apiProject(page, "Reports");
+  await page.goto(`/projects/${slug}/settings`);
+  await page.getByRole("navigation", { name: "Settings" }).getByRole("link", { name: "Reports" }).click();
+  await expect(page).toHaveURL(new RegExp(`/projects/${slug}/settings/reports$`));
+  const weekly = page.locator("#report-weekly");
+  await weekly.getByLabel("Send this report").click();
+  await weekly.getByRole("button", { name: "Save changes" }).click();
+  await expect(weekly).toContainText("Enter at least one email address.");
+  await weekly.getByLabel("Email addresses").fill("Boss@x.co\nops@x.co");
+  await weekly.getByRole("button", { name: "Save changes" }).click();
+  await expect(page.getByText("Weekly report saved.")).toBeVisible();
+  await page.reload();
+  await expect(page.locator("#report-weekly").getByLabel("Send this report")).toHaveAttribute("data-state", "checked");
+  await expect(page.locator("#report-weekly").getByLabel("Email addresses")).toHaveValue("boss@x.co\nops@x.co");
+  await expect(page.locator("#report-monthly").getByLabel("Send this report")).toHaveAttribute("data-state", "unchecked");
+});

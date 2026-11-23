@@ -208,6 +208,7 @@ async fn test_send(
             "This is a test email from Monita at {}. If you can read it, alerts reach you.",
             state.config.base_url
         ),
+        attachment: None,
     };
     Ok(data(match state.mailer.send_now(&state.db, email).await {
         Ok(()) => serde_json::json!({ "ok": true, "to": to, "source": source }),

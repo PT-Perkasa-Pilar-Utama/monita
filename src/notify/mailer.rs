@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex};
 
 use lettre::{
     AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor,
-    message::Mailbox,
+    message::{Attachment, Mailbox, MultiPart, SinglePart, header::ContentType},
     transport::smtp::{
         authentication::Credentials,
         client::{Tls, TlsParameters},
@@ -24,6 +24,7 @@ pub struct SentEmail {
     pub to: String,
     pub subject: String,
     pub body: String,
+    pub attachment: Option<super::Pdf>,
 }
 
 /// `MONITA_SMTP_URL` and `MONITA_MAIL_FROM`, built once at start.
@@ -126,19 +127,60 @@ impl Mailer {
                 return Ok(());
             }
         };
-        let msg = Message::builder()
-            .from(from)
-            .to(email.to.parse()?)
-            .subject(email.subject)
-            .body(email.body)?;
-        transport.send(msg).await?;
+        transport.send(message(from, email)?).await?;
         Ok(())
     }
+}
+
+/// Plain text, or plain text and a PDF in a `multipart/mixed` message (v1.2 Q59).
+fn message(from: Mailbox, email: SentEmail) -> anyhow::Result<Message> {
+    let head = Message::builder()
+        .from(from)
+        .to(email.to.parse()?)
+        .subject(email.subject);
+    Ok(match email.attachment {
+        None => head.body(email.body)?,
+        Some(pdf) => head.multipart(
+            MultiPart::mixed()
+                .singlepart(SinglePart::plain(email.body))
+                .singlepart(
+                    Attachment::new(pdf.name)
+                        .body(pdf.bytes, ContentType::parse("application/pdf")?),
+                ),
+        )?,
+    })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_report_email_carries_its_pdf_as_an_attachment() {
+        let email = |attachment| SentEmail {
+            to: "boss@x.co".into(),
+            subject: "Payments weekly report".into(),
+            body: "Attached.".into(),
+            attachment,
+        };
+        let from: Mailbox = "Monita <monita@x.co>".parse().unwrap();
+        let pdf = super::super::Pdf {
+            name: "payments-2026-11-16-to-2026-11-22.pdf".into(),
+            bytes: b"%PDF-1.4 x".to_vec(),
+        };
+        let raw = String::from_utf8(message(from.clone(), email(Some(pdf))).unwrap().formatted())
+            .unwrap();
+        assert!(raw.contains("multipart/mixed"), "{raw}");
+        assert!(raw.contains("Content-Type: application/pdf"));
+        // lettre writes the name as an RFC 2231 parameter: `filename*0="..."`.
+        assert!(raw.contains("Content-Disposition: attachment;"));
+        assert!(
+            raw.contains("\"payments-2026-11-16-to-2026-11-22.pdf\""),
+            "{raw}"
+        );
+        let plain = String::from_utf8(message(from, email(None)).unwrap().formatted()).unwrap();
+        assert!(!plain.contains("multipart"));
+    }
 
     fn saved(security: &str, user: Option<&str>) -> MailSettings {
         MailSettings {

@@ -264,3 +264,16 @@ The public routes answer 404 while `show_changelog` is off.
 | `one(db, project_id, id)` | One window, or none. |
 | `covers(c, kind, id, at)` | The end of the latest-ending active window over the source, on the caller's connection. `incidents::observe` and `checks::heartbeat::sweep_missed` ask it. |
 | `active(c, project_id, at)` | The active windows with their items, for the item states and the status page. |
+
+## 5.12 reports
+
+**Responsibility:** project reports as PDF (v1.2 Q56 to Q61). Owns `report_schedules`. Reads monitors and heartbeats through `checks`, numbers through `incidents::availability::between` and `incidents::list` and `find`, windows through `maintenance::page`, and queues emails through `notify::queue_email_with_pdf`. The PDF writer is `platform::pdf` (Helvetica, WinAnsi, no embedded font, Q58).
+
+| Item | Contract |
+| --- | --- |
+| `summary_pdf(db, project, range, now, off)` | The summary of `[range.from, range.to)`: availability, downtime, incidents and the longest per monitor and heartbeat; the project's figures; up to `caps::REPORT_INCIDENTS` incidents longest first; the maintenance windows of the first page. Never a monitor URL. |
+| `incident_pdf(db, project, id, now, off)` | One incident's facts, systems, cause and updates oldest first, or `None`. |
+| `range_of(period, from, to, now, off)` | `week`, `7d`, `month`, `quarter`, or whole days `from` to `to` (both included, up to 366, the first not in the future). `RangeError` names what is wrong. |
+| `schedules(db, project_id)`, `save_schedule(db, project_id, cadence, enabled, emails, now)` | The weekly and monthly schedules. On needs a valid list; turning on counts the closed period as sent. |
+| `run_due(db, base_url, now)` | The daily job at `MONITA_DIGEST_UTC_HOUR`: for each schedule that is on and whose closed period is newer than `last_from`, draws the PDF on a read connection, then in one write records the period and queues one email per address. |
+

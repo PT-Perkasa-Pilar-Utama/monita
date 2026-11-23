@@ -36,6 +36,19 @@ A report never shows a monitor's URL, so a token in a URL stays private.
 
 The report shows the alert level, who opened the incident, when it started and was resolved, its class, the affected monitors and heartbeats, the cause Monita recorded, and every update oldest first with who posted it.
 
+## Send a report every week or month
+
+A project can email its summary report as a PDF every week, every month, or both. The weekly report covers Monday to Sunday and the monthly report the calendar month, in the admin time zone. Monita sends each one once, at the hour of the daily digest (`MONITA_DIGEST_UTC_HOUR`) after its period ends.
+
+1. In the project, open **Settings**, **Reports**.
+2. Under **Weekly report** or **Monthly report**, turn on **Send this report**.
+3. Under **Email addresses**, enter one address a line, up to 20.
+4. Select **Save changes**.
+
+The first email goes out after the next period ends: a weekly report turned on on a Wednesday first covers the week that starts the coming Monday. To stop the emails, turn off **Send this report** and select **Save changes**. The email names the project and the period and links to the project. Monita sends it through the mail server in **Admin**, **Mail server**, and retries it as it retries alerts.
+
+The project owner and a super admin change the schedules. A supervisor reads them.
+
 ## Limits
 
 - A report prints letters A to Z, digits and the usual punctuation. Any other character, such as `é` or `✓`, prints as `?`.

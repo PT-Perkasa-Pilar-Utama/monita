@@ -17,6 +17,7 @@ enum Kind {
     Rollup,
     Backup,
     Digest,
+    Reports,
 }
 
 struct Job {
@@ -61,6 +62,9 @@ async fn run_one(state: &AppState, job: &Job, t: i64) -> anyhow::Result<()> {
         }
         Kind::Digest => {
             crate::notify::digest(&state.db, &state.config.base_url, t).await?;
+        }
+        Kind::Reports => {
+            crate::reports::run_due(&state.db, &state.config.base_url, t).await?;
         }
     }
     record(state, format!("last_{}_day", job.name), time::day(t)).await
@@ -109,6 +113,12 @@ pub async fn run_due(state: &AppState, t: i64) {
             name: "digest",
             at_s: i64::from(state.config.digest_utc_hour) * 3_600,
             kind: Kind::Digest,
+        },
+        // v1.2 Q59: weekly and monthly reports go out with the digest.
+        Job {
+            name: "reports",
+            at_s: i64::from(state.config.digest_utc_hour) * 3_600,
+            kind: Kind::Reports,
         },
     ];
     for job in &jobs {

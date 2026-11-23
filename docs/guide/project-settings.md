@@ -46,7 +46,7 @@ Hover the chart to read each line and lane in that slot. Select a line, a faint 
 
 ## Settings
 
-**Settings** has a side list with six pages. Each page has an **On this page** list when it has several sections.
+**Settings** has a side list with seven pages. Each page has an **On this page** list when it has several sections.
 
 ### General
 
@@ -65,6 +65,10 @@ Choose the public tabs and build a custom page. See [Status page](status-page.md
 ### Alerts
 
 Set who gets critical, warning and ticket alerts. See [Alerts](alerts.md).
+
+### Reports
+
+Email the project's summary report as a PDF every week, every month, or both. See [Reports](reports.md#send-a-report-every-week-or-month).
 
 ### API keys
 

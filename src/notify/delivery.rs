@@ -217,6 +217,7 @@ async fn deliver_one(state: &AppState, row: store::OutboxRow) -> anyhow::Result<
                             to: row.recipient.clone(),
                             subject: row.subject.clone().unwrap_or_default(),
                             body: row.body.clone(),
+                            attachment: row.attachment.clone(),
                         },
                     )
                     .await
@@ -267,6 +268,7 @@ mod tests {
             subject: None,
             body: String::new(),
             attempts: 0,
+            attachment: None,
         }
     }
 

@@ -13,6 +13,7 @@ import { Allowlist } from "@/pages/project/Allowlist";
 import { General } from "@/pages/project/General";
 import { Secrets } from "@/pages/project/Secrets";
 import { StatusPageSettings } from "@/pages/project/StatusPageSettings";
+import { ReportSettings } from "@/pages/project/ReportSettings";
 import { Heartbeat } from "@/pages/project/Heartbeat";
 import { Incident } from "@/pages/project/Incident";
 import { Incidents } from "@/pages/project/Incidents";
@@ -95,6 +96,7 @@ export default function App(): ReactElement {
             <Route path="settings/secrets" element={<Secrets />} />
             <Route path="settings/allowlist" element={<Allowlist />} />
             <Route path="settings/alerts" element={<Alerts />} />
+            <Route path="settings/reports" element={<ReportSettings />} />
           </Route>
           <Route path="alerts" element={<Navigate to="../settings/alerts" replace />} />
         </Route>

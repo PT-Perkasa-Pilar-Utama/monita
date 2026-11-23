@@ -9,6 +9,8 @@ pub struct OutboxRow {
     pub subject: Option<String>,
     pub body: String,
     pub attempts: i64,
+    /// A report email's PDF (v1.2 Q59).
+    pub attachment: Option<super::Pdf>,
 }
 
 pub enum Outcome {
@@ -53,6 +55,24 @@ pub async fn any_due(c: &Connection, at: i64) -> anyhow::Result<bool> {
     Ok(n == Some(1))
 }
 
+/// Queues one email with a PDF attached (v1.2 Q59).
+pub async fn queue_with_pdf(
+    c: &Connection,
+    recipient: &str,
+    subject: &str,
+    body: &str,
+    pdf: &super::Pdf,
+    at: i64,
+) -> anyhow::Result<()> {
+    c.execute(
+        "INSERT INTO outbox (channel, recipient, subject, body, next_attempt_at, attachment, attachment_name)
+         VALUES ('email', ?1, ?2, ?3, ?4, ?5, ?6)",
+        (recipient, subject, body, at, pdf.bytes.as_slice(), pdf.name.as_str()),
+    )
+    .await?;
+    Ok(())
+}
+
 /// Moves claimed rows back to `at` without counting an attempt: they were not sent.
 pub async fn defer(c: &Connection, ids: &[i64], at: i64) -> anyhow::Result<()> {
     for id in ids {
@@ -77,7 +97,7 @@ pub async fn claim_due(
     {
         let mut rows = c
             .query(
-                "SELECT id, channel, recipient, subject, body, attempts FROM outbox
+                "SELECT id, channel, recipient, subject, body, attempts, attachment, attachment_name FROM outbox
                  WHERE sent_at IS NULL AND failed_at IS NULL AND next_attempt_at <= ?1 ORDER BY next_attempt_at, id LIMIT ?2",
                 (at, limit),
             )
@@ -90,6 +110,10 @@ pub async fn claim_due(
                 subject: r.get(3)?,
                 body: r.get(4)?,
                 attempts: r.get(5)?,
+                attachment: match (r.get::<Option<Vec<u8>>>(6)?, r.get::<Option<String>>(7)?) {
+                    (Some(bytes), Some(name)) => Some(super::Pdf { name, bytes }),
+                    _ => None,
+                },
             });
         }
     }
@@ -118,15 +142,16 @@ pub async fn purge_delivered(c: &Connection, cutoff: i64, limit: i64) -> anyhow:
     .await?)
 }
 
-/// A finished row loses its body: an invite email carries a live sign-up link (SEC-20).
+/// A finished row loses its body: an invite email carries a live sign-up link (SEC-20). It loses
+/// its attachment too, which only takes space once delivered.
 pub async fn mark(c: &Connection, id: i64, outcome: &Outcome, at: i64) -> anyhow::Result<()> {
     match outcome {
-        Outcome::Sent => c.execute("UPDATE outbox SET sent_at = ?1, attempts = attempts + 1, body = '' WHERE id = ?2", (at, id)).await?,
+        Outcome::Sent => c.execute("UPDATE outbox SET sent_at = ?1, attempts = attempts + 1, body = '', attachment = NULL WHERE id = ?2", (at, id)).await?,
         Outcome::Retry(next, err) => {
             c.execute("UPDATE outbox SET attempts = attempts + 1, next_attempt_at = ?1, last_error = ?2 WHERE id = ?3", (*next, err.as_str(), id))
                 .await?
         }
-        Outcome::Failed(err) => c.execute("UPDATE outbox SET attempts = attempts + 1, failed_at = ?1, last_error = ?2, body = '' WHERE id = ?3", (at, err.as_str(), id)).await?,
+        Outcome::Failed(err) => c.execute("UPDATE outbox SET attempts = attempts + 1, failed_at = ?1, last_error = ?2, body = '', attachment = NULL WHERE id = ?3", (at, err.as_str(), id)).await?,
     };
     Ok(())
 }

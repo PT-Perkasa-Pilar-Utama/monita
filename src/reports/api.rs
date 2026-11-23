@@ -5,14 +5,18 @@ use axum::{
     extract::{Path, Query, State},
     http::header,
     response::{IntoResponse, Response},
-    routing::get,
+    routing::{get, put},
 };
 use serde::Deserialize;
 
+use super::{Cadence, ScheduleError};
 use crate::{
     accounts::CurrentUser,
     app::AppState,
-    platform::{now, settings, ui::UiError},
+    platform::{
+        now, settings,
+        ui::{Body, UiError, UiResult, data},
+    },
     projects,
 };
 
@@ -22,6 +26,11 @@ pub fn router() -> Router<AppState> {
         .route(
             "/api/ui/projects/{slug}/incidents/{id}/report",
             get(incident),
+        )
+        .route("/api/ui/projects/{slug}/report-schedules", get(schedules))
+        .route(
+            "/api/ui/projects/{slug}/report-schedules/{cadence}",
+            put(save_schedule),
         )
 }
 
@@ -76,4 +85,39 @@ async fn incident(
         .await?
         .ok_or(UiError::NotFound)?;
     Ok(pdf(&format!("{}-inc-{id}.pdf", p.slug), body))
+}
+
+/// The weekly and the monthly schedule, as saved or off.
+async fn schedules(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(slug): Path<String>,
+) -> UiResult {
+    let p = projects::find_for(&state.db, &user, &slug).await?;
+    Ok(data(super::schedules(&state.db, p.id).await?))
+}
+
+#[derive(Deserialize, Default)]
+#[serde(default)]
+struct ScheduleForm {
+    enabled: bool,
+    /// One address a line.
+    emails: String,
+}
+
+/// Saves one schedule; 422 on `emails` when the list is wrong. A supervisor's write never gets
+/// here: `CurrentUser` refuses it.
+async fn save_schedule(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path((slug, cadence)): Path<(String, String)>,
+    Body(f): Body<ScheduleForm>,
+) -> UiResult {
+    let p = projects::find_for(&state.db, &user, &slug).await?;
+    let cadence = Cadence::parse(&cadence).ok_or(UiError::NotFound)?;
+    match super::save_schedule(&state.db, p.id, cadence, f.enabled, &f.emails, now()).await {
+        Ok(()) => Ok(axum::http::StatusCode::NO_CONTENT.into_response()),
+        Err(ScheduleError::Emails(e)) => Err(UiError::field("emails", e.to_string())),
+        Err(ScheduleError::Other(e)) => Err(UiError::Internal(e)),
+    }
 }

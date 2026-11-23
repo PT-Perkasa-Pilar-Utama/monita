@@ -318,6 +318,7 @@ Uptime % for a day = `1 - downtime_s / 86400`. The status page computes the same
 | sent_at, failed_at | INTEGER NULL | |
 | last_error | TEXT NULL | |
 | created_at | INTEGER | Rows older than 30 days are deleted |
+| attachment, attachment_name | BLOB NULL, TEXT NULL | A report email's PDF and its file name (migration 0050, v1.2 Q59). Cleared with the body once the row is sent or fails for good. |
 
 `telegram_links` (migration 0036, v1.1 Q33; reshaped by 0037): `code_hash` TEXT PK (SHA-256 of a connect link's code), `project_id` FK projects ON DELETE CASCADE, `expires_at` (10 minutes after the link), `chat_id` and `chat_title` (set when the bot hears the code). A project has one open link: a new one deletes its older link and every expired one. The global Telegram bot itself is three `settings` rows: `telegram_bot_token`, `telegram_bot_name` and `telegram_offset` (the next update to read).
 
@@ -365,6 +366,18 @@ Planned work on a project (migration 0026, v1.1 decision Q18). Owned by the `mai
 | maintenance_items.window_id | INTEGER | no | | PK, FK maintenance_windows ON DELETE CASCADE | |
 | source_kind | TEXT | no | | PK | `monitor` or `heartbeat` |
 | source_id | INTEGER | no | | PK | No FK: sources are another module's. Their ids are AUTOINCREMENT, so a row left by a deleted source covers nothing. |
+
+### 6.3.13c report_schedules
+
+A project's weekly and monthly summary report by email (migration 0050, v1.2 Q59). A cadence with no row is off.
+
+| column | type | nullable | default | key | notes |
+| --- | --- | --- | --- | --- | --- |
+| project_id | INTEGER | no | | PK with `cadence`, FK projects ON DELETE CASCADE | |
+| cadence | TEXT | no | | PK | `weekly` (Monday to Sunday) or `monthly` (the calendar month), in the admin offset |
+| enabled | INTEGER | no | 0 | | 0 or 1 |
+| emails | TEXT | no | `''` | | One address a line, checked as an alert card's list (`notify::email_list`) |
+| last_from | INTEGER | yes | | | The start of the period sent last. Written in the same write that queues the emails, so a period goes out once. Turning a schedule on sets it to the period that already closed. |
 
 ### 6.3.14 settings and schema_migrations
 

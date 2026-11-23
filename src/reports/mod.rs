@@ -1,13 +1,19 @@
-//! Project reports as PDF (v1.2 Q56 to Q61): a summary of a range of days and the report of one
-//! incident. Owns no table yet; it reads every number through the other modules' interfaces.
+//! Project reports as PDF (v1.2 Q56 to Q61): a summary of a range of days, the report of one
+//! incident, and the weekly and monthly emails. Owns `report_schedules`; it reads every number
+//! through the other modules' interfaces.
 
 pub mod api;
 mod incident;
 mod period;
+mod schedule;
 mod sheet;
+mod store;
 mod summary;
 
 pub use period::{Range, RangeError, last_7_days, last_month, last_quarter, last_week};
+pub use schedule::{
+    Cadence, Schedule, ScheduleError, list as schedules, run_due, save as save_schedule,
+};
 
 use crate::{platform::db::Db, projects::Project};
 

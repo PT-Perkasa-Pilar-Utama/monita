@@ -37,6 +37,9 @@ export type ProjectList = {
   owner_options: string[];
 };
 
+/** A weekly or monthly summary report by email (v1.2 Q59). A cadence never saved reads off. */
+export type ReportSchedule = { cadence: "weekly" | "monthly"; enabled: boolean; emails: string[] };
+
 /** A project in the compact view (v1.2 Q53): its icon and the state its card shows. */
 export type ProjectTileRow = { slug: string; name: string; icon_url: string | null; kind: StateKind; pinned: boolean };
 

@@ -10,7 +10,7 @@ mod store;
 use crate::platform::sql::Connection;
 
 use store::Saved;
-pub use store::{AlertCard, Listen};
+pub use store::{AlertCard, Listen, split_emails};
 
 use super::{AlertError, compose::Composed, format, telegram};
 use crate::platform::{caps, db::Db, now};
@@ -42,6 +42,26 @@ fn default_name(kind: &str) -> &'static str {
         "ntfy" => "ntfy",
         _ => "PagerDuty",
     }
+}
+
+/// A list of addresses typed one a line (or with commas): each checked and lower-cased, each
+/// once, at least one and at most `caps::EMAILS_PER_CARD`. Alert cards and report schedules
+/// (v1.2 Q59) take the same list.
+pub fn email_list(raw: &str) -> Result<Vec<String>, AlertError> {
+    let mut emails = Vec::new();
+    for e in store::split_emails(raw) {
+        let e = crate::accounts::normalize_email(&e).map_err(|_| AlertError::BadEmail(e))?;
+        if !emails.contains(&e) {
+            emails.push(e);
+        }
+    }
+    if emails.is_empty() {
+        return Err(AlertError::NoEmails);
+    }
+    if emails.len() > caps::EMAILS_PER_CARD {
+        return Err(AlertError::TooManyEmails);
+    }
+    Ok(emails)
 }
 
 /// The form as it will be stored, or the first thing wrong with it.
@@ -79,20 +99,7 @@ fn check(f: &CardForm<'_>) -> Result<Saved, AlertError> {
         });
     }
     let (emails, url, key) = if kind == "email" {
-        let mut emails = Vec::new();
-        for e in store::split_emails(f.emails) {
-            let e = crate::accounts::normalize_email(&e).map_err(|_| AlertError::BadEmail(e))?;
-            if !emails.contains(&e) {
-                emails.push(e);
-            }
-        }
-        if emails.is_empty() {
-            return Err(AlertError::NoEmails);
-        }
-        if emails.len() > caps::EMAILS_PER_CARD {
-            return Err(AlertError::TooManyEmails);
-        }
-        (emails, None, None)
+        (email_list(f.emails)?, None, None)
     } else {
         let (url, key) = format::check(kind, f.url, f.key)?;
         // A webhook card exists to post somewhere.

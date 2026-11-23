@@ -40,7 +40,7 @@ Legend: `OK` implemented and tested, `WIP` in progress, `TODO` not started, `SCA
 | Admin users: turn two-factor off | [02](02-authentication.md#23-admin-users) | OK |
 | Two-factor sign-in: code step, enroll (with `qr`), confirm, turn off | [02](02-authentication.md#24-two-factor-sign-in) | OK |
 | User settings: password, picture | [02](02-authentication.md#25-user-settings) | OK |
-| Projects: list (`owner`, `sort`, `state`, `pulse`), the list's chart (`/api/ui/projects-chart`), the compact view (`/api/ui/projects-grid`, v1.2), the summary report PDF (`/api/ui/projects/{slug}/report`, v1.2), create, detail (`counts`), delete, overview, profile (`homepage_url`), icon, owners | [03](03-projects.md#31-frontend-routes) | OK |
+| Projects: list (`owner`, `sort`, `state`, `pulse`), the list's chart (`/api/ui/projects-chart`), the compact view (`/api/ui/projects-grid`, v1.2), the summary report PDF (`/api/ui/projects/{slug}/report`, v1.2), report schedules (`/api/ui/projects/{slug}/report-schedules`, v1.2), create, detail (`counts`), delete, overview, profile (`homepage_url`), icon, owners | [03](03-projects.md#31-frontend-routes) | OK |
 | API keys, allowlist, public pages (`public-pages`) | [03](03-projects.md#31-frontend-routes) | OK |
 | The key API under `/api/v1/projects/{slug}` (v1.1 Q44) | [03](03-projects.md#34-the-key-api) | OK |
 | Secrets: list, create, replace, delete | [03](03-projects.md#33-secrets) | OK |
